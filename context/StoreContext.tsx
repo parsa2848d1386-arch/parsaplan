@@ -341,7 +341,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 clearTimeout(syncTimeoutRef.current);
             }
         };
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, moods, startDate, darkMode, viewMode, isInitialized, db, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized, db, userId]);
 
     // --- REAL-TIME LISTENER (Listen for changes from other devices) ---
     const listenerSetupRef = useRef(false);
@@ -357,9 +357,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const remoteLastUpdated = data.lastUpdated || 0;
                 const localLastUpdated = lastSyncTime || 0;
 
-                // Only update if remote data is significantly newer (more than 10 seconds)
-                // This prevents the infinite loop
-                if (remoteLastUpdated > localLastUpdated + 10000) {
+                // Check if remote is newer
+                // We used to have +10000 buffer here, but it prevents quick syncs.
+                // Now we just check if it's strictly newer.
+                console.log(`Sync Check: Remote=${remoteLastUpdated}, Local=${localLastUpdated}, Diff=${remoteLastUpdated - localLastUpdated}`);
+
+                if (remoteLastUpdated > localLastUpdated) {
                     console.log("Received update from cloud, applying...");
 
                     // Set flag to skip the next auto-sync triggered by these state updates
