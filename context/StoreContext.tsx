@@ -228,11 +228,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const initApp = async () => {
             console.log("App Initializing...");
 
+            // Use a fixed shared ID so all devices sync to the same document
+            // This ID is based on the app name - all devices will share data
             let storedUserId = localStorage.getItem(KEY_USER_ID);
             if (!storedUserId) {
-                storedUserId = crypto.randomUUID();
+                // Use a fixed ID - "parsaplan_main_user" - so all devices share data
+                storedUserId = 'parsaplan_main_user';
                 localStorage.setItem(KEY_USER_ID, storedUserId);
             }
+            // Override with shared ID for sync purposes
+            storedUserId = 'parsaplan_main_user';
             setUserId(storedUserId);
 
             const storedBlob = localStorage.getItem(KEY_DATA_BLOB);
