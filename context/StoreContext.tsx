@@ -6,7 +6,7 @@ import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
 
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, Firestore } from 'firebase/firestore';
 import { DEFAULT_FIREBASE_CONFIG, IS_DEFAULT_FIREBASE_ENABLED } from '../firebaseConfig';
 
 interface StoreContextType {
@@ -296,6 +296,84 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         localStorage.setItem(KEY_DATA_BLOB, JSON.stringify(fullData));
     }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized]);
+
+    // --- AUTO-SYNC TO CLOUD (Debounced) ---
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isListeningRef = useRef(false);
+
+    useEffect(() => {
+        if (!isInitialized || !db || !userId) return;
+
+        // Debounced auto-sync: wait 3 seconds after last change before syncing
+        if (syncTimeoutRef.current) {
+            clearTimeout(syncTimeoutRef.current);
+        }
+
+        syncTimeoutRef.current = setTimeout(async () => {
+            try {
+                const fullData = {
+                    tasks, userName, routine: completedRoutine, routineTemplate,
+                    notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+                    settings: { darkMode, viewMode }, lastUpdated: Date.now()
+                };
+
+                await setDoc(doc(db, "users", userId), fullData);
+                setLastSyncTime(Date.now());
+                console.log("Auto-synced to cloud");
+            } catch (e) {
+                console.error("Auto-sync failed:", e);
+            }
+        }, 3000);
+
+        return () => {
+            if (syncTimeoutRef.current) {
+                clearTimeout(syncTimeoutRef.current);
+            }
+        };
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, moods, startDate, darkMode, viewMode, isInitialized, db, userId]);
+
+    // --- REAL-TIME LISTENER (Listen for changes from other devices) ---
+    useEffect(() => {
+        if (!db || !userId || isListeningRef.current) return;
+
+        isListeningRef.current = true;
+
+        const unsubscribe = onSnapshot(doc(db, "users", userId), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const remoteLastUpdated = data.lastUpdated || 0;
+                const localLastUpdated = lastSyncTime || 0;
+
+                if (remoteLastUpdated > localLastUpdated + 5000) {
+                    console.log("Received update from cloud, applying...");
+                    if (data.tasks) setTasks(data.tasks);
+                    if (data.userName) setUserNameState(data.userName);
+                    if (data.routine) setCompletedRoutine(data.routine);
+                    if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
+                    if (data.notes) setDailyNotes(data.notes);
+                    if (data.xp) setXp(data.xp);
+                    if (data.moods) setMoods(data.moods);
+                    if (data.startDate) {
+                        setStartDateState(data.startDate);
+                        recalcToday(data.startDate);
+                    }
+                    if (data.settings) {
+                        setDarkMode(data.settings.darkMode);
+                        setViewModeState(data.settings.viewMode);
+                    }
+                    setLastSyncTime(remoteLastUpdated);
+                    showToast('داده‌ها از دستگاه دیگر دریافت شد', 'info');
+                }
+            }
+        }, (error) => {
+            console.error("Real-time listener error:", error);
+        });
+
+        return () => {
+            unsubscribe();
+            isListeningRef.current = false;
+        };
+    }, [db, userId]);
 
 
     // --- CLOUD SYNC ---
