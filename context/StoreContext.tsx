@@ -304,12 +304,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const isListeningRef = useRef(false);
+    const skipNextSyncRef = useRef(false);
 
     useEffect(() => {
         if (!isInitialized || !db || !userId) return;
 
-        // Debounced auto-sync: wait 3 seconds after last change before syncing
+        // Skip if this update was triggered by incoming cloud data
+        if (skipNextSyncRef.current) {
+            skipNextSyncRef.current = false;
+            return;
+        }
+
+        // Debounced auto-sync: wait 5 seconds after last change before syncing
         if (syncTimeoutRef.current) {
             clearTimeout(syncTimeoutRef.current);
         }
@@ -328,7 +334,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             } catch (e) {
                 console.error("Auto-sync failed:", e);
             }
-        }, 3000);
+        }, 5000); // 5 second debounce
 
         return () => {
             if (syncTimeoutRef.current) {
@@ -338,10 +344,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, moods, startDate, darkMode, viewMode, isInitialized, db, userId]);
 
     // --- REAL-TIME LISTENER (Listen for changes from other devices) ---
-    useEffect(() => {
-        if (!db || !userId || isListeningRef.current) return;
+    const listenerSetupRef = useRef(false);
 
-        isListeningRef.current = true;
+    useEffect(() => {
+        if (!db || !userId || listenerSetupRef.current) return;
+
+        listenerSetupRef.current = true;
 
         const unsubscribe = onSnapshot(doc(db, "users", userId), (docSnap) => {
             if (docSnap.exists()) {
@@ -349,8 +357,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const remoteLastUpdated = data.lastUpdated || 0;
                 const localLastUpdated = lastSyncTime || 0;
 
-                if (remoteLastUpdated > localLastUpdated + 5000) {
+                // Only update if remote data is significantly newer (more than 10 seconds)
+                // This prevents the infinite loop
+                if (remoteLastUpdated > localLastUpdated + 10000) {
                     console.log("Received update from cloud, applying...");
+
+                    // Set flag to skip the next auto-sync triggered by these state updates
+                    skipNextSyncRef.current = true;
+
                     if (data.tasks) setTasks(data.tasks);
                     if (data.userName) setUserNameState(data.userName);
                     if (data.routine) setCompletedRoutine(data.routine);
@@ -376,7 +390,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         return () => {
             unsubscribe();
-            isListeningRef.current = false;
+            listenerSetupRef.current = false;
         };
     }, [db, userId]);
 
