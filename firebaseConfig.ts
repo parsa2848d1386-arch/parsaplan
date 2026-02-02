@@ -1,19 +1,18 @@
 
-// --- تنظیمات فایربیس ---
-// لطفاً اطلاعات پروژه فایربیس خود را در اینجا وارد کنید.
-// 1. به console.firebase.google.com بروید.
-// 2. یک پروژه جدید بسازید.
-// 3. Firestore Database را فعال کنید (در حالت Test Mode).
-// 4. در تنظیمات پروژه (Project Settings)، اسکریپت Web SDK را کپی کنید و مقادیر زیر را پر کنید.
+// --- تنظیمات پیش‌فرض فایربیس ---
+// این تنظیمات به صورت پیش‌فرض استفاده می‌شوند.
+// کاربر می‌تواند از بخش تنظیمات، کانفیگ خودش را جایگزین کند.
 
-export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+export const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBOt_mxj4mZ3eKXnwIpF-Jc1AXEeSAJVGM",
+  authDomain: "lifeos-cfe82.firebaseapp.com",
+  projectId: "lifeos-cfe82",
+  storageBucket: "lifeos-cfe82.firebasestorage.app",
+  messagingSenderId: "616355996390",
+  appId: "1:616355996390:web:07d2a615e9252d7ded1127",
+  measurementId: "G-1LPBK6BY2M"
 };
 
-// اگر هنوز تنظیمات را وارد نکرده‌اید، این متغیر را false نگه دارید تا اپ با LocalStorage کار کند.
-export const IS_FIREBASE_CONFIGURED = false; 
+// اگر کاربر کانفیگ سفارشی وارد کرده، از آن استفاده می‌شود.
+// در غیر این صورت از DEFAULT_FIREBASE_CONFIG استفاده می‌شود.
+export const IS_DEFAULT_FIREBASE_ENABLED = true; 

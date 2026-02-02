@@ -7,6 +7,7 @@ import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, Firestore } from 'firebase/firestore';
+import { DEFAULT_FIREBASE_CONFIG, IS_DEFAULT_FIREBASE_ENABLED } from '../firebaseConfig';
 
 interface StoreContextType {
     userName: string;
@@ -25,7 +26,7 @@ interface StoreContextType {
     toggleRoutineSlot: (dayId: number, slotId: number) => void;
     isRoutineSlotCompleted: (dayId: number, slotId: number) => boolean;
     getTasksForDay: (dayId: number) => SubjectTask[];
-    getDayDate: (dayId: number) => string; 
+    getDayDate: (dayId: number) => string;
     getTasksByDate: (isoDate: string) => SubjectTask[];
     getProgress: () => number;
     resetProgress: () => void;
@@ -33,12 +34,12 @@ interface StoreContextType {
     todayDayId: number;
     autoFixDate: () => void;
     shiftIncompleteTasks: () => void;
-    
+
     // Notes
     dailyNotes: Record<string, string>;
     saveDailyNote: (isoDate: string, note: string) => void;
     getDailyNote: (isoDate: string) => string;
-    
+
     // Backup & Sync
     exportData: () => void;
     importData: (jsonData: string) => boolean;
@@ -48,7 +49,7 @@ interface StoreContextType {
     lastSyncTime: number | null;
     cloudStatus: 'disconnected' | 'connected' | 'error';
     userId: string;
-    
+
     // Firebase Config Management
     firebaseConfig: FirebaseConfig | null;
     updateFirebaseConfig: (config: FirebaseConfig) => void;
@@ -71,7 +72,7 @@ interface StoreContextType {
 
     // Data
     auditLog: LogEntry[];
-    moods: Record<string, MoodType>; 
+    moods: Record<string, MoodType>;
     setMood: (date: string, mood: MoodType) => void;
     routineTemplate: DailyRoutineSlot[];
     setRoutineTemplate: (slots: DailyRoutineSlot[]) => void;
@@ -91,13 +92,13 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // --- STORAGE KEYS ---
-    const KEY_PREFIX = 'parsa_plan_v4_'; 
+    const KEY_PREFIX = 'parsa_plan_v4_';
     const KEY_USER_ID = KEY_PREFIX + 'user_id';
     const KEY_DATA_BLOB = KEY_PREFIX + 'full_data';
     const KEY_FB_CONFIG = KEY_PREFIX + 'firebase_config'; // Stores user provided config
 
     const detectedStart = findBahman11();
-    
+
     // --- STATE ---
     const [userId, setUserId] = useState<string>('');
     const [userName, setUserNameState] = useState('پارسا');
@@ -108,7 +109,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [completedRoutine, setCompletedRoutine] = useState<string[]>([]);
     const [routineTemplate, setRoutineTemplateState] = useState<DailyRoutineSlot[]>(DAILY_ROUTINE);
     const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
-    
+
     // UI & Config State
     const [darkMode, setDarkMode] = useState(false);
     const [viewMode, setViewModeState] = useState<'normal' | 'compact'>('normal');
@@ -120,19 +121,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
-    
+
     // Firebase State
     const [firebaseConfig, setFirebaseConfig] = useState<FirebaseConfig | null>(null);
     const [db, setDb] = useState<Firestore | null>(null);
     const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
-    
+
     // UI Overlays
     const [isTimerOpen, setIsTimerOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [dailyQuote, setDailyQuote] = useState('');
     const [confirmState, setConfirmState] = useState<ConfirmDialogState>({
-        isOpen: false, message: '', title: '', onConfirm: () => {}, onCancel: () => {}, type: 'info'
+        isOpen: false, message: '', title: '', onConfirm: () => { }, onCancel: () => { }, type: 'info'
     });
 
     const level = Math.floor(Math.sqrt(xp / 100)) + 1;
@@ -144,7 +145,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setTimeout(() => removeToast(id), 3000);
     };
     const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
-    
+
     const askConfirm = (title: string, message: string, onConfirm: () => void, type: 'danger' | 'info' = 'danger') => {
         setConfirmState({ isOpen: true, title, message, onConfirm, onCancel: () => setConfirmState(prev => ({ ...prev, isOpen: false })), type });
     };
@@ -160,12 +161,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const initFirebase = async () => {
             const storedConfig = localStorage.getItem(KEY_FB_CONFIG);
             if (storedConfig) {
+                // Use user's custom config
                 try {
                     const config = JSON.parse(storedConfig);
                     setFirebaseConfig(config);
                     await initializeFirebaseApp(config);
                 } catch (e) {
                     console.error("Error loading firebase config", e);
+                }
+            } else if (IS_DEFAULT_FIREBASE_ENABLED) {
+                // Use default config if no custom config and default is enabled
+                try {
+                    setFirebaseConfig(DEFAULT_FIREBASE_CONFIG);
+                    await initializeFirebaseApp(DEFAULT_FIREBASE_CONFIG);
+                    console.log("Using default Firebase config");
+                } catch (e) {
+                    console.error("Error loading default firebase config", e);
                 }
             }
         };
@@ -178,12 +189,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const apps = getApps();
             let app: FirebaseApp;
             if (apps.length > 0) {
-                app = apps[0]; 
+                app = apps[0];
                 // In a complex app we might deleteApp(app) and re-init, but here we assume config is stable or page refreshes
             } else {
                 app = initializeApp(config);
             }
-            
+
             const firestore = getFirestore(app);
             setDb(firestore);
             setCloudStatus('connected');
@@ -216,7 +227,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     useEffect(() => {
         const initApp = async () => {
             console.log("App Initializing...");
-            
+
             let storedUserId = localStorage.getItem(KEY_USER_ID);
             if (!storedUserId) {
                 storedUserId = crypto.randomUUID();
@@ -225,7 +236,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setUserId(storedUserId);
 
             const storedBlob = localStorage.getItem(KEY_DATA_BLOB);
-            
+
             if (storedBlob) {
                 try {
                     const data = JSON.parse(storedBlob);
@@ -256,7 +267,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             }
 
             setDailyQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
-            setIsInitialized(true); 
+            setIsInitialized(true);
         };
 
         initApp();
@@ -360,10 +371,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setUserName = (name: string) => { setUserNameState(name); showToast('نام ذخیره شد', 'success'); };
     const setViewMode = (mode: 'normal' | 'compact') => setViewModeState(mode);
     const toggleDarkMode = () => setDarkMode(prev => !prev);
-    
-    const setCurrentDay = (day: number) => { if(day >= 1 && day <= TOTAL_DAYS) setCurrentDayState(day); };
+
+    const setCurrentDay = (day: number) => { if (day >= 1 && day <= TOTAL_DAYS) setCurrentDayState(day); };
     const goToToday = () => { setCurrentDay(todayDayId); showToast('بازگشت به امروز', 'info'); };
-    
+
     const setStartDate = (newStartDate: string) => {
         setStartDateState(newStartDate);
         setTasks(prev => prev.map(t => {
@@ -418,7 +429,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, date } : t));
         showToast('منتقل شد', 'success');
     };
-    
+
     const scheduleReview = (taskId: string, daysLater: number) => {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
@@ -460,7 +471,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // --- OTHER ACTIONS ---
     const setMood = (date: string, mood: MoodType) => setMoods(prev => ({ ...prev, [date]: mood }));
     const saveDailyNote = (date: string, note: string) => { setDailyNotes(prev => ({ ...prev, [date]: note })); showToast('یادداشت ذخیره شد', 'success'); };
-    
+
     const getTasksForDay = (dayId: number) => tasks.filter(t => t.date === getDayDate(dayId));
     const getDayDate = (dayId: number) => toIsoString(addDays(startDate, dayId - 1));
     const getTasksByDate = (date: string) => tasks.filter(t => t.date === date);
