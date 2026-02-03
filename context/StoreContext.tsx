@@ -8,9 +8,11 @@ import { StorageManager } from '../utils/StorageManager';
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, Firestore } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, Auth } from 'firebase/auth';
 import { DEFAULT_FIREBASE_CONFIG, IS_DEFAULT_FIREBASE_ENABLED } from '../firebaseConfig';
 
 interface StoreContextType {
+    user: User | null;
     userName: string;
     setUserName: (name: string) => void;
     currentDay: number;
@@ -50,6 +52,11 @@ interface StoreContextType {
     lastSyncTime: number | null;
     cloudStatus: 'disconnected' | 'connected' | 'error';
     userId: string;
+
+    // Auth Methods
+    login: (u: string, p: string) => Promise<boolean>;
+    register: (u: string, p: string) => Promise<boolean>;
+    logout: () => Promise<void>;
 
     // Firebase Config Management
     firebaseConfig: FirebaseConfig | null;
@@ -126,6 +133,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Firebase State
     const [firebaseConfig, setFirebaseConfig] = useState<FirebaseConfig | null>(null);
     const [db, setDb] = useState<Firestore | null>(null);
+    const [auth, setAuth] = useState<Auth | null>(null);
+    const [user, setUser] = useState<User | null>(null); // Auth User
     const [cloudStatus, setCloudStatus] = useState<'disconnected' | 'connected' | 'error'>('disconnected');
 
     // UI Overlays
@@ -197,9 +206,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             }
 
             const firestore = getFirestore(app);
+            const firebaseAuth = getAuth(app);
+
             setDb(firestore);
+            setAuth(firebaseAuth);
             setCloudStatus('connected');
             console.log("Firebase initialized dynamically");
+
+            // Listen for Auth Changes
+            onAuthStateChanged(firebaseAuth, (currentUser) => {
+                setUser(currentUser);
+                if (currentUser) {
+                    setUserId(currentUser.uid);
+                    // Check if we need to migrate local data to cloud
+                    checkAndMigrateData(currentUser.uid, firestore);
+                } else {
+                    // Fallback to shared/local ID if logged out
+                    setUserId('parsaplan_local_user');
+                }
+            });
+
         } catch (error) {
             console.error("Firebase init failed:", error);
             setCloudStatus('error');
@@ -237,9 +263,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 storedUserId = 'parsaplan_main_user';
                 localStorage.setItem(KEY_USER_ID, storedUserId);
             }
-            // Override with shared ID for sync purposes
-            storedUserId = 'parsaplan_main_user';
-            setUserId(storedUserId);
+            // Override with shared ID for sync purposes ONLY if not authenticated
+            // If authenticated, onAuthStateChanged will set the correct ID
+            if (!user) {
+                storedUserId = 'parsaplan_local_user';
+                setUserId(storedUserId);
+            }
 
             // Create a safety backup before we potentially overwrite anything with new logic in future
             StorageManager.createBackup();
@@ -473,6 +502,84 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
 
+    // --- AUTH METHODS ---
+    const generateEmail = (username: string) => `${username.toLowerCase()}@parsaplan.user`;
+
+    const login = async (u: string, p: string): Promise<boolean> => {
+        if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
+        try {
+            await signInWithEmailAndPassword(auth, generateEmail(u), p);
+            showToast('خوش آمدید', 'success');
+            return true;
+        } catch (e: any) {
+            console.error(e);
+            let msg = 'خطا در ورود';
+            if (e.code === 'auth/invalid-credential') msg = 'نام کاربری یا رمز عبور اشتباه است';
+            showToast(msg, 'error');
+            return false;
+        }
+    };
+
+    const register = async (u: string, p: string): Promise<boolean> => {
+        if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, generateEmail(u), p);
+            // Initial Save to Cloud to claim the space with current local data
+            if (cred.user) {
+                await checkAndMigrateData(cred.user.uid, db!); // Force migration
+            }
+            showToast('حساب با موفقیت ساخته شد', 'success');
+            return true;
+        } catch (e: any) {
+            console.error(e);
+            let msg = 'خطا در ثبت نام';
+            if (e.code === 'auth/email-already-in-use') msg = 'این نام کاربری قبلاً گرفته شده است';
+            if (e.code === 'auth/weak-password') msg = 'رمز عبور باید حداقل ۶ رقم باشد';
+            showToast(msg, 'error');
+            return false;
+        }
+    };
+
+    const logout = async () => {
+        if (!auth) return;
+        askConfirm('خروج از حساب', 'آیا مطمئن هستید؟ دیتای لوکال باقی می‌ماند.', async () => {
+            await signOut(auth);
+            showToast('خارج شدید', 'info');
+            // Consider cleaning local state if you want "Clean Session" on logout.
+            // Currently keeping it as user asked "Login with another device brings data", 
+            // but usually logout clears sensitive data.
+            // For now, allow local data to persist.
+        }, 'info');
+    };
+
+    const checkAndMigrateData = async (uid: string, firestore: Firestore) => {
+        // If we have valid local data, and the cloud data is empty, upload local data.
+        const docRef = doc(firestore, "users", uid);
+        try {
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+                // Cloud is empty, user just registered or first time login.
+                // Upload LOCAL data to CLOUD
+                console.log("New account detected. Migrating local data to cloud...");
+                const fullData = {
+                    tasks, userName, routine: completedRoutine, routineTemplate,
+                    notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+                    settings: { darkMode, viewMode }, lastUpdated: Date.now()
+                };
+                await setDoc(docRef, fullData);
+                showToast('اطلاعات شما به حساب جدید منتقل شد', 'success');
+            } else {
+                // Cloud has data. We should probably LOAD it to be safe, 
+                // OR ask user? For now, standard flow: Server Wins.
+                // The real-time listener will pick this up and update state.
+                console.log("Existing account detected. Waiting for sync...");
+            }
+        } catch (e) {
+            console.error("Migration check failed", e);
+        }
+    };
+
+
     // --- LOGIC HELPERS ---
     const setUserName = (name: string) => { setUserNameState(name); showToast('نام ذخیره شد', 'success'); };
     const setViewMode = (mode: 'normal' | 'compact') => setViewModeState(mode);
@@ -624,6 +731,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return (
         <StoreContext.Provider value={{
+            user, login, register, logout,
             userName, setUserName, userId, cloudStatus,
             currentDay, setCurrentDay,
             startDate, setStartDate,

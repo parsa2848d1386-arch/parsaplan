@@ -1,16 +1,23 @@
 
 import React, { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, RotateCw, Command, Save } from 'lucide-react';
+import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, RotateCw, Command, Save, User, LogOut } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { TOTAL_DAYS } from '../constants';
 import FocusTimer from './FocusTimer';
 import CommandPalette from './CommandPalette';
 import { ToastContainer, ConfirmModal } from './Feedback';
 import PrintableSchedule from './PrintableSchedule';
+import { AuthModal } from './AuthModal';
 
 const Layout = () => {
-    const { currentDay, darkMode, setIsTimerOpen, level, xp, syncData, isSyncing, setIsCommandPaletteOpen } = useStore();
+    const {
+        currentDay, darkMode, setIsTimerOpen, level, xp,
+        syncData, isSyncing, setIsCommandPaletteOpen,
+        user, userName, login, register, logout
+    } = useStore();
+    const [isAuthOpen, setIsAuthOpen] = React.useState(false);
+
     const daysLeft = Math.max(0, TOTAL_DAYS - currentDay);
 
     // Keyboard Shortcut for Command Palette
@@ -45,19 +52,32 @@ const Layout = () => {
                 <CommandPalette />
                 <ToastContainer />
                 <ConfirmModal />
+                <AuthModal
+                    isOpen={isAuthOpen}
+                    onClose={() => setIsAuthOpen(false)}
+                    onLogin={async (u, p) => {
+                        const success = await login(u, p);
+                        if (success) setIsAuthOpen(false);
+                    }}
+                    onRegister={async (u, p) => {
+                        const success = await register(u, p);
+                        if (success) setIsAuthOpen(false);
+                    }}
+                    isLoading={false}
+                />
 
                 <div className="flex w-full h-full bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
                     {/* Desktop Sidebar */}
                     <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 h-full transition-all duration-300">
                         <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                 <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
+                                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
                                     <CheckCircle2 size={24} />
                                 </div>
                                 <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">ParsaPlan</h1>
                             </div>
                         </div>
-                        
+
                         <div className="px-6 pt-4 space-y-3">
                             {/* Level Card */}
                             <div className="bg-amber-50 dark:bg-gray-700 p-3 rounded-xl border border-amber-100 dark:border-gray-600 flex items-center justify-between">
@@ -73,9 +93,31 @@ const Layout = () => {
                                 <span className="text-[10px] font-mono text-gray-400">{xp} XP</span>
                             </div>
 
-                             {/* Actions */}
-                             <div className="flex gap-2">
-                                 <button 
+                            {/* User Profile / Auth Button */}
+                            <button
+                                onClick={() => user ? logout() : setIsAuthOpen(true)}
+                                className={`w-full p-2.5 rounded-xl border flex items-center justify-between group transition-all ${user
+                                        ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300'
+                                        : 'bg-gray-50 border-gray-100 dark:bg-gray-700 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${user ? 'bg-indigo-200 dark:bg-indigo-800' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                                        <User size={16} />
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] opacity-70 font-medium">{user ? 'خوش آمدید' : 'کاربر مهمان'}</p>
+                                        <p className="text-xs font-bold truncate max-w-[100px]">{user ? userName : 'ورود به حساب'}</p>
+                                    </div>
+                                </div>
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {user ? <LogOut size={14} /> : <div className="text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded">Login</div>}
+                                </div>
+                            </button>
+
+                            {/* Actions */}
+                            <div className="flex gap-2">
+                                <button
                                     onClick={() => setIsCommandPaletteOpen(true)}
                                     className="flex-1 bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 rounded-lg p-2 text-gray-500 dark:text-gray-300 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-500 transition flex items-center justify-center gap-2"
                                     title="Cmd+K"
@@ -83,20 +125,20 @@ const Layout = () => {
                                     <Command size={14} />
                                     فرمان
                                 </button>
-                                 <button 
+                                <button
                                     onClick={syncData}
                                     className={`flex-1 bg-white dark:bg-gray-600 border border-gray-200 dark:border-gray-500 rounded-lg p-2 text-indigo-500 dark:text-indigo-400 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-500 transition flex items-center justify-center gap-2 ${isSyncing ? 'animate-pulse' : ''}`}
                                 >
                                     {isSyncing ? <RotateCw size={14} className="animate-spin" /> : <Save size={14} />}
                                     {isSyncing ? '...' : 'ذخیره'}
                                 </button>
-                             </div>
+                            </div>
                         </div>
 
                         <nav className="flex-1 p-4 space-y-2">
                             {navItems.map((item) => (
-                                <NavLink 
-                                    key={item.to} 
+                                <NavLink
+                                    key={item.to}
                                     to={item.to}
                                     className={({ isActive }) => `flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm translate-x-1' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}`}
                                 >
@@ -111,7 +153,7 @@ const Layout = () => {
                                 <p className="font-bold text-sm mb-1">روز {currentDay} از {TOTAL_DAYS}</p>
                                 <p className="text-xs opacity-90">{daysLeft > 0 ? `${daysLeft} روز مانده` : 'روز آخر!'}</p>
                                 <div className="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden">
-                                     <div className="bg-white h-full rounded-full" style={{ width: `${(currentDay / TOTAL_DAYS) * 100}%` }}></div>
+                                    <div className="bg-white h-full rounded-full" style={{ width: `${(currentDay / TOTAL_DAYS) * 100}%` }}></div>
                                 </div>
                             </div>
                         </div>
@@ -126,15 +168,15 @@ const Layout = () => {
                         </div>
 
                         {/* Timer Floating Button (Mobile) */}
-                        <button 
+                        <button
                             onClick={() => setIsTimerOpen(true)}
                             className="md:hidden absolute bottom-20 left-4 z-30 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-center active:scale-90 transition-transform"
                         >
                             <Timer size={24} />
                         </button>
-                        
+
                         {/* Command Palette Trigger (Mobile) */}
-                         <button 
+                        <button
                             onClick={() => setIsCommandPaletteOpen(true)}
                             className="md:hidden absolute bottom-36 left-4 z-30 w-10 h-10 bg-gray-800 text-white rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform"
                         >
@@ -144,8 +186,8 @@ const Layout = () => {
                         {/* Mobile Bottom Nav */}
                         <nav className="md:hidden absolute bottom-0 w-full bg-white/90 dark:bg-gray-800/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 px-2 py-2 flex justify-around items-center z-20 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                             {navItems.map((item) => (
-                                <NavLink 
-                                    key={item.to} 
+                                <NavLink
+                                    key={item.to}
                                     to={item.to}
                                     className={({ isActive }) => `flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 ${isActive ? 'text-indigo-600 dark:text-indigo-400 -translate-y-1' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                 >
