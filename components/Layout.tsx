@@ -67,9 +67,9 @@ const Layout = () => {
                     isLoading={false}
                 />
 
-                <div className="flex w-full h-full bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+                <div className="flex w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors duration-300">
                     {/* Desktop Sidebar */}
-                    <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 h-full transition-all duration-300">
+                    <aside className="hidden md:flex flex-col w-64 glass dark:bg-gray-800/80 border-l border-gray-200/50 dark:border-gray-700/50 h-full transition-all duration-300 shadow-glass">
                         <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
@@ -161,7 +161,7 @@ const Layout = () => {
                     </aside>
 
                     {/* Main Content Area */}
-                    <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#f3f4f6] dark:bg-[#111827]">
+                    <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-900 dark:to-slate-950">
                         <div className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-5 scroll-smooth">
                             <div className="max-w-5xl mx-auto w-full h-full">
                                 <Outlet />
@@ -171,7 +171,7 @@ const Layout = () => {
                         {/* Timer Floating Button (Mobile) */}
                         <button
                             onClick={() => setIsTimerOpen(true)}
-                            className="md:hidden absolute bottom-20 left-4 z-30 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-center active:scale-90 transition-transform"
+                            className="md:hidden absolute bottom-20 left-4 z-30 w-14 h-14 btn-premium text-white rounded-full shadow-premium flex items-center justify-center active:scale-90 transition-transform animate-float"
                         >
                             <Timer size={24} />
                         </button>
@@ -185,7 +185,7 @@ const Layout = () => {
                         </button>
 
                         {/* Mobile Bottom Nav */}
-                        <nav className="md:hidden absolute bottom-0 w-full bg-white/90 dark:bg-gray-800/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700 px-2 py-2 flex justify-around items-center z-20 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                        <nav className="md:hidden absolute bottom-0 w-full glass dark:bg-gray-800/90 border-t border-gray-200/30 dark:border-gray-700/50 px-2 py-2 flex justify-around items-center z-20 pb-safe shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)]">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}
