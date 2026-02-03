@@ -4,6 +4,7 @@ import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, Toa
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
@@ -37,6 +38,8 @@ interface StoreContextType {
     todayDayId: number;
     autoFixDate: () => void;
     shiftIncompleteTasks: () => void;
+    totalDays: number;
+    setTotalDays: (days: number) => void;
 
     // Notes
     dailyNotes: Record<string, string>;
@@ -117,6 +120,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [completedRoutine, setCompletedRoutine] = useState<string[]>([]);
     const [routineTemplate, setRoutineTemplateState] = useState<DailyRoutineSlot[]>(DAILY_ROUTINE);
     const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
+    const [totalDays, setTotalDaysState] = useState(TOTAL_DAYS);
 
     // UI & Config State
     const [darkMode, setDarkMode] = useState(false);
@@ -592,8 +596,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setUserName = (name: string) => { setUserNameState(name); showToast('نام ذخیره شد', 'success'); };
     const setViewMode = (mode: 'normal' | 'compact') => setViewModeState(mode);
     const toggleDarkMode = () => setDarkMode(prev => !prev);
+    const setTotalDays = (days: number) => {
+        if (days >= 7 && days <= 60) {
+            setTotalDaysState(days);
+            showToast(`طول دوره به ${days} روز تغییر کرد`, 'success');
+        }
+    };
 
-    const setCurrentDay = (day: number) => { if (day >= 1 && day <= TOTAL_DAYS) setCurrentDayState(day); };
+    const setCurrentDay = (day: number) => { if (day >= 1 && day <= totalDays) setCurrentDayState(day); };
     const goToToday = () => { setCurrentDay(todayDayId); showToast('بازگشت به امروز', 'info'); };
 
     const setStartDate = (newStartDate: string) => {
@@ -618,8 +628,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const dayDiff = getDiffDays(start, todayStr);
         const detectedDay = dayDiff + 1;
         let targetDay = 1;
-        if (detectedDay >= 1 && detectedDay <= TOTAL_DAYS) targetDay = detectedDay;
-        else if (detectedDay > TOTAL_DAYS) targetDay = TOTAL_DAYS;
+        if (detectedDay >= 1 && detectedDay <= totalDays) targetDay = detectedDay;
+        else if (detectedDay > totalDays) targetDay = totalDays;
         setTodayDayId(targetDay);
         setCurrentDayState(targetDay);
     };
@@ -735,7 +745,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }, 'danger');
     };
 
-    if (!isInitialized) return null;
+    if (!isInitialized) return <LoadingSpinner fullScreen message="در حال بارگذاری ParsaPlan..." />;
 
     return (
         <StoreContext.Provider value={{
@@ -755,6 +765,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             isTimerOpen, setIsTimerOpen,
             isCommandPaletteOpen, setIsCommandPaletteOpen,
             xp, level, dailyQuote, shiftIncompleteTasks,
+            totalDays, setTotalDays,
             auditLog, moods, setMood,
             toasts, showToast, removeToast, confirmState, askConfirm, closeConfirm
         }}>

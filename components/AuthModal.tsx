@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, User, Lock, LogIn, UserPlus } from 'lucide-react';
+import { X, User, Lock, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -14,6 +14,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     if (!isOpen) return null;
 
@@ -32,8 +33,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
 
                 {/* Header */}
                 <div className={`relative h-32 flex flex-col items-center justify-center text-white transition-colors duration-300 ${mode === 'login'
-                        ? 'bg-gradient-to-br from-indigo-600 to-indigo-800'
-                        : 'bg-gradient-to-br from-purple-600 to-purple-800'
+                    ? 'bg-gradient-to-br from-indigo-600 to-indigo-800'
+                    : 'bg-gradient-to-br from-purple-600 to-purple-800'
                     }`}>
                     <button
                         onClick={onClose}
@@ -101,14 +102,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                             <div className="relative">
                                 <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     required
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
+                                    className="w-full pr-10 pl-12 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
                                     dir="ltr"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
 

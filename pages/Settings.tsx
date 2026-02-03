@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, History, Printer, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, CloudOff, Lock, Code, Trash2 } from 'lucide-react';
+import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, History, Printer, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, CloudOff, Lock, Code, Trash2, Clock } from 'lucide-react';
 import { getFullShamsiDate } from '../utils';
 import { FirebaseConfig } from '../types';
 
@@ -32,12 +32,12 @@ const HelpSection = () => {
             <div className="space-y-2">
                 {faqs.map((item, index) => (
                     <div key={index} className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
-                        <button 
+                        <button
                             onClick={() => setOpenIndex(openIndex === index ? null : index)}
                             className="w-full flex justify-between items-center p-3 text-right bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                         >
                             <span className="text-xs font-bold text-gray-700 dark:text-gray-200 leading-5">{item.q}</span>
-                            {openIndex === index ? <ChevronUp size={16} className="text-gray-400 min-w-[16px]"/> : <ChevronDown size={16} className="text-gray-400 min-w-[16px]"/>}
+                            {openIndex === index ? <ChevronUp size={16} className="text-gray-400 min-w-[16px]" /> : <ChevronDown size={16} className="text-gray-400 min-w-[16px]" />}
                         </button>
                         {openIndex === index && (
                             <div className="p-3 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-700 animate-in slide-in-from-top-2">
@@ -86,7 +86,7 @@ const FirebaseSettings = () => {
                 const json = JSON.parse(text);
                 setForm({ ...form, ...json });
                 return;
-            } catch(e) {}
+            } catch (e) { }
         }
 
         if (newConfig.apiKey) setForm({ ...form, ...newConfig });
@@ -101,7 +101,7 @@ const FirebaseSettings = () => {
         return (
             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
-                     <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
+                    <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
                         <Cloud size={20} />
                         <h2 className="font-bold">تنظیمات فایربیس</h2>
                     </div>
@@ -118,7 +118,7 @@ const FirebaseSettings = () => {
                         ویرایش
                     </button>
                     <button onClick={removeFirebaseConfig} className="bg-rose-50 text-rose-600 py-2 px-4 rounded-xl text-xs font-bold hover:bg-rose-100 transition">
-                        <Trash2 size={16}/>
+                        <Trash2 size={16} />
                     </button>
                 </div>
             </div>
@@ -127,18 +127,18 @@ const FirebaseSettings = () => {
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-             <div className="flex items-center gap-3 mb-4 text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-3 mb-4 text-blue-600 dark:text-blue-400">
                 <Cloud size={20} />
                 <h2 className="font-bold">اتصال به فایربیس</h2>
             </div>
-            
+
             <div className="space-y-3 mb-4">
-                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
                     <p className="text-xs text-indigo-800 dark:text-indigo-300 font-bold mb-2 flex items-center gap-2">
-                        <Code size={14}/>
+                        <Code size={14} />
                         چسباندن هوشمند (Smart Paste)
                     </p>
-                    <textarea 
+                    <textarea
                         rows={3}
                         placeholder="کد کانفیگ فایربیس را اینجا پیست کنید..."
                         className="w-full text-[10px] font-mono p-2 rounded-lg bg-white dark:bg-gray-800 border border-indigo-200 dark:border-indigo-700 outline-none"
@@ -146,16 +146,16 @@ const FirebaseSettings = () => {
                         onChange={(e) => setPasteArea(e.target.value)}
                         onBlur={handleSmartPaste}
                     />
-                 </div>
+                </div>
 
-                 <div className="grid grid-cols-2 gap-3">
-                    <input placeholder="apiKey" value={form.apiKey} onChange={e => setForm({...form, apiKey: e.target.value})} className="input-field" />
-                    <input placeholder="projectId" value={form.projectId} onChange={e => setForm({...form, projectId: e.target.value})} className="input-field" />
-                    <input placeholder="authDomain" value={form.authDomain} onChange={e => setForm({...form, authDomain: e.target.value})} className="input-field" />
-                    <input placeholder="storageBucket" value={form.storageBucket} onChange={e => setForm({...form, storageBucket: e.target.value})} className="input-field" />
-                    <input placeholder="messagingSenderId" value={form.messagingSenderId} onChange={e => setForm({...form, messagingSenderId: e.target.value})} className="input-field" />
-                    <input placeholder="appId" value={form.appId} onChange={e => setForm({...form, appId: e.target.value})} className="input-field" />
-                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <input placeholder="apiKey" value={form.apiKey} onChange={e => setForm({ ...form, apiKey: e.target.value })} className="input-field" />
+                    <input placeholder="projectId" value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })} className="input-field" />
+                    <input placeholder="authDomain" value={form.authDomain} onChange={e => setForm({ ...form, authDomain: e.target.value })} className="input-field" />
+                    <input placeholder="storageBucket" value={form.storageBucket} onChange={e => setForm({ ...form, storageBucket: e.target.value })} className="input-field" />
+                    <input placeholder="messagingSenderId" value={form.messagingSenderId} onChange={e => setForm({ ...form, messagingSenderId: e.target.value })} className="input-field" />
+                    <input placeholder="appId" value={form.appId} onChange={e => setForm({ ...form, appId: e.target.value })} className="input-field" />
+                </div>
             </div>
 
             <button onClick={handleSave} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition flex justify-center items-center gap-2">
@@ -187,21 +187,22 @@ const FirebaseSettings = () => {
 };
 
 const Settings = () => {
-    const { 
-        userName, setUserName, userId, resetProgress, 
-        startDate, setStartDate, autoFixDate, 
+    const {
+        userName, setUserName, userId, resetProgress,
+        startDate, setStartDate, autoFixDate,
         exportData, importData, syncData, loadFromCloud, cloudStatus, firebaseConfig,
         darkMode, toggleDarkMode,
         viewMode, setViewMode,
+        totalDays, setTotalDays,
         auditLog, showToast
     } = useStore();
-    
+
     const nameInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showLog, setShowLog] = useState(false);
 
     const handleSaveName = () => {
-        if(nameInputRef.current) {
+        if (nameInputRef.current) {
             setUserName(nameInputRef.current.value);
         }
     }
@@ -230,16 +231,16 @@ const Settings = () => {
 
     return (
         <div className="p-5 pb-20 space-y-6 animate-in fade-in duration-300">
-             <div className="flex justify-between items-center">
-                 <h1 className="text-xl font-bold text-gray-800 dark:text-white">تنظیمات</h1>
-                 <button 
+            <div className="flex justify-between items-center">
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">تنظیمات</h1>
+                <button
                     onClick={handlePrint}
                     className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700"
-                 >
-                     <Printer size={16} />
-                     پرینت برنامه
-                 </button>
-             </div>
+                >
+                    <Printer size={16} />
+                    پرینت برنامه
+                </button>
+            </div>
 
             {/* Help Section */}
             <HelpSection />
@@ -252,7 +253,7 @@ const Settings = () => {
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 animate-in slide-in-from-top-4">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                            <RefreshCw size={18} className="text-gray-500"/>
+                            <RefreshCw size={18} className="text-gray-500" />
                             مدیریت داده‌های ابری
                         </h2>
                     </div>
@@ -263,14 +264,14 @@ const Settings = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        <button 
+                        <button
                             onClick={syncData}
                             className="flex items-center justify-center gap-2 bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-200 dark:shadow-none"
                         >
                             <Upload size={18} />
                             <span className="text-xs font-bold">آپلود به سرور</span>
                         </button>
-                        <button 
+                        <button
                             onClick={loadFromCloud}
                             className="flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition"
                         >
@@ -288,10 +289,10 @@ const Settings = () => {
                     <h2 className="font-bold">پروفایل</h2>
                 </div>
                 <div className="flex gap-2">
-                    <input 
+                    <input
                         ref={nameInputRef}
                         defaultValue={userName}
-                        type="text" 
+                        type="text"
                         className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition text-sm text-gray-900 dark:text-white"
                     />
                     <button onClick={handleSaveName} className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 dark:shadow-none">
@@ -306,15 +307,15 @@ const Settings = () => {
                     <Eye size={20} />
                     <h2 className="font-bold">ظاهر و شخصی‌سازی</h2>
                 </div>
-                
+
                 <div className="space-y-4">
                     {/* Dark Mode Toggle */}
                     <div className="flex justify-between items-center p-2">
                         <span className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                            {darkMode ? <Moon size={18}/> : <Sun size={18}/>}
+                            {darkMode ? <Moon size={18} /> : <Sun size={18} />}
                             حالت شب
                         </span>
-                        <button 
+                        <button
                             onClick={toggleDarkMode}
                             className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 flex items-center ${darkMode ? 'bg-indigo-600 justify-end' : 'bg-gray-200 justify-start'}`}
                         >
@@ -324,18 +325,18 @@ const Settings = () => {
 
                     {/* View Mode Toggle */}
                     <div className="flex justify-between items-center p-2">
-                         <span className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                            <LayoutList size={18}/>
+                        <span className="text-sm font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                            <LayoutList size={18} />
                             نمایش فشرده
                         </span>
                         <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
-                            <button 
+                            <button
                                 onClick={() => setViewMode('normal')}
                                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'normal' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}
                             >
                                 عادی
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setViewMode('compact')}
                                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${viewMode === 'compact' ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white' : 'text-gray-400'}`}
                             >
@@ -367,7 +368,7 @@ const Settings = () => {
 
             {/* Audit Log */}
             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div 
+                <div
                     className="flex items-center justify-between mb-4 cursor-pointer"
                     onClick={() => setShowLog(!showLog)}
                 >
@@ -377,7 +378,7 @@ const Settings = () => {
                     </div>
                     <span className="text-xs text-gray-400">{showLog ? 'بستن' : 'مشاهده'}</span>
                 </div>
-                
+
                 {showLog && (
                     <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl">
                         {auditLog.length === 0 ? (
@@ -401,31 +402,60 @@ const Settings = () => {
             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-3 mb-4 text-teal-600 dark:text-teal-400">
                     <Calendar size={20} />
-                    <h2 className="font-bold">تقویم</h2>
+                    <h2 className="font-bold">تقویم و طول دوره</h2>
                 </div>
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
-                        <input 
-                            type="date"
-                            value={startDate}
-                            onChange={handleDateChange}
-                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
-                        />
-                        <button onClick={autoFixDate} className="bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 p-2.5 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-100 dark:border-teal-800">
-                            <Wand2 size={20} />
-                        </button>
+                <div className="flex flex-col gap-4">
+                    {/* Start Date */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">تاریخ شروع</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={handleDateChange}
+                                className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
+                            />
+                            <button onClick={autoFixDate} className="bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 p-2.5 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-100 dark:border-teal-800">
+                                <Wand2 size={20} />
+                            </button>
+                        </div>
+                        <p className="text-xs text-center text-gray-400 mt-1">{getFullShamsiDate(new Date(startDate))}</p>
                     </div>
-                    <p className="text-xs text-center text-gray-400">{getFullShamsiDate(new Date(startDate))}</p>
+
+                    {/* Duration Control */}
+                    <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+                            <Clock size={14} />
+                            طول دوره (روز)
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="range"
+                                min="7"
+                                max="60"
+                                value={totalDays}
+                                onChange={(e) => setTotalDays(Number(e.target.value))}
+                                className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            />
+                            <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold text-sm min-w-[50px] text-center">
+                                {totalDays}
+                            </div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                            <span>۷ روز</span>
+                            <span>۶۰ روز</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Danger Zone */}
             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3 mb-4 text-rose-600 dark:text-rose-400">
+                <div className="flex items-center gap-3 mb-4 text-rose-600 dark:text-rose-400">
                     <ShieldAlert size={20} />
                     <h2 className="font-bold">منطقه خطر</h2>
                 </div>
-                <button 
+                <button
                     onClick={resetProgress}
                     className="w-full flex items-center justify-center gap-2 border border-rose-100 dark:border-rose-800 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 py-3 rounded-xl font-bold hover:bg-rose-100 dark:hover:bg-rose-900/40 transition text-sm"
                 >
