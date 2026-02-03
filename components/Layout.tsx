@@ -3,7 +3,6 @@ import React, { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, RotateCw, Command, Save, User, LogOut } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { TOTAL_DAYS } from '../constants';
 import FocusTimer from './FocusTimer';
 import CommandPalette from './CommandPalette';
 import { ToastContainer, ConfirmModal } from './Feedback';
@@ -14,11 +13,12 @@ const Layout = () => {
     const {
         currentDay, darkMode, setIsTimerOpen, level, xp,
         syncData, isSyncing, setIsCommandPaletteOpen,
-        user, userName, login, register, logout
+        user, userName, login, register, logout,
+        totalDays
     } = useStore();
     const [isAuthOpen, setIsAuthOpen] = React.useState(false);
 
-    const daysLeft = Math.max(0, TOTAL_DAYS - currentDay);
+    const daysLeft = Math.max(0, totalDays - currentDay);
 
     // Keyboard Shortcut for Command Palette
     useEffect(() => {
@@ -97,8 +97,8 @@ const Layout = () => {
                             <button
                                 onClick={() => user ? logout() : setIsAuthOpen(true)}
                                 className={`w-full p-2.5 rounded-xl border flex items-center justify-between group transition-all ${user
-                                        ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300'
-                                        : 'bg-gray-50 border-gray-100 dark:bg-gray-700 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                                    ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300'
+                                    : 'bg-gray-50 border-gray-100 dark:bg-gray-700 dark:border-gray-600 text-gray-600 dark:text-gray-300'
                                     }`}
                             >
                                 <div className="flex items-center gap-2">
@@ -150,10 +150,10 @@ const Layout = () => {
 
                         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
                             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 text-white text-center shadow-lg transform transition-transform hover:scale-[1.02]">
-                                <p className="font-bold text-sm mb-1">روز {currentDay} از {TOTAL_DAYS}</p>
+                                <p className="font-bold text-sm mb-1">روز {currentDay} از {totalDays}</p>
                                 <p className="text-xs opacity-90">{daysLeft > 0 ? `${daysLeft} روز مانده` : 'روز آخر!'}</p>
                                 <div className="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden">
-                                    <div className="bg-white h-full rounded-full" style={{ width: `${(currentDay / TOTAL_DAYS) * 100}%` }}></div>
+                                    <div className="bg-white h-full rounded-full" style={{ width: `${(currentDay / totalDays) * 100}%` }}></div>
                                 </div>
                             </div>
                         </div>
