@@ -2,13 +2,21 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { DAILY_ROUTINE } from '../constants';
-import { Clock, Check, LayoutTemplate, Coffee, BookOpen, Calculator, FlaskConical, Tv, Zap, Dumbbell, Brain, Bed, Music, MonitorPlay, Pencil } from 'lucide-react';
+import { Clock, Check, LayoutTemplate, Coffee, BookOpen, Calculator, FlaskConical, Tv, Zap, Dumbbell, Brain, Bed, Music, MonitorPlay, Pencil, Plus, Settings } from 'lucide-react';
 import { DailyRoutineSlot } from '../types';
+import { RoutineSlotEditor } from '../components/RoutineSlotEditor';
 
 const DailyRoutinePage = () => {
-    const { currentDay, isRoutineSlotCompleted, toggleRoutineSlot, routineTemplate, setRoutineTemplate, updateRoutineIcon, resetRoutineToDefault } = useStore();
+    const {
+        currentDay, isRoutineSlotCompleted, toggleRoutineSlot, routineTemplate, setRoutineTemplate,
+        updateRoutineIcon, resetRoutineToDefault, addRoutineSlot, updateRoutineSlot, deleteRoutineSlot
+    } = useStore();
     const [pickingIconFor, setPickingIconFor] = useState<number | null>(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
+    const [editingSlot, setEditingSlot] = useState<DailyRoutineSlot | null>(null);
+    const [isNewSlot, setIsNewSlot] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     const availableIcons = [
         { name: 'bio', icon: BookOpen, label: 'مطالعه' },
@@ -30,7 +38,7 @@ const DailyRoutinePage = () => {
     };
 
     const getColor = (type: string) => {
-        switch(type) {
+        switch (type) {
             case 'test': return 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800';
             case 'review': return 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
             case 'rest': return 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
@@ -40,12 +48,12 @@ const DailyRoutinePage = () => {
     }
 
     const applyTemplate = (templateName: string) => {
-        if(templateName === 'exam') {
-             const examTemplate: DailyRoutineSlot[] = DAILY_ROUTINE.map(s => ({...s, time: '08:00 - 12:00', title: 'آزمون جامع', type: 'test' as const, icon: 'test'})).slice(0, 3);
-             setRoutineTemplate(examTemplate);
+        if (templateName === 'exam') {
+            const examTemplate: DailyRoutineSlot[] = DAILY_ROUTINE.map(s => ({ ...s, time: '08:00 - 12:00', title: 'آزمون جامع', type: 'test' as const, icon: 'test' })).slice(0, 3);
+            setRoutineTemplate(examTemplate);
         } else if (templateName === 'holiday') {
-             const holidayTemplate: DailyRoutineSlot[] = DAILY_ROUTINE.map(s => ({...s, time: '10:00 - 12:00', icon: 'rest'}));
-             setRoutineTemplate(holidayTemplate);
+            const holidayTemplate: DailyRoutineSlot[] = DAILY_ROUTINE.map(s => ({ ...s, time: '10:00 - 12:00', icon: 'rest' }));
+            setRoutineTemplate(holidayTemplate);
         } else {
             resetRoutineToDefault();
         }
@@ -59,41 +67,82 @@ const DailyRoutinePage = () => {
         }
     }
 
+    const openAddSlot = () => {
+        setEditingSlot(null);
+        setIsNewSlot(true);
+        setIsEditorOpen(true);
+    };
+
+    const openEditSlot = (slot: DailyRoutineSlot) => {
+        setEditingSlot(slot);
+        setIsNewSlot(false);
+        setIsEditorOpen(true);
+    };
+
+    const handleSaveSlot = (slot: DailyRoutineSlot) => {
+        if (isNewSlot) {
+            addRoutineSlot(slot);
+        } else {
+            updateRoutineSlot(slot);
+        }
+    };
+
     return (
         <div className="p-5 pb-20 animate-in fade-in duration-300">
+            <RoutineSlotEditor
+                isOpen={isEditorOpen}
+                onClose={() => setIsEditorOpen(false)}
+                onSave={handleSaveSlot}
+                onDelete={deleteRoutineSlot}
+                editingSlot={editingSlot}
+                isNewSlot={isNewSlot}
+            />
+
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-xl font-black text-gray-800 dark:text-white">برنامه روزانه</h1>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">الگوی ثابت برای موفقیت</p>
                 </div>
-                
+
                 <div className="flex gap-2">
-                     <div className="relative">
-                        <button 
+                    {/* Edit Mode Toggle */}
+                    <button
+                        onClick={() => setIsEditMode(!isEditMode)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1 shadow-sm active:scale-95 transition ${isEditMode
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                            }`}
+                    >
+                        <Settings size={14} />
+                        ویرایش
+                    </button>
+
+                    <div className="relative">
+                        <button
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             className="text-xs font-bold px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-1 shadow-sm active:scale-95 transition"
                         >
-                             <LayoutTemplate size={14} />
-                             الگو
+                            <LayoutTemplate size={14} />
+                            الگو
                         </button>
-                        
+
                         {isDropdownOpen && (
                             <>
                                 <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
                                 <div className="absolute left-0 top-full mt-2 w-32 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-20 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                     <button onClick={() => applyTemplate('default')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">پیش‌فرض</button>
-                                     <button onClick={() => applyTemplate('exam')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">روز آزمون</button>
-                                     <button onClick={() => applyTemplate('holiday')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">روز تعطیل</button>
+                                    <button onClick={() => applyTemplate('default')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">پیش‌فرض</button>
+                                    <button onClick={() => applyTemplate('exam')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">روز آزمون</button>
+                                    <button onClick={() => applyTemplate('holiday')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">روز تعطیل</button>
                                 </div>
                             </>
                         )}
-                     </div>
-                     <span className="text-xs font-bold px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-800">روز {currentDay}</span>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-800">روز {currentDay}</span>
                 </div>
             </div>
 
             <div className="space-y-6 relative isolate">
-                 {/* Vertical Line */}
+                {/* Vertical Line */}
                 <div className="absolute top-4 bottom-4 right-[23px] w-0.5 bg-gray-200 dark:bg-gray-700 -z-10"></div>
 
                 {routineTemplate.map((slot, index) => {
@@ -105,17 +154,18 @@ const DailyRoutinePage = () => {
                         <div key={slot.id} className="group relative flex gap-4">
                             {/* Time Indicator & Checkbox */}
                             <div className="flex flex-col items-center flex-shrink-0">
-                                <button 
+                                <button
                                     onClick={() => toggleRoutineSlot(currentDay, slot.id)}
                                     className={`w-12 h-12 rounded-2xl border-2 flex items-center justify-center cursor-pointer transition-all duration-300 shadow-sm z-10 ${isCompleted ? 'bg-indigo-600 border-indigo-600 text-white shadow-indigo-200 dark:shadow-none scale-95' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-400 hover:border-indigo-400 hover:text-indigo-500'}`}
                                 >
-                                    {isCompleted ? <Check size={24} strokeWidth={3} /> : <span className="text-sm font-black">{index+1}</span>}
+                                    {isCompleted ? <Check size={24} strokeWidth={3} /> : <span className="text-sm font-black">{index + 1}</span>}
                                 </button>
                             </div>
 
                             {/* Card */}
-                            <div 
-                                className={`flex-1 rounded-2xl p-4 border shadow-sm transition-all duration-300 relative ${colorStyle} ${isCompleted ? 'opacity-60 grayscale-[0.5]' : 'hover:shadow-md'}`}
+                            <div
+                                onClick={() => isEditMode && openEditSlot(slot)}
+                                className={`flex-1 rounded-2xl p-4 border shadow-sm transition-all duration-300 relative ${colorStyle} ${isCompleted ? 'opacity-60 grayscale-[0.5]' : 'hover:shadow-md'} ${isEditMode ? 'cursor-pointer ring-2 ring-indigo-200 dark:ring-indigo-800 ring-offset-2' : ''}`}
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-bold text-base">{slot.title}</h3>
@@ -127,21 +177,33 @@ const DailyRoutinePage = () => {
                                 <p className="text-xs font-medium opacity-90 leading-5">
                                     {slot.description}
                                 </p>
-                                
-                                {/* Icon Customization Trigger */}
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setPickingIconFor(pickingIconFor === slot.id ? null : slot.id); }}
-                                    className="absolute left-4 bottom-4 p-1.5 rounded-full bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 transition text-current opacity-50 hover:opacity-100"
-                                    title="تغییر آیکون"
-                                >
-                                    <IconComp size={16} />
-                                </button>
+
+                                {/* Edit button in edit mode */}
+                                {isEditMode && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); openEditSlot(slot); }}
+                                        className="absolute left-4 bottom-4 p-2 rounded-full bg-white dark:bg-gray-700 shadow-lg border border-gray-200 dark:border-gray-600 text-indigo-600 dark:text-indigo-400 hover:scale-110 transition"
+                                    >
+                                        <Pencil size={14} />
+                                    </button>
+                                )}
+
+                                {/* Icon Customization Trigger (only in non-edit mode) */}
+                                {!isEditMode && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setPickingIconFor(pickingIconFor === slot.id ? null : slot.id); }}
+                                        className="absolute left-4 bottom-4 p-1.5 rounded-full bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 transition text-current opacity-50 hover:opacity-100"
+                                        title="تغییر آیکون"
+                                    >
+                                        <IconComp size={16} />
+                                    </button>
+                                )}
 
                                 {/* Icon Picker Popup */}
                                 {pickingIconFor === slot.id && (
                                     <div className="absolute left-0 top-full mt-2 z-20 bg-white dark:bg-gray-800 p-2 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 flex flex-wrap gap-1 w-48 animate-in fade-in zoom-in duration-200">
                                         {availableIcons.map((ic) => (
-                                            <button 
+                                            <button
                                                 key={ic.name}
                                                 onClick={() => handleIconSelect(ic.name)}
                                                 className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 ${slot.icon === ic.name ? 'bg-indigo-50 text-indigo-600' : ''}`}
@@ -156,8 +218,19 @@ const DailyRoutinePage = () => {
                         </div>
                     );
                 })}
+
+                {/* Add New Slot Button (only in edit mode) */}
+                {isEditMode && (
+                    <button
+                        onClick={openAddSlot}
+                        className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition flex items-center justify-center gap-2 font-bold"
+                    >
+                        <Plus size={20} />
+                        افزودن اسلات جدید
+                    </button>
+                )}
             </div>
-            
+
             {pickingIconFor !== null && (
                 <div className="fixed inset-0 z-10" onClick={() => setPickingIconFor(null)}></div>
             )}

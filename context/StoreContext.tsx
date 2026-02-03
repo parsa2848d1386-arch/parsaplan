@@ -89,6 +89,9 @@ interface StoreContextType {
     setRoutineTemplate: (slots: DailyRoutineSlot[]) => void;
     updateRoutineIcon: (slotId: number, newIcon: string) => void;
     resetRoutineToDefault: () => void;
+    addRoutineSlot: (slot: DailyRoutineSlot) => void;
+    updateRoutineSlot: (slot: DailyRoutineSlot) => void;
+    deleteRoutineSlot: (slotId: number) => void;
 
     // Custom Subjects
     customSubjects: CustomSubject[];
@@ -726,6 +729,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setRoutineTemplate = (slots: DailyRoutineSlot[]) => { setRoutineTemplateState(slots); showToast('روتین آپدیت شد', 'success'); };
     const updateRoutineIcon = (id: number, icon: string) => setRoutineTemplateState(prev => prev.map(s => s.id === id ? { ...s, icon } : s));
     const resetRoutineToDefault = () => setRoutineTemplate(DAILY_ROUTINE);
+    const addRoutineSlot = (slot: DailyRoutineSlot) => {
+        setRoutineTemplateState(prev => [...prev, slot]);
+        showToast('اسلات جدید اضافه شد', 'success');
+    };
+    const updateRoutineSlot = (updated: DailyRoutineSlot) => {
+        setRoutineTemplateState(prev => prev.map(s => s.id === updated.id ? updated : s));
+        showToast('اسلات ویرایش شد', 'success');
+    };
+    const deleteRoutineSlot = (slotId: number) => {
+        askConfirm('حذف اسلات', 'آیا مطمئن هستید؟', () => {
+            setRoutineTemplateState(prev => prev.filter(s => s.id !== slotId));
+            showToast('اسلات حذف شد', 'warning');
+        });
+    };
 
     // --- OTHER ACTIONS ---
     const setMood = (date: string, mood: MoodType) => setMoods(prev => ({ ...prev, [date]: mood }));
@@ -782,7 +799,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             currentDay, setCurrentDay,
             startDate, setStartDate,
             tasks, toggleTask, addTask, updateTask, deleteTask, moveTaskToDate, scheduleReview,
-            toggleRoutineSlot, isRoutineSlotCompleted, routineTemplate, setRoutineTemplate, updateRoutineIcon, resetRoutineToDefault,
+            toggleRoutineSlot, isRoutineSlotCompleted, routineTemplate, setRoutineTemplate, updateRoutineIcon, resetRoutineToDefault, addRoutineSlot, updateRoutineSlot, deleteRoutineSlot,
             getTasksForDay, getDayDate, getTasksByDate,
             getProgress, resetProgress, goToToday, todayDayId, autoFixDate,
             dailyNotes, saveDailyNote, getDailyNote,
