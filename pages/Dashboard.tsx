@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Trash2, Pencil, Plus, Search, AlertTriangle, ArrowDownToLine, X, Calendar, SlidersHorizontal, BookOpen, Clock, Zap, StickyNote, Save, Quote, Trophy, ArrowRightCircle, Target } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Trash2, Pencil, Plus, Search, AlertTriangle, ArrowDownToLine, X, Calendar, SlidersHorizontal, BookOpen, Clock, Zap, StickyNote, Save, Quote, Trophy, ArrowRightCircle, Target, Bot } from 'lucide-react';
+import AISettings from '../components/AISettings';
 import ProgressBar from '../components/ProgressBar';
 import { Subject, SubjectTask } from '../types';
 import TaskModal from '../components/TaskModal';
@@ -29,6 +30,7 @@ const Dashboard = () => {
     const [filterSubject, setFilterSubject] = useState<string>('ALL');
     const [noteExpanded, setNoteExpanded] = useState(false);
     const [currentNote, setCurrentNote] = useState('');
+    const [isAIOpen, setIsAIOpen] = useState(false);
 
     const overallProgress = getProgress();
 
@@ -329,9 +331,13 @@ const Dashboard = () => {
             <div>
                 <h2 className="text-xs font-bold text-gray-400 mb-2 px-1">دسترسی سریع</h2>
                 <div className="grid grid-cols-4 gap-2">
-                    <button onClick={openAdd} className="col-span-2 bg-gray-900 dark:bg-indigo-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-gray-200 dark:shadow-none active:scale-95 transition-all">
+                    <button onClick={openAdd} className="col-span-1 bg-gray-900 dark:bg-indigo-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-gray-200 dark:shadow-none active:scale-95 transition-all">
                         <Plus size={20} />
-                        <span className="text-xs font-bold">تسک جدید</span>
+                        <span className="text-[10px] font-bold">تسک جدید</span>
+                    </button>
+                    <button onClick={() => setIsAIOpen(true)} className="col-span-1 bg-gradient-to-br from-violet-500 to-purple-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-violet-200 dark:shadow-none active:scale-95 transition-all">
+                        <Bot size={20} />
+                        <span className="text-[10px] font-bold">دستیار AI</span>
                     </button>
                     <button onClick={() => setIsTimerOpen(true)} className="col-span-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-gray-700">
                         <Clock size={20} className="text-indigo-500" />
@@ -437,6 +443,9 @@ const Dashboard = () => {
                     </div>
                 )}
             </div>
+
+            {/* AI Settings Modal */}
+            <AISettings isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
         </div>
     );
 };
