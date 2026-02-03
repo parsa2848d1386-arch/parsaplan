@@ -7,6 +7,7 @@ import DailyRoutine from './pages/DailyRoutine';
 import Subjects from './pages/Subjects';
 import Analysis from './pages/Analysis';
 import Settings from './pages/Settings';
+import Leaderboard from './pages/Leaderboard';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="routine" element={<DailyRoutine />} />
             <Route path="subjects" element={<Subjects />} />
             <Route path="analysis" element={<Analysis />} />
+            <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
