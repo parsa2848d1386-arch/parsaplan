@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Share2, Eye, EyeOff } from 'lucide-react';
+import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
 
 // Public profile interface
 interface PublicProfile {
@@ -13,14 +14,14 @@ interface PublicProfile {
     tasksCompleted: number;
     totalTasks: number;
     lastActive: number;
-    isPublic: boolean;
 }
 
 const Leaderboard = () => {
-    const { user, userName, xp, level, getProgress, tasks, showToast } = useStore();
+    const { user, userName, xp, level, getProgress, tasks, showToast, firebaseConfig } = useStore();
     const [leaderboardData, setLeaderboardData] = useState<PublicProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
+    const [isToggling, setIsToggling] = useState(false);
 
     // Calculate user stats
     const myStats: PublicProfile = {
@@ -31,22 +32,80 @@ const Leaderboard = () => {
         progress: getProgress(),
         tasksCompleted: tasks.filter(t => t.isCompleted).length,
         totalTasks: tasks.length,
-        lastActive: Date.now(),
-        isPublic: isMyProfilePublic
+        lastActive: Date.now()
     };
 
-    // Fetch real leaderboard data from Firebase (or show only current user if no Firebase)
-    useEffect(() => {
-        const fetchLeaderboard = async () => {
-            setIsLoading(true);
+    // Get Firestore instance
+    const getDb = useCallback(() => {
+        if (!firebaseConfig) return null;
+        try {
+            // Firebase is already initialized in StoreContext, just get instance
+            return getFirestore();
+        } catch {
+            return null;
+        }
+    }, [firebaseConfig]);
 
-            // For now, show only the current user's data
-            // In production with Firebase, this would fetch from 'publicProfiles' collection
+    // Fetch leaderboard data from Firebase
+    const fetchLeaderboard = useCallback(async () => {
+        setIsLoading(true);
+        const db = getDb();
+
+        if (!db) {
+            // No Firebase, just show empty or current user
+            setLeaderboardData([]);
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const publicProfilesRef = collection(db, 'publicProfiles');
+            const snapshot = await getDocs(publicProfilesRef);
+
             const profiles: PublicProfile[] = [];
+            snapshot.forEach((doc) => {
+                profiles.push(doc.data() as PublicProfile);
+            });
 
-            // Add current user if logged in
+            // Check if current user is in public profiles
             if (user) {
-                profiles.push(myStats);
+                const isPublic = profiles.some(p => p.id === user.uid);
+                setIsMyProfilePublic(isPublic);
+            }
+
+            // Sort by XP
+            profiles.sort((a, b) => b.xp - a.xp);
+
+            setLeaderboardData(profiles);
+        } catch (error) {
+            console.error('Error fetching leaderboard:', error);
+            setLeaderboardData([]);
+        }
+
+        setIsLoading(false);
+    }, [getDb, user]);
+
+    // Listen to real-time updates
+    useEffect(() => {
+        const db = getDb();
+        if (!db) {
+            setIsLoading(false);
+            return;
+        }
+
+        const publicProfilesRef = collection(db, 'publicProfiles');
+
+        // Real-time listener
+        const unsubscribe = onSnapshot(publicProfilesRef, (snapshot) => {
+            const profiles: PublicProfile[] = [];
+            snapshot.forEach((doc) => {
+                profiles.push(doc.data() as PublicProfile);
+            });
+
+            // Check if current user is in public profiles
+            if (user) {
+                const isPublic = profiles.some(p => p.id === user.uid);
+                setIsMyProfilePublic(isPublic);
             }
 
             // Sort by XP
@@ -54,17 +113,78 @@ const Leaderboard = () => {
 
             setLeaderboardData(profiles);
             setIsLoading(false);
+        }, (error) => {
+            console.error('Leaderboard listener error:', error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [getDb, user]);
+
+    // Toggle public profile
+    const toggleMyPublicProfile = async () => {
+        if (!user) {
+            showToast('برای شرکت در لیگ باید وارد حساب خود شوید', 'warning');
+            return;
+        }
+
+        const db = getDb();
+        if (!db) {
+            showToast('برای شرکت در لیگ باید فایربیس متصل باشد', 'warning');
+            return;
+        }
+
+        setIsToggling(true);
+
+        try {
+            const docRef = doc(db, 'publicProfiles', user.uid);
+
+            if (isMyProfilePublic) {
+                // Remove from public profiles
+                await deleteDoc(docRef);
+                setIsMyProfilePublic(false);
+                showToast('پروفایل شما خصوصی شد', 'success');
+            } else {
+                // Add to public profiles with current stats
+                await setDoc(docRef, {
+                    ...myStats,
+                    id: user.uid,
+                    lastActive: Date.now()
+                });
+                setIsMyProfilePublic(true);
+                showToast('پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود', 'success');
+            }
+        } catch (error) {
+            console.error('Error toggling profile:', error);
+            showToast('خطا در تغییر وضعیت پروفایل', 'error');
+        }
+
+        setIsToggling(false);
+    };
+
+    // Update public profile stats periodically
+    useEffect(() => {
+        if (!isMyProfilePublic || !user) return;
+
+        const db = getDb();
+        if (!db) return;
+
+        // Update stats every time they change
+        const updateStats = async () => {
+            try {
+                const docRef = doc(db, 'publicProfiles', user.uid);
+                await setDoc(docRef, {
+                    ...myStats,
+                    id: user.uid,
+                    lastActive: Date.now()
+                }, { merge: true });
+            } catch (error) {
+                console.error('Error updating public profile:', error);
+            }
         };
 
-        // Small delay to simulate loading
-        setTimeout(fetchLeaderboard, 500);
-    }, [user, xp, userName]);
-
-    const toggleMyPublicProfile = () => {
-        setIsMyProfilePublic(!isMyProfilePublic);
-        showToast(isMyProfilePublic ? 'پروفایل شما خصوصی شد' : 'پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود', 'success');
-        // TODO: Save to Firebase publicProfiles collection
-    };
+        updateStats();
+    }, [xp, tasks.length, userName, isMyProfilePublic, user, getDb]);
 
     const getRankIcon = (rank: number) => {
         switch (rank) {
@@ -108,18 +228,26 @@ const Leaderboard = () => {
                     {/* Share My Program Button */}
                     <button
                         onClick={toggleMyPublicProfile}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 ${isMyProfilePublic
+                        disabled={isToggling || !user}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 disabled:opacity-50 ${isMyProfilePublic
                                 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
                                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                             }`}
                     >
-                        {isMyProfilePublic ? <Eye size={16} /> : <EyeOff size={16} />}
+                        {isToggling ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : isMyProfilePublic ? (
+                            <Eye size={16} />
+                        ) : (
+                            <EyeOff size={16} />
+                        )}
                         {isMyProfilePublic ? 'عمومی' : 'خصوصی'}
                     </button>
 
                     <button
-                        onClick={() => setIsLoading(true)}
-                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                        onClick={fetchLeaderboard}
+                        disabled={isLoading}
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
                     >
                         <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
                     </button>
@@ -169,18 +297,28 @@ const Leaderboard = () => {
             </div>
 
             {/* Info Box */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-6">
-                <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
-                    💡 برای شرکت در لیگ و نمایش در رتبه‌بندی، دکمه <strong>"عمومی"</strong> را فعال کنید.
-                    دیگران می‌توانند برنامه و پیشرفت شما را مشاهده کنند.
-                </p>
-            </div>
+            {!user && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 mb-6">
+                    <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                        ⚠️ برای شرکت در لیگ و مشاهده رتبه‌بندی، ابتدا <strong>وارد حساب خود شوید</strong>.
+                    </p>
+                </div>
+            )}
+
+            {user && !isMyProfilePublic && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-6">
+                    <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                        💡 برای شرکت در لیگ و نمایش در رتبه‌بندی، دکمه <strong>"عمومی"</strong> را فعال کنید.
+                    </p>
+                </div>
+            )}
 
             {/* Leaderboard */}
             <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-4">
                     <Users className="text-gray-400" size={18} />
                     <h2 className="font-bold text-gray-700 dark:text-gray-200">رتبه‌بندی کاربران عمومی</h2>
+                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{leaderboardData.length} نفر</span>
                 </div>
 
                 {isLoading ? (
@@ -196,7 +334,7 @@ const Leaderboard = () => {
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">اولین نفر باشید که پروفایل خود را عمومی می‌کند</p>
                     </div>
                 ) : (
-                    leaderboardData.filter(p => p.isPublic).map((profile, index) => {
+                    leaderboardData.map((profile, index) => {
                         const rank = index + 1;
                         const isCurrentUser = profile.id === user?.uid;
 
