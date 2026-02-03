@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
+import { StorageManager } from '../utils/StorageManager';
 
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
@@ -240,34 +241,38 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             storedUserId = 'parsaplan_main_user';
             setUserId(storedUserId);
 
-            const storedBlob = localStorage.getItem(KEY_DATA_BLOB);
+            // Create a safety backup before we potentially overwrite anything with new logic in future
+            StorageManager.createBackup();
 
-            if (storedBlob) {
-                try {
-                    const data = JSON.parse(storedBlob);
-                    if (data.tasks) setTasks(data.tasks);
-                    if (data.userName) setUserNameState(data.userName);
-                    if (data.routine) setCompletedRoutine(data.routine);
-                    if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
-                    if (data.notes) setDailyNotes(data.notes);
-                    if (data.xp) setXp(data.xp);
-                    if (data.logs) setAuditLog(data.logs);
-                    if (data.moods) setMoods(data.moods);
-                    if (data.startDate) {
-                        setStartDateState(data.startDate);
-                        recalcToday(data.startDate);
-                    } else {
-                        recalcToday(detectedStart);
-                    }
-                    if (data.settings) {
-                        setDarkMode(data.settings.darkMode);
-                        setViewModeState(data.settings.viewMode);
-                    }
-                } catch (e) {
-                    console.error("Local Data Corrupt", e);
-                    loadDefaultPlan();
+            // Load Data using Storage Manager
+            const data = StorageManager.load();
+
+            if (data) {
+                // Restore State
+                if (data.tasks) setTasks(data.tasks);
+                if (data.userName) setUserNameState(data.userName);
+                if (data.routine) setCompletedRoutine(data.routine);
+                if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
+                if (data.notes) setDailyNotes(data.notes);
+                if (data.xp) setXp(data.xp);
+                if (data.logs) setAuditLog(data.logs);
+                if (data.moods) setMoods(data.moods);
+
+                if (data.startDate) {
+                    setStartDateState(data.startDate);
+                    recalcToday(data.startDate);
+                } else {
+                    recalcToday(detectedStart);
                 }
+
+                if (data.settings) {
+                    setDarkMode(data.settings.darkMode);
+                    setViewModeState(data.settings.viewMode);
+                }
+
+                console.log("Data loaded successfully via StorageManager");
             } else {
+                console.log("No stored data found, loading default plan.");
                 loadDefaultPlan();
             }
 
@@ -299,19 +304,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             settings: { darkMode, viewMode }, lastUpdated: Date.now()
         };
 
-        localStorage.setItem(KEY_DATA_BLOB, JSON.stringify(fullData));
+        // Use StorageManager for safe saving
+        StorageManager.save(fullData);
+
     }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const skipNextSyncRef = useRef(false);
+    const ignoreSyncUntilRef = useRef(0);
 
     useEffect(() => {
         if (!isInitialized || !db || !userId) return;
 
-        // Skip if this update was triggered by incoming cloud data
-        if (skipNextSyncRef.current) {
-            skipNextSyncRef.current = false;
+        // Skip if we are within the ignore window (triggered by incoming cloud data)
+        if (Date.now() < ignoreSyncUntilRef.current) {
             return;
         }
 
@@ -365,8 +371,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (remoteLastUpdated > localLastUpdated) {
                     console.log("Received update from cloud, applying...");
 
-                    // Set flag to skip the next auto-sync triggered by these state updates
-                    skipNextSyncRef.current = true;
+                    // Set ignore window to prevent auto-sync loop (2 seconds buffer)
+                    ignoreSyncUntilRef.current = Date.now() + 2000;
 
                     if (data.tasks) setTasks(data.tasks);
                     if (data.userName) setUserNameState(data.userName);
