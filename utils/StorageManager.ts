@@ -1,5 +1,5 @@
 
-import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType } from '../types';
+import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject } from '../types';
 
 // --- TYPES ---
 
@@ -13,6 +13,8 @@ export interface AppDataV1 {
     logs: LogEntry[];
     moods: Record<string, MoodType>;
     startDate: string;
+    totalDays?: number;
+    customSubjects?: CustomSubject[];
     settings: {
         darkMode: boolean;
         viewMode: 'normal' | 'compact';

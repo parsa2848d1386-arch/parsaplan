@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig } from '../types';
+import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
@@ -90,6 +90,12 @@ interface StoreContextType {
     updateRoutineIcon: (slotId: number, newIcon: string) => void;
     resetRoutineToDefault: () => void;
 
+    // Custom Subjects
+    customSubjects: CustomSubject[];
+    addCustomSubject: (subject: CustomSubject) => void;
+    updateCustomSubject: (subject: CustomSubject) => void;
+    deleteCustomSubject: (subjectId: string) => void;
+
     // Feedback System
     toasts: ToastMessage[];
     showToast: (message: string, type?: ToastType) => void;
@@ -121,6 +127,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [routineTemplate, setRoutineTemplateState] = useState<DailyRoutineSlot[]>(DAILY_ROUTINE);
     const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
     const [totalDays, setTotalDaysState] = useState(TOTAL_DAYS);
+    const [customSubjects, setCustomSubjects] = useState<CustomSubject[]>([]);
 
     // UI & Config State
     const [darkMode, setDarkMode] = useState(false);
@@ -290,6 +297,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (data.xp) setXp(data.xp);
                 if (data.logs) setAuditLog(data.logs);
                 if (data.moods) setMoods(data.moods);
+                if (data.totalDays) setTotalDaysState(data.totalDays);
+                if (data.customSubjects) setCustomSubjects(data.customSubjects);
 
                 if (data.startDate) {
                     setStartDateState(data.startDate);
@@ -334,13 +343,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const fullData = {
             tasks, userName, routine: completedRoutine, routineTemplate,
             notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+            totalDays, customSubjects,
             settings: { darkMode, viewMode }, lastUpdated: Date.now()
         };
 
         // Use StorageManager for safe saving
         StorageManager.save(fullData);
 
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, totalDays, customSubjects, isInitialized]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -672,6 +682,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     };
 
+    // --- CUSTOM SUBJECTS ---
+    const addCustomSubject = (subject: CustomSubject) => {
+        setCustomSubjects(prev => [...prev, subject]);
+        showToast(`درس "${subject.name}" اضافه شد`, 'success');
+    };
+
+    const updateCustomSubject = (updated: CustomSubject) => {
+        setCustomSubjects(prev => prev.map(s => s.id === updated.id ? updated : s));
+        showToast('درس ویرایش شد', 'success');
+    };
+
+    const deleteCustomSubject = (subjectId: string) => {
+        askConfirm('حذف درس', 'آیا مطمئن هستید؟ تسک‌های این درس حذف نمی‌شوند.', () => {
+            setCustomSubjects(prev => prev.filter(s => s.id !== subjectId));
+            showToast('درس حذف شد', 'warning');
+        });
+    };
+
     const shiftIncompleteTasks = () => {
         askConfirm('شیفت هوشمند', 'تسک‌های انجام نشده به فردا منتقل شوند؟', () => {
             const targetDate = getDayDate(currentDay);
@@ -766,6 +794,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             isCommandPaletteOpen, setIsCommandPaletteOpen,
             xp, level, dailyQuote, shiftIncompleteTasks,
             totalDays, setTotalDays,
+            customSubjects, addCustomSubject, updateCustomSubject, deleteCustomSubject,
             auditLog, moods, setMood,
             toasts, showToast, removeToast, confirmState, askConfirm, closeConfirm
         }}>
