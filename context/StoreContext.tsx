@@ -343,7 +343,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const ignoreSyncUntilRef = useRef(0);
 
     useEffect(() => {
-        if (!isInitialized || !db || !userId) return;
+        // ONLY sync when user is authenticated
+        if (!isInitialized || !db || !userId || !user) return;
 
         // Skip if we are within the ignore window (triggered by incoming cloud data)
         if (Date.now() < ignoreSyncUntilRef.current) {
@@ -376,13 +377,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 clearTimeout(syncTimeoutRef.current);
             }
         };
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized, db, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized, db, userId, user]);
 
     // --- REAL-TIME LISTENER (Listen for changes from other devices) ---
     const listenerSetupRef = useRef(false);
 
     useEffect(() => {
-        if (!db || !userId || listenerSetupRef.current) return;
+        // ONLY listen when user is authenticated
+        if (!db || !userId || !user || listenerSetupRef.current) return;
 
         listenerSetupRef.current = true;
 
@@ -430,7 +432,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             unsubscribe();
             listenerSetupRef.current = false;
         };
-    }, [db, userId]);
+    }, [db, userId, user]);
 
 
     // --- CLOUD SYNC ---
