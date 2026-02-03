@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2, X, BookOpen, Target, Calendar, ChevronLeft } from 'lucide-react';
+import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { getShamsiDate } from '../utils';
 
 // Public profile interface
 interface PublicProfile {
@@ -16,12 +17,23 @@ interface PublicProfile {
     lastActive: number;
 }
 
+// Extended profile with tasks for viewing
+interface FullProfile extends PublicProfile {
+    tasks?: any[];
+    routineTemplate?: any[];
+    subjects?: any[];
+}
+
 const Leaderboard = () => {
     const { user, userName, xp, level, getProgress, tasks, showToast, firebaseConfig } = useStore();
     const [leaderboardData, setLeaderboardData] = useState<PublicProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
     const [isToggling, setIsToggling] = useState(false);
+
+    // Profile viewer state
+    const [viewingProfile, setViewingProfile] = useState<FullProfile | null>(null);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
     // Calculate user stats
     const myStats: PublicProfile = {
@@ -39,7 +51,6 @@ const Leaderboard = () => {
     const getDb = useCallback(() => {
         if (!firebaseConfig) return null;
         try {
-            // Firebase is already initialized in StoreContext, just get instance
             return getFirestore();
         } catch {
             return null;
@@ -52,7 +63,6 @@ const Leaderboard = () => {
         const db = getDb();
 
         if (!db) {
-            // No Firebase, just show empty or current user
             setLeaderboardData([]);
             setIsLoading(false);
             return;
@@ -67,15 +77,12 @@ const Leaderboard = () => {
                 profiles.push(doc.data() as PublicProfile);
             });
 
-            // Check if current user is in public profiles
             if (user) {
                 const isPublic = profiles.some(p => p.id === user.uid);
                 setIsMyProfilePublic(isPublic);
             }
 
-            // Sort by XP
             profiles.sort((a, b) => b.xp - a.xp);
-
             setLeaderboardData(profiles);
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
@@ -95,22 +102,18 @@ const Leaderboard = () => {
 
         const publicProfilesRef = collection(db, 'publicProfiles');
 
-        // Real-time listener
         const unsubscribe = onSnapshot(publicProfilesRef, (snapshot) => {
             const profiles: PublicProfile[] = [];
             snapshot.forEach((doc) => {
                 profiles.push(doc.data() as PublicProfile);
             });
 
-            // Check if current user is in public profiles
             if (user) {
                 const isPublic = profiles.some(p => p.id === user.uid);
                 setIsMyProfilePublic(isPublic);
             }
 
-            // Sort by XP
             profiles.sort((a, b) => b.xp - a.xp);
-
             setLeaderboardData(profiles);
             setIsLoading(false);
         }, (error) => {
@@ -140,16 +143,16 @@ const Leaderboard = () => {
             const docRef = doc(db, 'publicProfiles', user.uid);
 
             if (isMyProfilePublic) {
-                // Remove from public profiles
                 await deleteDoc(docRef);
                 setIsMyProfilePublic(false);
                 showToast('پروفایل شما خصوصی شد', 'success');
             } else {
-                // Add to public profiles with current stats
+                // Save full profile data including tasks for others to view
                 await setDoc(docRef, {
                     ...myStats,
                     id: user.uid,
-                    lastActive: Date.now()
+                    lastActive: Date.now(),
+                    tasks: tasks.slice(0, 50), // Limit to 50 tasks
                 });
                 setIsMyProfilePublic(true);
                 showToast('پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود', 'success');
@@ -169,14 +172,14 @@ const Leaderboard = () => {
         const db = getDb();
         if (!db) return;
 
-        // Update stats every time they change
         const updateStats = async () => {
             try {
                 const docRef = doc(db, 'publicProfiles', user.uid);
                 await setDoc(docRef, {
                     ...myStats,
                     id: user.uid,
-                    lastActive: Date.now()
+                    lastActive: Date.now(),
+                    tasks: tasks.slice(0, 50),
                 }, { merge: true });
             } catch (error) {
                 console.error('Error updating public profile:', error);
@@ -185,6 +188,40 @@ const Leaderboard = () => {
 
         updateStats();
     }, [xp, tasks.length, userName, isMyProfilePublic, user, getDb]);
+
+    // View another user's profile
+    const viewUserProfile = async (profile: PublicProfile) => {
+        if (profile.id === user?.uid) {
+            showToast('این پروفایل خودتان است!', 'info');
+            return;
+        }
+
+        setIsLoadingProfile(true);
+        const db = getDb();
+
+        if (!db) {
+            showToast('خطا در اتصال به سرور', 'error');
+            setIsLoadingProfile(false);
+            return;
+        }
+
+        try {
+            const docRef = doc(db, 'publicProfiles', profile.id);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const fullData = docSnap.data() as FullProfile;
+                setViewingProfile(fullData);
+            } else {
+                showToast('پروفایل یافت نشد', 'error');
+            }
+        } catch (error) {
+            console.error('Error viewing profile:', error);
+            showToast('خطا در بارگذاری پروفایل', 'error');
+        }
+
+        setIsLoadingProfile(false);
+    };
 
     const getRankIcon = (rank: number) => {
         switch (rank) {
@@ -212,8 +249,118 @@ const Leaderboard = () => {
         return `${Math.floor(hours / 24)} روز پیش`;
     };
 
+    // Profile Viewer Modal
+    const ProfileViewerModal = () => {
+        if (!viewingProfile) return null;
+
+        const completedTasks = viewingProfile.tasks?.filter((t: any) => t.isCompleted) || [];
+        const pendingTasks = viewingProfile.tasks?.filter((t: any) => !t.isCompleted) || [];
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-300">
+                    {/* Header */}
+                    <div className="p-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white relative">
+                        <button
+                            onClick={() => setViewingProfile(null)}
+                            className="absolute left-4 top-4 p-2 hover:bg-white/20 rounded-xl transition"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <div className="flex items-center gap-4 mt-2">
+                            <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-bold">
+                                {viewingProfile.userName[0]}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold">{viewingProfile.userName}</h2>
+                                <p className="text-sm opacity-80">سطح {viewingProfile.level}</p>
+                            </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-3 mt-4">
+                            <div className="bg-white/10 rounded-xl p-2 text-center">
+                                <Star size={16} className="mx-auto mb-1" />
+                                <p className="font-bold">{viewingProfile.xp}</p>
+                                <p className="text-[10px] opacity-70">XP</p>
+                            </div>
+                            <div className="bg-white/10 rounded-xl p-2 text-center">
+                                <TrendingUp size={16} className="mx-auto mb-1" />
+                                <p className="font-bold">{viewingProfile.progress}%</p>
+                                <p className="text-[10px] opacity-70">پیشرفت</p>
+                            </div>
+                            <div className="bg-white/10 rounded-xl p-2 text-center">
+                                <Target size={16} className="mx-auto mb-1" />
+                                <p className="font-bold">{viewingProfile.tasksCompleted}/{viewingProfile.totalTasks}</p>
+                                <p className="text-[10px] opacity-70">تسک</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-5 overflow-y-auto max-h-[50vh]">
+                        {/* Tasks Summary */}
+                        {viewingProfile.tasks && viewingProfile.tasks.length > 0 ? (
+                            <div className="space-y-4">
+                                {/* Completed Tasks */}
+                                <div>
+                                    <h3 className="font-bold text-green-600 dark:text-green-400 text-sm mb-2 flex items-center gap-2">
+                                        <Target size={14} />
+                                        تسک‌های انجام شده ({completedTasks.length})
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {completedTasks.slice(0, 10).map((task: any, i: number) => (
+                                            <div key={i} className="bg-green-50 dark:bg-green-900/20 p-2 rounded-lg text-xs flex items-center gap-2">
+                                                <span className="text-green-500">✓</span>
+                                                <span className="font-medium text-green-800 dark:text-green-300">{task.subject}</span>
+                                                <span className="text-green-600 dark:text-green-400">{task.topic}</span>
+                                            </div>
+                                        ))}
+                                        {completedTasks.length > 10 && (
+                                            <p className="text-[10px] text-gray-400 text-center">و {completedTasks.length - 10} تسک دیگر...</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Pending Tasks */}
+                                <div>
+                                    <h3 className="font-bold text-amber-600 dark:text-amber-400 text-sm mb-2 flex items-center gap-2">
+                                        <Calendar size={14} />
+                                        تسک‌های در انتظار ({pendingTasks.length})
+                                    </h3>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {pendingTasks.slice(0, 10).map((task: any, i: number) => (
+                                            <div key={i} className="bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg text-xs flex items-center gap-2">
+                                                <span className="w-3 h-3 rounded-full border-2 border-amber-500"></span>
+                                                <span className="font-medium text-amber-800 dark:text-amber-300">{task.subject}</span>
+                                                <span className="text-amber-600 dark:text-amber-400">{task.topic}</span>
+                                                {task.date && <span className="text-[10px] text-gray-400 mr-auto">{getShamsiDate(task.date)}</span>}
+                                            </div>
+                                        ))}
+                                        {pendingTasks.length > 10 && (
+                                            <p className="text-[10px] text-gray-400 text-center">و {pendingTasks.length - 10} تسک دیگر...</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <BookOpen className="mx-auto text-gray-300 dark:text-gray-600 mb-2" size={32} />
+                                <p className="text-sm text-gray-400">این کاربر تسکی به اشتراک نگذاشته</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="p-5 pb-20 animate-in fade-in duration-300">
+            {/* Profile Viewer Modal */}
+            <ProfileViewerModal />
+
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -225,7 +372,6 @@ const Leaderboard = () => {
                 </div>
 
                 <div className="flex gap-2">
-                    {/* Share My Program Button */}
                     <button
                         onClick={toggleMyPublicProfile}
                         disabled={isToggling || !user}
@@ -360,9 +506,23 @@ const Leaderboard = () => {
                                         <p className="text-xs text-gray-500 dark:text-gray-400">سطح {profile.level} • {getTimeAgo(profile.lastActive)}</p>
                                     </div>
 
-                                    <div className="text-left">
-                                        <p className="font-black text-indigo-600 dark:text-indigo-400 text-lg">{profile.xp}</p>
-                                        <p className="text-[10px] text-gray-500">XP</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-left">
+                                            <p className="font-black text-indigo-600 dark:text-indigo-400 text-lg">{profile.xp}</p>
+                                            <p className="text-[10px] text-gray-500">XP</p>
+                                        </div>
+
+                                        {/* View Profile Button */}
+                                        {!isCurrentUser && (
+                                            <button
+                                                onClick={() => viewUserProfile(profile)}
+                                                disabled={isLoadingProfile}
+                                                className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition"
+                                                title="مشاهده برنامه"
+                                            >
+                                                <Eye size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 

@@ -1,307 +1,388 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Bot, Sparkles, Key, Loader2, Wand2, Calendar, BookOpen, Clock, AlertCircle, Check, X } from 'lucide-react';
+import {
+    Bot, Key, Loader2, Send, AlertCircle, Check, X, Sparkles, Settings2, MessageSquare, Trash2, Plus
+} from 'lucide-react';
 import { Subject } from '../types';
+import { toShamsiDate, fromShamsiDate } from '../utils';
 
 interface AISettingsProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-// System prompts for AI
-const SYSTEM_PROMPTS = {
-    taskGeneration: `شما یک دستیار هوشمند برای برنامه‌ریزی تحصیلی هستید. وظیفه شما تولید لیست تسک‌های مطالعاتی برای دانش‌آموز کنکوری است.
+interface AIConfig {
+    endpoint: string;
+    apiKey: string;
+    model: string;
+}
 
-قواعد:
-1. تسک‌ها باید واقع‌بینانه و قابل اجرا باشند
-2. هر تسک باید دارای عنوان فارسی، توضیحات کوتاه، و اولویت (بالا/متوسط/پایین) باشد
-3. تسک‌ها را بر اساس درس‌های موجود توزیع کنید
-4. برای هر روز حداکثر 5-7 تسک تولید کنید
-5. خروجی را به صورت JSON بدهید
+interface Message {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+}
 
-فرمت خروجی:
-[{"title": "عنوان تسک", "subject": "درس", "priority": "high|medium|low", "description": "توضیحات کوتاه"}]`,
+interface ParsedAction {
+    type: 'add_tasks' | 'delete_tasks' | 'edit_tasks' | 'info';
+    tasks?: any[];
+    message?: string;
+}
 
-    routineGeneration: `شما یک دستیار برنامه‌ریزی روزانه هستید. وظیفه شما تولید یک برنامه روزانه بهینه برای دانش‌آموز کنکوری است.
-
-قواعد:
-1. زمان‌بندی از ساعت 6 صبح تا 11 شب باشد
-2. هر اسلات شامل عنوان، زمان، نوع (مطالعه/استراحت/ورزش/خواب) و توضیحات باشد
-3. استراحت‌های کوتاه بین مطالعات قرار دهید
-4. تعادل بین دروس مختلف رعایت شود
-
-فرمت خروجی:
-[{"title": "عنوان", "time": "08:00 - 09:30", "type": "study|rest|exercise|class", "description": "توضیحات"}]`
+const DEFAULT_CONFIGS: Record<string, Partial<AIConfig>> = {
+    openai: { endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-3.5-turbo' },
+    anthropic: { endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-haiku-20240307' },
+    custom: { endpoint: '', model: '' }
 };
 
+const SYSTEM_PROMPT = `شما یک دستیار هوشمند برای اپلیکیشن برنامه‌ریزی درسی هستید. کار شما کمک به کاربر برای اضافه کردن سریع تسک‌های مطالعاتی است.
+
+وقتی کاربر درخواستی مثل این می‌دهد:
+"از تست 1500 تا 1660 فیزیک، روزی 40 تا، از فردا شروع کن"
+
+شما باید:
+1. محاسبه کنید چند تسک نیاز است (1660-1500=160 تست، 160/40=4 روز)
+2. تسک‌ها را به فرمت JSON خروجی دهید
+
+قواعد:
+- تاریخ‌ها را به فرمت ISO (YYYY-MM-DD) تبدیل کنید
+- هر تسک باید شامل: title, subject, topic, details, testRange, date باشد
+- اگر کاربر تاریخ شمسی گفت، تبدیل به میلادی کنید (تاریخ امروز: ${new Date().toISOString().split('T')[0]})
+
+فرمت خروجی دقیق:
+{"action": "add_tasks", "tasks": [{"title": "تست فیزیک ۱۵۰۰-۱۵۴۰", "subject": "فیزیک", "topic": "مبحث", "details": "حل تست", "testRange": "1500-1540", "date": "2024-01-15"}], "message": "۴ تسک برای ۴ روز ایجاد شد"}
+
+اگر درخواست مبهم بود، سوال بپرسید.`;
+
 export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
-    const { showToast, addTask, getDayDate, totalDays } = useStore();
-    const [apiKey, setApiKey] = useState('');
-    const [savedApiKey, setSavedApiKey] = useState<string | null>(() => localStorage.getItem('openai_api_key'));
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3]);
-    const [selectedSubjects, setSelectedSubjects] = useState<string[]>([Subject.Biology, Subject.Physics, Subject.Chemistry]);
-    const [generatedTasks, setGeneratedTasks] = useState<any[]>([]);
+    const { showToast, addTask, getDayDate, tasks, totalDays, deleteTask, askConfirm } = useStore();
 
-    const handleSaveApiKey = () => {
-        if (!apiKey.trim()) {
-            showToast('لطفاً API Key را وارد کنید', 'warning');
-            return;
-        }
-        localStorage.setItem('openai_api_key', apiKey);
-        setSavedApiKey(apiKey);
-        setApiKey('');
-        showToast('API Key ذخیره شد', 'success');
+    // Config state
+    const [showConfig, setShowConfig] = useState(false);
+    const [provider, setProvider] = useState<'openai' | 'anthropic' | 'custom'>('openai');
+    const [config, setConfig] = useState<AIConfig>(() => {
+        const saved = localStorage.getItem('ai_config');
+        if (saved) return JSON.parse(saved);
+        return { endpoint: DEFAULT_CONFIGS.openai.endpoint!, apiKey: '', model: DEFAULT_CONFIGS.openai.model! };
+    });
+
+    // Chat state
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [pendingActions, setPendingActions] = useState<ParsedAction | null>(null);
+
+    const saveConfig = () => {
+        localStorage.setItem('ai_config', JSON.stringify(config));
+        showToast('تنظیمات ذخیره شد', 'success');
+        setShowConfig(false);
     };
 
-    const handleRemoveApiKey = () => {
-        localStorage.removeItem('openai_api_key');
-        setSavedApiKey(null);
-        showToast('API Key حذف شد', 'warning');
+    const handleProviderChange = (p: 'openai' | 'anthropic' | 'custom') => {
+        setProvider(p);
+        if (p !== 'custom') {
+            setConfig(prev => ({
+                ...prev,
+                endpoint: DEFAULT_CONFIGS[p].endpoint!,
+                model: DEFAULT_CONFIGS[p].model!
+            }));
+        }
     };
 
-    const generateTasks = async () => {
-        if (!savedApiKey) {
-            showToast('ابتدا API Key را وارد کنید', 'warning');
+    const sendMessage = async () => {
+        if (!input.trim() || !config.apiKey) {
+            showToast('پیام یا API Key خالی است', 'warning');
             return;
         }
 
-        setIsGenerating(true);
-        setGeneratedTasks([]);
+        const userMessage: Message = { role: 'user', content: input };
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
 
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${savedApiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-3.5-turbo',
-                    messages: [
-                        { role: 'system', content: SYSTEM_PROMPTS.taskGeneration },
-                        {
-                            role: 'user',
-                            content: `برای ${selectedDays.length} روز آینده، تسک‌های مطالعاتی برای دروس ${selectedSubjects.join('، ')} تولید کن. در مجموع ${totalDays} روز تا کنکور مانده.`
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 2000
-                })
-            });
+            // Build request based on provider
+            let response: Response;
+
+            if (provider === 'anthropic') {
+                response = await fetch(config.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': config.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: config.model,
+                        max_tokens: 2000,
+                        system: SYSTEM_PROMPT,
+                        messages: [...messages, userMessage].map(m => ({
+                            role: m.role === 'system' ? 'user' : m.role,
+                            content: m.content
+                        }))
+                    })
+                });
+            } else {
+                // OpenAI compatible
+                response = await fetch(config.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${config.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: config.model,
+                        messages: [
+                            { role: 'system', content: SYSTEM_PROMPT },
+                            ...messages.map(m => ({ role: m.role, content: m.content })),
+                            { role: 'user', content: input }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+            }
 
             if (!response.ok) {
-                throw new Error('خطا در ارتباط با API');
+                throw new Error(`خطا: ${response.status}`);
             }
 
             const data = await response.json();
-            const content = data.choices[0]?.message?.content;
+            let assistantContent: string;
 
-            // Parse JSON from response
-            const jsonMatch = content.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-                const tasks = JSON.parse(jsonMatch[0]);
-                setGeneratedTasks(tasks);
-                showToast(`${tasks.length} تسک تولید شد`, 'success');
+            if (provider === 'anthropic') {
+                assistantContent = data.content[0].text;
             } else {
-                throw new Error('خروجی نامعتبر');
+                assistantContent = data.choices[0]?.message?.content;
             }
+
+            // Try to parse action from response
+            try {
+                const jsonMatch = assistantContent.match(/\{[\s\S]*"action"[\s\S]*\}/);
+                if (jsonMatch) {
+                    const action: ParsedAction = JSON.parse(jsonMatch[0]);
+                    setPendingActions(action);
+                    setMessages(prev => [...prev, {
+                        role: 'assistant',
+                        content: action.message || `${action.tasks?.length || 0} تسک آماده اضافه کردن است. تأیید می‌کنید؟`
+                    }]);
+                } else {
+                    setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
+                }
+            } catch {
+                setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
+            }
+
         } catch (error: any) {
             console.error('AI Error:', error);
-            showToast(error.message || 'خطا در تولید تسک‌ها', 'error');
+            setMessages(prev => [...prev, { role: 'assistant', content: `خطا: ${error.message}` }]);
         }
 
-        setIsGenerating(false);
+        setIsLoading(false);
     };
 
-    const applyGeneratedTasks = () => {
-        generatedTasks.forEach((task, index) => {
-            const dayIndex = index % selectedDays.length;
-            const date = getDayDate(selectedDays[dayIndex]);
+    const applyPendingActions = () => {
+        if (!pendingActions?.tasks) return;
 
+        pendingActions.tasks.forEach(task => {
             addTask({
                 id: crypto.randomUUID(),
-                title: task.title,
+                title: task.title || `تست ${task.subject}`,
                 subject: task.subject || Subject.Custom,
-                priority: task.priority === 'high' ? 'high' : task.priority === 'low' ? 'low' : 'medium',
+                topic: task.topic || '',
+                details: task.details || '',
+                testRange: task.testRange || '',
+                date: task.date,
                 isCompleted: false,
-                date: date,
-                note: task.description || ''
+                isCustom: true,
+                tags: []
             });
         });
 
-        showToast(`${generatedTasks.length} تسک به برنامه اضافه شد`, 'success');
-        setGeneratedTasks([]);
+        showToast(`${pendingActions.tasks.length} تسک اضافه شد`, 'success');
+        setPendingActions(null);
+        setMessages(prev => [...prev, { role: 'assistant', content: '✅ تسک‌ها با موفقیت اضافه شدند!' }]);
+    };
+
+    const clearChat = () => {
+        setMessages([]);
+        setPendingActions(null);
     };
 
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
                 {/* Header */}
-                <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-violet-500 to-purple-600 text-white">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                     <div className="flex items-center gap-3">
                         <Bot size={24} />
                         <div>
                             <h2 className="text-lg font-bold">دستیار هوشمند</h2>
-                            <p className="text-xs opacity-80">تولید خودکار برنامه با هوش مصنوعی</p>
+                            <p className="text-xs opacity-80">ساخت سریع تسک با دستور زبانی</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition">
-                        <X size={20} />
-                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={() => setShowConfig(!showConfig)} className="p-2 hover:bg-white/20 rounded-xl transition">
+                            <Settings2 size={18} />
+                        </button>
+                        <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh]">
-                    {/* API Key Section */}
-                    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Key size={16} className="text-violet-500" />
-                            <span className="font-bold text-sm text-gray-700 dark:text-gray-200">OpenAI API Key</span>
-                        </div>
-
-                        {savedApiKey ? (
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Check size={16} className="text-green-500" />
-                                    <span className="text-xs text-green-600 dark:text-green-400">API Key ذخیره شده</span>
-                                    <code className="text-[10px] bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">...{savedApiKey.slice(-8)}</code>
-                                </div>
-                                <button onClick={handleRemoveApiKey} className="text-xs text-rose-500 hover:text-rose-600">
-                                    حذف
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="flex gap-2">
-                                <input
-                                    type="password"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder="sk-..."
-                                    className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-violet-500"
-                                />
-                                <button
-                                    onClick={handleSaveApiKey}
-                                    className="bg-violet-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-violet-700 transition"
-                                >
-                                    ذخیره
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                {/* Config Panel */}
+                {showConfig && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700 space-y-3 animate-in slide-in-from-top-2">
                         <div className="flex gap-2">
-                            <AlertCircle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-700 dark:text-amber-300">
-                                برای استفاده از این قابلیت نیاز به API Key از <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">OpenAI</a> دارید.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Day Selection */}
-                    <div>
-                        <label className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
-                            <Calendar size={16} />
-                            روزهای هدف
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {[1, 2, 3, 4, 5, 6, 7].map(day => (
+                            {(['openai', 'anthropic', 'custom'] as const).map(p => (
                                 <button
-                                    key={day}
-                                    onClick={() => {
-                                        setSelectedDays(prev =>
-                                            prev.includes(day)
-                                                ? prev.filter(d => d !== day)
-                                                : [...prev, day]
-                                        );
-                                    }}
-                                    className={`w-10 h-10 rounded-xl text-sm font-bold transition ${selectedDays.includes(day)
+                                    key={p}
+                                    onClick={() => handleProviderChange(p)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${provider === p
                                             ? 'bg-violet-600 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                                         }`}
                                 >
-                                    {day}
+                                    {p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : 'Custom'}
                                 </button>
                             ))}
                         </div>
-                    </div>
 
-                    {/* Subject Selection */}
-                    <div>
-                        <label className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-2">
-                            <BookOpen size={16} />
-                            دروس
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                            {Object.values(Subject).filter(s => s !== Subject.Custom).map(subject => (
-                                <button
-                                    key={subject}
-                                    onClick={() => {
-                                        setSelectedSubjects(prev =>
-                                            prev.includes(subject)
-                                                ? prev.filter(s => s !== subject)
-                                                : [...prev, subject]
-                                        );
-                                    }}
-                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition ${selectedSubjects.includes(subject)
-                                            ? 'bg-violet-600 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                        }`}
-                                >
-                                    {subject}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                        <input
+                            type="password"
+                            value={config.apiKey}
+                            onChange={e => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                            placeholder="API Key"
+                            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-violet-500"
+                        />
 
-                    {/* Generate Button */}
-                    <button
-                        onClick={generateTasks}
-                        disabled={isGenerating || !savedApiKey || selectedDays.length === 0}
-                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white py-4 rounded-2xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-95"
-                    >
-                        {isGenerating ? (
+                        {provider === 'custom' && (
                             <>
-                                <Loader2 size={20} className="animate-spin" />
-                                در حال تولید...
-                            </>
-                        ) : (
-                            <>
-                                <Sparkles size={20} />
-                                تولید برنامه با AI
+                                <input
+                                    type="text"
+                                    value={config.endpoint}
+                                    onChange={e => setConfig(prev => ({ ...prev, endpoint: e.target.value }))}
+                                    placeholder="Endpoint URL"
+                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-violet-500"
+                                />
+                                <input
+                                    type="text"
+                                    value={config.model}
+                                    onChange={e => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                                    placeholder="Model name"
+                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-violet-500"
+                                />
                             </>
                         )}
-                    </button>
 
-                    {/* Generated Tasks Preview */}
-                    {generatedTasks.length > 0 && (
-                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="font-bold text-green-700 dark:text-green-300 text-sm">
-                                    {generatedTasks.length} تسک آماده افزودن
-                                </span>
-                                <button
-                                    onClick={applyGeneratedTasks}
-                                    className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition flex items-center gap-1"
-                                >
-                                    <Check size={14} />
-                                    اضافه کن
-                                </button>
-                            </div>
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                                {generatedTasks.map((task, i) => (
-                                    <div key={i} className="bg-white dark:bg-gray-800 p-2 rounded-lg text-xs">
-                                        <span className="font-bold text-gray-700 dark:text-gray-200">{task.title}</span>
-                                        <span className="text-gray-400 mr-2">({task.subject})</span>
-                                    </div>
-                                ))}
+                        <button onClick={saveConfig} className="w-full bg-violet-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-violet-700 transition">
+                            ذخیره تنظیمات
+                        </button>
+                    </div>
+                )}
+
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {messages.length === 0 && (
+                        <div className="text-center py-8">
+                            <Sparkles className="mx-auto text-violet-400 mb-3" size={32} />
+                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">دستورات نمونه:</p>
+                            <div className="space-y-2 text-xs text-gray-500 dark:text-gray-400">
+                                <p className="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">"از تست ۱۵۰۰ تا ۱۶۶۰ فیزیک، روزی ۴۰ تا"</p>
+                                <p className="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">"۵ تسک شیمی آلی برای این هفته"</p>
+                                <p className="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">"تست ریاضی از ۱ تا ۲۰۰ برای ۵ روز آینده"</p>
                             </div>
                         </div>
                     )}
+
+                    {messages.map((msg, i) => (
+                        <div
+                            key={i}
+                            className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                        >
+                            <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user'
+                                    ? 'bg-violet-600 text-white rounded-br-none'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
+                                }`}>
+                                {msg.content}
+                            </div>
+                        </div>
+                    ))}
+
+                    {isLoading && (
+                        <div className="flex justify-end">
+                            <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-2xl rounded-bl-none">
+                                <Loader2 className="animate-spin text-violet-500" size={20} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Pending Actions */}
+                    {pendingActions?.tasks && pendingActions.tasks.length > 0 && (
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-3">
+                            <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-2">
+                                {pendingActions.tasks.length} تسک آماده اضافه کردن:
+                            </p>
+                            <div className="max-h-32 overflow-y-auto space-y-1 mb-2">
+                                {pendingActions.tasks.slice(0, 5).map((t, i) => (
+                                    <div key={i} className="text-xs bg-white dark:bg-gray-800 p-1.5 rounded-lg">
+                                        {t.title} - {t.date}
+                                    </div>
+                                ))}
+                                {pendingActions.tasks.length > 5 && (
+                                    <p className="text-[10px] text-gray-400">و {pendingActions.tasks.length - 5} تسک دیگر...</p>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={applyPendingActions}
+                                    className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1"
+                                >
+                                    <Check size={14} /> تأیید و اضافه کن
+                                </button>
+                                <button
+                                    onClick={() => setPendingActions(null)}
+                                    className="px-4 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-2 rounded-xl text-xs font-bold"
+                                >
+                                    لغو
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Input */}
+                <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    {!config.apiKey && (
+                        <div className="mb-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-2 flex items-center gap-2">
+                            <AlertCircle size={14} className="text-amber-500" />
+                            <span className="text-xs text-amber-700 dark:text-amber-300">ابتدا API Key را در تنظیمات وارد کنید</span>
+                        </div>
+                    )}
+                    <div className="flex gap-2">
+                        <button onClick={clearChat} className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-500 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                            <Trash2 size={18} />
+                        </button>
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                            placeholder="دستور خود را بنویسید..."
+                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-violet-500"
+                            disabled={isLoading}
+                        />
+                        <button
+                            onClick={sendMessage}
+                            disabled={isLoading || !input.trim()}
+                            className="p-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition disabled:opacity-50"
+                        >
+                            <Send size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
