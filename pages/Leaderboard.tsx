@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Medal, Crown, Star, TrendingUp, Users, Lock, Unlock, RefreshCw, User, Share2 } from 'lucide-react';
+import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Share2, Eye, EyeOff } from 'lucide-react';
 
 // Public profile interface
 interface PublicProfile {
@@ -10,71 +10,60 @@ interface PublicProfile {
     xp: number;
     level: number;
     progress: number;
-    streak: number;
     tasksCompleted: number;
+    totalTasks: number;
     lastActive: number;
+    isPublic: boolean;
 }
 
 const Leaderboard = () => {
     const { user, userName, xp, level, getProgress, tasks, showToast } = useStore();
     const [leaderboardData, setLeaderboardData] = useState<PublicProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isPublic, setIsPublic] = useState(false);
-    const [userRank, setUserRank] = useState<number | null>(null);
+    const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
 
     // Calculate user stats
-    const userStats: PublicProfile = {
+    const myStats: PublicProfile = {
         id: user?.uid || 'local',
         userName: userName,
         xp: xp,
         level: level,
         progress: getProgress(),
-        streak: 7, // TODO: Calculate actual streak
         tasksCompleted: tasks.filter(t => t.isCompleted).length,
-        lastActive: Date.now()
+        totalTasks: tasks.length,
+        lastActive: Date.now(),
+        isPublic: isMyProfilePublic
     };
 
-    // Mock leaderboard data for demo (in production, this would come from Firebase)
+    // Fetch real leaderboard data from Firebase (or show only current user if no Firebase)
     useEffect(() => {
         const fetchLeaderboard = async () => {
             setIsLoading(true);
 
-            // Simulated data - in production, fetch from Firestore collection 'publicProfiles'
-            const mockData: PublicProfile[] = [
-                { id: '1', userName: 'محمد', xp: 2500, level: 8, progress: 85, streak: 12, tasksCompleted: 156, lastActive: Date.now() - 3600000 },
-                { id: '2', userName: 'علی', xp: 2200, level: 7, progress: 78, streak: 10, tasksCompleted: 142, lastActive: Date.now() - 7200000 },
-                { id: '3', userName: 'زهرا', xp: 1900, level: 6, progress: 72, streak: 8, tasksCompleted: 128, lastActive: Date.now() - 10800000 },
-                { id: '4', userName: 'فاطمه', xp: 1600, level: 5, progress: 65, streak: 6, tasksCompleted: 98, lastActive: Date.now() - 14400000 },
-                { id: '5', userName: 'حسین', xp: 1400, level: 5, progress: 58, streak: 5, tasksCompleted: 87, lastActive: Date.now() - 18000000 },
-                { id: '6', userName: 'مریم', xp: 1200, level: 4, progress: 52, streak: 4, tasksCompleted: 76, lastActive: Date.now() - 21600000 },
-                { id: '7', userName: 'رضا', xp: 1000, level: 4, progress: 45, streak: 3, tasksCompleted: 65, lastActive: Date.now() - 25200000 },
-                { id: '8', userName: 'سارا', xp: 800, level: 3, progress: 38, streak: 2, tasksCompleted: 54, lastActive: Date.now() - 28800000 },
-            ];
+            // For now, show only the current user's data
+            // In production with Firebase, this would fetch from 'publicProfiles' collection
+            const profiles: PublicProfile[] = [];
 
-            // Add current user to the list if public
-            if (isPublic && user) {
-                mockData.push(userStats);
+            // Add current user if logged in
+            if (user) {
+                profiles.push(myStats);
             }
 
             // Sort by XP
-            mockData.sort((a, b) => b.xp - a.xp);
+            profiles.sort((a, b) => b.xp - a.xp);
 
-            // Find user rank
-            const userIndex = mockData.findIndex(p => p.id === user?.uid);
-            if (userIndex !== -1) {
-                setUserRank(userIndex + 1);
-            }
-
-            setLeaderboardData(mockData);
+            setLeaderboardData(profiles);
             setIsLoading(false);
         };
 
-        fetchLeaderboard();
-    }, [isPublic, user, xp]);
+        // Small delay to simulate loading
+        setTimeout(fetchLeaderboard, 500);
+    }, [user, xp, userName]);
 
-    const togglePublicProfile = () => {
-        setIsPublic(!isPublic);
-        showToast(isPublic ? 'پروفایل شما خصوصی شد' : 'پروفایل شما عمومی شد', 'success');
+    const toggleMyPublicProfile = () => {
+        setIsMyProfilePublic(!isMyProfilePublic);
+        showToast(isMyProfilePublic ? 'پروفایل شما خصوصی شد' : 'پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود', 'success');
+        // TODO: Save to Firebase publicProfiles collection
     };
 
     const getRankIcon = (rank: number) => {
@@ -115,12 +104,26 @@ const Leaderboard = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">با دیگران رقابت کنید!</p>
                 </div>
 
-                <button
-                    onClick={() => setIsLoading(true)}
-                    className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                >
-                    <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-                </button>
+                <div className="flex gap-2">
+                    {/* Share My Program Button */}
+                    <button
+                        onClick={toggleMyPublicProfile}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 ${isMyProfilePublic
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+                            }`}
+                    >
+                        {isMyProfilePublic ? <Eye size={16} /> : <EyeOff size={16} />}
+                        {isMyProfilePublic ? 'عمومی' : 'خصوصی'}
+                    </button>
+
+                    <button
+                        onClick={() => setIsLoading(true)}
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                    >
+                        <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                    </button>
+                </div>
             </div>
 
             {/* User Stats Card */}
@@ -139,12 +142,10 @@ const Leaderboard = () => {
                                 <p className="text-xs opacity-80">سطح {level}</p>
                             </div>
                         </div>
-                        {userRank && (
-                            <div className="bg-white/20 px-4 py-2 rounded-xl">
-                                <p className="text-xs opacity-80">رتبه شما</p>
-                                <p className="font-black text-2xl">#{userRank}</p>
-                            </div>
-                        )}
+                        <div className="bg-white/20 px-4 py-2 rounded-xl">
+                            <p className="text-xs opacity-80">وضعیت</p>
+                            <p className="font-bold text-sm">{isMyProfilePublic ? '🌐 عمومی' : '🔒 خصوصی'}</p>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
@@ -155,52 +156,47 @@ const Leaderboard = () => {
                         </div>
                         <div className="bg-white/10 rounded-xl p-3 text-center">
                             <TrendingUp size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{userStats.progress}%</p>
+                            <p className="font-bold">{myStats.progress}%</p>
                             <p className="text-[10px] opacity-70">پیشرفت</p>
                         </div>
                         <div className="bg-white/10 rounded-xl p-3 text-center">
                             <Trophy size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{userStats.tasksCompleted}</p>
-                            <p className="text-[10px] opacity-70">تسک انجام شده</p>
+                            <p className="font-bold">{myStats.tasksCompleted}/{myStats.totalTasks}</p>
+                            <p className="text-[10px] opacity-70">تسک</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Public Profile Toggle */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    {isPublic ? <Unlock className="text-green-500" size={20} /> : <Lock className="text-gray-400" size={20} />}
-                    <div>
-                        <p className="font-bold text-gray-800 dark:text-white text-sm">پروفایل عمومی</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {isPublic ? 'دیگران می‌توانند شما را ببینند' : 'فقط شما می‌بینید'}
-                        </p>
-                    </div>
-                </div>
-                <button
-                    onClick={togglePublicProfile}
-                    className={`relative w-14 h-7 rounded-full transition-colors ${isPublic ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                >
-                    <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${isPublic ? 'translate-x-7' : 'translate-x-0.5'}`}></div>
-                </button>
+            {/* Info Box */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-6">
+                <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                    💡 برای شرکت در لیگ و نمایش در رتبه‌بندی، دکمه <strong>"عمومی"</strong> را فعال کنید.
+                    دیگران می‌توانند برنامه و پیشرفت شما را مشاهده کنند.
+                </p>
             </div>
 
             {/* Leaderboard */}
             <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-4">
                     <Users className="text-gray-400" size={18} />
-                    <h2 className="font-bold text-gray-700 dark:text-gray-200">رتبه‌بندی</h2>
+                    <h2 className="font-bold text-gray-700 dark:text-gray-200">رتبه‌بندی کاربران عمومی</h2>
                 </div>
 
                 {isLoading ? (
                     <div className="space-y-3">
-                        {[1, 2, 3, 4, 5].map(i => (
+                        {[1, 2, 3].map(i => (
                             <div key={i} className="h-20 bg-gray-100 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
                         ))}
                     </div>
+                ) : leaderboardData.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                        <Trophy className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">هنوز کسی در لیگ نیست!</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">اولین نفر باشید که پروفایل خود را عمومی می‌کند</p>
+                    </div>
                 ) : (
-                    leaderboardData.map((profile, index) => {
+                    leaderboardData.filter(p => p.isPublic).map((profile, index) => {
                         const rank = index + 1;
                         const isCurrentUser = profile.id === user?.uid;
 
@@ -244,16 +240,6 @@ const Leaderboard = () => {
                     })
                 )}
             </div>
-
-            {/* Share Button */}
-            {isPublic && (
-                <div className="fixed bottom-24 left-4 right-4 z-40">
-                    <button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition">
-                        <Share2 size={20} />
-                        اشتراک‌گذاری پیشرفت
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

@@ -194,7 +194,8 @@ const Settings = () => {
         darkMode, toggleDarkMode,
         viewMode, setViewMode,
         totalDays, setTotalDays,
-        auditLog, showToast
+        auditLog, showToast,
+        user, logout
     } = useStore();
 
     const nameInputRef = useRef<HTMLInputElement>(null);
@@ -282,22 +283,71 @@ const Settings = () => {
                 </div>
             )}
 
-            {/* Profile Section */}
+            {/* Profile & Account Section */}
             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
                     <User size={20} />
-                    <h2 className="font-bold">پروفایل</h2>
+                    <h2 className="font-bold">پروفایل و حساب کاربری</h2>
                 </div>
-                <div className="flex gap-2">
-                    <input
-                        ref={nameInputRef}
-                        defaultValue={userName}
-                        type="text"
-                        className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition text-sm text-gray-900 dark:text-white"
-                    />
-                    <button onClick={handleSaveName} className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 dark:shadow-none">
-                        <Save size={20} />
-                    </button>
+
+                {/* User Name */}
+                <div className="mb-4">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">نام نمایشی</label>
+                    <div className="flex gap-2">
+                        <input
+                            ref={nameInputRef}
+                            defaultValue={userName}
+                            type="text"
+                            placeholder="نام خود را وارد کنید..."
+                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition text-sm text-gray-900 dark:text-white"
+                        />
+                        <button onClick={handleSaveName} className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 dark:shadow-none">
+                            <Save size={20} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Login Status */}
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">وضعیت ورود</label>
+                    {user ? (
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold">
+                                        {userName[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-green-800 dark:text-green-300 text-sm">{userName}</p>
+                                        <p className="text-[10px] text-green-600 dark:text-green-400">وارد شده ✓</p>
+                                    </div>
+                                </div>
+                                <CheckCircle2 className="text-green-500" size={20} />
+                            </div>
+                            <button
+                                onClick={logout}
+                                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border border-green-200 dark:border-green-800 text-gray-700 dark:text-gray-200 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+                            >
+                                <Lock size={14} />
+                                خروج از حساب
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                    <User size={20} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-700 dark:text-gray-300 text-sm">وارد نشده‌اید</p>
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">برای ذخیره ابری وارد شوید</p>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                برای ورود یا ثبت‌نام، از دکمه کاربر در نوار بالای صفحه استفاده کنید.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
