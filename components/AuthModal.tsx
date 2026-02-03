@@ -31,7 +31,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
             <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
 
                 {/* Header */}
-                <div className="relative h-32 bg-gradient-to-br from-indigo-600 to-purple-700 flex flex-col items-center justify-center text-white">
+                <div className={`relative h-32 flex flex-col items-center justify-center text-white transition-colors duration-300 ${mode === 'login'
+                        ? 'bg-gradient-to-br from-indigo-600 to-indigo-800'
+                        : 'bg-gradient-to-br from-purple-600 to-purple-800'
+                    }`}>
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 p-1 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
@@ -39,7 +42,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                         <X size={20} />
                     </button>
                     <div className="bg-white/20 p-3 rounded-full mb-2 backdrop-blur-md shadow-inner">
-                        <User size={32} className="text-white" />
+                        {mode === 'login' ? <User size={32} className="text-white" /> : <UserPlus size={32} className="text-white" />}
                     </div>
                     <h2 className="text-2xl font-bold">
                         {mode === 'login' ? 'ورود به حساب' : 'ساخت حساب کاربری'}
@@ -47,7 +50,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                 </div>
 
                 {/* Body */}
-                <div className="p-6 pt-8">
+                <div className="p-6 pt-6">
+                    {/* Segmented Control */}
+                    <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl mb-6">
+                        <button
+                            onClick={() => setMode('login')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'login'
+                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                }`}
+                        >
+                            <LogIn size={16} />
+                            ورود
+                        </button>
+                        <button
+                            onClick={() => setMode('register')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'register'
+                                ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-white shadow-sm'
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                                }`}
+                        >
+                            <UserPlus size={16} />
+                            ساخت حساب
+                        </button>
+                    </div>
+
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
@@ -88,29 +115,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-4"
+                            className={`w-full py-3 px-4 text-white font-bold rounded-xl shadow-lg transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 ${mode === 'login'
+                                ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-indigo-500/30'
+                                : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/30'
+                                }`}
                         >
                             {isLoading ? (
                                 <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
                                     {mode === 'login' ? <LogIn size={20} /> : <UserPlus size={20} />}
-                                    {mode === 'login' ? 'وارد شوید' : 'ثبت نام کنید'}
+                                    {mode === 'login' ? 'ورود به حساب' : 'ایجاد حساب کاربری'}
                                 </>
                             )}
                         </button>
                     </form>
-
-                    <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span>{mode === 'login' ? 'حساب کاربری ندارید؟' : 'قبلاً ثبت نام کرده‌اید؟'}</span>
-                        <button
-                            type="button"
-                            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-                            className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
-                        >
-                            {mode === 'login' ? 'ساخت حساب' : 'ورود'}
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>

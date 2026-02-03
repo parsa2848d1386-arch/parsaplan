@@ -531,10 +531,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             showToast('حساب با موفقیت ساخته شد', 'success');
             return true;
         } catch (e: any) {
-            console.error(e);
             let msg = 'خطا در ثبت نام';
-            if (e.code === 'auth/email-already-in-use') msg = 'این نام کاربری قبلاً گرفته شده است';
-            if (e.code === 'auth/weak-password') msg = 'رمز عبور باید حداقل ۶ رقم باشد';
+            if (e.code === 'auth/email-already-in-use') {
+                msg = 'این نام کاربری قبلاً استفاده شده است';
+                // Known error, no need to console.error loudly
+                console.warn("Registration failed: Username taken");
+            } else if (e.code === 'auth/weak-password') {
+                msg = 'رمز عبور باید حداقل ۶ رقم باشد';
+            } else {
+                console.error("Registration Error:", e);
+            }
             showToast(msg, 'error');
             return false;
         }
