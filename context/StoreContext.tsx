@@ -315,8 +315,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     setSubjects(data.subjects);
                 } else {
                     // Fallback/Migration: Load defaults + old custom subjects
+                    const allowedDefaults = ['زیست‌شناسی', 'شیمی', 'فیزیک', 'ریاضیات'];
                     const defaultSubjects = Object.entries(SUBJECT_ICONS)
-                        .filter(([name]) => name !== 'شخصی')
+                        .filter(([name]) => allowedDefaults.includes(name))
                         .map(([name, style]) => ({
                             id: name,
                             name: name,
@@ -736,17 +737,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // --- SUBJECTS ACTIONS ---
     const addSubject = (subject: CustomSubject) => {
         setSubjects(prev => [...prev, subject]);
+        logAction('add_subject', `افزودن درس ${subject.name}`);
         showToast(`درس "${subject.name}" اضافه شد`, 'success');
     };
 
     const updateSubject = (updated: CustomSubject) => {
         setSubjects(prev => prev.map(s => s.id === updated.id ? updated : s));
+        logAction('edit_subject', `ویرایش درس ${updated.name}`);
         showToast('درس ویرایش شد', 'success');
     };
 
     const deleteSubject = (subjectId: string) => {
         askConfirm('حذف درس', 'آیا مطمئن هستید؟ تسک‌های این درس حذف نمی‌شوند ولی در لیست دروس نمایش داده نخواهد شد.', () => {
+            const subjectName = subjects.find(s => s.id === subjectId)?.name || 'نامشخص';
             setSubjects(prev => prev.filter(s => s.id !== subjectId));
+            logAction('delete_subject', `حذف درس ${subjectName}`);
             showToast('درس حذف شد', 'warning');
         });
     };
@@ -779,15 +784,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const resetRoutineToDefault = () => setRoutineTemplate(DAILY_ROUTINE);
     const addRoutineSlot = (slot: DailyRoutineSlot) => {
         setRoutineTemplateState(prev => [...prev, slot]);
+        logAction('add_routine', `افزودن اسلات ${slot.title}`);
         showToast('اسلات جدید اضافه شد', 'success');
     };
     const updateRoutineSlot = (updated: DailyRoutineSlot) => {
         setRoutineTemplateState(prev => prev.map(s => s.id === updated.id ? updated : s));
+        logAction('edit_routine', `ویرایش اسلات ${updated.title}`);
         showToast('اسلات ویرایش شد', 'success');
     };
     const deleteRoutineSlot = (slotId: number) => {
         askConfirm('حذف اسلات', 'آیا مطمئن هستید؟', () => {
             setRoutineTemplateState(prev => prev.filter(s => s.id !== slotId));
+            logAction('delete_routine', 'حذف اسلات روتین');
             showToast('اسلات حذف شد', 'warning');
         });
     };

@@ -14,6 +14,7 @@ export interface AppDataV1 {
     moods: Record<string, MoodType>;
     startDate: string;
     totalDays?: number;
+    subjects?: CustomSubject[];
     customSubjects?: CustomSubject[];
     settings: {
         darkMode: boolean;
