@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2, X, BookOpen, Target, Calendar, ChevronLeft } from 'lucide-react';
+import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2, X, BookOpen, Target, Calendar, ChevronLeft, Search } from 'lucide-react';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { getShamsiDate } from '../utils';
 
@@ -34,6 +34,9 @@ const Leaderboard = () => {
     // Profile viewer state
     const [viewingProfile, setViewingProfile] = useState<FullProfile | null>(null);
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+    // Search state
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Calculate user stats
     const myStats: PublicProfile = {
@@ -376,8 +379,8 @@ const Leaderboard = () => {
                         onClick={toggleMyPublicProfile}
                         disabled={isToggling || !user}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition active:scale-95 disabled:opacity-50 ${isMyProfilePublic
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
                             }`}
                     >
                         {isToggling ? (
@@ -467,6 +470,18 @@ const Leaderboard = () => {
                     <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{leaderboardData.length} نفر</span>
                 </div>
 
+                {/* Search Bar */}
+                <div className="relative mb-4">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="جستجوی نام کاربر..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pr-10 pl-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm placeholder:text-gray-400 outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
+                    />
+                </div>
+
                 {isLoading ? (
                     <div className="space-y-3">
                         {[1, 2, 3].map(i => (
@@ -479,9 +494,23 @@ const Leaderboard = () => {
                         <p className="text-gray-500 dark:text-gray-400 font-medium">هنوز کسی در لیگ نیست!</p>
                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">اولین نفر باشید که پروفایل خود را عمومی می‌کند</p>
                     </div>
-                ) : (
-                    leaderboardData.map((profile, index) => {
-                        const rank = index + 1;
+                ) : (() => {
+                    // Filter based on search query
+                    const filteredData = searchQuery.trim()
+                        ? leaderboardData.filter(p => p.userName.toLowerCase().includes(searchQuery.toLowerCase()))
+                        : leaderboardData;
+
+                    if (filteredData.length === 0) {
+                        return (
+                            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                                <Search className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
+                                <p className="text-gray-500 dark:text-gray-400 font-medium">کاربری با این نام پیدا نشد</p>
+                            </div>
+                        );
+                    }
+
+                    return filteredData.map((profile, index) => {
+                        const rank = leaderboardData.indexOf(profile) + 1; // Use original rank
                         const isCurrentUser = profile.id === user?.uid;
 
                         return (
@@ -536,7 +565,7 @@ const Leaderboard = () => {
                             </div>
                         );
                     })
-                )}
+                })()}
             </div>
         </div>
     );

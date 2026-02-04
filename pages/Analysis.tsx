@@ -16,15 +16,15 @@ const Analysis = () => {
     const overallProgress = getProgress();
 
     // --- 2. Advanced Metrics ---
-    
+
     // Duration
     const totalDurationMinutes = completedTasks.reduce((acc, t) => acc + (t.actualDuration || 0), 0);
     const totalDurationHours = Math.round(totalDurationMinutes / 60 * 10) / 10;
-    
+
     // Quality (Average 1-5)
     const ratedTasks = completedTasks.filter(t => t.qualityRating);
-    const averageQuality = ratedTasks.length > 0 
-        ? Math.round((ratedTasks.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / ratedTasks.length) * 10) / 10 
+    const averageQuality = ratedTasks.length > 0
+        ? Math.round((ratedTasks.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / ratedTasks.length) * 10) / 10
         : 0;
 
     // Test Accuracy
@@ -32,28 +32,29 @@ const Analysis = () => {
     const totalTests = testedTasks.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
     const totalCorrect = testedTasks.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
     const totalWrong = testedTasks.reduce((acc, t) => acc + (t.testStats?.wrong || 0), 0);
-    
-    const accuracy = totalTests > 0 
-        ? Math.round(((totalCorrect * 3 - totalWrong) / (totalTests * 3)) * 100) 
+
+    const accuracy = totalTests > 0
+        ? Math.round(((totalCorrect * 3 - totalWrong) / (totalTests * 3)) * 100)
         : 0;
 
     // --- 3. Subject-wise Deep Analysis ---
-    const subjects = Object.values(Subject).filter(s => s !== Subject.Custom || tasks.some(t => t.subject === Subject.Custom));
-    
-    const subjectAnalysis = subjects.map(subject => {
+    // Get unique subjects from tasks (not from enum)
+    const uniqueSubjects = [...new Set(tasks.map(t => t.subject))].filter(Boolean);
+
+    const subjectAnalysis = uniqueSubjects.map(subject => {
         const subTasks = tasks.filter(t => t.subject === subject);
         const subCompleted = subTasks.filter(t => t.isCompleted);
-        
+
         // Progress
         const progress = subTasks.length > 0 ? Math.round((subCompleted.length / subTasks.length) * 100) : 0;
-        
+
         // Avg Quality
         const subRated = subCompleted.filter(t => t.qualityRating);
-        const avgQ = subRated.length > 0 
-            ? (subRated.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / subRated.length) 
+        const avgQ = subRated.length > 0
+            ? (subRated.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / subRated.length)
             : 0;
-        
-        // Test Accuracy
+
+        // Test Stats - Count tests per subject
         const subTested = subCompleted.filter(t => t.testStats && t.testStats.total > 0);
         const sTotal = subTested.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
         const sCorrect = subTested.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
@@ -65,10 +66,14 @@ const Analysis = () => {
             progress,
             qualityScore: avgQ * 20, // 1-5 to 20-100
             displayQuality: avgQ,
-            accuracy: sAcc > 0 ? sAcc : 0, 
+            accuracy: sAcc > 0 ? sAcc : 0,
             realAccuracy: sAcc,
             completedCount: subCompleted.length,
-            totalCount: subTasks.length
+            totalCount: subTasks.length,
+            // NEW: Test counts
+            totalTests: sTotal,
+            correctTests: sCorrect,
+            wrongTests: sWrong
         };
     });
 
@@ -88,7 +93,7 @@ const Analysis = () => {
 
     return (
         <div className="p-4 md:p-6 pb-24 space-y-6 animate-in fade-in duration-500">
-             <div>
+            <div>
                 <h1 className="text-2xl font-black text-gray-800 dark:text-white">داشبورد تحلیل 📊</h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">نگاهی عمیق به کمیت و کیفیت مطالعه شما</p>
             </div>
@@ -98,43 +103,43 @@ const Analysis = () => {
 
             {/* Top Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard 
-                    title="ساعت مطالعه کل" 
-                    value={totalDurationHours} 
-                    subtitle="ساعت مفید" 
-                    icon={Clock} 
-                    colorName="indigo" 
+                <StatCard
+                    title="ساعت مطالعه کل"
+                    value={totalDurationHours}
+                    subtitle="ساعت مفید"
+                    icon={Clock}
+                    colorName="indigo"
                 />
-                <StatCard 
-                    title="میانگین تمرکز" 
-                    value={averageQuality || '-'} 
-                    subtitle="از ۵ ستاره" 
-                    icon={Zap} 
-                    colorName="amber" 
+                <StatCard
+                    title="میانگین تمرکز"
+                    value={averageQuality || '-'}
+                    subtitle="از ۵ ستاره"
+                    icon={Zap}
+                    colorName="amber"
                 />
-                <StatCard 
-                    title="دقت تست‌زنی" 
-                    value={accuracy + '%'} 
-                    subtitle={`${totalTests} تست زده شده`} 
-                    icon={Target} 
-                    colorName="emerald" 
+                <StatCard
+                    title="دقت تست‌زنی"
+                    value={accuracy + '%'}
+                    subtitle={`${totalTests} تست زده شده`}
+                    icon={Target}
+                    colorName="emerald"
                 />
-                <StatCard 
-                    title="پیشرفت کل" 
-                    value={`${overallProgress}%`} 
-                    subtitle={`${completedCount} از ${totalTasks} تسک`} 
-                    icon={Award} 
-                    colorName="rose" 
+                <StatCard
+                    title="پیشرفت کل"
+                    value={`${overallProgress}%`}
+                    subtitle={`${completedCount} از ${totalTasks} تسک`}
+                    icon={Award}
+                    colorName="rose"
                 />
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
-                
+
                 {/* 1. Radar Chart */}
                 <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
                     <div className="mb-4">
                         <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                            <Activity size={18} className="text-indigo-500"/>
+                            <Activity size={18} className="text-indigo-500" />
                             تعادل مطالعاتی
                         </h3>
                     </div>
@@ -160,7 +165,7 @@ const Analysis = () => {
                                     fill="#10b981"
                                     fillOpacity={0.2}
                                 />
-                                <Tooltip 
+                                <Tooltip
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', fontSize: '12px', color: '#000' }}
                                 />
                             </RadarChart>
@@ -171,7 +176,7 @@ const Analysis = () => {
                 {/* 2. Detailed Table/Bars */}
                 <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                     <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
-                        <TrendingUp size={18} className="text-emerald-500"/>
+                        <TrendingUp size={18} className="text-emerald-500" />
                         جزئیات عملکرد دروس
                     </h3>
                     <div className="space-y-6">
@@ -185,9 +190,15 @@ const Analysis = () => {
                                         <div>
                                             <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">{sub.subject}</h4>
                                             <div className="flex gap-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                <span>میانگین کیفیت: {sub.displayQuality > 0 ? sub.displayQuality : '-'}</span>
+                                                <span>کیفیت: {sub.displayQuality > 0 ? sub.displayQuality.toFixed(1) : '-'}</span>
                                                 <span>•</span>
                                                 <span>{sub.completedCount} تسک</span>
+                                                {sub.totalTests > 0 && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span className="text-emerald-600 dark:text-emerald-400">{sub.totalTests} تست ({sub.correctTests}✓)</span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -198,7 +209,7 @@ const Analysis = () => {
                                         <span className="text-[10px] text-gray-400">دقت تست</span>
                                     </div>
                                 </div>
-                                
+
                                 <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
                                     <div className="h-full bg-indigo-500" style={{ width: `${sub.progress}%` }} title="پیشرفت حجمی"></div>
                                 </div>

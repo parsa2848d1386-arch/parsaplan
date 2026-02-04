@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
-import { Subject, SubjectTask } from '../types';
+import { Subject, SubjectTask, SUBJECT_ICONS } from '../types';
 import { useStore } from '../context/StoreContext';
 import { X, Clock, Star, Target, Calculator, CheckCircle2, Tag, CalendarClock } from 'lucide-react';
+
 
 interface Props {
     isOpen: boolean;
@@ -24,7 +25,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
             setTab('info');
             if (initialData) {
                 setFormData(initialData);
-                if(initialData.isCompleted) setTab('report');
+                if (initialData.isCompleted) setTab('report');
             } else {
                 setFormData({
                     dayId: currentDayId,
@@ -81,17 +82,17 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm transition-opacity">
             <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
-                
+
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                     <div className="flex gap-2">
-                        <button 
+                        <button
                             onClick={() => setTab('info')}
                             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${tab === 'info' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                         >
                             اطلاعات پایه
                         </button>
-                        <button 
+                        <button
                             onClick={() => setTab('report')}
                             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${tab === 'report' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                         >
@@ -102,31 +103,31 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                         <X size={20} />
                     </button>
                 </div>
-                
+
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
-                    
+
                     {tab === 'info' && (
                         <div className="space-y-4 animate-in slide-in-from-left-4 duration-300">
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">درس</label>
-                                <select 
+                                <select
                                     value={formData.subject}
-                                    onChange={e => setFormData({...formData, subject: e.target.value as Subject})}
+                                    onChange={e => setFormData({ ...formData, subject: e.target.value as Subject })}
                                     className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-3 text-sm outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
                                 >
-                                    {Object.values(Subject).map(s => (
-                                        <option key={s} value={s}>{s}</option>
+                                    {Object.entries(SUBJECT_ICONS).map(([name, style]) => (
+                                        <option key={name} value={name}>{style.icon} {name}</option>
                                     ))}
                                 </select>
                             </div>
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">مبحث (Topic)</label>
-                                <input 
+                                <input
                                     required
                                     type="text"
                                     value={formData.topic || ''}
-                                    onChange={e => setFormData({...formData, topic: e.target.value})}
+                                    onChange={e => setFormData({ ...formData, topic: e.target.value })}
                                     className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-3 text-sm outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder:text-gray-400"
                                     placeholder="مثلا: نوسان و موج"
                                 />
@@ -135,27 +136,27 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">جزئیات</label>
-                                    <input 
+                                    <input
                                         required
                                         type="text"
                                         value={formData.details || ''}
-                                        onChange={e => setFormData({...formData, details: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, details: e.target.value })}
                                         className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-3 text-sm outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
                                         placeholder="۴۵ تست"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">بازه تست</label>
-                                    <input 
+                                    <input
                                         type="text"
                                         value={formData.testRange || ''}
-                                        onChange={e => setFormData({...formData, testRange: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, testRange: e.target.value })}
                                         className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-3 text-sm outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
                                         placeholder="اختیاری"
                                     />
                                 </div>
                             </div>
-                            
+
                             {/* Feature 3: Smart Tagging */}
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">تگ‌ها (اینتر بزنید)</label>
@@ -163,13 +164,13 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     {(formData.tags || []).map(tag => (
                                         <span key={tag} className="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-1 rounded-lg flex items-center gap-1">
                                             {tag}
-                                            <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500"><X size={12}/></button>
+                                            <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500"><X size={12} /></button>
                                         </span>
                                     ))}
                                 </div>
                                 <div className="relative">
-                                    <Tag size={16} className="absolute right-3 top-3.5 text-gray-400"/>
-                                    <input 
+                                    <Tag size={16} className="absolute right-3 top-3.5 text-gray-400" />
+                                    <input
                                         type="text"
                                         value={tagInput}
                                         onChange={e => setTagInput(e.target.value)}
@@ -184,29 +185,29 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
 
                     {tab === 'report' && (
                         <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                             
-                             {/* Duration */}
-                             <div>
+
+                            {/* Duration */}
+                            <div>
                                 <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400">
                                     <Clock size={18} />
                                     <label className="text-sm font-bold">مدت زمان مطالعه (دقیقه)</label>
                                 </div>
                                 <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 p-2 rounded-xl border border-gray-200 dark:border-gray-600">
-                                    <input 
+                                    <input
                                         type="number"
                                         min="0"
                                         step="5"
                                         value={formData.actualDuration || ''}
-                                        onChange={e => setFormData({...formData, actualDuration: parseInt(e.target.value) || 0})}
+                                        onChange={e => setFormData({ ...formData, actualDuration: parseInt(e.target.value) || 0 })}
                                         className="flex-1 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-3 py-2 text-center font-bold text-lg text-gray-900 dark:text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900 transition-all"
                                         placeholder="0"
                                     />
                                     <span className="text-xs font-medium text-gray-400 dark:text-gray-300">دقیقه</span>
                                 </div>
-                             </div>
+                            </div>
 
-                             {/* Quality Rating */}
-                             <div>
+                            {/* Quality Rating */}
+                            <div>
                                 <div className="flex items-center gap-2 mb-2 text-amber-500">
                                     <Star size={18} fill="currentColor" />
                                     <label className="text-sm font-bold">کیفیت مطالعه</label>
@@ -223,10 +224,10 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         </button>
                                     ))}
                                 </div>
-                             </div>
+                            </div>
 
-                             {/* Test Results */}
-                             <div>
+                            {/* Test Results */}
+                            <div>
                                 <div className="flex items-center gap-2 mb-2 text-emerald-600 dark:text-emerald-400">
                                     <Target size={18} />
                                     <label className="text-sm font-bold">نتیجه تست‌زنی (اختیاری)</label>
@@ -234,48 +235,48 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-xl text-center border border-emerald-100 dark:border-emerald-800">
                                         <label className="block text-[10px] text-emerald-700 dark:text-emerald-400 font-bold mb-1">درست</label>
-                                        <input 
+                                        <input
                                             type="number"
                                             className="w-full bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-2 text-center font-bold text-gray-900 dark:text-white outline-none focus:border-emerald-500"
                                             value={formData.testStats?.correct || ''}
                                             onChange={(e) => setFormData({
-                                                ...formData, 
+                                                ...formData,
                                                 testStats: { ...formData.testStats!, correct: parseInt(e.target.value) || 0, wrong: formData.testStats?.wrong || 0, total: formData.testStats?.total || 0 }
                                             })}
                                         />
                                     </div>
                                     <div className="bg-rose-50 dark:bg-rose-900/20 p-2 rounded-xl text-center border border-rose-100 dark:border-rose-800">
                                         <label className="block text-[10px] text-rose-700 dark:text-rose-400 font-bold mb-1">غلط</label>
-                                        <input 
+                                        <input
                                             type="number"
                                             className="w-full bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-2 text-center font-bold text-gray-900 dark:text-white outline-none focus:border-rose-500"
                                             value={formData.testStats?.wrong || ''}
                                             onChange={(e) => setFormData({
-                                                ...formData, 
+                                                ...formData,
                                                 testStats: { ...formData.testStats!, wrong: parseInt(e.target.value) || 0, correct: formData.testStats?.correct || 0, total: formData.testStats?.total || 0 }
                                             })}
                                         />
                                     </div>
                                     <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded-xl text-center border border-gray-200 dark:border-gray-600">
                                         <label className="block text-[10px] text-gray-600 dark:text-gray-300 font-bold mb-1">کل</label>
-                                        <input 
+                                        <input
                                             type="number"
                                             className="w-full bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg p-2 text-center font-bold text-gray-900 dark:text-white outline-none focus:border-gray-400"
                                             value={formData.testStats?.total || ''}
                                             onChange={(e) => setFormData({
-                                                ...formData, 
+                                                ...formData,
                                                 testStats: { ...formData.testStats!, total: parseInt(e.target.value) || 0, correct: formData.testStats?.correct || 0, wrong: formData.testStats?.wrong || 0 }
                                             })}
                                         />
                                     </div>
                                 </div>
-                             </div>
+                            </div>
 
-                             {/* Feature 4: Spaced Repetition (Only visible if task exists) */}
-                             {initialData && (
-                                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                            {/* Feature 4: Spaced Repetition (Only visible if task exists) */}
+                            {initialData && (
+                                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
                                     <div className="flex items-center gap-2 mb-2 text-indigo-700 dark:text-indigo-400 text-xs font-bold">
-                                        <CalendarClock size={16}/>
+                                        <CalendarClock size={16} />
                                         برنامه‌ریزی مرور (لایتنر)
                                     </div>
                                     <div className="flex gap-2">
@@ -283,8 +284,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         <button type="button" onClick={() => handleScheduleReview(3)} className="flex-1 bg-white dark:bg-gray-700 py-1.5 rounded-lg text-xs border hover:bg-indigo-50 shadow-sm text-gray-700 dark:text-gray-300">۳ روز</button>
                                         <button type="button" onClick={() => handleScheduleReview(7)} className="flex-1 bg-white dark:bg-gray-700 py-1.5 rounded-lg text-xs border hover:bg-indigo-50 shadow-sm text-gray-700 dark:text-gray-300">۷ روز</button>
                                     </div>
-                                 </div>
-                             )}
+                                </div>
+                            )}
                         </div>
                     )}
 
