@@ -422,7 +422,33 @@ const Dashboard = () => {
                                 <div>
                                     <h3>{rawOverdueTasks.length} تسک عقب‌افتاده</h3>
                                     {(() => {
-                                        const overdueTests = rawOverdueTasks.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
+                                        const calculateTestCount = (range: string | undefined): number => {
+                                            if (!range) return 0;
+                                            const clean = range.replace(/[^\d\-\,]/g, ''); // Remove non-numeric/separator chars
+                                            if (!clean) return 0;
+
+                                            // Handle "10-20"
+                                            if (clean.includes('-')) {
+                                                const parts = clean.split('-');
+                                                const start = parseInt(parts[0]);
+                                                const end = parseInt(parts[1]);
+                                                if (!isNaN(start) && !isNaN(end)) return Math.abs(end - start) + 1;
+                                            }
+                                            // Handle "10,12,15"
+                                            if (clean.includes(',')) {
+                                                return clean.split(',').filter(Boolean).length;
+                                            }
+                                            // Single number? Assume 1 for now or maybe it's just a number
+                                            // If it looks like a count (e.g. "20 test"), user might enter anything.
+                                            // Safest is to rely on ranges. If just "100", implies test 100 (1 test).
+                                            return 1;
+                                        };
+
+                                        const overdueTests = rawOverdueTasks.reduce((acc, t) => {
+                                            if (t.testStats && t.testStats.total > 0) return acc + t.testStats.total;
+                                            return acc + calculateTestCount(t.testRange);
+                                        }, 0);
+
                                         return overdueTests > 0 ? (
                                             <p className="text-[10px] font-normal opacity-80">{overdueTests} تست نزده</p>
                                         ) : null;
