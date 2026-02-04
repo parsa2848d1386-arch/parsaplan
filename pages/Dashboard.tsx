@@ -176,60 +176,63 @@ const Dashboard = () => {
             <div
                 key={task.id}
                 onClick={() => toggleTask(task.id)}
-                className={`group relative bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-start gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
+                className={`group relative bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
             >
-                <div className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}>
-                    {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={24} strokeWidth={2} />}
-                </div>
-                <div className={`flex-1 transition-all duration-500 pl-8 ${isDone ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
-                    <div className="flex justify-between items-start">
-                        <h3 className={`font-bold text-gray-800 dark:text-gray-200 transition-all ${isDone ? 'line-through decoration-2 decoration-gray-300 dark:decoration-gray-600' : ''}`}>{task.subject}</h3>
-                        <div className="flex flex-col items-end gap-1">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${subColor}`}>
-                                {task.details}
-                            </span>
-                            <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                                <Calendar size={10} />
-                                {taskDateShamsi}
-                            </span>
+                {/* Top Section: Icon + Content (Row Layout) */}
+                <div className="flex items-start gap-3 w-full">
+                    <div className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}>
+                        {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={24} strokeWidth={2} />}
+                    </div>
+                    <div className={`flex-1 transition-all duration-500 ${isDone ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
+                        <div className="flex justify-between items-start">
+                            <h3 className={`font-bold text-gray-800 dark:text-gray-200 transition-all ${isDone ? 'line-through decoration-2 decoration-gray-300 dark:decoration-gray-600' : ''}`}>{task.subject}</h3>
+                            <div className="flex flex-col items-end gap-1">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${subColor}`}>
+                                    {task.details}
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                                    <Calendar size={10} />
+                                    {taskDateShamsi}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed font-medium">
+                            <span className="font-bold text-gray-800 dark:text-gray-300">مبحث:</span> {task.topic}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                            {hasTestStats && (
+                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg px-2 py-1 text-[10px] font-bold">
+                                    <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400" title="تعداد درست"><Target size={10} /> {task.testStats?.correct}</span>
+                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                    <span className="text-rose-500 dark:text-rose-400" title="تعداد غلط">{task.testStats?.wrong} غلط</span>
+                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                    <span className={`${accuracy >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'}`}>{accuracy}%</span>
+                                </div>
+                            )}
+
+                            {task.tags && task.tags.length > 0 && (
+                                <div className="flex gap-1">
+                                    {task.tags.map(t => (
+                                        <span key={t} className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition">#{t}</span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed font-medium">
-                        <span className="font-bold text-gray-800 dark:text-gray-300">مبحث:</span> {task.topic}
-                    </p>
-
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
-                        {hasTestStats && (
-                            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg px-2 py-1 text-[10px] font-bold">
-                                <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400" title="تعداد درست"><Target size={10} /> {task.testStats?.correct}</span>
-                                <span className="text-gray-300 dark:text-gray-600">|</span>
-                                <span className="text-rose-500 dark:text-rose-400" title="تعداد غلط">{task.testStats?.wrong} غلط</span>
-                                <span className="text-gray-300 dark:text-gray-600">|</span>
-                                <span className={`${accuracy >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'}`}>{accuracy}%</span>
-                            </div>
-                        )}
-
-                        {task.tags && task.tags.length > 0 && (
-                            <div className="flex gap-1">
-                                {task.tags.map(t => (
-                                    <span key={t} className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition">#{t}</span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
 
-                {/* Action Buttons (Footer) */}
-                <div className="w-full flex justify-end gap-2 mt-3 pt-3 border-t border-gray-50 dark:border-gray-700/50">
-                    <button onClick={(e) => openEdit(e, task)} className="flex items-center gap-1 text-[10px] items-center px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition">
-                        <Pencil size={12} /> ویرایش
+                {/* Bottom Section: Footer Actions (Row Layout) */}
+                <div className="w-full flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1">
+                    <button onClick={(e) => openEdit(e, task)} className="flex items-center gap-1 text-[10px] items-center px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
+                        <Pencil size={14} /> ویرایش
                     </button>
-                    <button onClick={(e) => handleDelete(e, task.id)} className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
-                        <Trash2 size={12} /> حذف
+                    <button onClick={(e) => handleDelete(e, task.id)} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition">
+                        <Trash2 size={14} /> حذف
                     </button>
                     {isOverdue && (
-                        <button onClick={(e) => { e.stopPropagation(); handleMoveToToday(task.id); }} className="flex items-center gap-1 text-[10px] px-2 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition">
-                            <ArrowDownToLine size={12} /> انتقال به امروز
+                        <button onClick={(e) => { e.stopPropagation(); handleMoveToToday(task.id); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition">
+                            <ArrowDownToLine size={14} /> انتقال به امروز
                         </button>
                     )}
                 </div>
@@ -433,24 +436,51 @@ const Dashboard = () => {
                                     {(() => {
                                         const calculateTestCount = (range: string | undefined): number => {
                                             if (!range) return 0;
-                                            const clean = range.replace(/[^\d\-\,]/g, ''); // Remove non-numeric/separator chars
+
+                                            // Convert Persian numbers to English
+                                            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                                            let clean = range;
+                                            for (let i = 0; i < 10; i++) {
+                                                clean = clean.replace(new RegExp(persianDigits[i], 'g'), i.toString());
+                                            }
+
+                                            // Normalize separators: replace "ta", "to", "until", and non-digit chars (except dash/comma) with space
+                                            // Note: Keep dash and comma separate
+                                            clean = clean.toLowerCase().replace(/(ta|to|until)/g, ' ');
+                                            clean = clean.replace(/[^\d\-\,]/g, ' ').trim();
+
                                             if (!clean) return 0;
 
-                                            // Handle "10-20"
+                                            // 1. Check for standard range "10-20"
                                             if (clean.includes('-')) {
-                                                const parts = clean.split('-');
-                                                const start = parseInt(parts[0]);
-                                                const end = parseInt(parts[1]);
-                                                if (!isNaN(start) && !isNaN(end)) return Math.abs(end - start) + 1;
+                                                const parts = clean.split('-').map(s => parseInt(s.trim()));
+                                                if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                                                    return Math.abs(parts[1] - parts[0]) + 1;
+                                                }
                                             }
-                                            // Handle "10,12,15"
+
+                                            // 2. Check for comma list "10, 12, 15"
                                             if (clean.includes(',')) {
-                                                return clean.split(',').filter(Boolean).length;
+                                                return clean.split(',').filter(s => s.trim().length > 0).length;
                                             }
-                                            // Single number? Assume 1 for now or maybe it's just a number
-                                            // If it looks like a count (e.g. "20 test"), user might enter anything.
-                                            // Safest is to rely on ranges. If just "100", implies test 100 (1 test).
-                                            return 1;
+
+                                            // 3. Fallback: Parse space-separated numbers
+                                            // e.g. "30 45" (from "30 ta 45")
+                                            const parts = clean.split(/\s+/).filter(Boolean).map(Number);
+
+                                            if (parts.length >= 2) {
+                                                // If two numbers found like "30 45", assume range
+                                                return Math.abs(parts[parts.length - 1] - parts[0]) + 1;
+                                            }
+
+                                            if (parts.length === 1) {
+                                                // If single number "45"
+                                                // User feedback implies "8 tasks each 45 tests", logic was showing 2. 
+                                                // We will assume if N > 0, it represents a generic quantity/workload.
+                                                return parts[0];
+                                            }
+
+                                            return 0;
                                         };
 
                                         const overdueTests = rawOverdueTasks.reduce((acc, t) => {
