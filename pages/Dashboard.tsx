@@ -219,7 +219,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <div className="absolute left-2 top-2 flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <div className="absolute left-2 top-2 flex flex-row sm:flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={(e) => openEdit(e, task)} className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 border border-gray-100 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/30"><Pencil size={14} /></button>
                     <button onClick={(e) => handleDelete(e, task.id)} className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 border border-gray-100 dark:border-gray-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"><Trash2 size={14} /></button>
                     {isOverdue && <button onClick={(e) => { e.stopPropagation(); handleMoveToToday(task.id); }} className="p-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"><ArrowDownToLine size={14} /></button>}
