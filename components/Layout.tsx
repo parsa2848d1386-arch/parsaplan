@@ -154,8 +154,8 @@ const Layout = () => {
 
                     {/* Main Content Area */}
                     <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-900 dark:to-slate-950">
-                        <div className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-5 scroll-smooth">
-                            <div className="max-w-5xl mx-auto w-full h-full">
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-40 md:pb-5 scroll-smooth">
+                            <div className="max-w-5xl mx-auto w-full">
                                 <Outlet />
                             </div>
                         </div>

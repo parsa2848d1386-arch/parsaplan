@@ -95,7 +95,7 @@ const Analysis = () => {
     );
 
     return (
-        <div className="p-4 md:p-6 pb-24 space-y-6 animate-in fade-in duration-500">
+        <div className="p-4 md:p-6 pb-32 space-y-6 animate-in fade-in duration-500">
             <div>
                 <h1 className="text-2xl font-black text-gray-800 dark:text-white">داشبورد تحلیل 📊</h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">نگاهی عمیق به کمیت و کیفیت مطالعه شما</p>

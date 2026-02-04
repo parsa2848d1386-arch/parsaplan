@@ -112,7 +112,7 @@ const DailyRoutinePage = () => {
     };
 
     return (
-        <div className="p-5 pb-20 animate-in fade-in duration-300">
+        <div className="p-5 pb-32 animate-in fade-in duration-300">
             <RoutineSlotEditor
                 isOpen={isEditorOpen}
                 onClose={() => setIsEditorOpen(false)}

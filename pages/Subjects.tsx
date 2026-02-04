@@ -203,7 +203,7 @@ const Subjects = () => {
     };
 
     return (
-        <div className="p-5 pb-20">
+        <div className="p-5 pb-32">
             <TaskModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
