@@ -445,8 +445,10 @@ const Dashboard = () => {
                                         };
 
                                         const overdueTests = rawOverdueTasks.reduce((acc, t) => {
-                                            if (t.testStats && t.testStats.total > 0) return acc + t.testStats.total;
-                                            return acc + calculateTestCount(t.testRange);
+                                            // Fix: Always calculate from testRange (Planned workload), 
+                                            // do not use testStats.total which implies "Completed/Attempted" tests.
+                                            const planned = calculateTestCount(t.testRange);
+                                            return acc + (planned > 0 ? planned : 0);
                                         }, 0);
 
                                         return overdueTests > 0 ? (

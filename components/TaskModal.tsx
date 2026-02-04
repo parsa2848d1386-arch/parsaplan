@@ -241,7 +241,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             value={formData.testStats?.correct || ''}
                                             onChange={(e) => setFormData({
                                                 ...formData,
-                                                testStats: { ...formData.testStats!, correct: parseInt(e.target.value) || 0, wrong: formData.testStats?.wrong || 0, total: formData.testStats?.total || 0 }
+                                                testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), correct: parseInt(e.target.value) || 0 }
                                             })}
                                         />
                                     </div>
@@ -253,7 +253,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             value={formData.testStats?.wrong || ''}
                                             onChange={(e) => setFormData({
                                                 ...formData,
-                                                testStats: { ...formData.testStats!, wrong: parseInt(e.target.value) || 0, correct: formData.testStats?.correct || 0, total: formData.testStats?.total || 0 }
+                                                testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), wrong: parseInt(e.target.value) || 0 }
                                             })}
                                         />
                                     </div>
@@ -265,7 +265,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             value={formData.testStats?.total || ''}
                                             onChange={(e) => setFormData({
                                                 ...formData,
-                                                testStats: { ...formData.testStats!, total: parseInt(e.target.value) || 0, correct: formData.testStats?.correct || 0, wrong: formData.testStats?.wrong || 0 }
+                                                testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), total: parseInt(e.target.value) || 0 }
                                             })}
                                         />
                                     </div>
