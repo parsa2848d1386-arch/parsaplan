@@ -417,7 +417,15 @@ const Dashboard = () => {
                         <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-2 text-amber-800 dark:text-amber-400 font-bold text-sm">
                                 <AlertTriangle size={18} />
-                                <h3>{rawOverdueTasks.length} تسک عقب‌افتاده</h3>
+                                <div>
+                                    <h3>{rawOverdueTasks.length} تسک عقب‌افتاده</h3>
+                                    {(() => {
+                                        const overdueTests = rawOverdueTasks.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
+                                        return overdueTests > 0 ? (
+                                            <p className="text-[10px] font-normal opacity-80">{overdueTests} تست نزده</p>
+                                        ) : null;
+                                    })()}
+                                </div>
                             </div>
                             <button
                                 onClick={shiftIncompleteTasks}

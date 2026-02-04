@@ -2,7 +2,7 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Subject } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, CheckCircle, Clock, Award, Target, Zap, Activity } from 'lucide-react';
 import ActivityHeatmap from '../components/ActivityHeatmap';
 
@@ -170,6 +170,80 @@ const Analysis = () => {
                                 />
                             </RadarChart>
                         </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 2. Mood Analysis (NEW) */}
+                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
+                    <div className="mb-4">
+                        <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                            <Zap size={18} className="text-amber-500" />
+                            تحلیل وضع روحی (۳۰ روز)
+                        </h3>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center min-h-[250px]">
+                        {(() => {
+                            // Access moods from store context using type assertion if needed
+                            // Assuming useStore returns moods
+                            const { moods } = useStore() as any;
+
+                            const moodCounts: Record<string, number> = { energetic: 0, happy: 0, neutral: 0, tired: 0, sad: 0 };
+                            const today = new Date();
+                            // Generate last 30 days
+                            const last30DaysIso = Array.from({ length: 30 }, (_, i) => {
+                                const d = new Date(today);
+                                d.setDate(today.getDate() - i);
+                                return d.toISOString().split('T')[0];
+                            });
+
+                            last30DaysIso.forEach(date => {
+                                const mood = moods?.[date];
+                                if (mood && moodCounts[mood] !== undefined) moodCounts[mood]++;
+                            });
+
+                            const data = [
+                                { name: 'پرانرژی', value: moodCounts.energetic, color: '#f59e0b' },
+                                { name: 'خوشحال', value: moodCounts.happy, color: '#10b981' },
+                                { name: 'معمولی', value: moodCounts.neutral, color: '#6b7280' },
+                                { name: 'خسته', value: moodCounts.tired, color: '#f97316' },
+                                { name: 'ناراحت', value: moodCounts.sad, color: '#f43f5e' },
+                            ].filter(d => d.value > 0);
+
+                            if (data.length === 0) return <p className="text-gray-400 text-sm">هنوز مودی ثبت نشده است</p>;
+
+                            return (
+                                <div className="w-full h-full flex flex-col items-center">
+                                    <div className="w-full h-[180px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={data}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={80}
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                >
+                                                    {data.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', fontSize: '12px', color: '#000' }} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 justify-center mt-4">
+                                        {data.map(d => (
+                                            <div key={d.name} className="flex items-center gap-1 text-xs">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }}></div>
+                                                <span className="text-gray-600 dark:text-gray-300">{d.name} ({Math.round(d.value / 30 * 100)}%)</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
 

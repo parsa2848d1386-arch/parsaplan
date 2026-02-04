@@ -299,6 +299,28 @@ const Leaderboard = () => {
                                 <p className="text-[10px] opacity-70">تسک</p>
                             </div>
                         </div>
+
+                        {/* Comparison with current user */}
+                        <div className="mt-4 bg-white/5 rounded-xl p-3 border border-white/10">
+                            <p className="text-[10px] font-bold mb-2 opacity-70">📊 مقایسه با شما</p>
+                            <div className="grid grid-cols-3 gap-2 text-[10px]">
+                                <div className="text-center">
+                                    <div className={`font-bold ${viewingProfile.xp > myStats.xp ? 'text-red-300' : 'text-green-300'}`}>
+                                        {viewingProfile.xp > myStats.xp ? `+${viewingProfile.xp - myStats.xp}` : viewingProfile.xp < myStats.xp ? `-${myStats.xp - viewingProfile.xp}` : '='} XP
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className={`font-bold ${viewingProfile.progress > myStats.progress ? 'text-red-300' : 'text-green-300'}`}>
+                                        {viewingProfile.progress > myStats.progress ? `+${viewingProfile.progress - myStats.progress}` : viewingProfile.progress < myStats.progress ? `-${myStats.progress - viewingProfile.progress}` : '='}%
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <div className={`font-bold ${viewingProfile.tasksCompleted > myStats.tasksCompleted ? 'text-red-300' : 'text-green-300'}`}>
+                                        {viewingProfile.tasksCompleted > myStats.tasksCompleted ? `+${viewingProfile.tasksCompleted - myStats.tasksCompleted}` : viewingProfile.tasksCompleted < myStats.tasksCompleted ? `-${myStats.tasksCompleted - viewingProfile.tasksCompleted}` : '='} تسک
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Content */}
