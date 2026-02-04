@@ -1,25 +1,54 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, History, Printer, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, CloudOff, Lock, Code, Trash2, Clock } from 'lucide-react';
-import { getFullShamsiDate } from '../utils';
+import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, Printer, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, CloudOff, Lock, Code, Trash2, Clock, LogIn, UserPlus, EyeOff, KeyRound, Info, BookOpen, Zap, Trophy, Target, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
+import { getFullShamsiDate, getShamsiDate } from '../utils';
 import { FirebaseConfig } from '../types';
 
+// Comprehensive Help Section
 const HelpSection = () => {
     const [openIndex, setOpenIndex] = useState<number | null>(null);
 
     const faqs = [
         {
-            q: "آیا اطلاعات من با رفرش صفحه پاک می‌شود؟",
-            a: "خیر! سیستم جدید (نسخه ۴) اطلاعات را به صورت ایمن در حافظه مرورگر ذخیره می‌کند."
+            q: "چگونه شروع کنم؟",
+            a: "پس از ورود به اپ، تاریخ شروع برنامه را در بخش تنظیمات تنظیم کنید. سپس به داشبورد بروید و تسک‌های روزانه را ببینید. هر تسک را بعد از انجام تیک بزنید.",
+            icon: Zap
         },
         {
-            q: "چگونه فایربیس (ذخیره ابری) را فعال کنم؟",
-            a: "به کنسول فایربیس بروید، یک پروژه بسازید، Firestore را فعال کنید و تنظیمات Web App را کپی کرده و در بخش 'تنظیمات فایربیس' در همین صفحه وارد کنید."
+            q: "سیستم XP و سطح چیست؟",
+            a: "با انجام تسک‌ها و روتین روزانه XP کسب می‌کنید. هر ۱۰۰ XP یک سطح بالاتر می‌روید. در بخش لیگ می‌توانید رتبه خود را ببینید.",
+            icon: Trophy
+        },
+        {
+            q: "چگونه ذخیره ابری را فعال کنم؟",
+            a: "در بخش 'تنظیمات فایربیس' می‌توانید با وارد کردن اطلاعات فایربیس، ذخیره ابری را فعال کنید. سپس با ثبت‌نام/ورود، اطلاعات شما در همه دستگاه‌ها هماهنگ می‌شود.",
+            icon: Cloud
+        },
+        {
+            q: "آیا اطلاعات من پاک می‌شود؟",
+            a: "خیر! اطلاعات به صورت خودکار در مرورگر و (اگر فعال کرده باشید) در سرور ذخیره می‌شود. حتی با رفرش صفحه چیزی پاک نمی‌شود.",
+            icon: HardDrive
+        },
+        {
+            q: "روتین روزانه چیست؟",
+            a: "در بخش روتین می‌توانید برنامه ساعتی روزانه خود را تنظیم کنید. می‌توانید از قالب‌های آماده استفاده کنید یا برنامه شخصی بسازید.",
+            icon: CalendarIcon
+        },
+        {
+            q: "چگونه درس اضافه کنم؟",
+            a: "در بخش دروس، روی دکمه + کلیک کنید و نام، رنگ و آیکون درس جدید را انتخاب کنید. می‌توانید سپس تسک‌های مربوط به آن درس را اضافه کنید.",
+            icon: BookOpen
+        },
+        {
+            q: "تحلیل چه اطلاعاتی نشان می‌دهد؟",
+            a: "بخش تحلیل عملکرد شما را نمایش می‌دهد: نمودار پیشرفت، توازن مطالعه بین دروس، فعالیت ۳۰ روز گذشته، و آمار دقیق هر درس.",
+            icon: Target
         },
         {
             q: "چسباندن هوشمند (Smart Paste) چیست؟",
-            a: "شما می‌توانید کل کد تنظیمات (const firebaseConfig = { ... }) را از کنسول فایربیس کپی کرده و در کادر مربوطه پیست کنید. برنامه خودش اطلاعات لازم را استخراج می‌کند."
+            a: "وقتی کد تنظیمات فایربیس را کپی می‌کنید، می‌توانید کل آن را در کادر مربوطه پیست کنید. برنامه خودش اطلاعات را استخراج می‌کند.",
+            icon: Sparkles
         }
     ];
 
@@ -27,7 +56,7 @@ const HelpSection = () => {
         <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-3 mb-4 text-cyan-600 dark:text-cyan-400">
                 <HelpCircle size={20} />
-                <h2 className="font-bold">راهنما</h2>
+                <h2 className="font-bold">راهنمای کامل اپلیکیشن</h2>
             </div>
             <div className="space-y-2">
                 {faqs.map((item, index) => (
@@ -36,7 +65,10 @@ const HelpSection = () => {
                             onClick={() => setOpenIndex(openIndex === index ? null : index)}
                             className="w-full flex justify-between items-center p-3 text-right bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                         >
-                            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 leading-5">{item.q}</span>
+                            <div className="flex items-center gap-2">
+                                <item.icon size={16} className="text-gray-400" />
+                                <span className="text-xs font-bold text-gray-700 dark:text-gray-200 leading-5">{item.q}</span>
+                            </div>
                             {openIndex === index ? <ChevronUp size={16} className="text-gray-400 min-w-[16px]" /> : <ChevronDown size={16} className="text-gray-400 min-w-[16px]" />}
                         </button>
                         {openIndex === index && (
@@ -80,7 +112,6 @@ const FirebaseSettings = () => {
             appId: extract('appId')
         };
 
-        // If simple JSON pasted
         if (!newConfig.apiKey) {
             try {
                 const json = JSON.parse(text);
@@ -186,6 +217,125 @@ const FirebaseSettings = () => {
     );
 };
 
+// Inline Auth Form for Settings
+const InlineAuthForm = () => {
+    const { login, register, showToast } = useStore();
+    const [mode, setMode] = useState<'login' | 'register'>('login');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!username.trim() || !password.trim()) {
+            showToast('نام کاربری و رمز عبور را وارد کنید', 'warning');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            if (mode === 'login') {
+                await login(username, password);
+            } else {
+                await register(username, password);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                    <User size={20} />
+                </div>
+                <div>
+                    <p className="font-bold text-gray-700 dark:text-gray-300 text-sm">وارد نشده‌اید</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">برای ذخیره ابری وارد شوید</p>
+                </div>
+            </div>
+
+            {/* Mode Toggle */}
+            <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl mb-4">
+                <button
+                    onClick={() => setMode('login')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'login'
+                        ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                >
+                    <LogIn size={14} />
+                    ورود
+                </button>
+                <button
+                    onClick={() => setMode('register')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'register'
+                        ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                >
+                    <UserPlus size={14} />
+                    ثبت‌نام
+                </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="relative">
+                    <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                        type="text"
+                        required
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        placeholder="نام کاربری (مثلا: parsa2025)"
+                        className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white text-sm"
+                        dir="ltr"
+                    />
+                </div>
+
+                <div className="relative">
+                    <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="رمز عبور (حداقل ۶ کاراکتر)"
+                        className="w-full pr-10 pl-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white text-sm"
+                        dir="ltr"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={isLoading}
+                    className={`w-full py-2.5 px-4 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all ${mode === 'login'
+                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                        : 'bg-purple-600 hover:bg-purple-700'
+                        }`}
+                >
+                    {isLoading ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                        <>
+                            {mode === 'login' ? <LogIn size={16} /> : <UserPlus size={16} />}
+                            {mode === 'login' ? 'ورود' : 'ثبت‌نام'}
+                        </>
+                    )}
+                </button>
+            </form>
+        </div>
+    );
+};
+
 const Settings = () => {
     const {
         userName, setUserName, userId, resetProgress,
@@ -194,13 +344,12 @@ const Settings = () => {
         darkMode, toggleDarkMode,
         viewMode, setViewMode,
         totalDays, setTotalDays,
-        auditLog, showToast,
+        showToast,
         user, logout
     } = useStore();
 
     const nameInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [showLog, setShowLog] = useState(false);
 
     const handleSaveName = () => {
         if (nameInputRef.current) {
@@ -229,6 +378,9 @@ const Settings = () => {
             window.print();
         }, 500);
     }
+
+    // Extract username from email for display
+    const displayUsername = user?.email?.split('@')[0] || '';
 
     return (
         <div className="p-5 pb-20 space-y-6 animate-in fade-in duration-300">
@@ -324,6 +476,19 @@ const Settings = () => {
                                 </div>
                                 <CheckCircle2 className="text-green-500" size={20} />
                             </div>
+
+                            {/* Show username/password info */}
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg mb-3 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-gray-500">نام کاربری:</span>
+                                    <code className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{displayUsername}</code>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-gray-500">رمز عبور:</span>
+                                    <span className="text-xs text-gray-400">••••••••</span>
+                                </div>
+                            </div>
+
                             <button
                                 onClick={logout}
                                 className="w-full flex items-center justify-center gap-2 bg-white dark:bg-gray-700 border border-green-200 dark:border-green-800 text-gray-700 dark:text-gray-200 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition"
@@ -333,20 +498,7 @@ const Settings = () => {
                             </button>
                         </div>
                     ) : (
-                        <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                                    <User size={20} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-gray-700 dark:text-gray-300 text-sm">وارد نشده‌اید</p>
-                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">برای ذخیره ابری وارد شوید</p>
-                                </div>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                                برای ورود یا ثبت‌نام، از دکمه کاربر در نوار بالای صفحه استفاده کنید.
-                            </p>
-                        </div>
+                        <InlineAuthForm />
                     )}
                 </div>
             </div>
@@ -416,38 +568,6 @@ const Settings = () => {
                 </div>
             </div>
 
-            {/* Audit Log */}
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div
-                    className="flex items-center justify-between mb-4 cursor-pointer"
-                    onClick={() => setShowLog(!showLog)}
-                >
-                    <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
-                        <History size={20} />
-                        <h2 className="font-bold">تاریخچه تغییرات</h2>
-                    </div>
-                    <span className="text-xs text-gray-400">{showLog ? 'بستن' : 'مشاهده'}</span>
-                </div>
-
-                {showLog && (
-                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl">
-                        {auditLog.length === 0 ? (
-                            <p className="text-center text-xs text-gray-400 py-4">هیچ فعالیتی ثبت نشده است.</p>
-                        ) : (
-                            auditLog.map(log => (
-                                <div key={log.id} className="text-xs border-b border-gray-200 dark:border-gray-700 last:border-0 pb-2 mb-2">
-                                    <div className="flex justify-between text-gray-500 dark:text-gray-400 mb-1">
-                                        <span className="font-mono">{new Date(log.timestamp).toLocaleTimeString('fa-IR')}</span>
-                                        <span className="font-bold">{log.action}</span>
-                                    </div>
-                                    <p className="text-gray-700 dark:text-gray-300">{log.details}</p>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-
             {/* Date Settings */}
             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-3 mb-4 text-teal-600 dark:text-teal-400">
@@ -515,7 +635,7 @@ const Settings = () => {
             </div>
 
             <div className="text-center mt-8">
-                <p className="text-[10px] text-gray-300 dark:text-gray-600">ParsaPlan v4.2</p>
+                <p className="text-[10px] text-gray-300 dark:text-gray-600">ParsaPlan v4.3</p>
             </div>
         </div>
     );

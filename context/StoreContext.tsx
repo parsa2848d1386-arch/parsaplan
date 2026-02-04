@@ -74,6 +74,10 @@ interface StoreContextType {
     isTimerOpen: boolean;
     setIsTimerOpen: (isOpen: boolean) => void;
     isCommandPaletteOpen: boolean;
+    // New Phase 1 states
+    saveStatus: 'saved' | 'saving' | 'error';
+    sidebarCollapsed: boolean;
+    setSidebarCollapsed: (collapsed: boolean) => void;
     setIsCommandPaletteOpen: (isOpen: boolean) => void;
 
     // Gamification
@@ -156,6 +160,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [dailyQuote, setDailyQuote] = useState('');
+    // New Phase 1 states
+    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [confirmState, setConfirmState] = useState<ConfirmDialogState>({
         isOpen: false, message: '', title: '', onConfirm: () => { }, onCancel: () => { }, type: 'info'
     });
@@ -438,7 +445,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                         setViewModeState(data.settings.viewMode);
                     }
                     setLastSyncTime(remoteLastUpdated);
-                    showToast('داده‌ها از دستگاه دیگر دریافت شد', 'info');
+                    // Removed toast to avoid annoying popup - user can see cloud icon status
                 }
             }
         }, (error) => {
@@ -543,17 +550,37 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
         try {
             const cred = await createUserWithEmailAndPassword(auth, generateEmail(u), p);
-            // Initial Save to Cloud to claim the space with current local data
-            if (cred.user) {
-                await checkAndMigrateData(cred.user.uid, db!); // Force migration
+            // NEW: Start new users with empty/default data instead of migrating local data
+            if (cred.user && db) {
+                const emptyData = {
+                    tasks: [], // Empty tasks for new user
+                    userName: u, // Use registration username
+                    routine: [],
+                    routineTemplate: DAILY_ROUTINE,
+                    notes: {},
+                    xp: 0,
+                    logs: [],
+                    moods: {},
+                    startDate: detectedStart,
+                    settings: { darkMode: false, viewMode: 'normal' },
+                    lastUpdated: Date.now()
+                };
+                await setDoc(doc(db, "users", cred.user.uid), emptyData);
+                // Also update local state to be empty
+                setTasks([]);
+                setUserNameState(u);
+                setCompletedRoutine([]);
+                setDailyNotes({});
+                setXp(0);
+                setAuditLog([]);
+                setMoods({});
+                showToast('حساب با موفقیت ساخته شد - شروع تازه!', 'success');
             }
-            showToast('حساب با موفقیت ساخته شد', 'success');
             return true;
         } catch (e: any) {
             let msg = 'خطا در ثبت نام';
             if (e.code === 'auth/email-already-in-use') {
                 msg = 'این نام کاربری قبلاً استفاده شده است';
-                // Known error, no need to console.error loudly
                 console.warn("Registration failed: Username taken");
             } else if (e.code === 'auth/weak-password') {
                 msg = 'رمز عبور باید حداقل ۶ رقم باشد';
@@ -564,6 +591,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return false;
         }
     };
+
 
     const logout = async () => {
         if (!auth) return;
@@ -809,6 +837,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             viewMode, setViewMode,
             isTimerOpen, setIsTimerOpen,
             isCommandPaletteOpen, setIsCommandPaletteOpen,
+            saveStatus, sidebarCollapsed, setSidebarCollapsed,
             xp, level, dailyQuote, shiftIncompleteTasks,
             totalDays, setTotalDays,
             customSubjects, addCustomSubject, updateCustomSubject, deleteCustomSubject,

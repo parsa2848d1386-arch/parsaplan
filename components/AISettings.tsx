@@ -5,7 +5,7 @@ import {
     Bot, Key, Loader2, Send, AlertCircle, Check, X, Sparkles, Settings2, MessageSquare, Trash2, Plus
 } from 'lucide-react';
 import { Subject } from '../types';
-import { toShamsiDate, fromShamsiDate } from '../utils';
+
 
 interface AISettingsProps {
     isOpen: boolean;
@@ -242,8 +242,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
                                     key={p}
                                     onClick={() => handleProviderChange(p)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${provider === p
-                                            ? 'bg-violet-600 text-white'
-                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                        ? 'bg-violet-600 text-white'
+                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                                         }`}
                                 >
                                     {p === 'openai' ? 'OpenAI' : p === 'anthropic' ? 'Anthropic' : 'Custom'}
@@ -304,8 +304,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
                             className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
                         >
                             <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${msg.role === 'user'
-                                    ? 'bg-violet-600 text-white rounded-br-none'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
+                                ? 'bg-violet-600 text-white rounded-br-none'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
                                 }`}>
                                 {msg.content}
                             </div>
