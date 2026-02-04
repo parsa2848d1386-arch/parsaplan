@@ -7,7 +7,7 @@ import { TrendingUp, CheckCircle, Clock, Award, Target, Zap, Activity } from 'lu
 import ActivityHeatmap from '../components/ActivityHeatmap';
 
 const Analysis = () => {
-    const { tasks, getProgress } = useStore();
+    const { tasks, getProgress, subjects } = useStore();
 
     // --- 1. Basic Stats ---
     const totalTasks = tasks.length;
@@ -38,10 +38,13 @@ const Analysis = () => {
         : 0;
 
     // --- 3. Subject-wise Deep Analysis ---
-    // Get unique subjects from tasks (not from enum)
-    const uniqueSubjects = [...new Set(tasks.map(t => t.subject))].filter(Boolean);
+    // Get all active subjects from Store (dynamic list) - ensures new/empty subjects are shown
+    const allSubjectNames = subjects.map(s => s.name);
 
-    const subjectAnalysis = uniqueSubjects.map(subject => {
+    // Sort logic? Maybe default order or alphabetical? 
+    // Store order is likely insertion order, which is fine.
+
+    const subjectAnalysis = allSubjectNames.map(subject => {
         const subTasks = tasks.filter(t => t.subject === subject);
         const subCompleted = subTasks.filter(t => t.isCompleted);
 

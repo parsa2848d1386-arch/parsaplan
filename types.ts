@@ -72,7 +72,7 @@ export interface SubjectTask {
     id: string;
     dayId: number;
     date: string;
-    subject: Subject;
+    subject: string;
     topic: string;
     details: string;
     testRange?: string;

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject } from '../types';
+import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
@@ -97,11 +97,11 @@ interface StoreContextType {
     updateRoutineSlot: (slot: DailyRoutineSlot) => void;
     deleteRoutineSlot: (slotId: number) => void;
 
-    // Custom Subjects
-    customSubjects: CustomSubject[];
-    addCustomSubject: (subject: CustomSubject) => void;
-    updateCustomSubject: (subject: CustomSubject) => void;
-    deleteCustomSubject: (subjectId: string) => void;
+    // Subjects Management
+    subjects: CustomSubject[];
+    addSubject: (subject: CustomSubject) => void;
+    updateSubject: (subject: CustomSubject) => void;
+    deleteSubject: (subjectId: string) => void;
 
     // Feedback System
     toasts: ToastMessage[];
@@ -133,8 +133,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [completedRoutine, setCompletedRoutine] = useState<string[]>([]);
     const [routineTemplate, setRoutineTemplateState] = useState<DailyRoutineSlot[]>(DAILY_ROUTINE);
     const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
+    const [subjects, setSubjects] = useState<CustomSubject[]>([]);
     const [totalDays, setTotalDaysState] = useState(TOTAL_DAYS);
-    const [customSubjects, setCustomSubjects] = useState<CustomSubject[]>([]);
 
     // UI & Config State
     const [darkMode, setDarkMode] = useState(false);
@@ -308,7 +308,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (data.logs) setAuditLog(data.logs);
                 if (data.moods) setMoods(data.moods);
                 if (data.totalDays) setTotalDaysState(data.totalDays);
-                if (data.customSubjects) setCustomSubjects(data.customSubjects);
+                if (data.totalDays) setTotalDaysState(data.totalDays);
+
+                // DATA MIGRATION: Subjects
+                if (data.subjects && data.subjects.length > 0) {
+                    setSubjects(data.subjects);
+                } else {
+                    // Fallback/Migration: Load defaults + old custom subjects
+                    const defaultSubjects = Object.entries(SUBJECT_ICONS)
+                        .filter(([name]) => name !== 'شخصی')
+                        .map(([name, style]) => ({
+                            id: name,
+                            name: name,
+                            icon: style.icon,
+                            color: style.color
+                        }));
+
+                    const oldCustoms = data.customSubjects || [];
+                    // Avoid duplicates if any
+                    const merged = [...defaultSubjects, ...oldCustoms];
+                    setSubjects(merged);
+                }
 
                 if (data.startDate) {
                     setStartDateState(data.startDate);
@@ -353,14 +373,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const fullData = {
             tasks, userName, routine: completedRoutine, routineTemplate,
             notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-            totalDays, customSubjects,
+            totalDays, subjects,
             settings: { darkMode, viewMode }, lastUpdated: Date.now()
         };
 
         // Use StorageManager for safe saving
         StorageManager.save(fullData);
 
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, totalDays, customSubjects, isInitialized]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, totalDays, subjects, isInitialized]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -640,7 +660,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setTotalDays = (days: number) => {
         if (days >= 7 && days <= 60) {
             setTotalDaysState(days);
-            showToast(`طول دوره به ${days} روز تغییر کرد`, 'success');
         }
     };
 
@@ -714,19 +733,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     // --- CUSTOM SUBJECTS ---
-    const addCustomSubject = (subject: CustomSubject) => {
-        setCustomSubjects(prev => [...prev, subject]);
+    // --- SUBJECTS ACTIONS ---
+    const addSubject = (subject: CustomSubject) => {
+        setSubjects(prev => [...prev, subject]);
         showToast(`درس "${subject.name}" اضافه شد`, 'success');
     };
 
-    const updateCustomSubject = (updated: CustomSubject) => {
-        setCustomSubjects(prev => prev.map(s => s.id === updated.id ? updated : s));
+    const updateSubject = (updated: CustomSubject) => {
+        setSubjects(prev => prev.map(s => s.id === updated.id ? updated : s));
         showToast('درس ویرایش شد', 'success');
     };
 
-    const deleteCustomSubject = (subjectId: string) => {
-        askConfirm('حذف درس', 'آیا مطمئن هستید؟ تسک‌های این درس حذف نمی‌شوند.', () => {
-            setCustomSubjects(prev => prev.filter(s => s.id !== subjectId));
+    const deleteSubject = (subjectId: string) => {
+        askConfirm('حذف درس', 'آیا مطمئن هستید؟ تسک‌های این درس حذف نمی‌شوند ولی در لیست دروس نمایش داده نخواهد شد.', () => {
+            setSubjects(prev => prev.filter(s => s.id !== subjectId));
             showToast('درس حذف شد', 'warning');
         });
     };
@@ -754,7 +774,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
     };
     const isRoutineSlotCompleted = (d: number, s: number) => completedRoutine.includes(`${d}-${s}`);
-    const setRoutineTemplate = (slots: DailyRoutineSlot[]) => { setRoutineTemplateState(slots); showToast('روتین آپدیت شد', 'success'); };
+    const setRoutineTemplate = (slots: DailyRoutineSlot[]) => { setRoutineTemplateState(slots); };
     const updateRoutineIcon = (id: number, icon: string) => setRoutineTemplateState(prev => prev.map(s => s.id === id ? { ...s, icon } : s));
     const resetRoutineToDefault = () => setRoutineTemplate(DAILY_ROUTINE);
     const addRoutineSlot = (slot: DailyRoutineSlot) => {
@@ -840,7 +860,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             saveStatus, sidebarCollapsed, setSidebarCollapsed,
             xp, level, dailyQuote, shiftIncompleteTasks,
             totalDays, setTotalDays,
-            customSubjects, addCustomSubject, updateCustomSubject, deleteCustomSubject,
+            subjects, addSubject, updateSubject, deleteSubject,
             auditLog, moods, setMood,
             toasts, showToast, removeToast, confirmState, askConfirm, closeConfirm
         }}>

@@ -11,7 +11,8 @@ const SubjectModal: React.FC<{
     onClose: () => void;
     onSave: (subject: CustomSubject) => void;
     editingSubject?: CustomSubject | null;
-}> = ({ isOpen, onClose, onSave, editingSubject }) => {
+    existingSubjectNames: string[];
+}> = ({ isOpen, onClose, onSave, editingSubject, existingSubjectNames }) => {
     const [name, setName] = useState(editingSubject?.name || '');
     const [selectedIcon, setSelectedIcon] = useState(editingSubject?.icon || '📚');
     const [selectedColor, setSelectedColor] = useState(editingSubject?.color || 'gray');
@@ -29,7 +30,7 @@ const SubjectModal: React.FC<{
     }, [editingSubject, isOpen]);
 
     const suggestedSubjects = Object.entries(SUBJECT_ICONS).filter(
-        ([key]) => !Object.values(Subject).includes(key as Subject)
+        ([key]) => !existingSubjectNames.includes(key) && key !== 'شخصی'
     );
 
     const colors = ['emerald', 'violet', 'orange', 'blue', 'amber', 'cyan', 'indigo', 'purple', 'pink', 'teal', 'red', 'rose', 'green', 'sky'];
@@ -89,8 +90,8 @@ const SubjectModal: React.FC<{
                                     key={subjectName}
                                     onClick={() => handleSelectSuggested(subjectName)}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${name === subjectName
-                                            ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
-                                            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
+                                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                                         }`}
                                 >
                                     <span>{style.icon}</span>
@@ -149,18 +150,12 @@ const SubjectModal: React.FC<{
 };
 
 const Subjects = () => {
-    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, customSubjects, addCustomSubject, updateCustomSubject, deleteCustomSubject } = useStore();
-    const [expandedSubject, setExpandedSubject] = useState<string | null>(Subject.Biology);
+    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject } = useStore();
+    const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
     const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<CustomSubject | null>(null);
-
-    // Combine default subjects with custom subjects
-    const allSubjects = [
-        ...Object.values(Subject).filter(s => s !== Subject.Custom),
-        ...(customSubjects || []).map(cs => cs.name)
-    ];
 
     const getSubjectTasks = (subjectName: string) => {
         return tasks.filter(t => t.subject === subjectName).sort((a, b) => a.dayId - b.dayId);
@@ -185,9 +180,9 @@ const Subjects = () => {
 
     const handleSaveSubject = (subject: CustomSubject) => {
         if (editingSubject) {
-            updateCustomSubject(subject);
+            updateSubject(subject);
         } else {
-            addCustomSubject(subject);
+            addSubject(subject);
         }
     };
 
@@ -199,7 +194,7 @@ const Subjects = () => {
 
     const handleDeleteSubject = (e: React.MouseEvent, subjectId: string) => {
         e.stopPropagation();
-        deleteCustomSubject(subjectId);
+        deleteSubject(subjectId);
     };
 
     const openAddSubject = () => {
@@ -222,6 +217,7 @@ const Subjects = () => {
                 onClose={() => setIsSubjectModalOpen(false)}
                 onSave={handleSaveSubject}
                 editingSubject={editingSubject}
+                existingSubjectNames={subjects.map(s => s.name)}
             />
 
             <div className="flex justify-between items-center mb-6">
@@ -236,20 +232,31 @@ const Subjects = () => {
             </div>
 
             <div className="space-y-4">
-                {allSubjects.map(subjectName => {
+                {subjects.map(subject => {
+                    const subjectName = subject.name;
                     const subjectTasks = getSubjectTasks(subjectName);
-                    const customSubject = (customSubjects || []).find(cs => cs.name === subjectName);
-                    const style = customSubject
-                        ? { icon: customSubject.icon, color: customSubject.color, bgColor: `bg-${customSubject.color}-50 dark:bg-${customSubject.color}-900/30` }
-                        : getSubjectStyle(subjectName);
+
+                    // Style is now straightforward from the subject object
+                    const style = {
+                        icon: subject.icon,
+                        color: subject.color,
+                        bgColor: `bg-${subject.color}-50 dark:bg-${subject.color}-900/30`
+                    };
 
                     const completedCount = subjectTasks.filter(t => t.isCompleted).length;
                     const progress = subjectTasks.length > 0 ? Math.round((completedCount / subjectTasks.length) * 100) : 0;
                     const isExpanded = expandedSubject === subjectName;
-                    const isCustom = !!customSubject;
+
+                    // We can check if it's one of the original defaults to know "isCustom" tag usage, 
+                    // or just drop the tag since everything is dynamic now. 
+                    // Letting user delete defaults means "Custom" distinction is less relevant.
+                    // But maybe we keep badge for non-standard ones?
+                    // For now, let's show badge if it's NOT in the original SUBJECT_ICONS list (excluding Custom)
+                    const isOriginalDefault = Object.keys(SUBJECT_ICONS).includes(subjectName) && subjectName !== 'شخصی';
+                    const showEditControls = true; // Always allow edit/delete now!
 
                     return (
-                        <div key={subjectName} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+                        <div key={subject.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
                             <div
                                 onClick={() => setExpandedSubject(isExpanded ? null : subjectName)}
                                 className="p-4 flex items-center justify-between cursor-pointer active:bg-gray-50 dark:active:bg-gray-700 select-none"
@@ -261,7 +268,7 @@ const Subjects = () => {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-bold text-gray-800 dark:text-white text-lg">{subjectName}</h3>
-                                            {isCustom && (
+                                            {!isOriginalDefault && (
                                                 <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">سفارشی</span>
                                             )}
                                         </div>
@@ -269,22 +276,20 @@ const Subjects = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    {isCustom && (
-                                        <div className="flex gap-1">
-                                            <button
-                                                onClick={(e) => handleEditSubject(e, customSubject!)}
-                                                className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
-                                            >
-                                                <Pencil size={14} />
-                                            </button>
-                                            <button
-                                                onClick={(e) => handleDeleteSubject(e, customSubject!.id)}
-                                                className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={(e) => handleEditSubject(e, subject)}
+                                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDeleteSubject(e, subject.id)}
+                                            className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                     <div className="text-xs font-bold text-gray-400">{progress}%</div>
                                     {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
                                 </div>

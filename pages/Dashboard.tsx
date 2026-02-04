@@ -252,10 +252,12 @@ const Dashboard = () => {
                             <span className="text-[10px] text-gray-400">({xp} XP)</span>
                         </div>
                     </div>
-                    <div className="relative w-12 h-12 flex items-center justify-center">
-                        <div className="absolute inset-0 rounded-full border-[3px] border-indigo-50 dark:border-gray-700"></div>
-                        <div className="absolute inset-0 rounded-full border-[3px] border-indigo-600 border-t-transparent" style={{ transform: `rotate(${overallProgress * 3.6}deg)` }}></div>
-                        <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400">{overallProgress}%</span>
+                    <div className="relative w-14 h-14 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-indigo-50 dark:text-gray-700" />
+                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={150.72} strokeDashoffset={150.72 - (overallProgress / 100) * 150.72} className="text-indigo-600 dark:text-indigo-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
+                        </svg>
+                        <span className="absolute text-[10px] font-black text-indigo-700 dark:text-indigo-300">{overallProgress}%</span>
                     </div>
                 </div>
 

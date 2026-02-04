@@ -18,11 +18,11 @@ export const toIsoString = (date: Date): string => {
 export const getDiffDays = (startStr: string, endStr: string): number => {
     const d1 = parseDate(startStr);
     const d2 = parseDate(endStr);
-    
+
     // Normalize to UTC noon to avoid any DST shifts
     const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate(), 12, 0, 0);
     const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate(), 12, 0, 0);
-    
+
     const _MS_PER_DAY = 1000 * 60 * 60 * 24;
     return Math.floor((utc2 - utc1) / _MS_PER_DAY);
 };
@@ -53,7 +53,7 @@ const normalizeFarsiNums = (str: string): string => {
 export const findBahman11 = (now: Date = new Date()): string => {
     const currentYear = now.getFullYear();
     const candidates: Date[] = [];
-    
+
     // Check Jan/Feb for Current Year, Previous Year, Next Year
     // 11 Bahman is usually Jan 30 or Jan 31
     for (let y = currentYear - 1; y <= currentYear + 1; y++) {
@@ -90,14 +90,14 @@ export const findBahman11 = (now: Date = new Date()): string => {
             best = m;
         }
     }
-    
+
     return toIsoString(best);
 };
 
 export const isHoliday = (dateIso: string): boolean => {
     const d = parseDate(dateIso);
     const dayOfWeek = d.getDay(); // 0=Sun, ... 5=Friday, 6=Saturday
-    
+
     // Check for Friday
     if (dayOfWeek === 5) return true;
 
@@ -109,4 +109,55 @@ export const isHoliday = (dateIso: string): boolean => {
     if (m === '11' && day === '22') return true;
 
     return false;
+};
+
+// --- Jalali Converter Logic (Simple Implementation) ---
+
+// Converts a Gregorian date to Jalaali { jy, jm, jd }
+export const toJalaali = (gy: number, gm: number, gd: number) => {
+    const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    let jy = (gy <= 1600) ? 0 : 979;
+    gy -= (gy <= 1600) ? 621 : 1600;
+    const gy2 = (gm > 2) ? (gy + 1) : gy;
+    let days = (365 * gy) + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) - 80 + gd + g_d_m[gm - 1];
+    jy += 33 * Math.floor(days / 12053);
+    days %= 12053;
+    jy += 4 * Math.floor(days / 1461);
+    days %= 1461;
+
+    jy += Math.floor((days - 1) / 365);
+    if (days > 365) days = (days - 1) % 365;
+
+    let jm = (days < 186) ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
+    let jd = 1 + ((days < 186) ? (days % 31) : ((days - 186) % 30));
+    return { jy, jm, jd };
+};
+
+// Converts Jalaali date to Gregorian Date object
+export const toGregorian = (jy: number, jm: number, jd: number): Date => {
+    let gy = (jy <= 979) ? 621 : 1600;
+    jy -= (jy <= 979) ? 0 : 979;
+    let days = (365 * jy) + (Math.floor(jy / 33) * 8) + Math.floor((jy % 33 + 3) / 4) + 78 + jd + ((jm < 7) ? (jm - 1) * 31 : ((jm - 7) * 30) + 186);
+    gy += 400 * Math.floor(days / 146097);
+    days %= 146097;
+    if (days > 36524) {
+        gy += 100 * Math.floor(--days / 36524);
+        days %= 36524;
+        if (days >= 365) days++;
+    }
+    gy += 4 * Math.floor(days / 1461);
+    days %= 1461;
+    if (days > 365) {
+        gy += Math.floor((days - 1) / 365);
+        days = (days - 1) % 365;
+    }
+    let gd = days + 1;
+    const sal_a = [0, 31, ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let gm = 0;
+    for (gm = 0; gm < 13; gm++) {
+        const v = sal_a[gm];
+        if (gd <= v) break;
+        gd -= v;
+    }
+    return new Date(gy, gm - 1, gd);
 };
