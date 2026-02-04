@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { DAILY_ROUTINE } from '../constants';
-import { Clock, Check, LayoutTemplate, Coffee, BookOpen, Calculator, FlaskConical, Tv, Zap, Dumbbell, Brain, Bed, Music, MonitorPlay, Pencil, Plus, Settings } from 'lucide-react';
+import { Clock, Check, LayoutTemplate, Coffee, BookOpen, Calculator, FlaskConical, Tv, Zap, Dumbbell, Brain, Bed, Music, MonitorPlay, Pencil, Plus, Settings, GripVertical } from 'lucide-react';
 import { DailyRoutineSlot } from '../types';
 import { RoutineSlotEditor } from '../components/RoutineSlotEditor';
 
@@ -17,6 +17,9 @@ const DailyRoutinePage = () => {
     const [editingSlot, setEditingSlot] = useState<DailyRoutineSlot | null>(null);
     const [isNewSlot, setIsNewSlot] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
+
+    // Drag and Drop state
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const availableIcons = [
         { name: 'bio', icon: BookOpen, label: 'مطالعه' },
@@ -87,6 +90,27 @@ const DailyRoutinePage = () => {
         }
     };
 
+    // Drag & Drop handlers
+    const handleDragStart = (index: number) => {
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === index) return;
+
+        // Reorder the template
+        const newTemplate = [...routineTemplate];
+        const [draggedItem] = newTemplate.splice(draggedIndex, 1);
+        newTemplate.splice(index, 0, draggedItem);
+        setRoutineTemplate(newTemplate);
+        setDraggedIndex(index);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+    };
+
     return (
         <div className="p-5 pb-20 animate-in fade-in duration-300">
             <RoutineSlotEditor
@@ -109,8 +133,8 @@ const DailyRoutinePage = () => {
                     <button
                         onClick={() => setIsEditMode(!isEditMode)}
                         className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1 shadow-sm active:scale-95 transition ${isEditMode
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                             }`}
                     >
                         <Settings size={14} />
@@ -151,7 +175,20 @@ const DailyRoutinePage = () => {
                     const IconComp = getIconComponent(slot.icon);
 
                     return (
-                        <div key={slot.id} className="group relative flex gap-4">
+                        <div
+                            key={slot.id}
+                            className={`group relative flex gap-4 ${isEditMode && draggedIndex === index ? 'opacity-50' : ''}`}
+                            draggable={isEditMode}
+                            onDragStart={() => handleDragStart(index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnd={handleDragEnd}
+                        >
+                            {/* Drag Handle (only in edit mode) */}
+                            {isEditMode && (
+                                <div className="absolute -right-6 top-4 cursor-grab active:cursor-grabbing text-gray-400 hover:text-indigo-500">
+                                    <GripVertical size={18} />
+                                </div>
+                            )}
                             {/* Time Indicator & Checkbox */}
                             <div className="flex flex-col items-center flex-shrink-0">
                                 <button
