@@ -27,19 +27,25 @@ export interface AppDataV1 {
 // Current Schema Version
 const CURRENT_SCHEMA_VERSION = 1;
 
-// Storage Keys
+// --- STORAGE KEYS ---
 const KEY_PREFIX = 'parsaplan_v4_';
-const KEY_DATA_BLOB = KEY_PREFIX + 'full_data';
-const KEY_BACKUP = KEY_PREFIX + 'backup_safe';
+const KEY_DATA_DEFAULT = KEY_PREFIX + 'full_data'; // Legacy/Default
 
 // --- STORAGE MANAGER CLASS ---
 
 export class StorageManager {
 
+    private static getScopedKey(userId: string | undefined): string {
+        if (!userId || userId === 'parsaplan_local_user' || userId === 'parsaplan_main_user') {
+            return KEY_DATA_DEFAULT;
+        }
+        return `${KEY_PREFIX}user_${userId}_data`;
+    }
+
     /**
-     * Saves data to LocalStorage with a safety backup.
+     * Saves data to LocalStorage with user scoping.
      */
-    static save(data: Partial<AppDataV1>): boolean {
+    static save(data: Partial<AppDataV1>, userId?: string): boolean {
         try {
             // Ensure schema version is attached
             const dataToSave = {
@@ -48,8 +54,9 @@ export class StorageManager {
                 lastUpdated: Date.now()
             };
 
+            const key = this.getScopedKey(userId);
             const serialized = JSON.stringify(dataToSave);
-            localStorage.setItem(KEY_DATA_BLOB, serialized);
+            localStorage.setItem(key, serialized);
             return true;
         } catch (e) {
             console.error("Storage Save Failed:", e);
@@ -61,10 +68,16 @@ export class StorageManager {
      * Creates a secondary backup of the current valid data.
      * Should be called before major operations.
      */
-    static createBackup(): boolean {
+    static createBackup(userId?: string): boolean {
         try {
-            const currentData = localStorage.getItem(KEY_DATA_BLOB);
+            const key = this.getScopedKey(userId);
+            const currentData = localStorage.getItem(key);
             if (currentData) {
+                // Backup key also needs to be essentially safe, but for simplicity we keep one main backup slot
+                // or specific backups? Let's use a specific backup for safety.
+                const backupKey = key + '_backup';
+                localStorage.setItem(backupKey, currentData);
+                // Also update global backup for emergency recovery
                 localStorage.setItem(KEY_BACKUP, currentData);
                 console.log("Local backup created successfully.");
                 return true;
@@ -77,12 +90,12 @@ export class StorageManager {
     }
 
     /**
-     * Loads data from LocalStorage with fallback to backup if main data is corrupt.
-     * Also handles schema migration if needed.
+     * Loads data from LocalStorage for the specific user.
      */
-    static load(): AppDataV1 | null {
+    static load(userId?: string): AppDataV1 | null {
         try {
-            const rawData = localStorage.getItem(KEY_DATA_BLOB);
+            const key = this.getScopedKey(userId);
+            const rawData = localStorage.getItem(key);
 
             if (rawData) {
                 try {
@@ -90,10 +103,10 @@ export class StorageManager {
                     return this.migrateDataIfNeeded(parsed);
                 } catch (parseError) {
                     console.error("Main data corrupt, attempting to load backup...", parseError);
-                    return this.loadBackup();
+                    return this.loadBackup(userId);
                 }
             }
-            return null; // No data found (fresh user)
+            return null; // No data found (fresh user slot)
         } catch (e) {
             console.error("Storage Load Failed:", e);
             return null;
@@ -103,9 +116,12 @@ export class StorageManager {
     /**
      * Internal: Loads from the backup slot.
      */
-    private static loadBackup(): AppDataV1 | null {
+    private static loadBackup(userId?: string): AppDataV1 | null {
         try {
-            const backupRaw = localStorage.getItem(KEY_BACKUP);
+            const key = this.getScopedKey(userId);
+            const backupKey = key + '_backup';
+            const backupRaw = localStorage.getItem(backupKey) || localStorage.getItem(KEY_BACKUP);
+
             if (backupRaw) {
                 const parsed = JSON.parse(backupRaw);
                 console.warn("Restored from Backup!");
@@ -119,18 +135,12 @@ export class StorageManager {
 
     /**
      * Handles schema migrations logic.
-     * Currently simply checks version, but designed to expand.
      */
     private static migrateDataIfNeeded(data: any): AppDataV1 {
-        // If data has no version, assume it is Version 0 or 1 (Current)
         const version = data.schemaVersion || 1;
 
         if (version < CURRENT_SCHEMA_VERSION) {
             console.log(`Migrating data from v${version} to v${CURRENT_SCHEMA_VERSION}...`);
-            // Implement migration logic here when we up the version
-            // e.g. if (version === 1) { data = migrateV1toV2(data); }
-
-            // For now, just update the version
             data.schemaVersion = CURRENT_SCHEMA_VERSION;
         }
 
@@ -138,12 +148,16 @@ export class StorageManager {
     }
 
     /**
-     * Clears all app data (Destructive)
+     * Clears all app data for specific user or everything
      */
-    static clearAll() {
-        localStorage.removeItem(KEY_DATA_BLOB);
-        // We might want to keep the backup or config?
-        // For hard reset:
-        // localStorage.removeItem(KEY_BACKUP); 
+    static clearAll(userId?: string) {
+        if (userId) {
+            const key = this.getScopedKey(userId);
+            localStorage.removeItem(key);
+            localStorage.removeItem(key + '_backup');
+        } else {
+            localStorage.removeItem(KEY_DATA_DEFAULT);
+            localStorage.removeItem(KEY_BACKUP);
+        }
     }
 }

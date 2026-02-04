@@ -295,7 +295,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             StorageManager.createBackup();
 
             // Load Data using Storage Manager
-            const data = StorageManager.load();
+            const data = StorageManager.load(storedUserId);
 
             if (data) {
                 // Restore State
@@ -307,7 +307,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (data.xp) setXp(data.xp);
                 if (data.logs) setAuditLog(data.logs);
                 if (data.moods) setMoods(data.moods);
-                if (data.totalDays) setTotalDaysState(data.totalDays);
                 if (data.totalDays) setTotalDaysState(data.totalDays);
 
                 // DATA MIGRATION: Subjects
@@ -326,7 +325,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                         }));
 
                     const oldCustoms = data.customSubjects || [];
-                    // Avoid duplicates if any
                     const merged = [...defaultSubjects, ...oldCustoms];
                     setSubjects(merged);
                 }
@@ -343,9 +341,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     setViewModeState(data.settings.viewMode);
                 }
 
-                console.log("Data loaded successfully via StorageManager");
+                console.log(`Data loaded successfully for user: ${storedUserId}`);
             } else {
-                console.log("No stored data found, loading default plan.");
+                console.log("No stored data found for user, loading default plan.");
                 loadDefaultPlan();
             }
 
@@ -355,6 +353,51 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         initApp();
     }, []);
+
+    // --- RE-LOAD DATA ON AUTH CHANGE ---
+    // When userId changes (Login/Logout), we must reload the matching local data
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        console.log(`Switching storage to user: ${userId}`);
+        const data = StorageManager.load(userId);
+
+        if (data) {
+            // Load User Data
+            setTasks(data.tasks || []);
+            setUserNameState(data.userName || 'کاربر');
+            setCompletedRoutine(data.routine || []);
+            setRoutineTemplateState(data.routineTemplate || DAILY_ROUTINE);
+            setDailyNotes(data.notes || {});
+            setXp(data.xp || 0);
+            setAuditLog(data.logs || []);
+            setMoods(data.moods || {});
+            if (data.subjects) setSubjects(data.subjects);
+            if (data.settings) {
+                setDarkMode(data.settings.darkMode);
+                setViewModeState(data.settings.viewMode);
+            }
+            if (data.startDate) {
+                setStartDateState(data.startDate);
+                recalcToday(data.startDate);
+            }
+            showToast(`خوش آمدید، ${data.userName}`, 'success');
+        } else {
+            // Fresh User: Clear State
+            console.log("No data for this user. Starting fresh.");
+            setTasks([]);
+            setRoutineTemplateState(DAILY_ROUTINE);
+            setCompletedRoutine([]);
+            setDailyNotes({});
+            setXp(0);
+            setAuditLog([]);
+            setMoods({});
+            // Keep startDate/settings or reset? Resetting is safer for "Fresh" feel
+            const freshStart = findBahman11();
+            setStartDateState(freshStart);
+            recalcToday(freshStart);
+        }
+    }, [userId]); // Removed isInitialized dependency loop, just trigger on userId change
 
     const loadDefaultPlan = () => {
         const start = detectedStart;
@@ -378,10 +421,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             settings: { darkMode, viewMode }, lastUpdated: Date.now()
         };
 
-        // Use StorageManager for safe saving
-        StorageManager.save(fullData);
+        // Save to the SPECIFIC user bucket
+        StorageManager.save(fullData, userId);
 
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, totalDays, subjects, isInitialized]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, totalDays, subjects, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
