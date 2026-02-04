@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, Lock, Clock, BookOpen, Zap, Trophy, Target, Activity, MessageSquare, History, FileText, X, Settings2 } from 'lucide-react';
+import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, Lock, Clock, BookOpen, Zap, Trophy, Target, Activity, MessageSquare, History, FileText, X, Settings2, Printer } from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig, LogEntry } from '../types';
 import { AISettings } from '../components/AISettings';
@@ -602,8 +602,8 @@ const Settings = () => {
                         <div className="flex flex-col gap-3">
                             <button onClick={toggleDarkMode} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                                 <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Moon size={16} /> حالت شب</span>
-                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${darkMode ? 'bg-indigo-500' : 'bg-gray-300'}`}>
-                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${darkMode ? 'translate-x-full' : ''}`}></div>
+                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${darkMode ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
+                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${darkMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                 </div>
                             </button>
                             <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
@@ -630,6 +630,27 @@ const Settings = () => {
                         </div>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
                     </div>
+                </div>
+            </div>
+
+            {/* --- Print Settings --- */}
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-3 mb-4 text-sky-600 dark:text-sky-400">
+                    <Printer size={20} />
+                    <h2 className="font-bold">چاپ برنامه</h2>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 flex-1 leading-6">
+                        دریافت فایل PDF استاندارد و مرتب از کل برنامه مطالعاتی، تسک‌ها و تحلیل‌ها جهت چاپ یا ذخیره.
+                        برای بهترین نتیجه، در تنظیمات چاپ گزینه "Background graphics" را فعال کنید.
+                    </p>
+                    <button
+                        onClick={() => window.print()}
+                        className="w-full sm:w-auto px-6 py-3 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition shadow-sm border border-sky-100 dark:border-sky-800"
+                    >
+                        <Printer size={18} />
+                        دانلود / چاپ برنامه
+                    </button>
                 </div>
             </div>
 

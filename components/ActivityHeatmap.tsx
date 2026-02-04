@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { addDays, toIsoString, getShamsiDate } from '../utils';
+import { addDays, toIsoString, getShamsiDate, toJalaali, toGregorian } from '../utils';
 
 const ActivityHeatmap = () => {
     const { tasks, getTasksByDate, moods } = useStore();
@@ -23,11 +23,20 @@ const ActivityHeatmap = () => {
         'sad': 'ناراحت',
     };
 
-    // Generate last 30 days + today
-    const days = [];
+    // Generate Current Shamsi Month Days
     const today = new Date();
-    for (let i = 29; i >= 0; i--) {
-        days.push(addDays(today, -i));
+    const { jy, jm } = toJalaali(today.getFullYear(), today.getMonth() + 1, today.getDate());
+
+    // Determine days in current Shamsi month
+    const daysInMonth = jm <= 6 ? 31 : (jm <= 11 ? 30 : (jy % 4 === 3 ? 30 : 29)); // Rough leap year check for basics
+
+    const days = [];
+    // Generate all days for the current month: 1 to daysInMonth
+    // We want Day 1 to be first (Top Right in RTL). 
+    // Since flex-wrap flows start-to-end (Right-to-Left in RTL), pushing Day 1 first works.
+    for (let d = 1; d <= daysInMonth; d++) {
+        const gDate = toGregorian(jy, jm, d);
+        days.push(gDate);
     }
 
     const getColor = (count: number) => {
@@ -40,7 +49,7 @@ const ActivityHeatmap = () => {
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-sm">فعالیت ۳۰ روز گذشته</h3>
+            <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-sm">فعالیت ماه جاری</h3>
             <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                 {days.map((date, idx) => {
                     const iso = toIsoString(date);

@@ -169,7 +169,7 @@ const Layout = () => {
                         </button>
 
                         {/* Mobile Bottom Nav - Improved glassmorphism */}
-                        <nav className="md:hidden absolute bottom-0 w-full bg-white/70 dark:bg-gray-800/80 backdrop-blur-xl border-t border-gray-200/30 dark:border-gray-700/50 px-2 py-2 flex justify-around items-center z-20 pb-safe shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)] rounded-t-3xl">
+                        <nav className="md:hidden fixed bottom-0 left-0 right-0 w-full bg-white/70 dark:bg-gray-800/80 backdrop-blur-xl border-t border-gray-200/30 dark:border-gray-700/50 px-2 py-2 flex justify-around items-center z-50 pb-safe shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)] rounded-t-3xl">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}
