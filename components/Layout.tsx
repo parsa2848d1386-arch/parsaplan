@@ -175,19 +175,22 @@ const Layout = () => {
                         </div>
 
                         {/* Mobile Bottom Nav - Enhanced Premium Look */}
-                        <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-white/40 dark:border-white/10 px-6 py-4 flex justify-between items-center pb-safe shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-[2rem] transition-all duration-300 ring-1 ring-white/20 dark:ring-white/5" style={{ zIndex: 50 }}>
+                        <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-white/60 dark:bg-black/60 backdrop-blur-2xl border border-white/20 dark:border-white/10 px-2 py-3 flex justify-between items-center pb-safe shadow-[0_8px_32px_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-[2.5rem] transition-all duration-300 ring-1 ring-white/20 dark:ring-white/5" style={{ zIndex: 50 }}>
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}
                                     to={item.to}
-                                    className={({ isActive }) => `flex flex-col items-center justify-center flex-1 min-w-0 transition-all duration-500 ${isActive ? 'text-indigo-600 dark:text-indigo-400 translate-y-[-8px]' : 'text-gray-400 dark:text-gray-500'}`}
+                                    className={({ isActive }) => `flex flex-col items-center justify-center flex-1 min-w-0 transition-all duration-500 relative group py-1 ${isActive ? 'text-indigo-600 dark:text-indigo-400 -translate-y-2' : 'text-gray-400 dark:text-gray-500'}`}
                                 >
                                     {({ isActive }) => (
-                                        <div className="flex flex-col items-center">
-                                            <div className={`p-2 rounded-2xl transition-all duration-500 ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-300 dark:shadow-none scale-110' : 'bg-transparent'}`}>
-                                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                        <div className="flex flex-col items-center relative">
+                                            {/* Active Indicator Glow */}
+                                            {isActive && <div className="absolute inset-0 bg-indigo-400/30 blur-xl rounded-full transform scale-150"></div>}
+
+                                            <div className={`p-2.5 rounded-full transition-all duration-500 relative z-10 ${isActive ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-300 dark:shadow-indigo-900/50 scale-110 ring-2 ring-white dark:ring-gray-900' : 'bg-transparent group-hover:bg-gray-100 dark:group-hover:bg-gray-800'}`}>
+                                                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                                             </div>
-                                            <span className={`text-[9px] font-black mt-1 transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{item.label}</span>
+                                            <span className={`text-[10px] font-bold mt-1.5 transition-all duration-300 absolute -bottom-5 whitespace-nowrap ${isActive ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-75'}`}>{item.label}</span>
                                         </div>
                                     )}
                                 </NavLink>

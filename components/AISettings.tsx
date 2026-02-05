@@ -459,7 +459,7 @@ ${validSubjects}
             {/* MAIN AI SETTINGS MODAL */}
             {/* MAIN AI SETTINGS MODAL */}
             <div className="fixed inset-0 flex items-center justify-center p-4 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" style={{ zIndex: 9999 }}>
-                <div className="bg-white dark:bg-gray-900 rounded-[2rem] md:rounded-3xl shadow-2xl w-full max-w-6xl h-[calc(100dvh-8rem)] md:h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200 dark:border-gray-800 ring-1 ring-white/10 mb-20 md:mb-0">
+                <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-6xl h-[75vh] md:h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200 dark:border-gray-800 ring-1 ring-white/10">
 
                     {/* Sidebar (History) */}
                     <div className={`${showHistory ? 'w-64 translate-x-0 border-r border-gray-200 dark:border-gray-800' : 'w-0 -translate-x-full opacity-0 md:opacity-100 md:w-0 border-none overflow-hidden'} md:relative absolute inset-y-0 left-0 bg-gray-50 dark:bg-gray-900 transition-all duration-300 z-20 flex flex-col`}>
