@@ -7,8 +7,7 @@ import {
     Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye, History as HistoryIcon
 } from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
-import { FirebaseConfig, LogEntry } from '../types';
-import { AISettings } from '../components/AISettings';
+import { FirebaseConfig } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { ArchivedPlan } from '../types';
 
@@ -287,150 +286,7 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
     );
 };
 
-// --- New Components for Modal & Logs ---
 
-const RecentChangesLog = ({ category }: { category: string }) => {
-    const { auditLog } = useStore();
-
-    // Filter logs based on category
-    const filteredLogs = auditLog.filter(log => {
-        if (category === 'subjects') return log.action.includes('subject');
-        if (category === 'routine') return log.action.includes('routine');
-        if (category === 'analysis') return log.action.includes('analysis') || log.action.includes('chart');
-        return true;
-    });
-
-    if (filteredLogs.length === 0) {
-        return (
-            <div className="text-center py-10 text-gray-400">
-                <HistoryIcon size={40} className="mx-auto mb-2 opacity-30" />
-                <p>هیچ تغییری اخیراً ثبت نشده است</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="space-y-3">
-            {filteredLogs.map(log => (
-                <div key={log.id} className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl flex items-start justify-between border border-gray-100 dark:border-gray-700">
-                    <div className="flex gap-3">
-                        <div className="mt-1 text-gray-400">
-                            <Clock size={16} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{log.details}</p>
-                            <span className="text-[10px] text-gray-400 font-mono italic">
-                                {log.action}
-                            </span>
-                        </div>
-                    </div>
-                    <span className="text-[10px] text-gray-400 dir-ltr font-mono">
-                        {new Date(log.timestamp).toLocaleTimeString('fa-IR')}
-                    </span>
-                </div>
-            ))}
-        </div>
-    );
-};
-
-const SettingsModal = ({ isOpen, onClose, category }: { isOpen: boolean, onClose: () => void, category: string | null }) => {
-    const [activeTab, setActiveTab] = useState<'settings' | 'history'>('settings');
-
-    if (!isOpen || !category) return null;
-
-    const getTitle = () => {
-        switch (category) {
-            case 'analysis': return 'تنظیمات تحلیل و آمار';
-            case 'subjects': return 'مدیریت دروس';
-            case 'routine': return 'تنظیمات روتین';
-            default: return 'تنظیمات';
-        }
-    };
-
-    const getIcon = () => {
-        switch (category) {
-            case 'analysis': return Target;
-            case 'subjects': return BookOpen;
-            case 'routine': return Clock;
-            default: return Settings2;
-        }
-    };
-
-    const Icon = getIcon();
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg h-[70vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-                {/* Header */}
-                <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-                    <div className="flex items-center gap-3 text-gray-800 dark:text-white">
-                        <Icon size={24} className="text-indigo-500" />
-                        <h2 className="text-lg font-bold">{getTitle()}</h2>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition">
-                        <X size={20} className="text-gray-500" />
-                    </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex p-2 gap-2 border-b border-gray-100 dark:border-gray-700">
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'settings'
-                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                            : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        <Settings2 size={16} />
-                        تنظیمات عمومی
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition ${activeTab === 'history'
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                            : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'
-                            }`}
-                    >
-                        <HistoryIcon size={16} />
-                        تغییرات اخیر
-                    </button>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-y-auto p-5">
-                    {activeTab === 'history' ? (
-                        <RecentChangesLog category={category} />
-                    ) : (
-                        <div className="space-y-4">
-                            {/* Content based on category */}
-                            {category === 'subjects' && (
-                                <div className="text-center py-8">
-                                    <BookOpen size={48} className="mx-auto text-emerald-200 mb-4" />
-                                    <p className="text-gray-600 dark:text-gray-300 font-bold mb-2">مدیریت دروس</p>
-                                    <p className="text-gray-500 text-xs mb-4 max-w-xs mx-auto">برای اضافه کردن، ویرایش یا حذف دروس می‌توانید به صفحه "دروس" مراجعه کنید. در اینجا فقط لاگ تغییرات نمایش داده می‌شود.</p>
-                                </div>
-                            )}
-                            {category === 'routine' && (
-                                <div className="text-center py-8">
-                                    <Clock size={48} className="mx-auto text-amber-200 mb-4" />
-                                    <p className="text-gray-600 dark:text-gray-300 font-bold mb-2">تنظیمات روتین</p>
-                                    <p className="text-gray-500 text-xs mb-4 max-w-xs mx-auto">برای ویرایش قالب روتین و زمان‌بندی‌ها، لطفاً از بخش "امروز" استفاده کنید.</p>
-                                </div>
-                            )}
-                            {category === 'analysis' && (
-                                <div className="text-center py-8">
-                                    <Target size={48} className="mx-auto text-rose-200 mb-4" />
-                                    <p className="text-gray-600 dark:text-gray-300 font-bold mb-2">تنظیمات تحلیل</p>
-                                    <p className="text-gray-500 text-xs mb-4">تنظیمات پیشرفته نمودارها به زودی اضافه خواهد شد.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
 
 const Settings = () => {
     const {
@@ -447,9 +303,7 @@ const Settings = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
-    // Modal States
-    const [modalCategory, setModalCategory] = useState<string | null>(null);
-    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -471,33 +325,11 @@ const Settings = () => {
 
     const displayUsername = user?.email ? user.email.split('@')[0] : (userName || 'کاربر مهمان');
 
-    // Handle button clicks from the grid
-    const handleSectionClick = (category: string) => {
-        if (category === 'ai') {
-            setIsAIModalOpen(true);
-        } else if (category === 'subjects') {
-            navigate('/subjects');
-        } else if (category === 'routine') {
-            navigate('/routine');
-        } else if (category === 'analysis') {
-            navigate('/analysis');
-        } else {
-            setModalCategory(category);
-        }
-    };
+
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 space-y-6">
-            <SettingsModal
-                isOpen={!!modalCategory}
-                onClose={() => setModalCategory(null)}
-                category={modalCategory}
-            />
 
-            <AISettings
-                isOpen={isAIModalOpen}
-                onClose={() => setIsAIModalOpen(false)}
-            />
 
             <div>
                 <h1 className="text-2xl font-black text-gray-800 dark:text-white">تنظیمات ⚙️</h1>
@@ -545,27 +377,7 @@ const Settings = () => {
                 </div>
             </div>
 
-            {/* --- 2. Sections Configuration --- */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { id: 'analysis', title: 'تنظیمات تحلیل', icon: Target, color: 'rose', desc: 'مدیریت نمودارها' },
-                    { id: 'subjects', title: 'مدیریت دروس', icon: BookOpen, color: 'emerald', desc: 'ویرایش نام و آیکون' },
-                    { id: 'routine', title: 'تنظیمات روتین', icon: Clock, color: 'amber', desc: 'قالب‌های شخصی' },
-                    { id: 'ai', title: 'هوش مصنوعی', icon: Zap, color: 'violet', desc: 'پیکربندی دستیار' },
-                ].map((item, idx) => (
-                    <div
-                        key={idx}
-                        onClick={() => handleSectionClick(item.id)}
-                        className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col items-center text-center hover:shadow-md transition cursor-pointer group active:scale-95"
-                    >
-                        <div className={`w-10 h-10 rounded-xl bg-${item.color}-50 dark:bg-${item.color}-900/20 text-${item.color}-600 dark:text-${item.color}-400 flex items-center justify-center mb-3 group-hover:scale-110 transition`}>
-                            <item.icon size={20} />
-                        </div>
-                        <h3 className="font-bold text-gray-800 dark:text-white text-sm">{item.title}</h3>
-                        <p className="text-[10px] text-gray-400 mt-1">{item.desc}</p>
-                    </div>
-                ))}
-            </div>
+
 
             {/* --- 3. Account & Data --- */}
             <div className="grid md:grid-cols-2 gap-6">

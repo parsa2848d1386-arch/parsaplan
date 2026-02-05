@@ -164,19 +164,19 @@ const Layout = () => {
 
 
                         {/* Mobile Bottom Nav - Improved glassmorphism */}
-                        <nav className="md:hidden fixed bottom-0 left-0 right-0 w-full bg-white/70 dark:bg-gray-800/80 backdrop-blur-xl border-t border-gray-200/30 dark:border-gray-700/50 px-2 py-2 flex justify-around items-center z-50 pb-safe shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.08)] rounded-t-3xl">
+                        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/40 dark:bg-gray-800/40 backdrop-blur-2xl border border-white/20 dark:border-gray-700/30 px-2 py-1 flex justify-around items-center z-50 pb-safe shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2.5rem]">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}
                                     to={item.to}
-                                    className={({ isActive }) => `flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 ${isActive ? 'text-indigo-600 dark:text-indigo-400 -translate-y-1' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                    className={({ isActive }) => `flex flex-col items-center gap-0.5 p-1.5 rounded-2xl transition-all duration-300 ${isActive ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                 >
                                     {({ isActive }) => (
                                         <>
-                                            <div className={`p-1.5 rounded-full ${isActive ? 'bg-indigo-50 dark:bg-gray-700' : 'bg-transparent'}`}>
-                                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                            <div className={`p-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-indigo-50/80 dark:bg-indigo-900/40 shadow-sm' : 'bg-transparent'}`}>
+                                                <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                                             </div>
-                                            <span className="text-[10px] font-medium">{item.label}</span>
+                                            <span className={`text-[9px] font-bold transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-0 h-0 w-0'}`}>{isActive ? item.label : ''}</span>
                                         </>
                                     )}
                                 </NavLink>
