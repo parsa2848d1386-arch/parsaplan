@@ -659,10 +659,12 @@ const Leaderboard = () => {
                     })()}
                 </div>
 
-                {/* Modals outside container */}
-                <ProfileViewerModal />
-            </>
-            );
+            </div>
+
+            {/* Modals outside container */}
+            <ProfileViewerModal />
+        </>
+    );
 };
 
-            export default Leaderboard;
+export default Leaderboard;
