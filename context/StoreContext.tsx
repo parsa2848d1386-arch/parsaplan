@@ -71,6 +71,8 @@ interface StoreContextType {
     toggleDarkMode: () => void;
     viewMode: 'normal' | 'compact';
     setViewMode: (mode: 'normal' | 'compact') => void;
+    showQuotes: boolean;
+    toggleShowQuotes: () => void;
     isTimerOpen: boolean;
     setIsTimerOpen: (isOpen: boolean) => void;
     isCommandPaletteOpen: boolean;
@@ -166,6 +168,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [confirmState, setConfirmState] = useState<ConfirmDialogState>({
         isOpen: false, message: '', title: '', onConfirm: () => { }, onCancel: () => { }, type: 'info'
     });
+
+    const [showQuotes, setShowQuotes] = useState(true);
+    const toggleShowQuotes = () => setShowQuotes(prev => !prev);
 
     const level = Math.floor(Math.sqrt(xp / 100)) + 1;
 
@@ -418,13 +423,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             tasks, userName, routine: completedRoutine, routineTemplate,
             notes: dailyNotes, xp, logs: auditLog, moods, startDate,
             totalDays, subjects,
-            settings: { darkMode, viewMode }, lastUpdated: Date.now()
+            settings: { darkMode, viewMode, showQuotes }, lastUpdated: Date.now()
         };
 
         // Save to the SPECIFIC user bucket
         StorageManager.save(fullData, userId);
 
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, totalDays, subjects, isInitialized, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, totalDays, subjects, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -507,6 +512,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     if (data.settings) {
                         setDarkMode(data.settings.darkMode);
                         setViewModeState(data.settings.viewMode);
+                        if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
                     }
                     setLastSyncTime(remoteLastUpdated);
                     // Removed toast to avoid annoying popup - user can see cloud icon status
@@ -913,7 +919,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             totalDays, setTotalDays,
             subjects, addSubject, updateSubject, deleteSubject,
             auditLog, moods, setMood,
-            toasts, showToast, removeToast, confirmState, askConfirm, closeConfirm
+            toasts, showToast, removeToast,
+            confirmState, askConfirm, closeConfirm,
+            showQuotes, toggleShowQuotes
         }}>
             {children}
         </StoreContext.Provider>

@@ -178,46 +178,35 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
     // --- SYSTEM PROMPT ---
     const getSystemPrompt = () => {
         const today = new Date().toISOString().split('T')[0];
-        const examples = Array.from({ length: 3 }, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() + i + 1);
-            return `${i + 1} day later: ${d.toISOString().split('T')[0]}`;
-        }).join(', ');
+
+        // Calculate specific future dates for better context
+        const next7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(startDate);
+            d.setDate(d.getDate() + (currentDay - 1) + i); // Start from *current plan day*
+            return `Day ${currentDay + i}: ${d.toISOString().split('T')[0]}`;
+        }).join('\n');
 
         return `You are an advanced AI Study Planner Assistant for 'ParsaPlan'.
 Current Context:
-- Today's Date (Real World): ${today}
+- Real World Date: ${today}
 - Plan Start Date: ${startDate}
 - Current Plan Day: Day ${currentDay} of ${totalDays}
-- Date Reference: ${examples}
 
-Your goal is to help students plan their study routine intelligently.
+**UPCOMING DAYS REFERENCE:**
+${next7Days}
 
-**Capabilities:**
-1.  **Task Generation:** When a user asks for a plan, calculate daily load and generate specific tasks.
-2.  **Date Awareness:**
-    - If user says "Day 7", calculate the actual date: StartDate + 6 days.
-    - If user says "Tomorrow", use Today + 1 day.
-    - ALWAYS output dates in YYYY-MM-DD format.
+**CRITICAL RULES:**
+1.  **NO DIRECT ACTIONS:** You cannot add tasks directly. You can ONLY propose them via JSON.
+2.  **PREVIEW REQUIRED:** If the user wants to add tasks, you MUST return a strict JSON object with action "preview_tasks".
+3.  **DATE CALCULATION:** 
+    - "Day X" always means: Start Date + (X - 1) days.
+    - Example: If Start Date is 2026-02-01, Day 12 is 2026-02-12.
+    - USE THE REFERENCE LIST ABOVE.
+4.  **RESPONSE FORMAT:**
+    - If proposing tasks: {"action": "preview_tasks", "tasks": [...], "message": "I have prepared..."}
+    - If just chatting: {"action": "info", "message": "..."}
 
-**Response Format (Strict JSON):**
-You must return ONLY a JSON object (no markdown):
-{
-  "action": "preview_tasks",
-  "message": "Summary...",
-  "tasks": [
-    {
-      "title": "Short Title",
-      "subject": "Math", 
-      "topic": "Topic Name",
-      "details": "Details",
-      "testRange": "10-20",
-      "date": "YYYY-MM-DD"
-    }
-  ]
-}
-
-If chatting: {"action": "info", "message": "Answer..."}`;
+**DO NOT SAY "I have added the tasks" UNLESS you are returning the "preview_tasks" JSON.**`;
     };
 
     const formatMessageForProvider = (msg: Message, p: string) => {

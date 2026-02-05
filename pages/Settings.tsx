@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, Lock, Clock, BookOpen, Zap, Trophy, Target, Activity, MessageSquare, History, FileText, X, Settings2, Printer } from 'lucide-react';
+import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, Lock, Clock, BookOpen, Zap, Trophy, Target, Activity, MessageSquare, History, FileText, X, Settings2, Printer, Quote } from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig, LogEntry } from '../types';
 import { AISettings } from '../components/AISettings';
@@ -432,7 +432,7 @@ const Settings = () => {
         cloudStatus, syncData, loadFromCloud, firebaseConfig, updateFirebaseConfig, removeFirebaseConfig,
         startDate, setStartDate, autoFixDate, totalDays, setTotalDays,
         exportData, importData, resetProgress,
-        darkMode, toggleDarkMode, viewMode, setViewMode, showToast
+        darkMode, toggleDarkMode, viewMode, setViewMode, showToast, showQuotes, toggleShowQuotes
     } = useStore();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -613,6 +613,12 @@ const Settings = () => {
                                     <button onClick={() => setViewMode('compact')} className={`px-2 py-0.5 text-[10px] rounded-md transition ${viewMode === 'compact' ? 'bg-white shadow text-black' : 'text-gray-500'}`}>فشرده</button>
                                 </div>
                             </div>
+                            <button onClick={toggleShowQuotes} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Quote size={16} /> نمایش جملات انگیزشی</span>
+                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${showQuotes ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
+                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${showQuotes ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                </div>
+                            </button>
                         </div>
                     </div>
 

@@ -19,7 +19,7 @@ const Dashboard = () => {
         getDailyNote, saveDailyNote,
         viewMode, setIsTimerOpen,
         level, xp, dailyQuote, shiftIncompleteTasks,
-        totalDays
+        totalDays, showQuotes
     } = useStore();
 
     const navigate = useNavigate();
@@ -277,12 +277,14 @@ const Dashboard = () => {
                 {isTodayView && <MoodTracker />}
 
                 {/* Daily Quote */}
-                <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-4 text-white shadow-lg relative overflow-hidden">
-                    <Quote size={40} className="absolute right-2 top-2 text-white/10 rotate-180" />
-                    <p className="text-sm font-medium leading-6 relative z-10 text-center px-4">
-                        "{dailyQuote}"
-                    </p>
-                </div>
+                {showQuotes && (
+                    <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-4 text-white shadow-lg relative overflow-hidden">
+                        <Quote size={40} className="absolute right-2 top-2 text-white/10 rotate-180" />
+                        <p className="text-sm font-medium leading-6 relative z-10 text-center px-4">
+                            "{dailyQuote}"
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Day Navigator */}
