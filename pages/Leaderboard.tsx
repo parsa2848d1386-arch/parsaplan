@@ -409,254 +409,258 @@ const Leaderboard = () => {
     };
 
     return (
-        <div className="p-5 pb-32 animate-in fade-in duration-300">
-            {/* Profile Viewer Modal */}
-            <ProfileViewerModal />
+        <>
+            <div className="p-5 pb-32 animate-in fade-in duration-300">
+                {/* Profile Viewer Modal */}
+                {/* ProfileViewerModal moved to bottom */}
 
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200 dark:shadow-none shrink-0">
-                        <Trophy className="text-white" size={28} />
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200 dark:shadow-none shrink-0">
+                            <Trophy className="text-white" size={28} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">لیگ رقابت</h1>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">با دیگران رقابت کنید و پیشرفت خود را ببینید!</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">لیگ رقابت</h1>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">با دیگران رقابت کنید و پیشرفت خود را ببینید!</p>
+
+                    <div className="flex gap-3">
+                        <button
+                            onClick={toggleMyPublicProfile}
+                            disabled={isToggling || !user}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 shadow-sm border ${isMyProfilePublic
+                                ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-200 dark:shadow-none'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-700'
+                                }`}
+                        >
+                            {isToggling ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : isMyProfilePublic ? (
+                                <Eye size={16} />
+                            ) : (
+                                <EyeOff size={16} />
+                            )}
+                            {isMyProfilePublic ? 'عمومی' : 'خصوصی'}
+                        </button>
+
+                        <button
+                            onClick={fetchLeaderboard}
+                            disabled={isLoading}
+                            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
+                        >
+                            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex gap-3">
+                {/* User Stats Card */}
+                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 text-white mb-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
+
+                    <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                                    <User size={28} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-lg">{userName}</p>
+                                    <p className="text-xs opacity-80">سطح {level}</p>
+                                </div>
+                            </div>
+                            <div className="bg-white/20 px-4 py-2 rounded-xl">
+                                <p className="text-xs opacity-80">وضعیت</p>
+                                <p className="font-bold text-sm">{isMyProfilePublic ? '🌐 عمومی' : '🔒 خصوصی'}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-3">
+                            <div className="bg-white/10 rounded-xl p-3 text-center">
+                                <Star size={18} className="mx-auto mb-1" />
+                                <p className="font-bold">{xp}</p>
+                                <p className="text-[10px] opacity-70">XP</p>
+                            </div>
+                            <div className="bg-white/10 rounded-xl p-3 text-center">
+                                <TrendingUp size={18} className="mx-auto mb-1" />
+                                <p className="font-bold">{myStats.progress}%</p>
+                                <p className="text-[10px] opacity-70">پیشرفت</p>
+                            </div>
+                            <div className="bg-white/10 rounded-xl p-3 text-center">
+                                <Trophy size={18} className="mx-auto mb-1" />
+                                <p className="font-bold">{myStats.tasksCompleted}</p>
+                                <p className="text-[10px] opacity-70">تسک</p>
+                            </div>
+                            <div className="bg-white/10 rounded-xl p-3 text-center border-r border-white/20">
+                                <BookOpen size={18} className="mx-auto mb-1" />
+                                <p className="font-bold">{myStats.examAverage || 0}%</p>
+                                <p className="text-[10px] opacity-70">میانگین آزمون</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Info Box */}
+                {!user && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 mb-6">
+                        <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                            ⚠️ برای شرکت در لیگ و مشاهده رتبه‌بندی، ابتدا <strong>وارد حساب خود شوید</strong>.
+                        </p>
+                    </div>
+                )}
+
+                {user && !isMyProfilePublic && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-6">
+                        <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                            💡 برای شرکت در لیگ و نمایش در رتبه‌بندی، دکمه <strong>"عمومی"</strong> را فعال کنید.
+                        </p>
+                    </div>
+                )}
+
+                {/* Leaderboard Controls */}
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
                     <button
-                        onClick={toggleMyPublicProfile}
-                        disabled={isToggling || !user}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 shadow-sm border ${isMyProfilePublic
-                            ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-200 dark:shadow-none'
-                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-700'
-                            }`}
+                        onClick={() => setSortBy('xp')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${sortBy === 'xp' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}
                     >
-                        {isToggling ? (
-                            <Loader2 size={16} className="animate-spin" />
-                        ) : isMyProfilePublic ? (
-                            <Eye size={16} />
-                        ) : (
-                            <EyeOff size={16} />
-                        )}
-                        {isMyProfilePublic ? 'عمومی' : 'خصوصی'}
+                        🏆 پرامتیازترین
                     </button>
-
                     <button
-                        onClick={fetchLeaderboard}
-                        disabled={isLoading}
-                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition disabled:opacity-50"
+                        onClick={() => setSortBy('exam')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${sortBy === 'exam' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}
                     >
-                        <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                        📚 برترین آزمون‌ها
                     </button>
                 </div>
-            </div>
 
-            {/* User Stats Card */}
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 text-white mb-6 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
-
-                <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                                <User size={28} />
-                            </div>
-                            <div>
-                                <p className="font-bold text-lg">{userName}</p>
-                                <p className="text-xs opacity-80">سطح {level}</p>
-                            </div>
-                        </div>
-                        <div className="bg-white/20 px-4 py-2 rounded-xl">
-                            <p className="text-xs opacity-80">وضعیت</p>
-                            <p className="font-bold text-sm">{isMyProfilePublic ? '🌐 عمومی' : '🔒 خصوصی'}</p>
-                        </div>
+                {/* Leaderboard */}
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Users className="text-gray-400" size={18} />
+                        <h2 className="font-bold text-gray-700 dark:text-gray-200">رتبه‌بندی کاربران عمومی</h2>
+                        <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{leaderboardData.length} نفر</span>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-3">
-                        <div className="bg-white/10 rounded-xl p-3 text-center">
-                            <Star size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{xp}</p>
-                            <p className="text-[10px] opacity-70">XP</p>
-                        </div>
-                        <div className="bg-white/10 rounded-xl p-3 text-center">
-                            <TrendingUp size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{myStats.progress}%</p>
-                            <p className="text-[10px] opacity-70">پیشرفت</p>
-                        </div>
-                        <div className="bg-white/10 rounded-xl p-3 text-center">
-                            <Trophy size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{myStats.tasksCompleted}</p>
-                            <p className="text-[10px] opacity-70">تسک</p>
-                        </div>
-                        <div className="bg-white/10 rounded-xl p-3 text-center border-r border-white/20">
-                            <BookOpen size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{myStats.examAverage || 0}%</p>
-                            <p className="text-[10px] opacity-70">میانگین آزمون</p>
-                        </div>
+                    {/* Search Bar */}
+                    <div className="relative mb-4">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="جستجوی نام کاربر..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pr-10 pl-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm placeholder:text-gray-400 outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
+                        />
                     </div>
-                </div>
-            </div>
 
-            {/* Info Box */}
-            {!user && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 mb-6">
-                    <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                        ⚠️ برای شرکت در لیگ و مشاهده رتبه‌بندی، ابتدا <strong>وارد حساب خود شوید</strong>.
-                    </p>
-                </div>
-            )}
+                    {isLoading ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="h-20 bg-gray-100 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
+                            ))}
+                        </div>
+                    ) : leaderboardData.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                            <Trophy className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">هنوز کسی در لیگ نیست!</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">اولین نفر باشید که پروفایل خود را عمومی می‌کند</p>
+                        </div>
+                    ) : (() => {
+                        // Filter based on search query
+                        let filteredData = searchQuery.trim()
+                            ? leaderboardData.filter(p => p.userName.toLowerCase().includes(searchQuery.toLowerCase()))
+                            : [...leaderboardData];
 
-            {user && !isMyProfilePublic && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 mb-6">
-                    <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
-                        💡 برای شرکت در لیگ و نمایش در رتبه‌بندی، دکمه <strong>"عمومی"</strong> را فعال کنید.
-                    </p>
-                </div>
-            )}
+                        // Sort Logic
+                        if (sortBy === 'exam') {
+                            filteredData.sort((a, b) => (b.examAverage || 0) - (a.examAverage || 0));
+                        } else {
+                            filteredData.sort((a, b) => b.xp - a.xp);
+                        }
 
-            {/* Leaderboard Controls */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                <button
-                    onClick={() => setSortBy('xp')}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${sortBy === 'xp' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}
-                >
-                    🏆 پرامتیازترین
-                </button>
-                <button
-                    onClick={() => setSortBy('exam')}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${sortBy === 'exam' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}
-                >
-                    📚 برترین آزمون‌ها
-                </button>
-            </div>
+                        if (filteredData.length === 0) {
+                            return (
+                                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                                    <Search className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
+                                    <p className="text-gray-500 dark:text-gray-400 font-medium">کاربری با این نام پیدا نشد</p>
+                                </div>
+                            );
+                        }
 
-            {/* Leaderboard */}
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-4">
-                    <Users className="text-gray-400" size={18} />
-                    <h2 className="font-bold text-gray-700 dark:text-gray-200">رتبه‌بندی کاربران عمومی</h2>
-                    <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{leaderboardData.length} نفر</span>
-                </div>
+                        return filteredData.map((profile, index) => {
+                            const rank = index + 1; // Rank depends on current sort
+                            const isCurrentUser = profile.id === user?.uid;
 
-                {/* Search Bar */}
-                <div className="relative mb-4">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="جستجوی نام کاربر..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pr-10 pl-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm placeholder:text-gray-400 outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white"
-                    />
-                </div>
-
-                {isLoading ? (
-                    <div className="space-y-3">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="h-20 bg-gray-100 dark:bg-gray-700 rounded-2xl animate-pulse"></div>
-                        ))}
-                    </div>
-                ) : leaderboardData.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
-                        <Trophy className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">هنوز کسی در لیگ نیست!</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">اولین نفر باشید که پروفایل خود را عمومی می‌کند</p>
-                    </div>
-                ) : (() => {
-                    // Filter based on search query
-                    let filteredData = searchQuery.trim()
-                        ? leaderboardData.filter(p => p.userName.toLowerCase().includes(searchQuery.toLowerCase()))
-                        : [...leaderboardData];
-
-                    // Sort Logic
-                    if (sortBy === 'exam') {
-                        filteredData.sort((a, b) => (b.examAverage || 0) - (a.examAverage || 0));
-                    } else {
-                        filteredData.sort((a, b) => b.xp - a.xp);
-                    }
-
-                    if (filteredData.length === 0) {
-                        return (
-                            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
-                                <Search className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
-                                <p className="text-gray-500 dark:text-gray-400 font-medium">کاربری با این نام پیدا نشد</p>
-                            </div>
-                        );
-                    }
-
-                    return filteredData.map((profile, index) => {
-                        const rank = index + 1; // Rank depends on current sort
-                        const isCurrentUser = profile.id === user?.uid;
-
-                        return (
-                            <div
-                                key={profile.id}
-                                className={`rounded-2xl p-4 border shadow-sm transition-all hover:shadow-md ${getRankBg(rank)} ${isCurrentUser ? 'ring-2 ring-indigo-400' : ''}`}
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 flex items-center justify-center">
-                                        {getRankIcon(rank)}
-                                    </div>
-
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
-                                        {profile.userName[0]}
-                                    </div>
-
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-bold text-gray-800 dark:text-white">{profile.userName}</p>
-                                            {isCurrentUser && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full">شما</span>}
+                            return (
+                                <div
+                                    key={profile.id}
+                                    className={`rounded-2xl p-4 border shadow-sm transition-all hover:shadow-md ${getRankBg(rank)} ${isCurrentUser ? 'ring-2 ring-indigo-400' : ''}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 flex items-center justify-center">
+                                            {getRankIcon(rank)}
                                         </div>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">سطح {profile.level} • {getTimeAgo(profile.lastActive)}</p>
-                                    </div>
 
-                                    <div className="flex items-center gap-2">
-                                        <div className="text-left">
-                                            {sortBy === 'xp' ? (
-                                                <>
-                                                    <p className="font-black text-indigo-600 dark:text-indigo-400 text-lg">{profile.xp}</p>
-                                                    <p className="text-[10px] text-gray-500">XP</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <p className="font-black text-emerald-600 dark:text-emerald-400 text-lg">{profile.examAverage || 0}%</p>
-                                                    <p className="text-[10px] text-gray-500">معدل آزمون</p>
-                                                </>
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                                            {profile.userName[0]}
+                                        </div>
+
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-gray-800 dark:text-white">{profile.userName}</p>
+                                                {isCurrentUser && <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full">شما</span>}
+                                            </div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">سطح {profile.level} • {getTimeAgo(profile.lastActive)}</p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-left">
+                                                {sortBy === 'xp' ? (
+                                                    <>
+                                                        <p className="font-black text-indigo-600 dark:text-indigo-400 text-lg">{profile.xp}</p>
+                                                        <p className="text-[10px] text-gray-500">XP</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p className="font-black text-emerald-600 dark:text-emerald-400 text-lg">{profile.examAverage || 0}%</p>
+                                                        <p className="text-[10px] text-gray-500">معدل آزمون</p>
+                                                    </>
+                                                )}
+                                            </div>
+
+                                            {/* View Profile Button */}
+                                            {!isCurrentUser && (
+                                                <button
+                                                    onClick={() => viewUserProfile(profile)}
+                                                    disabled={isLoadingProfile}
+                                                    className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition"
+                                                    title="مشاهده برنامه"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
                                             )}
                                         </div>
+                                    </div>
 
-                                        {/* View Profile Button */}
-                                        {!isCurrentUser && (
-                                            <button
-                                                onClick={() => viewUserProfile(profile)}
-                                                disabled={isLoadingProfile}
-                                                className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition"
-                                                title="مشاهده برنامه"
-                                            >
-                                                <Eye size={16} />
-                                            </button>
-                                        )}
+                                    {/* Progress bar */}
+                                    <div className="mt-3 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
+                                            style={{ width: `${profile.progress}%` }}
+                                        ></div>
                                     </div>
                                 </div>
+                            );
+                        })
+                    })()}
+                </div>
 
-                                {/* Progress bar */}
-                                <div className="mt-3 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-                                        style={{ width: `${profile.progress}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        );
-                    })
-                })()}
-            </div>
-        </div>
-    );
+                {/* Modals outside container */}
+                <ProfileViewerModal />
+            </>
+            );
 };
 
-export default Leaderboard;
+            export default Leaderboard;

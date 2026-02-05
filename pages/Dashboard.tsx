@@ -408,9 +408,20 @@ const Dashboard = () => {
                 )}
             </div>
 
+
+            {/* Task Modals - Moved outside to prevent stacking context issues */}
+            {isModalOpen && (
+                <TaskModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    initialData={editingTask}
+                    currentDayId={currentDay}
+                    onSave={handleSaveTask}
+                />
+            )}
             {/* AI Settings Modal */}
             <AISettings isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
-        </div>
+        </>
     );
 };
 

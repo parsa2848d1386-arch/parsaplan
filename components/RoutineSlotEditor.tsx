@@ -94,7 +94,7 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
     const IconComp = getIconComponent(icon);
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
