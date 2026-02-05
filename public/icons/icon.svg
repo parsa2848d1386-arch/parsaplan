@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#5D5FEF" />
-      <stop offset="100%" style="stop-color:#3B3DBA" />
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="10" />
-      <feOffset dx="0" dy="10" result="offsetblur" />
+    <radialGradient id="bg" cx="50%" cy="40%" r="75%">
+      <stop offset="30%" stop-color="#5D5FEF" />
+      <stop offset="100%" stop-color="#2D2FA3" />
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="15" />
+      <feOffset dx="0" dy="12" result="offsetblur" />
       <feComponentTransfer>
-        <feFuncA type="linear" slope="0.3" />
+        <feFuncA type="linear" slope="0.45" />
       </feComponentTransfer>
       <feMerge>
         <feMergeNode />
@@ -16,25 +16,11 @@
       </feMerge>
     </filter>
   </defs>
-  
-  <!-- Background -->
-  <rect width="512" height="512" rx="120" fill="url(#bgGrad)" />
-  
-  <!-- Icon Symbol -->
-  <g filter="url(#shadow)">
-    <path d="M132.8 243.2c10.4 0 24 16.8 32.8 33.6c8.8 16.8 20 54.4 34.4 54.4c14.4 0 20-33.6 44-93.6c24-60 67.2-101.6 132-101.6c76 0 136 60 136 136 c0 76-60 136-136 136c-52.8 0-96-32-113.6-77.6" 
-          fill="none" 
-          stroke="white" 
-          stroke-width="48" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"/>
-    
-    <!-- Clock Hands inside circular part -->
-    <path d="M370 270v45l30 30" 
-          fill="none" 
-          stroke="white" 
-          stroke-width="32" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"/>
+  <rect width="512" height="512" rx="140" fill="url(#bg)" />
+  <g filter="url(#softShadow)" stroke="white" stroke-width="52" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main Path: Refined Checkmark-P combo based on user image -->
+    <path d="M125 255 L190 325 C235 240 260 160 340 160 C425 160 425 315 340 315 C300 315 260 290 240 405" />
+    <!-- Clock Hands (Time is approx 12:20 for aesthetic) -->
+    <path d="M340 215 L340 260 L380 290" stroke-width="36" />
   </g>
 </svg>
