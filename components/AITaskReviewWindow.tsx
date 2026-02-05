@@ -118,7 +118,8 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
             />
 
             {/* Modal Container */}
-            <div className="relative pointer-events-auto w-full max-w-2xl mx-4 sm:mx-auto mb-32 sm:mb-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[65vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-10 fade-in duration-300">
+            {/* Modal Container */}
+            <div className="relative pointer-events-auto w-full max-w-2xl mx-4 sm:mx-auto mb-24 sm:mb-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-10 fade-in duration-300">
 
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
