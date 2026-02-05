@@ -859,24 +859,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const deleteTask = (taskId: string) => {
         const taskToDelete = tasks.find(t => t.id === taskId);
-        const needsConfirm = taskToDelete?.type === 'exam' || taskToDelete?.type === 'analysis';
+        if (!taskToDelete) return;
 
         const performDelete = () => {
             setTasks(prev => prev.filter(t => t.id !== taskId));
-            logAction('delete_task', `حذف تسک با شناسه ${taskId}`);
+            logAction('delete_task', `حذف تسک: ${taskToDelete.subject} - ${taskToDelete.topic}`);
             showToast('تسک حذف شد', 'warning');
         };
 
-        if (needsConfirm) {
-            askConfirm(
-                'حذف تسک ویژه',
-                `آیا از حذف ${taskToDelete?.type === 'exam' ? 'آزمون' : 'تحلیل'} "${taskToDelete?.subject}" مطمئن هستید؟`,
-                performDelete,
-                'danger'
-            );
-        } else {
-            performDelete();
-        }
+        const isSpecial = taskToDelete.studyType === 'exam' || taskToDelete.studyType === 'analysis';
+        const title = isSpecial ? 'حذف تسک ویژه' : 'حذف تسک';
+        const message = isSpecial
+            ? `آیا از حذف ${taskToDelete.studyType === 'exam' ? 'آزمون' : 'تحلیل'} "${taskToDelete.subject}" مطمئن هستید؟`
+            : `آیا از حذف تسک "${taskToDelete.subject}: ${taskToDelete.topic}" مطمئن هستید؟`;
+
+        askConfirm(title, message, performDelete, 'danger');
     };
 
     const toggleTask = (taskId: string) => {

@@ -102,7 +102,7 @@ const Dashboard = () => {
         } else {
             const newTask: SubjectTask = {
                 id: crypto.randomUUID(),
-                dayId: 0,
+                dayId: taskData.dayId || 0,
                 date: taskData.date || activeDateIso,
                 subject: taskData.subject!,
                 topic: taskData.topic!,

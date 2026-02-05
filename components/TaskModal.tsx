@@ -232,9 +232,21 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                             {(() => {
                                 const currentStream = settings?.stream || 'general';
                                 const allowedSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
-                                const filteredIcons = Object.entries(SUBJECT_ICONS).filter(([name]) =>
-                                    allowedSubjects.includes(name) || name === 'شخصی'
-                                );
+                                const filteredIcons = Object.entries(SUBJECT_ICONS)
+                                    .filter(([name]) => allowedSubjects.includes(name) || name === 'شخصی')
+                                    .sort(([nameA], [nameB]) => {
+                                        const indexA = allowedSubjects.indexOf(nameA);
+                                        const indexB = allowedSubjects.indexOf(nameB);
+
+                                        // If both are in the list, sort by their index
+                                        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                                        // If only A is in the list, it comes first
+                                        if (indexA !== -1) return -1;
+                                        // If only B is in the list, it comes first
+                                        if (indexB !== -1) return 1;
+                                        // Otherwise keep order
+                                        return 0;
+                                    });
 
                                 return (
                                     <div>

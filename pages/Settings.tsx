@@ -4,7 +4,7 @@ import { useStore } from '../context/StoreContext';
 import {
     Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Sun, Bell, Volume2, Globe, Shield, RefreshCcw, LogOut, ChevronLeft,
     Crown, Sparkles, Layout, Palette, Type, Smartphone, Check, Laptop, Trash2, FileText, GraduationCap, X, Settings2, Printer, Quote,
-    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye, History
+    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye, History as HistoryIcon
 } from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig, LogEntry } from '../types';
@@ -303,7 +303,7 @@ const RecentChangesLog = ({ category }: { category: string }) => {
     if (filteredLogs.length === 0) {
         return (
             <div className="text-center py-10 text-gray-400">
-                <History size={40} className="mx-auto mb-2 opacity-30" />
+                <HistoryIcon size={40} className="mx-auto mb-2 opacity-30" />
                 <p>هیچ تغییری اخیراً ثبت نشده است</p>
             </div>
         );
@@ -391,7 +391,7 @@ const SettingsModal = ({ isOpen, onClose, category }: { isOpen: boolean, onClose
                             : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'
                             }`}
                     >
-                        <History size={16} />
+                        <HistoryIcon size={16} />
                         تغییرات اخیر
                     </button>
                 </div>
@@ -712,7 +712,7 @@ const Settings = () => {
             {/* Danger Zone & Archive (سیستم خفن!) */}
             <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-3xl border border-amber-100 dark:border-amber-900/30 space-y-4">
                 <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
-                    <History size={20} />
+                    <HistoryIcon size={20} />
                     <h2 className="font-bold">مدیریت دوره‌ها (آرشیو)</h2>
                 </div>
 
