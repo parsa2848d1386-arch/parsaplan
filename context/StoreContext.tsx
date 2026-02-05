@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS, AppSettings, StreamType } from '../types';
+import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS, AppSettings, StreamType, ArchivedPlan, SUBJECT_LISTS } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
-import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
+import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -115,6 +115,11 @@ interface StoreContextType {
     confirmState: ConfirmDialogState;
     askConfirm: (title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info') => void;
     closeConfirm: () => void;
+
+    // Archive System
+    archivedPlans: ArchivedPlan[];
+    archiveCurrentPlan: (title: string) => void;
+    deleteArchivedPlan: (planId: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -140,6 +145,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
     const [subjects, setSubjects] = useState<CustomSubject[]>([]);
     const [totalDays, setTotalDaysState] = useState(TOTAL_DAYS);
+    const [archivedPlans, setArchivedPlans] = useState<ArchivedPlan[]>([]);
 
     // UI & Config State
     const [darkMode, setDarkMode] = useState(false);
@@ -317,6 +323,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (data.logs) setAuditLog(data.logs);
                 if (data.moods) setMoods(data.moods);
                 if (data.totalDays) setTotalDaysState(data.totalDays);
+                if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
 
                 // DATA MIGRATION: Subjects
                 if (data.subjects && data.subjects.length > 0) {
@@ -428,7 +435,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const fullData = {
             tasks, userName, routine: completedRoutine, routineTemplate,
             notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-            totalDays, subjects,
+            totalDays, subjects, archivedPlans,
             settings: {
                 darkMode, viewMode, showQuotes, stream,
                 notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
@@ -709,6 +716,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const fullData = {
                     tasks, userName, routine: completedRoutine, routineTemplate,
                     notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+                    subjects, archivedPlans,
                     settings: {
                         darkMode, viewMode, showQuotes, stream,
                         notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
@@ -790,7 +798,71 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         showToast('تنظیمات بروز شد', 'success');
     };
 
+    // --- ARCHIVE LOGIC ---
+    const archiveCurrentPlan = (title: string) => {
+        const endDate = toIsoString(addDays(startDate, totalDays - 1));
+        const completedCount = tasks.filter(t => t.isCompleted).length;
+
+        const newArchive: ArchivedPlan = {
+            id: crypto.randomUUID(),
+            title: title || `برنامه ${getFullShamsiDate(new Date(startDate))}`,
+            startDate,
+            endDate,
+            totalTasks: tasks.length,
+            completedTasks: completedCount,
+            tasks: [...tasks],
+            stream: stream
+        };
+
+        setArchivedPlans(prev => [newArchive, ...prev]);
+        logAction('archive_plan', `آرشیو برنامه: ${newArchive.title}`);
+
+        // Reset Current Plan but keep stats/XP
+        setTasks([]);
+        setCompletedRoutine([]);
+        setDailyNotes({});
+        setMoods({});
+        showToast('برنامه با موفقیت آرشیو شد و برنامه جدید آماده است!', 'success');
+    };
+
+    const deleteArchivedPlan = (planId: string) => {
+        setArchivedPlans(prev => prev.filter(p => p.id !== planId));
+        showToast('برنامه از تاریخچه حذف شد', 'info');
+    };
+
     // --- TASK ACTIONS ---
+    const addTask = (task: SubjectTask) => {
+        // BUG FIX: Ensure date is correctly calculated from dayId if it's a plan day
+        let finalDate = task.date;
+        if (task.dayId > 0) {
+            finalDate = toIsoString(addDays(startDate, task.dayId - 1));
+        }
+
+        const newTask = { ...task, date: finalDate, id: task.id || crypto.randomUUID() };
+        setTasks(prev => [...prev, newTask]);
+        logAction('add_task', `افزودن تسک: ${task.subject}`);
+        showToast('تسک با موفقیت اضافه شد', 'success');
+    };
+
+    const updateTask = (updatedTask: SubjectTask) => {
+        // BUG FIX: Re-calculate date if dayId changed
+        let finalDate = updatedTask.date;
+        const oldTask = tasks.find(t => t.id === updatedTask.id);
+        if (oldTask && oldTask.dayId !== updatedTask.dayId && updatedTask.dayId > 0) {
+            finalDate = toIsoString(addDays(startDate, updatedTask.dayId - 1));
+        }
+
+        setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...updatedTask, date: finalDate } : t));
+        logAction('update_task', `ویرایش تسک: ${updatedTask.subject}`);
+        showToast('تغییرات ذخیره شد', 'success');
+    };
+
+    const deleteTask = (taskId: string) => {
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        logAction('delete_task', `حذف تسک با شناسه ${taskId}`);
+        showToast('تسک حذف شد', 'warning');
+    };
+
     const toggleTask = (taskId: string) => {
         setTasks(prev => prev.map(t => {
             if (t.id === taskId) {
@@ -802,14 +874,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }));
     };
 
-    const addTask = (task: SubjectTask) => { setTasks(prev => [...prev, task]); showToast('تسک اضافه شد', 'success'); };
-    const updateTask = (updated: SubjectTask) => { setTasks(prev => prev.map(t => t.id === updated.id ? updated : t)); showToast('ویرایش شد', 'success'); };
-    const deleteTask = (taskId: string) => {
-        askConfirm('حذف تسک', 'آیا مطمئن هستید؟', () => {
-            setTasks(prev => prev.filter(t => t.id !== taskId));
-            showToast('حذف شد', 'warning');
-        });
-    };
     const moveTaskToDate = (taskId: string, date: string) => {
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, date } : t));
         showToast('منتقل شد', 'success');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SubjectTask } from '../types';
+import { SubjectTask, getSubjectStyle } from '../types';
 import { getShamsiDate } from '../utils';
 import { CheckCircle2, Circle, Trash2, Pencil, Calendar, ArrowDownToLine, Target } from 'lucide-react';
 import { ExamTaskCard } from './ExamTaskCard';
@@ -27,8 +27,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
     // 1. Check for Exam/Analysis Type
     if (task.studyType === 'exam' || task.studyType === 'analysis') {
-        const handleExamEdit = (t: SubjectTask) => onEdit({} as any, t);
-        const handleExamDelete = (id: string) => onDelete({} as any, id);
+        const handleExamEdit = (e: React.MouseEvent, t: SubjectTask) => onEdit(e, t);
+        const handleExamDelete = (e: React.MouseEvent, id: string) => onDelete(e, id);
         const handleExamToggle = (t: SubjectTask) => onToggle(t.id!);
 
         return (
@@ -46,11 +46,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     const taskDateShamsi = getShamsiDate(task.date);
 
     let subColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
-    if (task.subject.includes('زیست')) subColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
-    else if (task.subject.includes('ریاضی')) subColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
-    else if (task.subject.includes('فیزیک')) subColor = 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300';
-    else if (task.subject.includes('شیمی')) subColor = 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300';
-    else if (task.isCustom) subColor = 'bg-gray-800 text-white dark:bg-gray-700';
+    if (task.isCustom) {
+        subColor = 'bg-gray-800 text-white dark:bg-gray-700';
+    } else {
+        const style = getSubjectStyle(task.subject);
+        subColor = `${style.bgColor} ${style.color === 'gray' ? 'text-gray-700 dark:text-gray-300' : `text-${style.color}-800 dark:text-${style.color}-300`}`;
+    }
 
     const hasTestStats = task.testStats && task.testStats.total > 0;
     const accuracy = hasTestStats ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100) : 0;

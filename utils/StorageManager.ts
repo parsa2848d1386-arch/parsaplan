@@ -1,5 +1,5 @@
 
-import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject, StreamType, AppSettings } from '../types';
+import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject, StreamType, AppSettings, ArchivedPlan } from '../types';
 
 // --- TYPES ---
 
@@ -16,6 +16,7 @@ export interface AppDataV1 {
     totalDays?: number;
     subjects?: CustomSubject[];
     customSubjects?: CustomSubject[];
+    archivedPlans?: ArchivedPlan[];
     settings: AppSettings;
     lastUpdated: number;
     schemaVersion?: number;

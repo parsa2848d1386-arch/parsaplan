@@ -4,8 +4,8 @@ import { Clock, Star, Target, ChevronDown, ChevronUp, MoreVertical, Edit2, Trash
 
 interface Props {
     task: SubjectTask;
-    onEdit: (task: SubjectTask) => void;
-    onDelete: (id: string) => void;
+    onEdit: (e: React.MouseEvent, task: SubjectTask) => void;
+    onDelete: (e: React.MouseEvent, id: string) => void;
     onToggleComplete: (task: SubjectTask) => void;
 }
 
@@ -44,10 +44,10 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
                 </div>
 
                 <div className="flex items-center gap-1">
-                    <button onClick={() => onEdit(task)} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-indigo-500 transition">
+                    <button onClick={(e) => onEdit(e, task)} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-indigo-500 transition">
                         <Edit2 size={16} />
                     </button>
-                    <button onClick={() => onDelete(task.id!)} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-rose-500 transition">
+                    <button onClick={(e) => onDelete(e, task.id!)} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-rose-500 transition">
                         <Trash2 size={16} />
                     </button>
                 </div>

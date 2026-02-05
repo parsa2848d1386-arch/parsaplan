@@ -22,7 +22,7 @@ const STUDY_TYPES: { id: StudyType; label: string; icon: any }[] = [
 ];
 
 const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDayId, defaultDateStr }) => {
-    const { scheduleReview, totalDays, subjects: customSubjects } = useStore();
+    const { scheduleReview, totalDays, subjects: customSubjects, settings, startDate } = useStore();
     const [formData, setFormData] = useState<Partial<SubjectTask>>({});
     const [tab, setTab] = useState<'info' | 'report'>('info');
     const [tagInput, setTagInput] = useState('');
@@ -228,41 +228,51 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                 </select>
                             </div>
 
-                            {/* Subject Selection (Conditional) */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
-                                        {isExamMode ? 'انتخاب دروس آزمون (چند انتخابی)' : 'انتخاب درس'}
-                                    </label>
-                                    {!isExamMode && (
-                                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                                            <button type="button" onClick={() => setViewMode('grid')} className={`p-1 rounded-md ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><LayoutGrid size={14} /></button>
-                                            <button type="button" onClick={() => setViewMode('list')} className={`p-1 rounded-md ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><List size={14} /></button>
-                                        </div>
-                                    )}
-                                </div>
+                            {/* --- Subject Filter Logic --- */}
+                            {(() => {
+                                const currentStream = settings?.stream || 'general';
+                                const allowedSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
+                                const filteredIcons = Object.entries(SUBJECT_ICONS).filter(([name]) =>
+                                    allowedSubjects.includes(name) || name === 'شخصی'
+                                );
 
-                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
-                                    {Object.entries(SUBJECT_ICONS).map(([name, style]) => {
-                                        const isSelected = isExamMode ? selectedExamSubjects.includes(name) : formData.subject === name;
-                                        return (
-                                            <button
-                                                key={name}
-                                                type="button"
-                                                onClick={() => isExamMode ? handleExamSubjectToggle(name) : setFormData({ ...formData, subject: name as Subject })}
-                                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all hover:scale-105 active:scale-95 aspect-square ${isSelected
-                                                    ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/30'
-                                                    : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700/80 grayscale hover:grayscale-0'
-                                                    }`}
-                                            >
-                                                <span className="text-xl mb-1">{style.icon}</span>
-                                                <span className="text-[9px] font-medium text-center truncate w-full text-gray-700 dark:text-gray-300">{name}</span>
-                                                {isExamMode && isSelected && <CheckCircle2 size={10} className="absolute top-1 right-1 text-indigo-500" />}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                return (
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                {isExamMode ? 'انتخاب دروس آزمون (چند انتخابی)' : 'انتخاب درس'}
+                                            </label>
+                                            {!isExamMode && (
+                                                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+                                                    <button type="button" onClick={() => setViewMode('grid')} className={`p-1 rounded-md ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><LayoutGrid size={14} /></button>
+                                                    <button type="button" onClick={() => setViewMode('list')} className={`p-1 rounded-md ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><List size={14} /></button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                                            {filteredIcons.map(([name, style]) => {
+                                                const isSelected = isExamMode ? selectedExamSubjects.includes(name) : formData.subject === name;
+                                                return (
+                                                    <button
+                                                        key={name}
+                                                        type="button"
+                                                        onClick={() => isExamMode ? handleExamSubjectToggle(name) : setFormData({ ...formData, subject: name as Subject })}
+                                                        className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all hover:scale-105 active:scale-95 aspect-square ${isSelected
+                                                            ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/30'
+                                                            : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700/80 grayscale hover:grayscale-0'
+                                                            }`}
+                                                    >
+                                                        <span className="text-xl mb-1">{style.icon}</span>
+                                                        <span className="text-[9px] font-medium text-center truncate w-full text-gray-700 dark:text-gray-300">{name}</span>
+                                                        {isExamMode && isSelected && <CheckCircle2 size={10} className="absolute top-1 right-1 text-indigo-500" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Input Fields */}
                             {isExamMode ? (

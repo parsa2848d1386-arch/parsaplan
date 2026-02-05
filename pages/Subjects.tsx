@@ -167,12 +167,12 @@ const Subjects = () => {
 
         // If it's a default subject (exists in SUBJECT_ICONS)
         const isDefault = Object.keys(SUBJECT_ICONS).includes(s.name);
+
         if (isDefault) {
-            // Show only if it belongs to the current stream
-            // OR if we are in 'general' stream (maybe show all? or specific subset?)
-            // For now, let's strict filter if stream is defined
-            if (currentStream === 'general') return true;
-            return streamSubjects.includes(s.name);
+            // Only show if it belongs to the current stream
+            const isStandard = streamSubjects.includes(s.name);
+            const isGeneral = SUBJECT_LISTS['general'].includes(s.name);
+            return isStandard || isGeneral;
         }
 
         // It's a custom user added subject

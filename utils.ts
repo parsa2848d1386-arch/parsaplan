@@ -161,3 +161,55 @@ export const toGregorian = (jy: number, jm: number, jd: number): Date => {
     }
     return new Date(gy, gm - 1, gd);
 };
+export const generateId = (): string => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+export const parseTestCount = (range: string | undefined): number => {
+    if (!range) return 0;
+
+    // Convert Persian numbers to English
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    let clean = range;
+    for (let i = 0; i < 10; i++) {
+        clean = clean.replace(new RegExp(persianDigits[i], 'g'), i.toString());
+    }
+
+    // Normalize separators: replace "ta", "to", "until", and non-digit chars (except dash/comma) with space
+    clean = clean.toLowerCase().replace(/(ta|to|until)/g, ' ');
+    clean = clean.replace(/[^\d\-\,]/g, ' ').trim();
+
+    if (!clean) return 0;
+
+    // 1. Check for standard range "10-20"
+    if (clean.includes('-')) {
+        const parts = clean.split('-').map(s => parseInt(s.trim()));
+        if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            return Math.abs(parts[1] - parts[0]) + 1;
+        }
+    }
+
+    // 2. Check for comma list "10, 12, 15"
+    if (clean.includes(',')) {
+        return clean.split(',').filter(s => s.trim().length > 0).length;
+    }
+
+    // 3. Fallback: Parse space-separated numbers
+    // e.g. "30 45" (from "30 ta 45")
+    const parts = clean.split(/\s+/).filter(Boolean).map(Number);
+
+    if (parts.length >= 2) {
+        // If two numbers found like "30 45", assume range
+        return Math.abs(parts[parts.length - 1] - parts[0]) + 1;
+    }
+
+    if (parts.length === 1) {
+        // If single number "45", assume quantity
+        return parts[0];
+    }
+
+    return 0;
+};

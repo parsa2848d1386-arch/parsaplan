@@ -9,6 +9,8 @@ import {
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig, LogEntry } from '../types';
 import { AISettings } from '../components/AISettings';
+import { useNavigate } from 'react-router-dom';
+import { ArchivedPlan } from '../types';
 
 // --- Components ---
 
@@ -437,8 +439,10 @@ const Settings = () => {
         startDate, setStartDate, autoFixDate, totalDays, setTotalDays,
         exportData, importData, resetProgress,
         darkMode, toggleDarkMode, viewMode, setViewMode, showToast, showQuotes, toggleShowQuotes,
-        settings, updateSettings
+        settings, updateSettings, archivedPlans, archiveCurrentPlan
     } = useStore();
+
+    const navigate = useNavigate();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
@@ -471,6 +475,12 @@ const Settings = () => {
     const handleSectionClick = (category: string) => {
         if (category === 'ai') {
             setIsAIModalOpen(true);
+        } else if (category === 'subjects') {
+            navigate('/subjects');
+        } else if (category === 'routine') {
+            navigate('/routine');
+        } else if (category === 'analysis') {
+            navigate('/analysis');
         } else {
             setModalCategory(category);
         }
@@ -699,19 +709,43 @@ const Settings = () => {
                 </div>
             )}
 
-            {/* Danger Zone */}
-            <div className="bg-red-50 dark:bg-red-900/10 p-5 rounded-3xl border border-red-100 dark:border-red-900/30">
-                <div className="flex items-center gap-3 mb-4 text-red-600 dark:text-red-400">
-                    <ShieldAlert size={20} />
-                    <h2 className="font-bold">منطقه خطر</h2>
+            {/* Danger Zone & Archive (سیستم خفن!) */}
+            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-3xl border border-amber-100 dark:border-amber-900/30 space-y-4">
+                <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+                    <History size={20} />
+                    <h2 className="font-bold">مدیریت دوره‌ها (آرشیو)</h2>
                 </div>
-                <button
-                    onClick={resetProgress}
-                    className="w-full flex items-center justify-center gap-2 bg-white dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 py-3 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-900/40 transition text-sm"
-                >
-                    <RefreshCw size={18} />
-                    شروع مجدد کل برنامه (Reset Factory)
-                </button>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                        onClick={() => {
+                            const title = prompt('نامی برای برنامه فعلی خود انتخاب کنید:', `برنامه ${getFullShamsiDate(new Date(startDate))}`);
+                            if (title !== null) archiveCurrentPlan(title);
+                        }}
+                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition text-sm shadow-md"
+                    >
+                        <Save size={18} />
+                        آرشیو برنامه فعلی و شروع جدید
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/history')}
+                        className="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+                    >
+                        <Eye size={18} />
+                        مشاهده آرشیو و تاریخچه (سیستم خفن)
+                    </button>
+                </div>
+
+                <div className="pt-4 border-t border-amber-100 dark:border-amber-900/30">
+                    <button
+                        onClick={resetProgress}
+                        className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-700 py-2 font-bold text-xs"
+                    >
+                        <RefreshCw size={14} />
+                        پاک کردن کامل همه داده‌ها (انجام نشود مگر در مورد اضطراری)
+                    </button>
+                </div>
             </div>
 
             {/* Help Section (Moved to Bottom) */}

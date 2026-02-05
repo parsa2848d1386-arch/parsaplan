@@ -4,11 +4,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Trash2, Pencil, Plus, Search, AlertTriangle, ArrowDownToLine, X, Calendar, SlidersHorizontal, BookOpen, Clock, Zap, StickyNote, Save, Quote, Trophy, ArrowRightCircle, Target, Bot } from 'lucide-react';
 import AISettings from '../components/AISettings';
 import ProgressBar from '../components/ProgressBar';
-import { Subject, SubjectTask } from '../types';
+import { Subject, SubjectTask, SUBJECT_LISTS, getSubjectStyle } from '../types';
 import TaskModal from '../components/TaskModal';
 import { TaskCard } from '../components/TaskCard';
 import MoodTracker from '../components/MoodTracker';
-import { getShamsiDate, toIsoString, isHoliday } from '../utils';
+import { getShamsiDate, toIsoString, isHoliday, parseTestCount } from '../utils';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -20,7 +20,7 @@ const Dashboard = () => {
         getDailyNote, saveDailyNote,
         viewMode, setIsTimerOpen,
         level, xp, dailyQuote, shiftIncompleteTasks,
-        totalDays, showQuotes
+        totalDays, showQuotes, settings, subjects
     } = useStore();
 
     const navigate = useNavigate();
@@ -53,7 +53,23 @@ const Dashboard = () => {
     };
 
     // --- Logic for Filtering Tasks ---
+    const currentStream = settings?.stream || 'general';
+    const streamSubjects = SUBJECT_LISTS[currentStream] || [];
+
+    // Filter tasks based on Stream + Search + Category
     let processedTasks = searchQuery.length > 0 ? allTasks : getTasksByDate(activeDateIso);
+
+    // Filter by Stream (Hide tasks from other streams, unless Custom)
+    processedTasks = processedTasks.filter(t => {
+        if (t.isCustom) return true;
+        // Check if subject exists in current stream or if it's a general subject
+        // For simplicity, we just check if it's in the list. 
+        // Note: Global "Custom" logic might need better handling if user named it "Math" manually.
+        const isStandard = streamSubjects.includes(t.subject);
+        const isGeneral = SUBJECT_LISTS['general'].includes(t.subject);
+        return isStandard || isGeneral || t.isCustom;
+    });
+
     if (searchQuery.length > 0) {
         processedTasks = processedTasks.filter(t =>
             t.subject.includes(searchQuery) ||
@@ -293,9 +309,16 @@ const Dashboard = () => {
             {showFilters && (
                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                     <button onClick={() => setFilterSubject('ALL')} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filterSubject === 'ALL' ? 'bg-gray-800 text-white border-gray-800 dark:bg-white dark:text-gray-900' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>همه</button>
-                    {Object.values(Subject).map(sub => (
-                        <button key={sub} onClick={() => setFilterSubject(sub)} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filterSubject === sub ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>{sub}</button>
-                    ))}
+                    {/* Combine stream subjects with any custom user subjects */}
+                    {Array.from(new Set([...streamSubjects, ...subjects.map(s => s.name).filter(n => !Object.values(Subject).includes(n as any))])).map(sub => {
+                        const style = getSubjectStyle(sub);
+                        return (
+                            <button key={sub} onClick={() => setFilterSubject(sub)} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1 ${filterSubject === sub ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
+                                <span>{style.icon}</span>
+                                {sub}
+                            </button>
+                        )
+                    })}
                 </div>
             )}
 
@@ -318,59 +341,9 @@ const Dashboard = () => {
                                 <div>
                                     <h3>{rawOverdueTasks.length} تسک عقب‌افتاده</h3>
                                     {(() => {
-                                        const calculateTestCount = (range: string | undefined): number => {
-                                            if (!range) return 0;
-
-                                            // Convert Persian numbers to English
-                                            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-                                            let clean = range;
-                                            for (let i = 0; i < 10; i++) {
-                                                clean = clean.replace(new RegExp(persianDigits[i], 'g'), i.toString());
-                                            }
-
-                                            // Normalize separators: replace "ta", "to", "until", and non-digit chars (except dash/comma) with space
-                                            // Note: Keep dash and comma separate
-                                            clean = clean.toLowerCase().replace(/(ta|to|until)/g, ' ');
-                                            clean = clean.replace(/[^\d\-\,]/g, ' ').trim();
-
-                                            if (!clean) return 0;
-
-                                            // 1. Check for standard range "10-20"
-                                            if (clean.includes('-')) {
-                                                const parts = clean.split('-').map(s => parseInt(s.trim()));
-                                                if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                                                    return Math.abs(parts[1] - parts[0]) + 1;
-                                                }
-                                            }
-
-                                            // 2. Check for comma list "10, 12, 15"
-                                            if (clean.includes(',')) {
-                                                return clean.split(',').filter(s => s.trim().length > 0).length;
-                                            }
-
-                                            // 3. Fallback: Parse space-separated numbers
-                                            // e.g. "30 45" (from "30 ta 45")
-                                            const parts = clean.split(/\s+/).filter(Boolean).map(Number);
-
-                                            if (parts.length >= 2) {
-                                                // If two numbers found like "30 45", assume range
-                                                return Math.abs(parts[parts.length - 1] - parts[0]) + 1;
-                                            }
-
-                                            if (parts.length === 1) {
-                                                // If single number "45"
-                                                // User feedback implies "8 tasks each 45 tests", logic was showing 2. 
-                                                // We will assume if N > 0, it represents a generic quantity/workload.
-                                                return parts[0];
-                                            }
-
-                                            return 0;
-                                        };
-
                                         const overdueTests = rawOverdueTasks.reduce((acc, t) => {
-                                            // Fix: Always calculate from testRange (Planned workload), 
-                                            // do not use testStats.total which implies "Completed/Attempted" tests.
-                                            const planned = calculateTestCount(t.testRange);
+                                            // Calculate based on testRange using helper
+                                            const planned = parseTestCount(t.testRange);
                                             return acc + (planned > 0 ? planned : 0);
                                         }, 0);
 

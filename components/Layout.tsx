@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw } from 'lucide-react';
+import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, History as HistoryIcon } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import FocusTimer from './FocusTimer';
 import { ToastContainer, ConfirmModal } from './Feedback';
@@ -21,6 +21,7 @@ const Layout = () => {
         { to: '/routine', icon: CalendarClock, label: 'روتین' },
         { to: '/subjects', icon: BookOpen, label: 'دروس' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل' },
+        { to: '/history', icon: HistoryIcon, label: 'تاریخچه' },
         { to: '/leaderboard', icon: Trophy, label: 'لیگ' },
         { to: '/settings', icon: Settings, label: 'تنظیمات' },
     ];
