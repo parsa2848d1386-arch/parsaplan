@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { SubjectTask, Subject } from '../types';
 import { TaskCard } from './TaskCard';
 import { Sparkles, X, Check, Plus } from 'lucide-react';
@@ -109,37 +110,41 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
         setIsTaskModalOpen(true);
     };
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" style={{ zIndex: 2147483647 }}>
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none" style={{ zIndex: 2147483647 }}>
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
+                className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 pointer-events-auto"
                 onClick={onClose}
-            />
+            ></div>
 
             {/* Modal Container */}
-            {/* Modal Container */}
-            {/* Modal Container */}
-            <div className="fixed inset-0 sm:relative sm:inset-auto pointer-events-auto w-full max-w-2xl bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-none md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-x-0 sm:border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[90vh] animate-in zoom-in-95 fade-in duration-300">
+            <div className="relative pointer-events-auto w-full max-w-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden flex flex-col 
+                h-[100dvh] rounded-none 
+                sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:m-4 sm:border sm:border-white/20 sm:dark:border-gray-700/50 
+                animate-in zoom-in-95 fade-in duration-200">
 
                 {/* Header */}
-                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-md z-10 sticky top-0">
                     <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                         <Sparkles size={20} />
-                        پیش‌نمایش و ویرایش تسک‌ها
+                        بررسی و ویرایش هوشمند
                     </h3>
-                    <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition text-gray-400">
+                    <button
+                        onClick={onClose}
+                        className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-rose-100 hover:text-rose-500 rounded-full transition text-gray-500 dark:text-gray-400"
+                    >
                         <X size={20} />
                     </button>
                 </div>
 
-                {/* List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar h-full">
-                    <div className="text-xs text-center text-gray-500 mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
-                        {tasks.length} تسک آماده افزودن است. می‌توانید آنها را ویرایش یا حذف کنید.
+                {/* List Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
+                    <div className="text-xs text-center font-medium text-gray-500 mb-2 bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300">
+                        {tasks.length} تسک توسط هوش مصنوعی پیشنهاد شده است.
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 pb-4">
                         {previewTasks.map((task) => (
                             <TaskCard
                                 key={task.id}
@@ -154,34 +159,41 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
 
                     <button
                         onClick={handleAddNew}
-                        className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 hover:text-indigo-500 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition flex items-center justify-center gap-2 text-sm font-bold mt-4"
+                        className="w-full py-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-white dark:hover:bg-gray-800 transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
                     >
-                        <Plus size={18} /> افزودن تسک دستی
+                        <Plus size={20} /> افزودن تسک جدید
                     </button>
                 </div>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex gap-3 z-10">
-                    <button onClick={onClose} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                {/* Footer Action */}
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-3 z-10 pb-8 sm:pb-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3.5 rounded-2xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition active:scale-95"
+                    >
                         انصراف
                     </button>
-                    <button onClick={onConfirm} className="flex-[2] bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3 rounded-xl text-sm font-bold hover:shadow-lg hover:shadow-indigo-500/30 transition flex items-center justify-center gap-2">
-                        <Check size={18} />
-                        تایید و افزودن به برنامه
+                    <button
+                        onClick={onConfirm}
+                        className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-2xl text-sm font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 transition active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        <Check size={20} />
+                        تایید و ثبت نهایی
                     </button>
                 </div>
             </div>
 
-            {/* Task Edit Modal */}
+            {/* Nested Task Edit Modal */}
             <TaskModal
                 isOpen={isTaskModalOpen}
                 onClose={() => setIsTaskModalOpen(false)}
                 onSave={handleSaveTask}
                 initialData={editingIndex !== null ? previewTasks[editingIndex] : null}
-                currentDayId={1} // Dummy, relies on date mostly
+                currentDayId={1}
                 defaultDateStr={editingIndex !== null ? previewTasks[editingIndex].date : new Date().toISOString().split('T')[0]}
             />
-        </div>
+        </div>,
+        document.body
     );
 };
 
