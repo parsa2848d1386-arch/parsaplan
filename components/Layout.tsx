@@ -59,8 +59,11 @@ const Layout = () => {
                     <aside className={`hidden md:flex flex-col glass dark:bg-gray-800/80 border-l border-gray-200/50 dark:border-gray-700/50 h-full transition-all duration-300 shadow-glass ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
                         <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                             <div className="flex items-center gap-2">
-                                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
-                                    <CheckCircle2 size={24} />
+                                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200 dark:shadow-none">
+                                    <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="48" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M132.8 243.2c10.4 0 24 16.8 32.8 33.6c8.8 16.8 20 54.4 34.4 54.4c14.4 0 20-33.6 44-93.6c24-60 67.2-101.6 132-101.6c76 0 136 60 136 136 c0 76-60 136-136 136c-52.8 0-96-32-113.6-77.6" />
+                                        <path d="M370 270v45l30 30" strokeWidth="32" />
+                                    </svg>
                                 </div>
                                 {!sidebarCollapsed && <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">ParsaPlan</h1>}
                             </div>
