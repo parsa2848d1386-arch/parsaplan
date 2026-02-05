@@ -426,7 +426,7 @@ ${next7Days}
                 <div className="bg-white dark:bg-gray-900 md:rounded-3xl shadow-2xl w-full max-w-6xl h-full md:h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border-x border-gray-200 dark:border-gray-800 ring-1 ring-white/10">
 
                     {/* Sidebar (History) */}
-                    <div className={`${showHistory ? 'w-64 translate-x-0' : 'w-0 -translate-x-full opacity-0 pointer-events-none md:pointer-events-auto md:opacity-100 md:w-0 border-none'} md:relative absolute inset-y-0 left-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-20 flex flex-col`}>
+                    <div className={`${showHistory ? 'w-64 translate-x-0 border-r border-gray-200 dark:border-gray-800' : 'w-0 -translate-x-full opacity-0 md:opacity-100 md:w-0 border-none overflow-hidden'} md:relative absolute inset-y-0 left-0 bg-gray-50 dark:bg-gray-900 transition-all duration-300 z-20 flex flex-col`}>
                         <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
                             <h3 className="font-bold text-gray-700 dark:text-gray-200">تاریخچه</h3>
                             <button onClick={() => setShowHistory(false)} className="md:hidden p-1"><X size={16} /></button>

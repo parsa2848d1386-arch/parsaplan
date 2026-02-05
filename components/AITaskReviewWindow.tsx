@@ -32,22 +32,24 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
 
     // Convert ParsedTask to SubjectTask for checking/rendering
     const previewTasks: SubjectTask[] = useMemo(() => {
-        return tasks.map((t, idx) => ({
-            id: `preview-${idx}`,
-            dayId: 0,
-            date: t.date,
-            subject: t.subject,
-            topic: t.topic || '',
-            details: t.details || '',
-            testRange: t.testRange || '',
-            isCompleted: false, // Default for preview
-            isCustom: true,
-            tags: [],
-            // Store original title in notes or somewhere if needed, but SubjectTask strictly uses subject/topic
-            // We might map 'title' to topic if topic is empty?
-            // Dashboard.tsx says: task.subject is "Physics", task.topic is "Waves".
-            // ParsedTask has title. Let's assume title isn't used much in standard card or map it to details?
-        }));
+        return tasks.map((t, idx) => {
+            // Safety checks / defaults
+            const safeDate = t.date && !isNaN(Date.parse(t.date)) ? t.date : new Date().toISOString().split('T')[0];
+            const safeSubject = t.subject || 'شخصی'; // Default subject
+
+            return {
+                id: `preview-${idx}`,
+                dayId: 0,
+                date: safeDate,
+                subject: safeSubject,
+                topic: t.topic || 'بدون عنوان',
+                details: t.details || '',
+                testRange: t.testRange || '',
+                isCompleted: false, // Default for preview
+                isCustom: true,
+                tags: [],
+            };
+        });
     }, [tasks]);
 
     const handleEditClick = (e: React.MouseEvent, task: SubjectTask) => {
