@@ -151,15 +151,18 @@ const Dashboard = () => {
 
             {/* Header & Quote */}
             <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-5 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-white/40 dark:border-gray-700/50">
                     <div>
-                        <h1 className="text-xl font-black text-gray-800 dark:text-white tracking-tight">سلام، {userName} 👋</h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Trophy size={10} />
-                                سطح {level}
-                            </span>
-                            <span className="text-[10px] text-gray-400">({xp} XP)</span>
+                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight leading-tight">سلام، {userName} 👋</h1>
+                        <div className="flex items-center gap-3 mt-2">
+                            <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800/50">
+                                <Trophy size={14} className="text-amber-500" />
+                                <span className="text-[11px] font-black text-amber-700 dark:text-amber-400">سطح {level}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/50">
+                                <Zap size={14} className="text-indigo-500" />
+                                <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-400">{xp} XP</span>
+                            </div>
                         </div>
                     </div>
                     <div className="relative w-14 h-14 flex items-center justify-center">
@@ -172,15 +175,25 @@ const Dashboard = () => {
                 </div>
 
                 {/* Mood Tracker (Feature 10) */}
-                {isTodayView && <MoodTracker />}
+                {isTodayView && (
+                    <div className="bg-white/40 dark:bg-gray-800/20 backdrop-blur-sm rounded-[2rem] p-4 border border-white/40 dark:border-gray-700/30">
+                        <MoodTracker />
+                    </div>
+                )}
 
                 {/* Daily Quote */}
                 {showQuotes && (
-                    <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-4 text-white shadow-lg relative overflow-hidden">
-                        <Quote size={40} className="absolute right-2 top-2 text-white/10 rotate-180" />
-                        <p className="text-sm font-medium leading-6 relative z-10 text-center px-4">
-                            "{dailyQuote}"
-                        </p>
+                    <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 rounded-[2.5rem] p-6 text-white shadow-xl relative overflow-hidden group">
+                        <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all duration-700"></div>
+                        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-indigo-400/20 rounded-full blur-3xl"></div>
+
+                        <div className="relative z-10 flex flex-col items-center gap-3">
+                            <Quote size={28} className="text-white/40 rotate-180" fill="currentColor" />
+                            <p className="text-base font-black leading-relaxed text-center px-4 drop-shadow-sm">
+                                {dailyQuote}
+                            </p>
+                            <div className="h-0.5 w-12 bg-white/20 rounded-full mt-1"></div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -261,30 +274,37 @@ const Dashboard = () => {
             </div>
 
             {/* Daily Note Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <div className="flex justify-between items-center mb-2 cursor-pointer" onClick={() => setNoteExpanded(!noteExpanded)}>
-                    <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                        <StickyNote size={14} className="text-amber-500" />
+            <div className={`bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-[2rem] p-5 border border-white/40 dark:border-gray-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-500 ${noteExpanded ? 'ring-2 ring-amber-100 dark:ring-amber-900/20' : ''}`}>
+                <div className="flex justify-between items-center mb-3 cursor-pointer group" onClick={() => setNoteExpanded(!noteExpanded)}>
+                    <h3 className="text-sm font-black text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                        <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                            <StickyNote size={18} fill="currentColor" className="opacity-70" />
+                        </div>
                         یادداشت روزانه
                     </h3>
-                    <div className={`transition-transform duration-300 ${noteExpanded ? 'rotate-180' : ''}`}>
-                        <ChevronLeft size={16} className="text-gray-400" />
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 transition-all duration-300 ${noteExpanded ? 'rotate-180 bg-amber-50 dark:bg-amber-900/20 text-amber-600' : 'text-gray-400'}`}>
+                        <ChevronRight size={18} className="rotate-270" />
                     </div>
                 </div>
 
-                {(noteExpanded || currentNote) && (
-                    <div className={`transition-all duration-300 ${noteExpanded ? 'opacity-100' : 'opacity-80'}`}>
-                        <textarea
-                            value={currentNote}
-                            onChange={(e) => setCurrentNote(e.target.value)}
-                            onBlur={handleSaveNote}
-                            placeholder="امروز چطور گذشت؟ ..."
-                            className={`w-full bg-amber-50/50 dark:bg-gray-700/50 border border-amber-100 dark:border-gray-600 rounded-xl p-3 text-sm outline-none focus:bg-white dark:focus:bg-gray-700 transition text-gray-800 dark:text-gray-200 placeholder:text-gray-400 min-h-[80px] ${!noteExpanded ? 'h-10 min-h-0 overflow-hidden text-ellipsis whitespace-nowrap pt-2' : ''}`}
-                        />
-                        {noteExpanded && (
-                            <button onClick={handleSaveNote} className="mt-2 w-full text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 py-2 rounded-lg hover:bg-amber-200 transition">ذخیره یادداشت</button>
-                        )}
-                    </div>
+                <div className={`transition-all duration-500 overflow-hidden ${noteExpanded ? 'max-h-[300px] opacity-100 mt-2' : currentNote ? 'max-h-16 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <textarea
+                        value={currentNote}
+                        onChange={(e) => setCurrentNote(e.target.value)}
+                        onBlur={handleSaveNote}
+                        placeholder="امروز چطور گذشت؟ اهداف انجام شد؟ ..."
+                        className={`w-full bg-slate-50/50 dark:bg-gray-900/30 border border-slate-100 dark:border-gray-700 rounded-2xl p-4 text-sm outline-none focus:bg-white dark:focus:bg-gray-900 focus:ring-4 focus:ring-indigo-500/5 transition-all text-gray-800 dark:text-gray-200 placeholder:text-gray-400 leading-relaxed shadow-inner ${!noteExpanded ? 'h-14 overflow-hidden text-ellipsis line-clamp-2 py-2' : 'min-h-[120px]'}`}
+                    />
+                    {noteExpanded && (
+                        <div className="flex justify-end mt-3">
+                            <button onClick={handleSaveNote} className="px-6 py-2.5 text-xs font-black bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2">
+                                <Save size={14} /> ذخیره نهایی
+                            </button>
+                        </div>
+                    )}
+                </div>
+                {!noteExpanded && !currentNote && (
+                    <p onClick={() => setNoteExpanded(true)} className="text-[11px] text-gray-400 font-medium cursor-pointer hover:text-indigo-500 transition-colors mr-10">یک یادداشت برای امروز بنویسید...</p>
                 )}
             </div>
 

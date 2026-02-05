@@ -60,9 +60,10 @@ const Layout = () => {
                         <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200 dark:shadow-none">
-                                    <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="38" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M120 265 L185 330 C225 245 260 145 350 145 C435 145 435 325 350 325 C310 325 275 300 250 420" />
-                                        <path d="M350 195 L350 240 L395 240" strokeWidth="28" />
+                                    <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M120 270 L195 340 C235 240 270 140 360 140 C445 140 445 320 360 320 C320 320 285 295 260 420" />
+                                        <path d="M360 230 L360 185" strokeWidth="26" />
+                                        <path d="M360 230 L399 252.5" strokeWidth="26" />
                                     </svg>
                                 </div>
                                 {!sidebarCollapsed && <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">ParsaPlan</h1>}
@@ -156,31 +157,34 @@ const Layout = () => {
                     </aside>
 
                     {/* Main Content Area */}
-                    <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-900 dark:to-slate-950">
-                        <div className="flex-1 overflow-y-auto no-scrollbar pb-40 md:pb-5 scroll-smooth">
+                    <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 dark:bg-gray-950">
+                        {/* Premium Background Decorative Elements */}
+                        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                            <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-100/40 dark:bg-indigo-900/10 rounded-full blur-[120px]"></div>
+                            <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-100/40 dark:bg-purple-900/10 rounded-full blur-[120px]"></div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-32 md:pb-5 scroll-smooth relative z-10">
                             <div className="max-w-5xl mx-auto w-full">
                                 <Outlet />
                             </div>
                         </div>
 
-                        {/* Timer Floating Button (Mobile) */}
-
-
-                        {/* Mobile Bottom Nav - Improved glassmorphism */}
-                        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/40 dark:bg-gray-800/40 backdrop-blur-2xl border border-white/20 dark:border-gray-700/30 px-2 py-1 flex justify-around items-center z-50 pb-safe shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] rounded-[2.5rem]">
+                        {/* Mobile Bottom Nav - Lowered z-index and enhanced aesthetics */}
+                        <nav className="md:hidden fixed bottom-6 left-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/20 dark:border-gray-800/50 px-2 py-2 flex justify-between items-center z-40 pb-safe shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2.5rem] transition-all duration-300">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}
                                     to={item.to}
-                                    className={({ isActive }) => `flex flex-col items-center gap-0.5 p-1.5 rounded-2xl transition-all duration-300 ${isActive ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                    className={({ isActive }) => `flex flex-col items-center justify-center flex-1 min-w-0 transition-all duration-500 ${isActive ? 'text-indigo-600 dark:text-indigo-400 translate-y-[-8px]' : 'text-gray-400 dark:text-gray-500'}`}
                                 >
                                     {({ isActive }) => (
-                                        <>
-                                            <div className={`p-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-indigo-50/80 dark:bg-indigo-900/40 shadow-sm' : 'bg-transparent'}`}>
-                                                <item.icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                                        <div className="flex flex-col items-center">
+                                            <div className={`p-2 rounded-2xl transition-all duration-500 ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-300 dark:shadow-none scale-110' : 'bg-transparent'}`}>
+                                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                                             </div>
-                                            <span className={`text-[9px] font-bold transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-0 h-0 w-0'}`}>{isActive ? item.label : ''}</span>
-                                        </>
+                                            <span className={`text-[9px] font-black mt-1 transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{item.label}</span>
+                                        </div>
                                     )}
                                 </NavLink>
                             ))}

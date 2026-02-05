@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Subject, SubjectTask, getSubjectStyle, SUBJECT_ICONS, CustomSubject, SUBJECT_LISTS } from '../types';
-import { ChevronDown, ChevronUp, Circle, CheckCircle2, Pencil, Trash2, Plus, X, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, Circle, CheckCircle2, Pencil, Trash2, Plus, X, Check, LayoutGrid } from 'lucide-react';
 import TaskModal from '../components/TaskModal';
 
 // Modal for adding/editing custom subjects
@@ -56,7 +56,7 @@ const SubjectModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
@@ -242,13 +242,21 @@ const Subjects = () => {
                 existingSubjectNames={subjects.map(s => s.name)}
             />
 
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-xl font-bold text-gray-800 dark:text-white">بودجه‌بندی دروس</h1>
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-2xl font-black text-gray-800 dark:text-white flex items-center gap-2 tracking-tight">
+                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+                            <LayoutGrid className="text-white" size={24} />
+                        </div>
+                        بودجه‌بندی دروس
+                    </h1>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">وضعیت مطالعه و تست‌های هر درس به تفکیک</p>
+                </div>
                 <button
                     onClick={openAddSubject}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-indigo-700 transition active:scale-95"
+                    className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl font-black text-[11px] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 hover:translate-y-[-2px] transition-all active:scale-95"
                 >
-                    <Plus size={16} />
+                    <Plus size={18} />
                     درس جدید
                 </button>
             </div>

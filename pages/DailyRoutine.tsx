@@ -122,10 +122,15 @@ const DailyRoutinePage = () => {
                 isNewSlot={isNewSlot}
             />
 
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-xl font-black text-gray-800 dark:text-white">برنامه روزانه</h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">الگوی ثابت برای موفقیت</p>
+            <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-200 dark:shadow-none shrink-0">
+                        <Clock className="text-white" size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">برنامه روتین</h1>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">الگوی زمانی تکرارشونده و منظم شما</p>
+                    </div>
                 </div>
 
                 <div className="flex gap-2">

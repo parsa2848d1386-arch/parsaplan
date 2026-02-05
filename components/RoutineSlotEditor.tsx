@@ -94,7 +94,7 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
     const IconComp = getIconComponent(icon);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
@@ -157,8 +157,8 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
                                     key={t.value}
                                     onClick={() => setType(t.value)}
                                     className={`px-4 py-2 rounded-xl text-xs font-bold border transition-all ${type === t.value
-                                            ? `bg-${t.color}-100 dark:bg-${t.color}-900/30 text-${t.color}-700 dark:text-${t.color}-300 border-${t.color}-300 dark:border-${t.color}-700`
-                                            : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                        ? `bg-${t.color}-100 dark:bg-${t.color}-900/30 text-${t.color}-700 dark:text-${t.color}-300 border-${t.color}-300 dark:border-${t.color}-700`
+                                        : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
                                         }`}
                                 >
                                     {t.label}
@@ -176,8 +176,8 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
                                     key={ic.name}
                                     onClick={() => setIcon(ic.name)}
                                     className={`p-3 rounded-xl border transition-all ${icon === ic.name
-                                            ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700'
-                                            : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700'
+                                        : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
                                         }`}
                                     title={ic.label}
                                 >
@@ -192,9 +192,9 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">پیش‌نمایش:</p>
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${type === 'test' ? 'bg-rose-100 text-rose-600' :
-                                    type === 'review' ? 'bg-amber-100 text-amber-600' :
-                                        type === 'rest' ? 'bg-emerald-100 text-emerald-600' :
-                                            'bg-sky-100 text-sky-600'
+                                type === 'review' ? 'bg-amber-100 text-amber-600' :
+                                    type === 'rest' ? 'bg-emerald-100 text-emerald-600' :
+                                        'bg-sky-100 text-sky-600'
                                 }`}>
                                 <IconComp size={20} />
                             </div>

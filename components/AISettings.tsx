@@ -456,7 +456,7 @@ ${validSubjects}
         <>
             {/* MAIN AI SETTINGS MODAL */}
             {/* MAIN AI SETTINGS MODAL */}
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                 <div className="bg-white dark:bg-gray-900 md:rounded-3xl shadow-2xl w-full max-w-6xl h-full md:h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border-x border-gray-200 dark:border-gray-800 ring-1 ring-white/10">
 
                     {/* Sidebar (History) */}

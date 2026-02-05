@@ -565,7 +565,7 @@ const Settings = () => {
             <HelpSection />
 
             <div className="text-center mt-8 pb-8">
-                <p className="text-[10px] text-gray-300 dark:text-gray-600">ParsaPlan v4.4 - Designed for Excellence</p>
+                <p className="text-[10px] text-gray-300 dark:text-gray-600">ParsaPlan v4.5 - Designed for Excellence</p>
             </div>
         </div>
     );
