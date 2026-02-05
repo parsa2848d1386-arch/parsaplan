@@ -119,7 +119,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
 
             {/* Modal Container */}
             {/* Modal Container */}
-            <div className="relative pointer-events-auto w-full max-w-2xl mx-4 sm:mx-auto mb-24 sm:mb-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="relative pointer-events-auto w-full max-w-2xl mx-4 sm:mx-auto mb-24 sm:mb-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-10 fade-in duration-300">
 
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
@@ -133,7 +133,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 </div>
 
                 {/* List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar h-full">
                     <div className="text-xs text-center text-gray-500 mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
                         {tasks.length} تسک آماده افزودن است. می‌توانید آنها را ویرایش یا حذف کنید.
                     </div>
