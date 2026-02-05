@@ -12,6 +12,8 @@ export interface ParsedTask {
     details: string;
     testRange: string;
     date: string;
+    studyType?: 'exam' | 'analysis' | 'test_educational' | 'test_speed' | 'review' | 'study';
+    subTasks?: { subject: string; topic: string; }[];
 }
 
 interface AITaskReviewWindowProps {
@@ -48,6 +50,8 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 isCompleted: false, // Default for preview
                 isCustom: true,
                 tags: [],
+                studyType: t.studyType,
+                subTasks: t.subTasks ? t.subTasks.map((st, i) => ({ id: `sub-${idx}-${i}`, subject: st.subject, topic: st.topic })) : undefined
             };
         });
     }, [tasks]);
@@ -76,7 +80,9 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 topic: updated.topic || 'بدون عنوان',
                 details: updated.details || '',
                 testRange: updated.testRange || '',
-                date: updated.date || new Date().toISOString().split('T')[0]
+                date: updated.date || new Date().toISOString().split('T')[0],
+                studyType: updated.studyType,
+                subTasks: updated.subTasks ? updated.subTasks.map(st => ({ subject: st.subject, topic: st.topic })) : undefined
             };
             onUpdateTasks([...tasks, newToken]); // Append to end
         } else if (editingIndex !== null && updated) {
@@ -89,6 +95,8 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 details: updated.details || newTasks[editingIndex].details,
                 testRange: updated.testRange || newTasks[editingIndex].testRange,
                 date: updated.date || newTasks[editingIndex].date,
+                studyType: updated.studyType || newTasks[editingIndex].studyType,
+                subTasks: updated.subTasks || newTasks[editingIndex].subTasks,
             };
             onUpdateTasks(newTasks);
         }

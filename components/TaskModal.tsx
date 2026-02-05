@@ -1,10 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
-import { Subject, SubjectTask, SUBJECT_ICONS } from '../types';
+import { Subject, SubjectTask, SUBJECT_ICONS, StudyType, SubTask, SUBJECT_LISTS } from '../types';
 import { useStore } from '../context/StoreContext';
-import { X, Clock, Star, Target, Calendar, CheckCircle2, Tag, CalendarClock, ChevronRight, ChevronLeft, LayoutGrid, List } from 'lucide-react';
-
-
+import { X, Clock, Star, Target, Calendar, CheckCircle2, Tag, CalendarClock, ChevronRight, ChevronLeft, LayoutGrid, List, Beaker, BookOpen, Search, GraduationCap } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -15,12 +12,25 @@ interface Props {
     defaultDateStr?: string;
 }
 
+const STUDY_TYPES: { id: StudyType; label: string; icon: any }[] = [
+    { id: 'study', label: 'مطالعه', icon: BookOpen },
+    { id: 'test_educational', label: 'تست آموزشی', icon: Beaker },
+    { id: 'test_speed', label: 'تست سرعتی', icon: Clock },
+    { id: 'review', label: 'مرور', icon: CalendarClock },
+    { id: 'exam', label: 'آزمون', icon: GraduationCap },
+    { id: 'analysis', label: 'تحلیل آزمون', icon: Search },
+];
+
 const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDayId, defaultDateStr }) => {
-    const { scheduleReview, totalDays } = useStore();
+    const { scheduleReview, totalDays, subjects: customSubjects } = useStore();
     const [formData, setFormData] = useState<Partial<SubjectTask>>({});
     const [tab, setTab] = useState<'info' | 'report'>('info');
     const [tagInput, setTagInput] = useState('');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // For subject selection
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    // Exam Mode State
+    const [selectedExamSubjects, setSelectedExamSubjects] = useState<string[]>([]);
+    const [subTaskInputs, setSubTaskInputs] = useState<Record<string, { topic: string, details?: string }>>({});
 
     useEffect(() => {
         if (isOpen) {
@@ -28,6 +38,16 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
             if (initialData) {
                 setFormData(initialData);
                 if (initialData.isCompleted) setTab('report');
+
+                // Restore Exam State
+                if ((initialData.studyType === 'exam' || initialData.studyType === 'analysis') && initialData.subTasks) {
+                    setSelectedExamSubjects(initialData.subTasks.map(s => s.subject));
+                    const inputs: any = {};
+                    initialData.subTasks.forEach(s => {
+                        inputs[s.subject] = { topic: s.topic };
+                    });
+                    setSubTaskInputs(inputs);
+                }
             } else {
                 setFormData({
                     dayId: currentDayId,
@@ -41,17 +61,44 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     qualityRating: 3,
                     actualDuration: 0,
                     testStats: { correct: 0, wrong: 0, total: 0 },
-                    tags: []
+                    tags: [],
+                    studyType: 'study'
                 });
+                setSelectedExamSubjects([]);
+                setSubTaskInputs({});
             }
         }
     }, [isOpen, initialData, currentDayId, defaultDateStr]);
 
     if (!isOpen) return null;
 
+    const isExamMode = formData.studyType === 'exam' || formData.studyType === 'analysis';
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+
+        if (isExamMode) {
+            // Build subTasks
+            const subTasks: SubTask[] = selectedExamSubjects.map(subj => ({
+                id: crypto.randomUUID(),
+                subject: subj,
+                topic: subTaskInputs[subj]?.topic || 'جامع',
+                testStats: { correct: 0, wrong: 0, total: 0 } // Default stats
+            }));
+
+            // For main task display, use first subject or generic
+            const mainSubject = selectedExamSubjects.length === 1 ? selectedExamSubjects[0] : (formData.studyType === 'exam' ? 'آزمون جامع' : 'تحلیل آزمون');
+            const mainTopic = selectedExamSubjects.length > 1 ? `${selectedExamSubjects.length} درس` : (subTaskInputs[selectedExamSubjects[0]]?.topic || '');
+
+            onSave({
+                ...formData,
+                subject: mainSubject,
+                topic: mainTopic,
+                subTasks: subTasks
+            });
+        } else {
+            onSave(formData);
+        }
         onClose();
     };
 
@@ -81,9 +128,43 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
         }
     };
 
+    const handleExamSubjectToggle = (subjectName: string) => {
+        setSelectedExamSubjects(prev =>
+            prev.includes(subjectName)
+                ? prev.filter(s => s !== subjectName)
+                : [...prev, subjectName]
+        );
+    };
+
+    const handleSubTaskInput = (subject: string, field: 'topic', value: string) => {
+        setSubTaskInputs(prev => ({
+            ...prev,
+            [subject]: { ...prev[subject], [field]: value }
+        }));
+    };
+
+    // SubTask scoring update
+    const handleSubTaskScore = (subjectIdx: number, field: keyof typeof formData.testStats, value: number) => {
+        const newSubTasks = [...(formData.subTasks || [])];
+        if (!newSubTasks[subjectIdx].testStats) newSubTasks[subjectIdx].testStats = { correct: 0, wrong: 0, total: 0 };
+        // @ts-ignore
+        newSubTasks[subjectIdx].testStats![field] = value;
+
+        // Recalculate total for main task
+        const totalCorrect = newSubTasks.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
+        const totalWrong = newSubTasks.reduce((acc, t) => acc + (t.testStats?.wrong || 0), 0);
+        const totalTotal = newSubTasks.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
+
+        setFormData({
+            ...formData,
+            subTasks: newSubTasks,
+            testStats: { correct: totalCorrect, wrong: totalWrong, total: totalTotal }
+        });
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-md transition-opacity">
-            <div className="bg-white dark:bg-gray-900 rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 sm:fade-in sm:zoom-in-95 duration-200 flex flex-col max-h-[80dvh] sm:max-h-[85vh] border-t sm:border border-gray-100 dark:border-gray-800 mb-24 sm:mb-0">
+            <div className="bg-white dark:bg-gray-900 rounded-t-[2rem] sm:rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 sm:fade-in sm:zoom-in-95 duration-200 flex flex-col max-h-[90dvh] sm:max-h-[85vh] border-t sm:border border-gray-100 dark:border-gray-800 mb-24 sm:mb-0">
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">
@@ -112,11 +193,29 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     {tab === 'info' && (
                         <div className="p-6 space-y-6 animate-in slide-in-from-left-2 duration-300">
 
-                            {/* Day Selection */}
+                            {/* Type Selection */}
+                            <div className="grid grid-cols-3 gap-2">
+                                {STUDY_TYPES.map(type => (
+                                    <button
+                                        key={type.id}
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, studyType: type.id })}
+                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${formData.studyType === type.id
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300'
+                                            : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                            }`}
+                                    >
+                                        <type.icon size={20} className="mb-1" />
+                                        <span className="text-[10px] font-bold">{type.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Date Selection */}
                             <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/30">
                                 <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-1">
                                     <Calendar size={14} />
-                                    روز برنامه
+                                    زمان‌بندی
                                 </label>
                                 <select
                                     value={formData.dayId || 1}
@@ -129,90 +228,118 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                 </select>
                             </div>
 
-                            {/* Subject Selection */}
+                            {/* Subject Selection (Conditional) */}
                             <div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400">انتخاب درس</label>
-                                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                                        <button type="button" onClick={() => setViewMode('grid')} className={`p-1 rounded-md ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><LayoutGrid size={14} /></button>
-                                        <button type="button" onClick={() => setViewMode('list')} className={`p-1 rounded-md ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><List size={14} /></button>
-                                    </div>
+                                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                                        {isExamMode ? 'انتخاب دروس آزمون (چند انتخابی)' : 'انتخاب درس'}
+                                    </label>
+                                    {!isExamMode && (
+                                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
+                                            <button type="button" onClick={() => setViewMode('grid')} className={`p-1 rounded-md ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><LayoutGrid size={14} /></button>
+                                            <button type="button" onClick={() => setViewMode('list')} className={`p-1 rounded-md ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><List size={14} /></button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {viewMode === 'list' ? (
-                                    <select
-                                        value={formData.subject}
-                                        onChange={e => setFormData({ ...formData, subject: e.target.value as Subject })}
-                                        className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white appearance-none"
-                                    >
-                                        {Object.entries(SUBJECT_ICONS).map(([name, style]) => (
-                                            <option key={name} value={name}>{name}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
-                                        {Object.entries(SUBJECT_ICONS).map(([name, style]) => (
+                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+                                    {Object.entries(SUBJECT_ICONS).map(([name, style]) => {
+                                        const isSelected = isExamMode ? selectedExamSubjects.includes(name) : formData.subject === name;
+                                        return (
                                             <button
                                                 key={name}
                                                 type="button"
-                                                onClick={() => setFormData({ ...formData, subject: name as Subject })}
-                                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all hover:scale-105 active:scale-95 aspect-square ${formData.subject === name
+                                                onClick={() => isExamMode ? handleExamSubjectToggle(name) : setFormData({ ...formData, subject: name as Subject })}
+                                                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all hover:scale-105 active:scale-95 aspect-square ${isSelected
                                                     ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/30'
                                                     : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700/80 grayscale hover:grayscale-0'
                                                     }`}
                                             >
                                                 <span className="text-xl mb-1">{style.icon}</span>
                                                 <span className="text-[9px] font-medium text-center truncate w-full text-gray-700 dark:text-gray-300">{name}</span>
+                                                {isExamMode && isSelected && <CheckCircle2 size={10} className="absolute top-1 right-1 text-indigo-500" />}
                                             </button>
-                                        ))}
-                                    </div>
-                                )}
+                                        );
+                                    })}
+                                </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="group">
-                                    <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 pointer-events-none group-focus-within:text-indigo-500 transition-colors">مبحث (Topic)</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        value={formData.topic || ''}
-                                        onChange={e => setFormData({ ...formData, topic: e.target.value })}
-                                        className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white placeholder:text-gray-400"
-                                        placeholder="مثلا: نوسان و موج"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="group">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">جزئیات</label>
+                            {/* Input Fields */}
+                            {isExamMode ? (
+                                <div className="space-y-3">
+                                    <label className="text-xs font-bold text-gray-500">مباحث آزمون</label>
+                                    {selectedExamSubjects.length === 0 && <p className="text-xs text-gray-400 italic">هیچ درسی انتخاب نشده است.</p>}
+                                    {selectedExamSubjects.map(subj => (
+                                        <div key={subj} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl">
+                                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-700 shadow-sm text-lg">
+                                                {SUBJECT_ICONS[subj]?.icon || '📚'}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                placeholder={`مبحث ${subj}...`}
+                                                className="flex-1 bg-transparent text-sm outline-none px-2 text-gray-800 dark:text-white"
+                                                value={subTaskInputs[subj]?.topic || ''}
+                                                onChange={e => handleSubTaskInput(subj, 'topic', e.target.value)}
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className="group pt-2">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">توضیحات کلی</label>
                                         <input
-                                            required
                                             type="text"
                                             value={formData.details || ''}
                                             onChange={e => setFormData({ ...formData, details: e.target.value })}
-                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white"
-                                            placeholder="۴۵ تست"
-                                        />
-                                    </div>
-                                    <div className="group">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">بازه تست</label>
-                                        <input
-                                            type="text"
-                                            value={formData.testRange || ''}
-                                            onChange={e => setFormData({ ...formData, testRange: e.target.value })}
-                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white"
-                                            placeholder="اختیاری"
+                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 transition"
+                                            placeholder="مثلا: آزمون قلم‌چی جامع ۱"
                                         />
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="group">
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 pointer-events-none group-focus-within:text-indigo-500 transition-colors">مبحث (Topic)</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            value={formData.topic || ''}
+                                            onChange={e => setFormData({ ...formData, topic: e.target.value })}
+                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white"
+                                            placeholder="مثلا: نوسان و موج"
+                                        />
+                                    </div>
 
-                            {/* Feature 3: Smart Tagging */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="group">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">جزئیات</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                value={formData.details || ''}
+                                                onChange={e => setFormData({ ...formData, details: e.target.value })}
+                                                className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 transition"
+                                                placeholder="۴۵ تست"
+                                            />
+                                        </div>
+                                        <div className="group">
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">بازه تست</label>
+                                            <input
+                                                type="text"
+                                                value={formData.testRange || ''}
+                                                onChange={e => setFormData({ ...formData, testRange: e.target.value })}
+                                                className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 transition"
+                                                placeholder="اختیاری"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Tags */}
                             <div className="bg-gray-50 dark:bg-gray-800/30 p-3 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">تگ‌ها</label>
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {(formData.tags || []).map(tag => (
-                                        <span key={tag} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm border border-gray-100 dark:border-gray-600 text-xs px-2 py-1 rounded-lg flex items-center gap-1 animate-in zoom-in-50 duration-200">
+                                        <span key={tag} className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-sm border border-gray-100 dark:border-gray-600 text-xs px-2 py-1 rounded-lg flex items-center gap-1">
                                             {tag}
                                             <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500 transition ml-1"><X size={12} /></button>
                                         </span>
@@ -225,7 +352,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         value={tagInput}
                                         onChange={e => setTagInput(e.target.value)}
                                         onKeyDown={addTag}
-                                        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl pl-3 pr-10 py-3 text-sm outline-none focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder:text-gray-400/70"
+                                        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl pl-3 pr-10 py-3 text-sm outline-none focus:border-indigo-500 transition"
                                         placeholder="تگ جدید و اینتر..."
                                     />
                                 </div>
@@ -239,7 +366,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                             <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-5 rounded-3xl border border-indigo-100 dark:border-indigo-500/20">
                                 <div className="flex items-center gap-2 mb-3 text-indigo-600 dark:text-indigo-400">
                                     <Clock size={20} />
-                                    <label className="text-sm font-bold">مدت زمان مطالعه</label>
+                                    <label className="text-sm font-bold">مدت زمان فعالیت</label>
                                 </div>
                                 <div className="relative">
                                     <input
@@ -253,19 +380,95 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     />
                                     <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 dark:text-gray-500">دقیقه</span>
                                 </div>
-                                <div className="flex justify-center gap-2 mt-3 flex-wrap">
-                                    {[30, 45, 60, 90, 120, 150, 180, 210, 240].map(mins => (
-                                        <button
-                                            key={mins}
-                                            type="button"
-                                            onClick={() => setFormData(prev => ({ ...prev, actualDuration: mins }))}
-                                            className="px-2 py-1 bg-white dark:bg-gray-800 text-[10px] font-bold text-gray-500 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition shadow-sm border border-gray-100 dark:border-gray-700"
-                                        >
-                                            {mins}
-                                        </button>
+                            </div>
+
+                            {/* Scoring Logic - Exam vs Standard */}
+                            {isExamMode && formData.subTasks && formData.subTasks.length > 0 ? (
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                        <Target size={18} />
+                                        <span>نتایج آزمون به تفکیک درس</span>
+                                    </div>
+                                    {formData.subTasks.map((sub, idx) => (
+                                        <div key={sub.id} className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-lg">{SUBJECT_ICONS[sub.subject]?.icon}</span>
+                                                <span className="font-bold text-sm dark:text-white">{sub.subject}</span>
+                                                <span className="text-xs text-gray-400">({sub.topic})</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div className="relative">
+                                                    <input type="number" placeholder="درست" className="w-full text-center bg-white dark:bg-gray-700 rounded-lg py-1 text-sm border-emerald-200 border text-emerald-600 font-bold"
+                                                        value={sub.testStats?.correct || ''}
+                                                        onChange={e => handleSubTaskScore(idx, 'correct', parseInt(e.target.value) || 0)}
+                                                    />
+                                                    <span className="text-[9px] text-emerald-500 absolute -top-2 right-2 bg-white dark:bg-gray-800 px-1">درست</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input type="number" placeholder="غلط" className="w-full text-center bg-white dark:bg-gray-700 rounded-lg py-1 text-sm border-rose-200 border text-rose-500 font-bold"
+                                                        value={sub.testStats?.wrong || ''}
+                                                        onChange={e => handleSubTaskScore(idx, 'wrong', parseInt(e.target.value) || 0)}
+                                                    />
+                                                    <span className="text-[9px] text-rose-500 absolute -top-2 right-2 bg-white dark:bg-gray-800 px-1">غلط</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <input type="number" placeholder="کل" className="w-full text-center bg-white dark:bg-gray-700 rounded-lg py-1 text-sm border-gray-200 border text-gray-600 font-bold"
+                                                        value={sub.testStats?.total || ''}
+                                                        onChange={e => handleSubTaskScore(idx, 'total', parseInt(e.target.value) || 0)}
+                                                    />
+                                                    <span className="text-[9px] text-gray-400 absolute -top-2 right-2 bg-white dark:bg-gray-800 px-1">کل</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
-                            </div>
+                            ) : (
+                                /* Standard Scoring */
+                                <div className="p-1">
+                                    <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
+                                        <Target size={18} />
+                                        <label className="text-sm font-bold">نتیجه تست‌زنی</label>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl text-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm">
+                                            <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mb-2">درست</label>
+                                            <input
+                                                type="number"
+                                                className="w-full bg-white dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-2 text-center font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                                value={formData.testStats?.correct || ''}
+                                                onChange={(e) => setFormData({
+                                                    ...formData,
+                                                    testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), correct: parseInt(e.target.value) || 0 }
+                                                })}
+                                            />
+                                        </div>
+                                        <div className="bg-rose-50 dark:bg-rose-900/10 p-3 rounded-2xl text-center border border-rose-100 dark:border-rose-500/20 shadow-sm">
+                                            <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-bold mb-2">غلط</label>
+                                            <input
+                                                type="number"
+                                                className="w-full bg-white dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-xl p-2 text-center font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-rose-500/50"
+                                                value={formData.testStats?.wrong || ''}
+                                                onChange={(e) => setFormData({
+                                                    ...formData,
+                                                    testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), wrong: parseInt(e.target.value) || 0 }
+                                                })}
+                                            />
+                                        </div>
+                                        <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                                            <label className="block text-[10px] text-gray-500 dark:text-gray-400 font-bold mb-2">کل</label>
+                                            <input
+                                                type="number"
+                                                className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl p-2 text-center font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-gray-400"
+                                                value={formData.testStats?.total || ''}
+                                                onChange={(e) => setFormData({
+                                                    ...formData,
+                                                    testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), total: parseInt(e.target.value) || 0 }
+                                                })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Quality Rating */}
                             <div>
@@ -286,74 +489,6 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Test Results */}
-                            <div className="p-1">
-                                <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
-                                    <Target size={18} />
-                                    <label className="text-sm font-bold">نتیجه تست‌زنی</label>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl text-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm">
-                                        <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mb-2">درست</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-2 text-center font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50"
-                                            value={formData.testStats?.correct || ''}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), correct: parseInt(e.target.value) || 0 }
-                                            })}
-                                        />
-                                    </div>
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-3 rounded-2xl text-center border border-rose-100 dark:border-rose-500/20 shadow-sm">
-                                        <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-bold mb-2">غلط</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 rounded-xl p-2 text-center font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-rose-500/50"
-                                            value={formData.testStats?.wrong || ''}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), wrong: parseInt(e.target.value) || 0 }
-                                            })}
-                                        />
-                                    </div>
-                                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl text-center border border-gray-200 dark:border-gray-700 shadow-sm">
-                                        <label className="block text-[10px] text-gray-500 dark:text-gray-400 font-bold mb-2">کل</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl p-2 text-center font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-gray-400"
-                                            value={formData.testStats?.total || ''}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                testStats: { ...(formData.testStats || { correct: 0, wrong: 0, total: 0 }), total: parseInt(e.target.value) || 0 }
-                                            })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Spaced Repetition */}
-                            {initialData && (
-                                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
-                                    <div className="flex items-center gap-2 mb-3 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
-                                        <CalendarClock size={16} />
-                                        برنامه‌ریزی مرور (لایتنر)
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {[1, 3, 7, 14, 30].map(day => (
-                                            <button
-                                                key={day}
-                                                type="button"
-                                                onClick={() => handleScheduleReview(day)}
-                                                className="flex-1 bg-white dark:bg-gray-800 py-2 rounded-xl text-[10px] font-bold border border-indigo-100 dark:border-gray-700 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 dark:hover:bg-indigo-600 transition shadow-sm text-gray-600 dark:text-gray-300"
-                                            >
-                                                {day} روز
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 

@@ -6,7 +6,7 @@ import {
     MessageSquare, Trash2, Plus, Edit2, Calendar, BookOpen, Hash, AlignLeft,
     History, ChevronLeft, ChevronRight, MoreVertical
 } from 'lucide-react';
-import { Subject, SUBJECT_ICONS } from '../types';
+import { Subject, SUBJECT_ICONS, SUBJECT_LISTS } from '../types';
 import AITaskReviewWindow, { ParsedTask } from './AITaskReviewWindow';
 
 interface AISettingsProps {
@@ -63,7 +63,7 @@ const DEFAULT_CONFIGS: Record<string, Partial<AIConfig>> = {
 };
 
 export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
-    const { showToast, addTask, currentDay, startDate, totalDays } = useStore();
+    const { showToast, addTask, currentDay, startDate, totalDays, settings } = useStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Config state
@@ -204,8 +204,10 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
     const getSystemPrompt = () => {
         const today = new Date().toISOString().split('T')[0];
 
-        // Get valid subjects list
-        const validSubjects = Object.keys(SUBJECT_ICONS).join(', ');
+        // Get Stream and Subject List
+        const currentStream = settings?.stream || 'general';
+        const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
+        const validSubjects = streamSubjects.join(', ');
 
         // Calculate specific future dates for better context
         const next7Days = Array.from({ length: 7 }, (_, i) => {
@@ -219,32 +221,45 @@ Current Context:
 - Real World Date: ${today}
 - Plan Start Date: ${startDate}
 - Current Plan Day: Day ${currentDay} of ${totalDays}
+- User Stream: ${currentStream} (Focus on subjects: ${validSubjects})
 
 **UPCOMING DAYS REFERENCE:**
 ${next7Days}
 
-**VALID SUBJECTS (Use these EXACT names):**
+**VALID SUBJECTS (Use these EXACT names from the user's stream):**
 ${validSubjects}
 
 **CRITICAL RULES:**
 1.  **LANGUAGE:** YOU MUST SPEAK **PERSIAN (FARSI)** ONLY. Even if the user speaks English, reply in Persian.
 2.  **NO DIRECT ACTIONS:** You cannot add tasks directly. You can ONLY propose them via JSON.
 3.  **AUTOPILOT FOR SERIES:** If the user asks for a series of tasks (e.g., "From day 4 to 12, 30 physics tests per day starting from test 300"), **DO NOT generate the list yourself.** Instead, use the 'autopilot_series' action.
-4.  **RESPONSE FORMAT:**
+4.  **STUDY TYPES:** You can specify a 'studyType' for tasks. Valid types are: 'exam', 'analysis', 'test_educational', 'test_speed', 'review', 'study'.
+5.  **EXAM/ANALYSIS TASKS:** For 'exam' or 'analysis' types, you can include 'subTasks' if the exam covers multiple subjects.
+6.  **RESPONSE FORMAT:**
     - For simple chat: {"type": "info", "message": "متن فارسی شما..."}
     - For specific single tasks: {"type": "preview_tasks", "tasks": [...], "message": "لیست تسک‌ها آماده شد..."}
     - For SERIES/RANGES (Smart Mode): 
       {"type": "autopilot_series", "series": {"subject": "فیزیک", "topic": "نوسان", "startDay": 4, "endDay": 12, "dailyCount": 30, "startTest": 300}, "message": "محاسبات انجام شد، بفرمایید..."}
 
-**EXAMPLE REQUEST:** "Add two tasks for Day 12: Physics Exam and Analysis"
+**EXAMPLE REQUEST (Exam):** "Add a comprehensive exam for Day 12 covering Math and Physics"
 **EXAMPLE JSON:**
 {
   "type": "preview_tasks",
   "tasks": [
-    { "title": "Physics Exam", "subject": "فیزیک", "topic": "آزمون", "details": "Exam", "date": "2026-02-12", "testRange": "" },
-    { "title": "Analysis", "subject": "فیزیک", "topic": "تحلیل آزمون", "details": "Analysis", "date": "2026-02-12", "testRange": "" }
+    { 
+      "title": "Comprehensive Exam", 
+      "subject": "آزمون", 
+      "topic": "جامع", 
+      "details": "Math & Physics", 
+      "date": "2026-02-12", 
+      "studyType": "exam",
+      "subTasks": [
+        { "subject": "ریاضیات", "topic": "All" },
+        { "subject": "فیزیک", "topic": "All" }
+      ]
+    }
   ],
-  "message": "دو تسک آزمون و تحلیل فیزیک برای روز ۱۲ (۱۲ فوریه) آماده شد."
+  "message": "یک آزمون جامع ریاضی و فیزیک برای روز ۱۲ تنظیم شد."
 }
 
 **DO NOT SAY "I have added the tasks" UNLESS you are returning the JSON.**
@@ -425,7 +440,9 @@ ${validSubjects}
                 date: task.date,
                 isCompleted: false,
                 isCustom: true,
-                tags: []
+                tags: [],
+                studyType: task.studyType,
+                subTasks: task.subTasks
             });
         });
         showToast(`${pendingActions.tasks.length} تسک به برنامه اضافه شد!`, 'success');

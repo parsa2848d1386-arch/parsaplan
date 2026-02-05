@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS } from '../types';
+import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS, AppSettings, StreamType } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11 } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
@@ -76,6 +76,9 @@ interface StoreContextType {
     isTimerOpen: boolean;
     setIsTimerOpen: (isOpen: boolean) => void;
     isCommandPaletteOpen: boolean;
+    // Settings
+    settings: AppSettings;
+    updateSettings: (newSettings: Partial<AppSettings>) => void;
     // New Phase 1 states
     saveStatus: 'saved' | 'saving' | 'error';
     sidebarCollapsed: boolean;
@@ -144,6 +147,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [xp, setXp] = useState(0);
     const [auditLog, setAuditLog] = useState<LogEntry[]>([]);
     const [moods, setMoods] = useState<Record<string, MoodType>>({});
+    const [stream, setStream] = useState<StreamType>('general');
 
     // App State Control
     const [isInitialized, setIsInitialized] = useState(false);
@@ -381,6 +385,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (data.settings) {
                 setDarkMode(data.settings.darkMode);
                 setViewModeState(data.settings.viewMode);
+                if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
+                if (data.settings.stream) setStream(data.settings.stream);
             }
             if (data.startDate) {
                 setStartDateState(data.startDate);
@@ -423,13 +429,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             tasks, userName, routine: completedRoutine, routineTemplate,
             notes: dailyNotes, xp, logs: auditLog, moods, startDate,
             totalDays, subjects,
-            settings: { darkMode, viewMode, showQuotes }, lastUpdated: Date.now()
+            settings: {
+                darkMode, viewMode, showQuotes, stream,
+                notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+            },
+            lastUpdated: Date.now()
         };
 
         // Save to the SPECIFIC user bucket
         StorageManager.save(fullData, userId);
 
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, totalDays, subjects, isInitialized, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, totalDays, subjects, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -454,7 +464,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const fullData = {
                     tasks, userName, routine: completedRoutine, routineTemplate,
                     notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-                    settings: { darkMode, viewMode }, lastUpdated: Date.now()
+                    settings: {
+                        darkMode, viewMode, showQuotes, stream,
+                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                    },
+                    lastUpdated: Date.now()
                 };
 
                 await setDoc(doc(db, "users", userId), fullData);
@@ -513,6 +527,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                         setDarkMode(data.settings.darkMode);
                         setViewModeState(data.settings.viewMode);
                         if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
+                        if (data.settings.stream) setStream(data.settings.stream);
                     }
                     setLastSyncTime(remoteLastUpdated);
                     // Removed toast to avoid annoying popup - user can see cloud icon status
@@ -541,7 +556,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const fullData = {
                 tasks, userName, routine: completedRoutine, routineTemplate,
                 notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-                settings: { darkMode, viewMode }, lastUpdated: Date.now()
+                settings: {
+                    darkMode, viewMode, showQuotes, stream,
+                    notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                },
+                lastUpdated: Date.now()
             };
 
             await setDoc(doc(db, "users", userId), fullData);
@@ -632,7 +651,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     logs: [],
                     moods: {},
                     startDate: detectedStart,
-                    settings: { darkMode: false, viewMode: 'normal' },
+                    settings: {
+                        darkMode: false, viewMode: 'normal', showQuotes: true, stream: 'general',
+                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                    },
                     lastUpdated: Date.now()
                 };
                 await setDoc(doc(db, "users", cred.user.uid), emptyData);
@@ -687,7 +709,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const fullData = {
                     tasks, userName, routine: completedRoutine, routineTemplate,
                     notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-                    settings: { darkMode, viewMode }, lastUpdated: Date.now()
+                    settings: {
+                        darkMode, viewMode, showQuotes, stream,
+                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                    },
+                    lastUpdated: Date.now()
                 };
                 await setDoc(docRef, fullData);
                 showToast('اطلاعات شما به حساب جدید منتقل شد', 'success');
@@ -745,6 +771,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const addXp = (amount: number) => setXp(prev => prev + amount);
+
+    // --- SETTINGS ACTIONS ---
+    const settings: AppSettings = {
+        darkMode,
+        viewMode,
+        showQuotes,
+        stream,
+        notifications: true,
+        soundEnabled: true,
+        language: 'fa' as 'fa' | 'en'
+    };
+    const updateSettings = (newSettings: Partial<AppSettings>) => {
+        if (newSettings.darkMode !== undefined) setDarkMode(newSettings.darkMode);
+        if (newSettings.viewMode !== undefined) setViewModeState(newSettings.viewMode);
+        if (newSettings.showQuotes !== undefined) setShowQuotes(newSettings.showQuotes);
+        if (newSettings.stream !== undefined) setStream(newSettings.stream);
+        showToast('تنظیمات بروز شد', 'success');
+    };
 
     // --- TASK ACTIONS ---
     const toggleTask = (taskId: string) => {
@@ -921,7 +965,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             auditLog, moods, setMood,
             toasts, showToast, removeToast,
             confirmState, askConfirm, closeConfirm,
-            showQuotes, toggleShowQuotes
+            showQuotes, toggleShowQuotes,
+            settings, updateSettings
         }}>
             {children}
         </StoreContext.Provider>

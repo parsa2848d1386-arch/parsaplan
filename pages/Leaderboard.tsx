@@ -15,6 +15,7 @@ interface PublicProfile {
     tasksCompleted: number;
     totalTasks: number;
     lastActive: number;
+    examAverage?: number; // Added exam average
 }
 
 // Extended profile with tasks for viewing
@@ -30,6 +31,7 @@ const Leaderboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
     const [isToggling, setIsToggling] = useState(false);
+    const [sortBy, setSortBy] = useState<'xp' | 'exam'>('xp'); // Sort state
 
     // Profile viewer state
     const [viewingProfile, setViewingProfile] = useState<FullProfile | null>(null);
@@ -39,16 +41,36 @@ const Leaderboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
 
     // Calculate user stats
-    const myStats: PublicProfile = {
-        id: user?.uid || 'local',
-        userName: userName,
-        xp: xp,
-        level: level,
-        progress: getProgress(),
-        tasksCompleted: tasks.filter(t => t.isCompleted).length,
-        totalTasks: tasks.length,
-        lastActive: Date.now()
-    };
+    const calculateStats = useCallback(() => {
+        const completedTasks = tasks.filter(t => t.isCompleted);
+        const examTasks = completedTasks.filter(t => t.studyType === 'exam' && t.testStats && t.testStats.total > 0);
+
+        let examAvg = 0;
+        if (examTasks.length > 0) {
+            const sumPercentages = examTasks.reduce((acc, t) => {
+                const total = t.testStats!.total;
+                const correct = t.testStats!.correct;
+                const wrong = t.testStats!.wrong;
+                const percentage = total > 0 ? Math.round(((correct * 3 - wrong) / (total * 3)) * 100) : 0;
+                return acc + (percentage > 0 ? percentage : 0);
+            }, 0);
+            examAvg = Math.round(sumPercentages / examTasks.length);
+        }
+
+        return {
+            id: user?.uid || 'local',
+            userName: userName,
+            xp: xp,
+            level: level,
+            progress: getProgress(),
+            tasksCompleted: completedTasks.length,
+            totalTasks: tasks.length,
+            lastActive: Date.now(),
+            examAverage: examAvg
+        };
+    }, [user, userName, xp, level, getProgress, tasks]);
+
+    const myStats = calculateStats();
 
     // Get Firestore instance
     const getDb = useCallback(() => {
@@ -85,6 +107,7 @@ const Leaderboard = () => {
                 setIsMyProfilePublic(isPublic);
             }
 
+            // Sort will happen in render or separate effect, but default here is XP
             profiles.sort((a, b) => b.xp - a.xp);
             setLeaderboardData(profiles);
         } catch (error) {
@@ -116,7 +139,6 @@ const Leaderboard = () => {
                 setIsMyProfilePublic(isPublic);
             }
 
-            profiles.sort((a, b) => b.xp - a.xp);
             setLeaderboardData(profiles);
             setIsLoading(false);
         }, (error) => {
@@ -190,7 +212,7 @@ const Leaderboard = () => {
         };
 
         updateStats();
-    }, [xp, tasks.length, userName, isMyProfilePublic, user, getDb]);
+    }, [xp, tasks.length, userName, isMyProfilePublic, user, getDb, myStats.examAverage]); // Added examAverage dependency
 
     // View another user's profile
     const viewUserProfile = async (profile: PublicProfile) => {
@@ -303,7 +325,7 @@ const Leaderboard = () => {
                         {/* Comparison with current user */}
                         <div className="mt-4 bg-white/5 rounded-xl p-3 border border-white/10">
                             <p className="text-[10px] font-bold mb-2 opacity-70">📊 مقایسه با شما</p>
-                            <div className="grid grid-cols-3 gap-2 text-[10px]">
+                            <div className="grid grid-cols-4 gap-2 text-[10px]">
                                 <div className="text-center">
                                     <div className={`font-bold ${viewingProfile.xp > myStats.xp ? 'text-red-300' : 'text-green-300'}`}>
                                         {viewingProfile.xp > myStats.xp ? `+${viewingProfile.xp - myStats.xp}` : viewingProfile.xp < myStats.xp ? `-${myStats.xp - viewingProfile.xp}` : '='} XP
@@ -317,6 +339,11 @@ const Leaderboard = () => {
                                 <div className="text-center">
                                     <div className={`font-bold ${viewingProfile.tasksCompleted > myStats.tasksCompleted ? 'text-red-300' : 'text-green-300'}`}>
                                         {viewingProfile.tasksCompleted > myStats.tasksCompleted ? `+${viewingProfile.tasksCompleted - myStats.tasksCompleted}` : viewingProfile.tasksCompleted < myStats.tasksCompleted ? `-${myStats.tasksCompleted - viewingProfile.tasksCompleted}` : '='} تسک
+                                    </div>
+                                </div>
+                                <div className="text-center border-r border-white/20 pr-1">
+                                    <div className={`font-bold ${(viewingProfile.examAverage || 0) > (myStats.examAverage || 0) ? 'text-red-300' : 'text-green-300'}`}>
+                                        Avg: {viewingProfile.examAverage || 0}%
                                     </div>
                                 </div>
                             </div>
@@ -447,7 +474,7 @@ const Leaderboard = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                         <div className="bg-white/10 rounded-xl p-3 text-center">
                             <Star size={18} className="mx-auto mb-1" />
                             <p className="font-bold">{xp}</p>
@@ -460,8 +487,13 @@ const Leaderboard = () => {
                         </div>
                         <div className="bg-white/10 rounded-xl p-3 text-center">
                             <Trophy size={18} className="mx-auto mb-1" />
-                            <p className="font-bold">{myStats.tasksCompleted}/{myStats.totalTasks}</p>
+                            <p className="font-bold">{myStats.tasksCompleted}</p>
                             <p className="text-[10px] opacity-70">تسک</p>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-3 text-center border-r border-white/20">
+                            <BookOpen size={18} className="mx-auto mb-1" />
+                            <p className="font-bold">{myStats.examAverage || 0}%</p>
+                            <p className="text-[10px] opacity-70">میانگین آزمون</p>
                         </div>
                     </div>
                 </div>
@@ -483,6 +515,22 @@ const Leaderboard = () => {
                     </p>
                 </div>
             )}
+
+            {/* Leaderboard Controls */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <button
+                    onClick={() => setSortBy('xp')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${sortBy === 'xp' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}
+                >
+                    🏆 پرامتیازترین
+                </button>
+                <button
+                    onClick={() => setSortBy('exam')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${sortBy === 'exam' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}
+                >
+                    📚 برترین آزمون‌ها
+                </button>
+            </div>
 
             {/* Leaderboard */}
             <div className="space-y-3">
@@ -518,9 +566,16 @@ const Leaderboard = () => {
                     </div>
                 ) : (() => {
                     // Filter based on search query
-                    const filteredData = searchQuery.trim()
+                    let filteredData = searchQuery.trim()
                         ? leaderboardData.filter(p => p.userName.toLowerCase().includes(searchQuery.toLowerCase()))
-                        : leaderboardData;
+                        : [...leaderboardData];
+
+                    // Sort Logic
+                    if (sortBy === 'exam') {
+                        filteredData.sort((a, b) => (b.examAverage || 0) - (a.examAverage || 0));
+                    } else {
+                        filteredData.sort((a, b) => b.xp - a.xp);
+                    }
 
                     if (filteredData.length === 0) {
                         return (
@@ -532,7 +587,7 @@ const Leaderboard = () => {
                     }
 
                     return filteredData.map((profile, index) => {
-                        const rank = leaderboardData.indexOf(profile) + 1; // Use original rank
+                        const rank = index + 1; // Rank depends on current sort
                         const isCurrentUser = profile.id === user?.uid;
 
                         return (
@@ -559,8 +614,17 @@ const Leaderboard = () => {
 
                                     <div className="flex items-center gap-2">
                                         <div className="text-left">
-                                            <p className="font-black text-indigo-600 dark:text-indigo-400 text-lg">{profile.xp}</p>
-                                            <p className="text-[10px] text-gray-500">XP</p>
+                                            {sortBy === 'xp' ? (
+                                                <>
+                                                    <p className="font-black text-indigo-600 dark:text-indigo-400 text-lg">{profile.xp}</p>
+                                                    <p className="text-[10px] text-gray-500">XP</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="font-black text-emerald-600 dark:text-emerald-400 text-lg">{profile.examAverage || 0}%</p>
+                                                    <p className="text-[10px] text-gray-500">معدل آزمون</p>
+                                                </>
+                                            )}
                                         </div>
 
                                         {/* View Profile Button */}

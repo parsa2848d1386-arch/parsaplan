@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Subject, SubjectTask, getSubjectStyle, SUBJECT_ICONS, CustomSubject } from '../types';
+import { Subject, SubjectTask, getSubjectStyle, SUBJECT_ICONS, CustomSubject, SUBJECT_LISTS } from '../types';
 import { ChevronDown, ChevronUp, Circle, CheckCircle2, Pencil, Trash2, Plus, X, Check } from 'lucide-react';
 import TaskModal from '../components/TaskModal';
 
@@ -150,12 +150,34 @@ const SubjectModal: React.FC<{
 };
 
 const Subjects = () => {
-    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject } = useStore();
+    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, settings } = useStore();
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
     const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<CustomSubject | null>(null);
+
+    // Filter logic
+    const currentStream = settings?.stream || 'general';
+    const streamSubjects = SUBJECT_LISTS[currentStream] || [];
+
+    const displayedSubjects = subjects.filter(s => {
+        // Always show custom subjects
+        if (s.name === 'شخصی') return true;
+
+        // If it's a default subject (exists in SUBJECT_ICONS)
+        const isDefault = Object.keys(SUBJECT_ICONS).includes(s.name);
+        if (isDefault) {
+            // Show only if it belongs to the current stream
+            // OR if we are in 'general' stream (maybe show all? or specific subset?)
+            // For now, let's strict filter if stream is defined
+            if (currentStream === 'general') return true;
+            return streamSubjects.includes(s.name);
+        }
+
+        // It's a custom user added subject
+        return true;
+    });
 
     const getSubjectTasks = (subjectName: string) => {
         return tasks.filter(t => t.subject === subjectName).sort((a, b) => a.dayId - b.dayId);
@@ -232,7 +254,7 @@ const Subjects = () => {
             </div>
 
             <div className="space-y-4">
-                {subjects.map(subject => {
+                {displayedSubjects.map(subject => {
                     const subjectName = subject.name;
                     const subjectTasks = getSubjectTasks(subjectName);
 

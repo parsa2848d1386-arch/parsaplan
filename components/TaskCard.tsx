@@ -1,8 +1,9 @@
-
 import React from 'react';
 import { SubjectTask } from '../types';
 import { getShamsiDate } from '../utils';
 import { CheckCircle2, Circle, Trash2, Pencil, Calendar, ArrowDownToLine, Target } from 'lucide-react';
+import { ExamTaskCard } from './ExamTaskCard';
+import { useStore } from '../context/StoreContext';
 
 interface TaskCardProps {
     task: SubjectTask;
@@ -23,15 +24,33 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     onDelete,
     onMoveToToday
 }) => {
+
+    // 1. Check for Exam/Analysis Type
+    if (task.studyType === 'exam' || task.studyType === 'analysis') {
+        const handleExamEdit = (t: SubjectTask) => onEdit({} as any, t);
+        const handleExamDelete = (id: string) => onDelete({} as any, id);
+        const handleExamToggle = (t: SubjectTask) => onToggle(t.id!);
+
+        return (
+            <ExamTaskCard
+                task={task}
+                onEdit={handleExamEdit}
+                onDelete={handleExamDelete}
+                onToggleComplete={handleExamToggle}
+            />
+        );
+    }
+
+    // 2. Standard Task Display
     const isDone = task.isCompleted;
     const taskDateShamsi = getShamsiDate(task.date);
 
     let subColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
     if (task.subject.includes('زیست')) subColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
-    if (task.subject.includes('ریاضی')) subColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
-    if (task.subject.includes('فیزیک')) subColor = 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300';
-    if (task.subject.includes('شیمی')) subColor = 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300';
-    if (task.isCustom) subColor = 'bg-gray-800 text-white dark:bg-gray-700';
+    else if (task.subject.includes('ریاضی')) subColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
+    else if (task.subject.includes('فیزیک')) subColor = 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300';
+    else if (task.subject.includes('شیمی')) subColor = 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300';
+    else if (task.isCustom) subColor = 'bg-gray-800 text-white dark:bg-gray-700';
 
     const hasTestStats = task.testStats && task.testStats.total > 0;
     const accuracy = hasTestStats ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100) : 0;
@@ -39,7 +58,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     if (viewMode === 'compact') {
         return (
             <div
-                onClick={() => onToggle(task.id)}
+                onClick={() => onToggle(task.id!)}
                 className={`group relative bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
             >
                 <div className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
@@ -68,7 +87,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 </div>
                 <div className="flex gap-1 pl-1">
                     <button onClick={(e) => onEdit(e, task)} className="text-gray-400 hover:text-blue-500"><Pencil size={14} /></button>
-                    <button onClick={(e) => onDelete(e, task.id)} className="text-gray-400 hover:text-rose-500"><Trash2 size={14} /></button>
+                    <button onClick={(e) => onDelete(e, task.id!)} className="text-gray-400 hover:text-rose-500"><Trash2 size={14} /></button>
                 </div>
             </div>
         );
@@ -76,7 +95,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
     return (
         <div
-            onClick={() => onToggle(task.id)}
+            onClick={() => onToggle(task.id!)}
             className={`group relative bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
         >
             {/* Top Section: Icon + Content (Row Layout) */}
@@ -128,11 +147,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 <button onClick={(e) => onEdit(e, task)} className="flex items-center gap-1 text-[10px] items-center px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
                     <Pencil size={14} /> ویرایش
                 </button>
-                <button onClick={(e) => onDelete(e, task.id)} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition">
+                <button onClick={(e) => onDelete(e, task.id!)} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition">
                     <Trash2 size={14} /> حذف
                 </button>
                 {isOverdue && onMoveToToday && (
-                    <button onClick={(e) => { e.stopPropagation(); onMoveToToday(task.id); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition">
+                    <button onClick={(e) => { e.stopPropagation(); onMoveToToday(task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition">
                         <ArrowDownToLine size={14} /> انتقال به امروز
                     </button>
                 )}

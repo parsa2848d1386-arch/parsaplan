@@ -1,4 +1,21 @@
 
+export type StreamType = 'riazi' | 'tajrobi' | 'ensani' | 'general';
+export type StudyType = 'exam' | 'analysis' | 'test_educational' | 'test_speed' | 'review' | 'study';
+
+export interface SubTask {
+    id: string;
+    subject: string;
+    topic: string;
+    testStats?: TestStats;
+}
+
+export const SUBJECT_LISTS: Record<StreamType, string[]> = {
+    riazi: ['ادبیات فارسی', 'عربی', 'دین و زندگی', 'زبان انگلیسی', 'ریاضیات', 'حسابان', 'هندسه', 'گسسته', 'فیزیک', 'شیمی', 'آمار'],
+    tajrobi: ['ادبیات فارسی', 'عربی', 'دین و زندگی', 'زبان انگلیسی', 'ریاضیات', 'زیست‌شناسی', 'فیزیک', 'شیمی', 'زمین‌شناسی'],
+    ensani: ['ادبیات فارسی', 'عربی', 'دین و زندگی', 'زبان انگلیسی', 'ریاضی و آمار', 'اقتصاد', 'علوم و فنون ادبی', 'جامعه‌شناسی', 'تاریخ', 'جغرافیا', 'فلسفه', 'منطق', 'روان‌شناسی'],
+    general: ['ادبیات فارسی', 'عربی', 'دین و زندگی', 'زبان انگلیسی']
+};
+
 export enum Subject {
     Biology = 'زیست‌شناسی',
     Physics = 'فیزیک',
@@ -7,7 +24,7 @@ export enum Subject {
     Custom = 'شخصی',
 }
 
-// Subject icons mapping for experimental and math fields
+// Subject icons mapping
 export const SUBJECT_ICONS: Record<string, { icon: string; color: string; bgColor: string }> = {
     // Experimental Sciences (تجربی)
     'زیست‌شناسی': { icon: '🧬', color: 'emerald', bgColor: 'bg-emerald-50 dark:bg-emerald-900/30' },
@@ -22,19 +39,23 @@ export const SUBJECT_ICONS: Record<string, { icon: string; color: string; bgColo
     'حسابان': { icon: '∫', color: 'purple', bgColor: 'bg-purple-50 dark:bg-purple-900/30' },
     'آمار': { icon: '📊', color: 'pink', bgColor: 'bg-pink-50 dark:bg-pink-900/30' },
     'گسسته': { icon: '🔢', color: 'teal', bgColor: 'bg-teal-50 dark:bg-teal-900/30' },
+    'ریاضی و آمار': { icon: '📈', color: 'blue', bgColor: 'bg-blue-50 dark:bg-blue-900/30' },
 
-    // Common subjects (عمومی)
-    'زبان انگلیسی': { icon: '🇬🇧', color: 'red', bgColor: 'bg-red-50 dark:bg-red-900/30' },
-    'ادبیات فارسی': { icon: '📜', color: 'rose', bgColor: 'bg-rose-50 dark:bg-rose-900/30' },
-    'عربی': { icon: '🕌', color: 'lime', bgColor: 'bg-lime-50 dark:bg-lime-900/30' },
-    'دین و زندگی': { icon: '☪️', color: 'green', bgColor: 'bg-green-50 dark:bg-green-900/30' },
-    'اقتصاد': { icon: '💰', color: 'yellow', bgColor: 'bg-yellow-50 dark:bg-yellow-900/30' },
+    // Humanities (انسانی)
+    'علوم و فنون ادبی': { icon: '📖', color: 'rose', bgColor: 'bg-rose-50 dark:bg-rose-900/30' },
     'جامعه‌شناسی': { icon: '👥', color: 'sky', bgColor: 'bg-sky-50 dark:bg-sky-900/30' },
     'تاریخ': { icon: '🏛️', color: 'stone', bgColor: 'bg-stone-50 dark:bg-stone-900/30' },
     'جغرافیا': { icon: '🗺️', color: 'emerald', bgColor: 'bg-emerald-50 dark:bg-emerald-900/30' },
     'روان‌شناسی': { icon: '🧠', color: 'fuchsia', bgColor: 'bg-fuchsia-50 dark:bg-fuchsia-900/30' },
     'فلسفه': { icon: '💭', color: 'slate', bgColor: 'bg-slate-50 dark:bg-slate-900/30' },
     'منطق': { icon: '🔗', color: 'zinc', bgColor: 'bg-zinc-50 dark:bg-zinc-900/30' },
+    'اقتصاد': { icon: '💰', color: 'yellow', bgColor: 'bg-yellow-50 dark:bg-yellow-900/30' },
+
+    // Common subjects (عمومی)
+    'زبان انگلیسی': { icon: '🇬🇧', color: 'red', bgColor: 'bg-red-50 dark:bg-red-900/30' },
+    'ادبیات فارسی': { icon: '📜', color: 'rose', bgColor: 'bg-rose-50 dark:bg-rose-900/30' },
+    'عربی': { icon: '🕌', color: 'lime', bgColor: 'bg-lime-50 dark:bg-lime-900/30' },
+    'دین و زندگی': { icon: '☪️', color: 'green', bgColor: 'bg-green-50 dark:bg-green-900/30' },
 
     // Default for custom
     'شخصی': { icon: '📌', color: 'gray', bgColor: 'bg-gray-50 dark:bg-gray-900/30' },
@@ -84,6 +105,10 @@ export interface SubjectTask {
     actualDuration?: number;
     qualityRating?: number;
     testStats?: TestStats;
+
+    // New Fields for Exam/Study Types
+    studyType?: StudyType;
+    subTasks?: SubTask[];
 
     // New Feature: Tags
     tags?: string[];
@@ -135,6 +160,16 @@ export interface FirebaseConfig {
     storageBucket: string;
     messagingSenderId: string;
     appId: string;
+}
+
+export interface AppSettings {
+    darkMode: boolean;
+    viewMode: 'normal' | 'compact';
+    showQuotes: boolean;
+    stream: StreamType;
+    notifications: boolean;
+    soundEnabled: boolean;
+    language: 'fa' | 'en';
 }
 
 export interface AppState {

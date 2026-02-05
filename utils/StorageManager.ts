@@ -1,5 +1,5 @@
 
-import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject } from '../types';
+import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject, StreamType, AppSettings } from '../types';
 
 // --- TYPES ---
 
@@ -16,10 +16,7 @@ export interface AppDataV1 {
     totalDays?: number;
     subjects?: CustomSubject[];
     customSubjects?: CustomSubject[];
-    settings: {
-        darkMode: boolean;
-        viewMode: 'normal' | 'compact';
-    };
+    settings: AppSettings;
     lastUpdated: number;
     schemaVersion?: number;
 }
@@ -27,8 +24,10 @@ export interface AppDataV1 {
 // Current Schema Version
 const CURRENT_SCHEMA_VERSION = 1;
 
-// --- STORAGE KEYS ---
-const KEY_PREFIX = 'parsaplan_v4_';
+// --- CONSTANTS ---
+const KEY_PREFIX = 'parsaplan_v4_'; // Retained for backward compatibility with user-scoped keys
+const STORAGE_KEY = 'parsaplan_data_v4';
+const KEY_BACKUP = 'parsaplan_backup_v4';
 const KEY_DATA_DEFAULT = KEY_PREFIX + 'full_data'; // Legacy/Default
 
 // --- STORAGE MANAGER CLASS ---

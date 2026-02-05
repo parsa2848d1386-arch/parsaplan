@@ -1,7 +1,11 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Eye, Sun, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, Cloud, Lock, Clock, BookOpen, Zap, Trophy, Target, Activity, MessageSquare, History, FileText, X, Settings2, Printer, Quote } from 'lucide-react';
+import {
+    Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Sun, Bell, Volume2, Globe, Shield, RefreshCcw, LogOut, ChevronLeft,
+    Crown, Sparkles, Layout, Palette, Type, Smartphone, Check, Laptop, Trash2, FileText, GraduationCap, X, Settings2, Printer, Quote,
+    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye
+} from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig, LogEntry } from '../types';
 import { AISettings } from '../components/AISettings';
@@ -432,7 +436,8 @@ const Settings = () => {
         cloudStatus, syncData, loadFromCloud, firebaseConfig, updateFirebaseConfig, removeFirebaseConfig,
         startDate, setStartDate, autoFixDate, totalDays, setTotalDays,
         exportData, importData, resetProgress,
-        darkMode, toggleDarkMode, viewMode, setViewMode, showToast, showQuotes, toggleShowQuotes
+        darkMode, toggleDarkMode, viewMode, setViewMode, showToast, showQuotes, toggleShowQuotes,
+        settings, updateSettings
     } = useStore();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -573,6 +578,21 @@ const Settings = () => {
                         <button onClick={handleSaveName} className="bg-indigo-600 text-white p-2 rounded-xl">
                             <Save size={18} />
                         </button>
+                    </div>
+
+                    {/* Stream Selection */}
+                    <div className="mb-4 relative">
+                        <GraduationCap size={18} className="absolute right-4 top-3.5 text-gray-400" />
+                        <select
+                            value={settings?.stream || 'general'}
+                            onChange={(e) => updateSettings({ stream: e.target.value as any })}
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl pr-12 pl-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition appearance-none cursor-pointer text-gray-800 dark:text-white"
+                        >
+                            <option value="riazi">ریاضی و فیزیک</option>
+                            <option value="tajrobi">علوم تجربی</option>
+                            <option value="ensani">علوم انسانی</option>
+                            <option value="general">عمومی</option>
+                        </select>
                     </div>
 
                     {/* Auth Status */}
