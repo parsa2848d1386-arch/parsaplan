@@ -60,9 +60,9 @@ const Layout = () => {
                         <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200 dark:shadow-none">
-                                    <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="55" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M110 260 L185 330 C220 250 250 150 345 150 C440 150 440 330 345 330 C300 330 260 300 240 430" />
-                                        <path d="M345 190 L345 240 L395 240" strokeWidth="35" />
+                                    <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="38" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M120 265 L185 330 C225 245 260 145 350 145 C435 145 435 325 350 325 C310 325 275 300 250 420" />
+                                        <path d="M350 195 L350 240 L395 240" strokeWidth="28" />
                                     </svg>
                                 </div>
                                 {!sidebarCollapsed && <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">ParsaPlan</h1>}
