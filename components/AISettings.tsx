@@ -39,9 +39,19 @@ interface ChatSession {
 // The import above 'import AITaskReviewWindow, { ParsedTask }' handles it.
 // So I will remove the local ParsedTask interface definition.
 
+interface autopilotSeriesData {
+    subject: string;
+    topic: string;
+    startDay: number;
+    endDay: number;
+    dailyCount: number;
+    startTest: number;
+}
+
 interface ParsedAction {
-    type: 'preview_tasks' | 'info';
+    type: 'preview_tasks' | 'info' | 'autopilot_series';
     tasks?: ParsedTask[];
+    series?: autopilotSeriesData;
     message?: string;
 }
 
@@ -211,17 +221,17 @@ Current Context:
 ${next7Days}
 
 **CRITICAL RULES:**
-1.  **NO DIRECT ACTIONS:** You cannot add tasks directly. You can ONLY propose them via JSON.
-2.  **PREVIEW REQUIRED:** If the user wants to add tasks, you MUST return a strict JSON object with action "preview_tasks".
-3.  **DATE CALCULATION:** 
-    - "Day X" always means: Start Date + (X - 1) days.
-    - Example: If Start Date is 2026-02-01, Day 12 is 2026-02-12.
-    - USE THE REFERENCE LIST ABOVE.
+1.  **LANGUAGE:** YOU MUST SPEAK **PERSIAN (FARSI)** ONLY. Even if the user speaks English, reply in Persian.
+2.  **NO DIRECT ACTIONS:** You cannot add tasks directly. You can ONLY propose them via JSON.
+3.  **AUTOPILOT FOR SERIES:** If the user asks for a series of tasks (e.g., "From day 4 to 12, 30 physics tests per day starting from test 300"), **DO NOT generate the list yourself.** Instead, use the 'autopilot_series' action.
 4.  **RESPONSE FORMAT:**
-    - If proposing tasks: {"action": "preview_tasks", "tasks": [...], "message": "I have prepared..."}
-    - If just chatting: {"action": "info", "message": "..."}
+    - For simple chat: {"type": "info", "message": "متن فارسی شما..."}
+    - For specific single tasks: {"type": "preview_tasks", "tasks": [...], "message": "لیست تسک‌ها آماده شد..."}
+    - For SERIES/RANGES (Smart Mode): 
+      {"type": "autopilot_series", "series": {"subject": "فیزیک", "topic": "نوسان", "startDay": 4, "endDay": 12, "dailyCount": 30, "startTest": 300}, "message": "محاسبات انجام شد، بفرمایید..."}
 
-**DO NOT SAY "I have added the tasks" UNLESS you are returning the "preview_tasks" JSON.**`;
+**DO NOT SAY "I have added the tasks" UNLESS you are returning the JSON.**
+**Force Persian language in 'message' field.**`;
     };
 
     const formatMessageForProvider = (msg: Message, p: string) => {
@@ -330,7 +340,41 @@ ${next7Days}
                 if (action.message) {
                     setMessages(prev => [...prev, { role: 'assistant', content: action.message }]);
                 }
-                if (action.type === 'preview_tasks' && action.tasks && action.tasks.length > 0) {
+
+                if (action.type === 'autopilot_series' && action.series) {
+                    // Logic to generate tasks on client side
+                    const { subject, topic, startDay, endDay, dailyCount, startTest } = action.series;
+                    const generatedTasks: ParsedTask[] = [];
+                    let currentTestStart = startTest;
+
+                    // Calculate dates
+                    const planStart = new Date(startDate);
+
+                    for (let day = startDay; day <= endDay; day++) {
+                        const taskDate = new Date(planStart);
+                        taskDate.setDate(planStart.getDate() + (day - 1));
+
+                        const endTest = currentTestStart + dailyCount;
+
+                        generatedTasks.push({
+                            title: `${subject} - ${topic}`,
+                            subject: subject,
+                            topic: topic || '',
+                            details: `تست ${currentTestStart} تا ${endTest}`,
+                            testRange: `${currentTestStart}-${endTest}`,
+                            date: taskDate.toISOString().split('T')[0]
+                        });
+
+                        currentTestStart = endTest;
+                    }
+
+                    setPendingActions({
+                        type: 'preview_tasks',
+                        tasks: generatedTasks,
+                        message: action.message
+                    });
+
+                } else if (action.type === 'preview_tasks' && action.tasks && action.tasks.length > 0) {
                     setPendingActions(action);
                 }
             } catch (e) {
@@ -382,7 +426,7 @@ ${next7Days}
                 <div className="bg-white dark:bg-gray-900 md:rounded-3xl shadow-2xl w-full max-w-6xl h-full md:h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border-x border-gray-200 dark:border-gray-800 ring-1 ring-white/10">
 
                     {/* Sidebar (History) */}
-                    <div className={`${showHistory ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0'} md:relative absolute inset-y-0 left-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-20 flex flex-col`}>
+                    <div className={`${showHistory ? 'w-64 translate-x-0' : 'w-0 -translate-x-full opacity-0 pointer-events-none md:pointer-events-auto md:opacity-100 md:w-0 border-none'} md:relative absolute inset-y-0 left-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-20 flex flex-col`}>
                         <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
                             <h3 className="font-bold text-gray-700 dark:text-gray-200">تاریخچه</h3>
                             <button onClick={() => setShowHistory(false)} className="md:hidden p-1"><X size={16} /></button>
