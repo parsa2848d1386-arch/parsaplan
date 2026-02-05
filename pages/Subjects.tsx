@@ -56,7 +56,7 @@ const SubjectModal: React.FC<{
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
@@ -64,7 +64,7 @@ const SubjectModal: React.FC<{
             ></div>
 
             {/* Modal Container */}
-            <div className="relative pointer-events-auto w-full max-w-md mx-4 sm:mx-auto mb-20 sm:mb-0 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-10 fade-in duration-300 border border-white/20 dark:border-gray-700/50">
+            <div className="relative pointer-events-auto w-full max-w-md m-4 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 fade-in duration-300 border border-white/20 dark:border-gray-700/50">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
                         {editingSubject ? 'ویرایش درس' : 'افزودن درس جدید'}

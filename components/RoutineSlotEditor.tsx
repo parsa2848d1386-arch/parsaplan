@@ -95,7 +95,7 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
     const IconComp = getIconComponent(icon);
 
     return createPortal(
-        <div className="fixed inset-0 flex items-end sm:items-center justify-center pointer-events-none" style={{ zIndex: 2147483647 }}>
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 2147483647 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
@@ -103,7 +103,7 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
             ></div>
 
             {/* Modal Container */}
-            <div className="relative pointer-events-auto w-full max-w-md mx-4 sm:mx-auto mb-20 sm:mb-0 bg-white dark:bg-gray-800 rounded-3xl sm:rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="relative pointer-events-auto w-full max-w-md m-4 bg-white dark:bg-gray-800 rounded-3xl sm:rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 fade-in duration-300">
                 <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-xl">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
                         {isNewSlot ? 'افزودن اسلات جدید' : 'ویرایش اسلات'}
