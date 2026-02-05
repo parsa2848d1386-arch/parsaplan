@@ -253,8 +253,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     />
                                     <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 dark:text-gray-500">دقیقه</span>
                                 </div>
-                                <div className="flex justify-center gap-2 mt-3">
-                                    {[15, 30, 45, 60, 90].map(mins => (
+                                <div className="flex justify-center gap-2 mt-3 flex-wrap">
+                                    {[30, 45, 60, 90, 120, 150, 180, 210, 240].map(mins => (
                                         <button
                                             key={mins}
                                             type="button"

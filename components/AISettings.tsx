@@ -110,7 +110,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
         if (currentSessionId && messages.length > 0) {
             setSessions(prev => prev.map(s =>
                 s.id === currentSessionId
-                    ? { ...s, messages, title: s.title === 'New Chat' && messages[0] ? messages[0].content.slice(0, 30) + '...' : s.title }
+                    ? { ...s, messages, title: s.title === 'گفتگوی جدید' && messages[0] ? messages[0].content.slice(0, 30) + '...' : s.title }
                     : s
             ));
         }
@@ -151,6 +151,22 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
         } else if (currentSessionId === id) {
             loadSession(newSessions[0]);
         }
+    };
+
+    // Rename Logic
+    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+    const [editTitleInput, setEditTitleInput] = useState('');
+
+    const startEditing = (e: React.MouseEvent, session: ChatSession) => {
+        e.stopPropagation();
+        setEditingSessionId(session.id);
+        setEditTitleInput(session.title);
+    };
+
+    const saveTitle = (id: string) => {
+        if (!editTitleInput.trim()) return;
+        setSessions(prev => prev.map(s => s.id === id ? { ...s, title: editTitleInput.trim() } : s));
+        setEditingSessionId(null);
     };
 
     // Scroll to bottom
@@ -378,11 +394,34 @@ ${next7Days}
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {sessions.map(session => (
                             <div key={session.id} onClick={() => loadSession(session)} className={`p-3 rounded-xl cursor-pointer text-sm flex items-center justify-between group transition ${currentSessionId === session.id ? 'bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700' : 'hover:bg-gray-100 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-400'}`}>
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <MessageSquare size={14} className="shrink-0 opacity-70" />
-                                    <span className="truncate">{session.title}</span>
-                                </div>
-                                <button onClick={(e) => deleteSession(e, session.id)} className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                                {editingSessionId === session.id ? (
+                                    <div className="flex items-center gap-1 w-full" onClick={e => e.stopPropagation()}>
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={editTitleInput}
+                                            onChange={e => setEditTitleInput(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') saveTitle(session.id);
+                                                if (e.key === 'Escape') setEditingSessionId(null);
+                                            }}
+                                            className="w-full bg-white dark:bg-gray-900 border border-indigo-300 rounded px-1 py-0.5 text-xs outline-none"
+                                        />
+                                        <button onClick={() => saveTitle(session.id)} className="text-green-600 p-0.5"><Check size={14} /></button>
+                                        <button onClick={() => setEditingSessionId(null)} className="text-red-500 p-0.5"><X size={14} /></button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            <MessageSquare size={14} className="shrink-0 opacity-70" />
+                                            <span className="truncate">{session.title}</span>
+                                        </div>
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition">
+                                            <button onClick={(e) => startEditing(e, session)} className="p-1 hover:text-indigo-500 transition"><Edit2 size={14} /></button>
+                                            <button onClick={(e) => deleteSession(e, session.id)} className="p-1 hover:text-red-500 transition"><Trash2 size={14} /></button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
