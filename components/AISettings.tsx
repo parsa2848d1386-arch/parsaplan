@@ -6,7 +6,7 @@ import {
     MessageSquare, Trash2, Plus, Edit2, Calendar, BookOpen, Hash, AlignLeft,
     History, ChevronLeft, ChevronRight, MoreVertical
 } from 'lucide-react';
-import { Subject } from '../types';
+import { Subject, SUBJECT_ICONS } from '../types';
 import AITaskReviewWindow, { ParsedTask } from './AITaskReviewWindow';
 
 interface AISettingsProps {
@@ -204,6 +204,9 @@ export const AISettings: React.FC<AISettingsProps> = ({ isOpen, onClose }) => {
     const getSystemPrompt = () => {
         const today = new Date().toISOString().split('T')[0];
 
+        // Get valid subjects list
+        const validSubjects = Object.keys(SUBJECT_ICONS).join(', ');
+
         // Calculate specific future dates for better context
         const next7Days = Array.from({ length: 7 }, (_, i) => {
             const d = new Date(startDate);
@@ -220,6 +223,9 @@ Current Context:
 **UPCOMING DAYS REFERENCE:**
 ${next7Days}
 
+**VALID SUBJECTS (Use these EXACT names):**
+${validSubjects}
+
 **CRITICAL RULES:**
 1.  **LANGUAGE:** YOU MUST SPEAK **PERSIAN (FARSI)** ONLY. Even if the user speaks English, reply in Persian.
 2.  **NO DIRECT ACTIONS:** You cannot add tasks directly. You can ONLY propose them via JSON.
@@ -229,6 +235,17 @@ ${next7Days}
     - For specific single tasks: {"type": "preview_tasks", "tasks": [...], "message": "لیست تسک‌ها آماده شد..."}
     - For SERIES/RANGES (Smart Mode): 
       {"type": "autopilot_series", "series": {"subject": "فیزیک", "topic": "نوسان", "startDay": 4, "endDay": 12, "dailyCount": 30, "startTest": 300}, "message": "محاسبات انجام شد، بفرمایید..."}
+
+**EXAMPLE REQUEST:** "Add two tasks for Day 12: Physics Exam and Analysis"
+**EXAMPLE JSON:**
+{
+  "type": "preview_tasks",
+  "tasks": [
+    { "title": "Physics Exam", "subject": "فیزیک", "topic": "آزمون", "details": "Exam", "date": "2026-02-12", "testRange": "" },
+    { "title": "Analysis", "subject": "فیزیک", "topic": "تحلیل آزمون", "details": "Analysis", "date": "2026-02-12", "testRange": "" }
+  ],
+  "message": "دو تسک آزمون و تحلیل فیزیک برای روز ۱۲ (۱۲ فوریه) آماده شد."
+}
 
 **DO NOT SAY "I have added the tasks" UNLESS you are returning the JSON.**
 **Force Persian language in 'message' field.**`;

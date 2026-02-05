@@ -71,14 +71,14 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
         if (editingIndex === null && updated) {
             // New Task
             const newToken: ParsedTask = {
-                title: '', // SubjectTask doesn't have title field usually used this way, but we keep structure
+                title: updated.subject || '', // Fallback title
                 subject: updated.subject || Subject.Custom,
-                topic: updated.topic || '',
+                topic: updated.topic || 'بدون عنوان',
                 details: updated.details || '',
                 testRange: updated.testRange || '',
                 date: updated.date || new Date().toISOString().split('T')[0]
             };
-            onUpdateTasks([...tasks, newToken]);
+            onUpdateTasks([...tasks, newToken]); // Append to end
         } else if (editingIndex !== null && updated) {
             // Update Existing
             const newTasks = [...tasks];
