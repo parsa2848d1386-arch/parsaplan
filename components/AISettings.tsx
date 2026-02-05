@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Subject, SUBJECT_ICONS, SUBJECT_LISTS } from '../types';
 import AITaskReviewWindow, { ParsedTask } from './AITaskReviewWindow';
+import { createPortal } from 'react-dom';
 
 interface AISettingsProps {
     isOpen: boolean;
@@ -452,7 +453,7 @@ ${validSubjects}
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <>
             {/* MAIN AI SETTINGS MODAL */}
             {/* MAIN AI SETTINGS MODAL */}
@@ -604,7 +605,8 @@ ${validSubjects}
                     onUpdateTasks={handleUpdateTasks}
                 />
             )}
-        </>
+        </>,
+        document.body
     );
 };
 

@@ -174,8 +174,8 @@ const Layout = () => {
                             </div>
                         </div>
 
-                        {/* Mobile Bottom Nav - Lowered z-index to 20 to separate from Modals (100+) */}
-                        <nav className="md:hidden fixed bottom-6 left-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/20 dark:border-gray-800/50 px-2 py-2 flex justify-between items-center z-20 pb-safe shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2.5rem] transition-all duration-300 transform translate-z-0">
+                        {/* Mobile Bottom Nav - Enhanced Premium Look */}
+                        <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-white/40 dark:border-white/10 px-6 py-4 flex justify-between items-center z-50 pb-safe shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)] rounded-[2rem] transition-all duration-300">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}

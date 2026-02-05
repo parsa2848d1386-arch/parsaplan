@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../context/StoreContext';
 import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2, X, BookOpen, Target, Calendar, ChevronLeft, Search } from 'lucide-react';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
@@ -281,8 +282,8 @@ const Leaderboard = () => {
         const completedTasks = viewingProfile.tasks?.filter((t: any) => t.isCompleted) || [];
         const pendingTasks = viewingProfile.tasks?.filter((t: any) => !t.isCompleted) || [];
 
-        return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        return createPortal(
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                 <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
                     {/* Header */}
                     <div className="p-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white relative">
@@ -404,7 +405,8 @@ const Leaderboard = () => {
                         )}
                     </div>
                 </div>
-            </div>
+            </div>,
+            document.body
         );
     };
 

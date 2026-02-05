@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Subject, SubjectTask, SUBJECT_ICONS, StudyType, SubTask, SUBJECT_LISTS } from '../types';
 import { useStore } from '../context/StoreContext';
 import { X, Clock, Star, Target, Calendar, CheckCircle2, Tag, CalendarClock, ChevronRight, ChevronLeft, LayoutGrid, List, Beaker, BookOpen, Search, GraduationCap } from 'lucide-react';
@@ -162,8 +163,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
         });
     };
 
-    return (
-        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-md transition-opacity">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-md transition-opacity">
             <div className="bg-white dark:bg-gray-900 rounded-t-[2.5rem] sm:rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 sm:fade-in sm:zoom-in-95 duration-200 flex flex-col max-h-[95dvh] sm:max-h-[85vh] border-t sm:border border-gray-100 dark:border-gray-800">
 
                 {/* Header */}
@@ -524,7 +525,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
