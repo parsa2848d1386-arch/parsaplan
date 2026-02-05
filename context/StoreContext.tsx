@@ -858,9 +858,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const deleteTask = (taskId: string) => {
-        setTasks(prev => prev.filter(t => t.id !== taskId));
-        logAction('delete_task', `حذف تسک با شناسه ${taskId}`);
-        showToast('تسک حذف شد', 'warning');
+        const taskToDelete = tasks.find(t => t.id === taskId);
+        const needsConfirm = taskToDelete?.type === 'exam' || taskToDelete?.type === 'analysis';
+
+        const performDelete = () => {
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            logAction('delete_task', `حذف تسک با شناسه ${taskId}`);
+            showToast('تسک حذف شد', 'warning');
+        };
+
+        if (needsConfirm) {
+            askConfirm(
+                'حذف تسک ویژه',
+                `آیا از حذف ${taskToDelete?.type === 'exam' ? 'آزمون' : 'تحلیل'} "${taskToDelete?.subject}" مطمئن هستید؟`,
+                performDelete,
+                'danger'
+            );
+        } else {
+            performDelete();
+        }
     };
 
     const toggleTask = (taskId: string) => {
@@ -1030,7 +1046,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             toasts, showToast, removeToast,
             confirmState, askConfirm, closeConfirm,
             showQuotes, toggleShowQuotes,
-            settings, updateSettings
+            settings, updateSettings,
+            archivedPlans, archiveCurrentPlan, deleteArchivedPlan
         }}>
             {children}
         </StoreContext.Provider>

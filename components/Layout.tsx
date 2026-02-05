@@ -21,7 +21,6 @@ const Layout = () => {
         { to: '/routine', icon: CalendarClock, label: 'روتین' },
         { to: '/subjects', icon: BookOpen, label: 'دروس' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل' },
-        { to: '/history', icon: HistoryIcon, label: 'تاریخچه' },
         { to: '/leaderboard', icon: Trophy, label: 'لیگ' },
         { to: '/settings', icon: Settings, label: 'تنظیمات' },
     ];
