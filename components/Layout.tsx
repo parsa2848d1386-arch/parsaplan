@@ -61,9 +61,13 @@ const Layout = () => {
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200 dark:shadow-none">
                                     <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M120 270 L195 340 C235 240 270 140 360 140 C445 140 445 320 360 320 C320 320 285 295 260 420" />
-                                        <path d="M360 230 L360 185" strokeWidth="26" />
-                                        <path d="M360 230 L399 252.5" strokeWidth="26" />
+                                        <g transform="translate(256, 256) scale(0.85) translate(-256, -256)">
+                                            <path d="M140 280 L210 350 C230 310 230 220 230 220 C230 140 380 140 380 230 C380 320 250 320 250 440" strokeWidth="45" />
+                                            <g transform="translate(305, 230)">
+                                                <line x1="0" y1="0" x2="0" y2="-35" strokeWidth="12" />
+                                                <line x1="0" y1="0" x2="25" y2="25" strokeWidth="12" />
+                                            </g>
+                                        </g>
                                     </svg>
                                 </div>
                                 {!sidebarCollapsed && <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">ParsaPlan</h1>}
@@ -164,14 +168,14 @@ const Layout = () => {
                             <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-100/40 dark:bg-purple-900/10 rounded-full blur-[120px]"></div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto no-scrollbar pb-32 md:pb-5 scroll-smooth relative z-10">
-                            <div className="max-w-5xl mx-auto w-full">
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-32 md:pb-5 scroll-smooth relative z-10 h-full">
+                            <div className="max-w-5xl mx-auto w-full min-h-full">
                                 <Outlet />
                             </div>
                         </div>
 
-                        {/* Mobile Bottom Nav - Lowered z-index and enhanced aesthetics */}
-                        <nav className="md:hidden fixed bottom-6 left-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/20 dark:border-gray-800/50 px-2 py-2 flex justify-between items-center z-40 pb-safe shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2.5rem] transition-all duration-300">
+                        {/* Mobile Bottom Nav - Lowered z-index to 20 to separate from Modals (100+) */}
+                        <nav className="md:hidden fixed bottom-6 left-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/20 dark:border-gray-800/50 px-2 py-2 flex justify-between items-center z-20 pb-safe shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2.5rem] transition-all duration-300">
                             {navItems.map((item) => (
                                 <NavLink
                                     key={item.to}

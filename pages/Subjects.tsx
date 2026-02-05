@@ -225,7 +225,7 @@ const Subjects = () => {
     };
 
     return (
-        <div className="p-5 pb-32">
+        <div className="p-5 pb-32 animate-in fade-in duration-300">
             <TaskModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

@@ -329,12 +329,23 @@ const Settings = () => {
 
 
     return (
-        <div className="max-w-4xl mx-auto p-4 md:p-6 pb-24 space-y-6">
+        <div className="max-w-4xl mx-auto p-4 md:p-6 pb-32 space-y-6 animate-in fade-in duration-300">
 
 
-            <div>
-                <h1 className="text-2xl font-black text-gray-800 dark:text-white">تنظیمات ⚙️</h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">مدیریت حساب، ظاهر و پیکربندی برنامه</p>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
+                        <User className="text-white" size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">تنظیمات کاربری</h1>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">مدیریت حساب، ظاهر و داده‌های برنامه</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-2">
+                </div>
             </div>
 
             {/* --- 1. General Settings (Date & Duration) --- */}

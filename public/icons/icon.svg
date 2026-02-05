@@ -1,31 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366F1" />
-      <stop offset="100%" stop-color="#4F46E5" />
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#312E81" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="15" result="blur" />
+    <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
   
-  <!-- Premium Squircle Background -->
-  <path d="M160 32C89.3 32 32 89.3 32 160L32 352C32 422.7 89.3 480 160 480L352 480C422.7 480 480 422.7 480 352L480 160C480 89.3 422.7 32 352 32L160 32Z" fill="url(#grad)" />
+  <!-- Premium Rounded Square Background -->
+  <rect x="32" y="32" width="448" height="448" rx="120" fill="url(#grad)" />
   
-  <!-- Subtle Inner Shadow for Depth -->
-  <path d="M160 32C89.3 32 32 89.3 32 160L32 352C32 422.7 89.3 480 160 480L352 480C422.7 480 480 422.7 480 352L480 160C480 89.3 422.7 32 352 32L160 32Z" fill="black" fill-opacity="0.1" transform="translate(0, 10)" />
-  
-  <g stroke="white" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- Polished Main Path (Task P Hybrid) -->
-    <path d="M120 270 L195 340 C235 240 270 140 360 140 C445 140 445 320 360 320 C320 320 285 295 260 420" 
-          stroke-width="34" filter="url(#glow)" />
-    
-    <!-- Precisely Calibrated Clock Hands (4:00) -->
-    <circle cx="360" cy="230" r="4" fill="white" stroke="none" />
-    <!-- Minute Hand (12:00) -->
-    <line x1="360" y1="230" x2="360" y2="185" stroke-width="26" />
-    <!-- Hour Hand (4:00) - 120 degrees from vertical -->
-    <line x1="360" y1="230" x2="399" y2="252.5" stroke-width="26" />
+  <!-- Checkmark + P + Clock Hybrid Shape -->
+  <g transform="translate(256, 256) scale(0.9) translate(-256, -256)">
+      <path d="M140 280 L210 350 C230 310 230 220 230 220 C230 140 380 140 380 230 C380 320 250 320 250 440" 
+            stroke="white" stroke-width="45" stroke-linecap="round" stroke-linejoin="round" fill="none"
+            filter="url(#soft-glow)" />
+      
+      <!-- Clock Hands inside the P-loop -->
+      <g transform="translate(305, 230)"> 
+          <!-- Center Dot -->
+          <circle cx="0" cy="0" r="6" fill="white" />
+          <!-- Two Hands forming a time (approx 4:00 or generic) -->
+          <line x1="0" y1="0" x2="0" y2="-35" stroke="white" stroke-width="12" stroke-linecap="round" />
+          <line x1="0" y1="0" x2="25" y2="25" stroke="white" stroke-width="12" stroke-linecap="round" />
+      </g>
   </g>
 </svg>

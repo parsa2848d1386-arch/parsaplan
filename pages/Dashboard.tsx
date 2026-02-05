@@ -183,17 +183,11 @@ const Dashboard = () => {
 
                 {/* Daily Quote */}
                 {showQuotes && (
-                    <div className="bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 rounded-[2.5rem] p-6 text-white shadow-xl relative overflow-hidden group">
-                        <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all duration-700"></div>
-                        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-indigo-400/20 rounded-full blur-3xl"></div>
-
-                        <div className="relative z-10 flex flex-col items-center gap-3">
-                            <Quote size={28} className="text-white/40 rotate-180" fill="currentColor" />
-                            <p className="text-base font-black leading-relaxed text-center px-4 drop-shadow-sm">
-                                {dailyQuote}
-                            </p>
-                            <div className="h-0.5 w-12 bg-white/20 rounded-full mt-1"></div>
-                        </div>
+                    <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                        <Quote size={40} className="absolute right-2 top-2 text-white/10 rotate-180" />
+                        <p className="text-sm font-medium leading-7 relative z-10 text-center px-4">
+                            "{dailyQuote}"
+                        </p>
                     </div>
                 )}
             </div>

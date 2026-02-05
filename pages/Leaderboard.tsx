@@ -409,20 +409,20 @@ const Leaderboard = () => {
     };
 
     return (
-        <div className="p-5 pb-20 animate-in fade-in duration-300">
+        <div className="p-5 pb-32 animate-in fade-in duration-300">
             {/* Profile Viewer Modal */}
             <ProfileViewerModal />
 
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-black text-gray-800 dark:text-white flex items-center gap-2 tracking-tight">
-                        <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-200 dark:shadow-none">
-                            <Trophy className="text-white" size={24} />
-                        </div>
-                        لیگ رقابت
-                    </h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">با دیگران رقابت کنید و پیشرفت خود را ببینید!</p>
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200 dark:shadow-none shrink-0">
+                        <Trophy className="text-white" size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">لیگ رقابت</h1>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">با دیگران رقابت کنید و پیشرفت خود را ببینید!</p>
+                    </div>
                 </div>
 
                 <div className="flex gap-3">
