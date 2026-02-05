@@ -7,7 +7,7 @@ export const ToastContainer = () => {
     const { toasts, removeToast } = useStore();
 
     return (
-        <div className="fixed top-20 md:top-4 left-0 right-0 flex flex-col items-center gap-2 pointer-events-none px-4 transition-all duration-500" style={{ zIndex: 10000 }}>
+        <div className="fixed top-20 md:top-4 left-0 right-0 flex flex-col items-center gap-2 pointer-events-none px-4 transition-all duration-500" style={{ zIndex: 2147483647 }}>
             {toasts.map(toast => (
                 <div
                     key={toast.id}
@@ -40,8 +40,8 @@ export const ConfirmModal = () => {
     if (!confirmState.isOpen) return null;
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4" style={{ zIndex: 10001 }}>
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-xs w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4" style={{ zIndex: 2147483647 }}>
+            <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl max-w-xs w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700 mb-32 sm:mb-0">
                 <div className={`p-6 text-center ${confirmState.type === 'danger' ? 'bg-rose-50 dark:bg-rose-900/20' : 'bg-gray-50 dark:bg-gray-700'}`}>
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${confirmState.type === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-800 dark:text-rose-200' : 'bg-indigo-100 text-indigo-600'}`}>
                         {confirmState.type === 'danger' ? <Trash2 size={32} /> : <Info size={32} />}

@@ -28,8 +28,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
     };
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" style={{ zIndex: 9999 }}>
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden max-h-[75vh]">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" style={{ zIndex: 2147483647 }}>
+            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] sm:rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden max-h-[60vh] mb-32 sm:mb-0">
 
                 {/* Header */}
                 <div className={`relative h-32 flex flex-col items-center justify-center text-white transition-colors duration-300 ${mode === 'login'
