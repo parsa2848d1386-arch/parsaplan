@@ -421,7 +421,7 @@ const Dashboard = () => {
             )}
             {/* AI Settings Modal */}
             <AISettings isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
-        </>
+        </div>
     );
 };
 
