@@ -164,8 +164,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-md transition-opacity">
-            <div className="bg-white dark:bg-gray-900 rounded-t-[2.5rem] sm:rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 sm:fade-in sm:zoom-in-95 duration-200 flex flex-col max-h-[95dvh] sm:max-h-[85vh] border-t sm:border border-gray-100 dark:border-gray-800">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center bg-black/60 p-4 sm:p-4 backdrop-blur-md transition-opacity" style={{ zIndex: 9999 }}>
+            <div className="bg-white dark:bg-gray-900 rounded-[2rem] sm:rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 sm:fade-in sm:zoom-in-95 duration-200 flex flex-col max-h-[calc(100dvh-8rem)] sm:max-h-[85vh] border border-gray-100 dark:border-gray-800 mb-20 sm:mb-0">
 
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">

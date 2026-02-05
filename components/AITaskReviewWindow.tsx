@@ -110,8 +110,8 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200 dark:border-gray-800">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" style={{ zIndex: 9999 }}>
+            <div className="bg-white dark:bg-gray-900 rounded-[2rem] sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[calc(100dvh-8rem)] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200 dark:border-gray-800 mb-20 sm:mb-0">
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
                     <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">

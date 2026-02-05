@@ -95,8 +95,8 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
     const IconComp = getIconComponent(icon);
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" style={{ zIndex: 9999 }}>
+            <div className="bg-white dark:bg-gray-800 rounded-[2rem] sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[calc(100dvh-8rem)] sm:max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-300 mb-20 sm:mb-0 border border-gray-100 dark:border-gray-700">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
                         {isNewSlot ? 'افزودن اسلات جدید' : 'ویرایش اسلات'}
@@ -232,9 +232,8 @@ export const RoutineSlotEditor: React.FC<RoutineSlotEditorProps> = ({
                     </button>
                 </div>
             </div>
-        </div>
-        </div >,
-    document.body
+        </div>,
+        document.body
     );
 };
 
