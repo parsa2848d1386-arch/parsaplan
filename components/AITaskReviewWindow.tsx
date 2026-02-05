@@ -110,7 +110,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 flex items-end sm:items-center justify-center pointer-events-none" style={{ zIndex: 99999 }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" style={{ zIndex: 2147483647 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
