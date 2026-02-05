@@ -7,6 +7,7 @@ import {
     History, ChevronLeft, ChevronRight, MoreVertical
 } from 'lucide-react';
 import { Subject } from '../types';
+import AITaskReviewWindow, { ParsedTask } from './AITaskReviewWindow';
 
 interface AISettingsProps {
     isOpen: boolean;
@@ -31,14 +32,12 @@ interface ChatSession {
     messages: Message[];
 }
 
-interface ParsedTask {
-    title: string;
-    subject: string;
-    topic: string;
-    details: string;
-    testRange: string;
-    date: string;
-}
+// ParsedTask moved to AITaskReviewWindow component for shared usage, or we can import it
+// But since I defined it there, let's use the import.
+// Actually, earlier I defined ParsedTask interface in AISettings. 
+// I should remove the local interface if I import it, or just match them.
+// The import above 'import AITaskReviewWindow, { ParsedTask }' handles it.
+// So I will remove the local ParsedTask interface definition.
 
 interface ParsedAction {
     type: 'preview_tasks' | 'info';
@@ -346,33 +345,10 @@ ${next7Days}
         setIsLoading(false);
     };
 
-    const handleTaskEdit = (index: number, field: keyof ParsedTask, value: string) => {
-        if (!pendingActions || !pendingActions.tasks) return;
-        const updatedTasks = [...pendingActions.tasks];
-        updatedTasks[index] = { ...updatedTasks[index], [field]: value };
-        setPendingActions({ ...pendingActions, tasks: updatedTasks });
-    };
-
-    const handleDeletePendingTask = (index: number) => {
-        if (!pendingActions?.tasks) return;
-        const updatedTasks = pendingActions.tasks.filter((_, i) => i !== index);
-        setPendingActions({ ...pendingActions, tasks: updatedTasks });
-    };
-
-    const handleManualAddTask = () => {
+    // Handlers moved to AITaskReviewWindow or simplified here
+    const handleUpdateTasks = (updatedTasks: ParsedTask[]) => {
         if (!pendingActions) return;
-        const newTask: ParsedTask = {
-            title: '',
-            subject: 'Custom',
-            topic: '',
-            details: '',
-            testRange: '',
-            date: new Date().toISOString().split('T')[0]
-        };
-        setPendingActions({
-            ...pendingActions,
-            tasks: [...(pendingActions.tasks || []), newTask]
-        });
+        setPendingActions({ ...pendingActions, tasks: updatedTasks });
     };
 
     const confirmTasks = () => {
@@ -401,8 +377,9 @@ ${next7Days}
     return (
         <>
             {/* MAIN AI SETTINGS MODAL */}
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-gray-900 md:rounded-3xl shadow-2xl w-full max-w-5xl h-full md:h-[85vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border-x border-gray-200 dark:border-gray-800">
+            {/* MAIN AI SETTINGS MODAL */}
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-gray-900 md:rounded-3xl shadow-2xl w-full max-w-6xl h-full md:h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300 border-x border-gray-200 dark:border-gray-800 ring-1 ring-white/10">
 
                     {/* Sidebar (History) */}
                     <div className={`${showHistory ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0'} md:relative absolute inset-y-0 left-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-20 flex flex-col`}>
@@ -542,91 +519,12 @@ ${next7Days}
 
             {/* TASK PREVIEW MODAL (Separate Window) */}
             {pendingActions?.tasks && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200 dark:border-gray-800">
-                        {/* Header */}
-                        <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-                            <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                                <Sparkles size={20} />
-                                پیش‌نمایش و ویرایش تسک‌ها
-                            </h3>
-                            <button onClick={() => setPendingActions(null)} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition text-gray-400">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* List */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                            <div className="text-xs text-center text-gray-500 mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg border border-blue-100 dark:border-blue-800">
-                                تسک‌ها را بررسی، ویرایش یا حذف کنید. می‌توانید تسک جدیدی هم دستی در اینجا اضافه کنید.
-                            </div>
-
-                            {pendingActions.tasks.map((task, idx) => (
-                                <div key={idx} className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-3 flex gap-3 group">
-                                    <div className="flex-1 space-y-2">
-                                        <input
-                                            type="text"
-                                            value={task.title}
-                                            onChange={(e) => handleTaskEdit(idx, 'title', e.target.value)}
-                                            placeholder="عنوان تسک"
-                                            className="w-full bg-transparent font-bold text-gray-800 dark:text-white border-none p-0 focus:ring-0 text-sm placeholder:text-gray-400"
-                                        />
-                                        <div className="flex gap-2">
-                                            <div className="flex-1 relative">
-                                                <Calendar size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                <input
-                                                    type="date"
-                                                    value={task.date}
-                                                    onChange={(e) => handleTaskEdit(idx, 'date', e.target.value)}
-                                                    className="w-full bg-white dark:bg-gray-800 pr-7 pl-2 py-1.5 rounded-lg text-xs font-mono text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-500 transition"
-                                                />
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={task.testRange}
-                                                onChange={(e) => handleTaskEdit(idx, 'testRange', e.target.value)}
-                                                placeholder="بازه تست (مثلا ۱۰-۲۰)"
-                                                className="flex-1 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-500 transition placeholder:text-gray-400"
-                                            />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={task.details}
-                                            onChange={(e) => handleTaskEdit(idx, 'details', e.target.value)}
-                                            placeholder="جزئیات بیشتر..."
-                                            className="w-full bg-transparent text-xs text-gray-500 dark:text-gray-400 border-none p-0 focus:ring-0 placeholder:text-gray-300"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={() => handleDeletePendingTask(idx)}
-                                        className="self-center p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                        title="حذف این تسک"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            ))}
-
-                            <button
-                                onClick={handleManualAddTask}
-                                className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 hover:text-indigo-500 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition flex items-center justify-center gap-2 text-sm font-bold"
-                            >
-                                <Plus size={18} /> افزودن تسک جدید
-                            </button>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-3">
-                            <button onClick={() => setPendingActions(null)} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                                انصراف
-                            </button>
-                            <button onClick={confirmTasks} className="flex-[2] bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3 rounded-xl text-sm font-bold hover:shadow-lg hover:shadow-indigo-500/30 transition flex items-center justify-center gap-2">
-                                <Check size={18} />
-                                تایید و افزودن {pendingActions.tasks.length} تسک
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <AITaskReviewWindow
+                    tasks={pendingActions.tasks}
+                    onClose={() => setPendingActions(null)}
+                    onConfirm={confirmTasks}
+                    onUpdateTasks={handleUpdateTasks}
+                />
             )}
         </>
     );

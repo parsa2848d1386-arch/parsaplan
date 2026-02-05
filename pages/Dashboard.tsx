@@ -6,6 +6,7 @@ import AISettings from '../components/AISettings';
 import ProgressBar from '../components/ProgressBar';
 import { Subject, SubjectTask } from '../types';
 import TaskModal from '../components/TaskModal';
+import { TaskCard } from '../components/TaskCard';
 import MoodTracker from '../components/MoodTracker';
 import { getShamsiDate, toIsoString, isHoliday } from '../utils';
 import { useNavigate } from 'react-router-dom';
@@ -119,126 +120,7 @@ const Dashboard = () => {
         setIsModalOpen(true);
     }
 
-    const renderTaskCard = (task: SubjectTask, isOverdue = false) => {
-        const isDone = task.isCompleted;
-        const taskDateShamsi = getShamsiDate(task.date);
 
-        let subColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
-        if (task.subject.includes('زیست')) subColor = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300';
-        if (task.subject.includes('ریاضی')) subColor = 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
-        if (task.subject.includes('فیزیک')) subColor = 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300';
-        if (task.subject.includes('شیمی')) subColor = 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300';
-        if (task.isCustom) subColor = 'bg-gray-800 text-white dark:bg-gray-700';
-
-        const hasTestStats = task.testStats && task.testStats.total > 0;
-        const accuracy = hasTestStats ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100) : 0;
-
-        if (viewMode === 'compact') {
-            return (
-                <div
-                    key={task.id}
-                    onClick={() => toggleTask(task.id)}
-                    className={`group relative bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
-                >
-                    <div className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
-                        {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={20} strokeWidth={2} />}
-                    </div>
-                    <div className="flex-1 min-w-0 flex items-center justify-between">
-                        <div className={`truncate ${isDone ? 'opacity-50 line-through' : ''}`}>
-                            <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{task.subject}</span>
-                            <span className="mx-2 text-xs text-gray-400 dark:text-gray-500">|</span>
-                            <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{task.topic}</span>
-                        </div>
-                        <div className="flex gap-1 items-center">
-                            {hasTestStats && (
-                                <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[9px] font-bold">
-                                    <span className="text-emerald-600 dark:text-emerald-400">{task.testStats?.correct}✅</span>
-                                    <span className="text-rose-500">{task.testStats?.wrong}❌</span>
-                                    <span className="text-gray-400">|</span>
-                                    <span className={`${accuracy >= 50 ? 'text-emerald-600' : 'text-amber-500'}`}>{accuracy}%</span>
-                                </div>
-                            )}
-                            {task.tags && task.tags.length > 0 && <span className="text-[9px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1 rounded flex items-center">#{task.tags[0]}</span>}
-                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ml-1 ${subColor}`}>
-                                {task.details}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex gap-1 pl-1">
-                        <button onClick={(e) => openEdit(e, task)} className="text-gray-400 hover:text-blue-500"><Pencil size={14} /></button>
-                        <button onClick={(e) => handleDelete(e, task.id)} className="text-gray-400 hover:text-rose-500"><Trash2 size={14} /></button>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div
-                key={task.id}
-                onClick={() => toggleTask(task.id)}
-                className={`group relative bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
-            >
-                {/* Top Section: Icon + Content (Row Layout) */}
-                <div className="flex items-start gap-3 w-full">
-                    <div className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}>
-                        {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={24} strokeWidth={2} />}
-                    </div>
-                    <div className={`flex-1 transition-all duration-500 ${isDone ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
-                        <div className="flex justify-between items-start">
-                            <h3 className={`font-bold text-gray-800 dark:text-gray-200 transition-all ${isDone ? 'line-through decoration-2 decoration-gray-300 dark:decoration-gray-600' : ''}`}>{task.subject}</h3>
-                            <div className="flex flex-col items-end gap-1">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${subColor}`}>
-                                    {task.details}
-                                </span>
-                                <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                                    <Calendar size={10} />
-                                    {taskDateShamsi}
-                                </span>
-                            </div>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed font-medium">
-                            <span className="font-bold text-gray-800 dark:text-gray-300">مبحث:</span> {task.topic}
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                            {hasTestStats && (
-                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg px-2 py-1 text-[10px] font-bold">
-                                    <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400" title="تعداد درست"><Target size={10} /> {task.testStats?.correct}</span>
-                                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                                    <span className="text-rose-500 dark:text-rose-400" title="تعداد غلط">{task.testStats?.wrong} غلط</span>
-                                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                                    <span className={`${accuracy >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'}`}>{accuracy}%</span>
-                                </div>
-                            )}
-
-                            {task.tags && task.tags.length > 0 && (
-                                <div className="flex gap-1">
-                                    {task.tags.map(t => (
-                                        <span key={t} className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition">#{t}</span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bottom Section: Footer Actions (Row Layout) */}
-                <div className="w-full flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1">
-                    <button onClick={(e) => openEdit(e, task)} className="flex items-center gap-1 text-[10px] items-center px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
-                        <Pencil size={14} /> ویرایش
-                    </button>
-                    <button onClick={(e) => handleDelete(e, task.id)} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition">
-                        <Trash2 size={14} /> حذف
-                    </button>
-                    {isOverdue && (
-                        <button onClick={(e) => { e.stopPropagation(); handleMoveToToday(task.id); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition">
-                            <ArrowDownToLine size={14} /> انتقال به امروز
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="p-4 space-y-5 animate-in fade-in duration-500">
@@ -508,13 +390,33 @@ const Dashboard = () => {
                         </div>
 
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                            {rawOverdueTasks.map(task => renderTaskCard(task, true))}
+                            {rawOverdueTasks.map(task => (
+                                <TaskCard
+                                    key={task.id}
+                                    task={task}
+                                    isOverdue={true}
+                                    onToggle={toggleTask}
+                                    onEdit={openEdit}
+                                    onDelete={handleDelete}
+                                    onMoveToToday={handleMoveToToday}
+                                    viewMode={viewMode}
+                                />
+                            ))}
                         </div>
                     </div>
                 )}
 
                 {processedTasks.length > 0 ? (
-                    processedTasks.map(task => renderTaskCard(task))
+                    processedTasks.map(task => (
+                        <TaskCard
+                            key={task.id}
+                            task={task}
+                            onToggle={toggleTask}
+                            onEdit={openEdit}
+                            onDelete={handleDelete}
+                            viewMode={viewMode}
+                        />
+                    ))
                 ) : (
                     <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 border-dashed">
                         <p className="text-gray-400 text-sm font-medium">هیچ تسکی نیست!</p>
