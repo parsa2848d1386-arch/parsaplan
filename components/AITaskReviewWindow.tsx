@@ -110,10 +110,18 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" style={{ zIndex: 2147483647 }}>
-            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[60vh] sm:max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-200 dark:border-gray-800 mb-32 sm:mb-0">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center pointer-events-none" style={{ zIndex: 99999 }}>
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
+                onClick={onClose}
+            />
+
+            {/* Modal Container */}
+            <div className="relative pointer-events-auto w-full max-w-2xl mx-4 sm:mx-auto mb-20 sm:mb-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[70vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-10 fade-in duration-300">
+
                 {/* Header */}
-                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
                     <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                         <Sparkles size={20} />
                         پیش‌نمایش و ویرایش تسک‌ها
@@ -151,7 +159,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-3">
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex gap-3 z-10">
                     <button onClick={onClose} className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3 rounded-xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition">
                         انصراف
                     </button>

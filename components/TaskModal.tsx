@@ -164,26 +164,33 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     };
 
     return createPortal(
-        <div className="fixed inset-0 flex items-center justify-center bg-black/60 p-4 sm:p-4 backdrop-blur-md transition-opacity" style={{ zIndex: 2147483647 }}>
-            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] sm:rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[60vh] sm:max-h-[85vh] border border-gray-100 dark:border-gray-800 mb-32 sm:mb-0">
+        <div className="fixed inset-0 flex items-end sm:items-center justify-center pointer-events-none" style={{ zIndex: 99999 }}>
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
+                onClick={onClose}
+            />
+
+            {/* Modal Container */}
+            <div className="relative pointer-events-auto w-full max-w-xl mx-4 sm:mx-auto mb-20 sm:mb-0 bg-white/90 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[70vh] sm:max-h-[85vh] animate-in slide-in-from-bottom-10 fade-in duration-300">
 
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">
-                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">
+                    <div className="flex bg-gray-100/80 dark:bg-gray-800/80 p-1 rounded-xl shadow-inner">
                         <button
                             onClick={() => setTab('info')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === 'info' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${tab === 'info' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                         >
                             اطلاعات پایه
                         </button>
                         <button
                             onClick={() => setTab('report')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === 'report' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${tab === 'report' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                         >
                             ثبت عملکرد
                         </button>
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-full transition">
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-full transition-all">
                         <X size={20} />
                     </button>
                 </div>
@@ -192,7 +199,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar">
 
                     {tab === 'info' && (
-                        <div className="p-6 space-y-6 animate-in slide-in-from-left-2 duration-300">
+                        <div className="p-5 space-y-5 animate-in slide-in-from-left-2 duration-300">
 
                             {/* Type Selection */}
                             <div className="grid grid-cols-3 gap-2">
@@ -201,30 +208,31 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         key={type.id}
                                         type="button"
                                         onClick={() => setFormData({ ...formData, studyType: type.id })}
-                                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${formData.studyType === type.id
-                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300'
-                                            : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200 ${formData.studyType === type.id
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                                            : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
                                             }`}
                                     >
-                                        <type.icon size={20} className="mb-1" />
+                                        <type.icon size={18} className="mb-1" />
                                         <span className="text-[10px] font-bold">{type.label}</span>
                                     </button>
                                 ))}
                             </div>
 
                             {/* Date Selection */}
-                            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/30">
-                                <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-1">
-                                    <Calendar size={14} />
+                            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-2xl border border-blue-100 dark:border-blue-800/30">
+                                <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-1">
+                                    <Calendar size={13} />
                                     زمان‌بندی
                                 </label>
                                 <select
                                     value={formData.dayId || 1}
                                     onChange={(e) => setFormData({ ...formData, dayId: parseInt(e.target.value) })}
-                                    className="w-full bg-white dark:bg-gray-800 border-none ring-1 ring-blue-200 dark:ring-blue-800 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition"
+                                    className="w-full bg-transparent border-none py-1 text-sm font-bold text-gray-800 dark:text-white outline-none focus:ring-0 cursor-pointer"
+                                    style={{ backgroundImage: 'none' }}
                                 >
                                     {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => (
-                                        <option key={day} value={day}>روز {day}</option>
+                                        <option key={day} value={day} className="dark:bg-gray-900">روز {day}</option>
                                     ))}
                                 </select>
                             </div>
@@ -253,12 +261,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                {isExamMode ? 'انتخاب دروس آزمون (چند انتخابی)' : 'انتخاب درس'}
+                                                {isExamMode ? 'انتخاب دروس آزمون' : 'انتخاب درس'}
                                             </label>
                                             {!isExamMode && (
-                                                <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                                                    <button type="button" onClick={() => setViewMode('grid')} className={`p-1 rounded-md ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><LayoutGrid size={14} /></button>
-                                                    <button type="button" onClick={() => setViewMode('list')} className={`p-1 rounded-md ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><List size={14} /></button>
+                                                <div className="flex bg-gray-100 dark:bg-gray-800/80 rounded-lg p-0.5">
+                                                    <button type="button" onClick={() => setViewMode('grid')} className={`p-1 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><LayoutGrid size={13} /></button>
+                                                    <button type="button" onClick={() => setViewMode('list')} className={`p-1 rounded-md transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-indigo-500' : 'text-gray-400'}`}><List size={13} /></button>
                                                 </div>
                                             )}
                                         </div>
@@ -271,14 +279,14 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                         key={name}
                                                         type="button"
                                                         onClick={() => isExamMode ? handleExamSubjectToggle(name) : setFormData({ ...formData, subject: name as Subject })}
-                                                        className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all hover:scale-105 active:scale-95 aspect-square ${isSelected
-                                                            ? 'bg-indigo-50 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/30'
-                                                            : 'bg-gray-50 dark:bg-gray-800/50 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700/80 grayscale hover:grayscale-0'
+                                                        className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 active:scale-95 aspect-square ${isSelected
+                                                            ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-indigo-800/40 border-indigo-200 dark:border-indigo-500/50 shadow-md ring-1 ring-indigo-400/30 dark:ring-indigo-500/30'
+                                                            : 'bg-white/50 dark:bg-gray-800/30 border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 grayscale hover:grayscale-0'
                                                             }`}
                                                     >
-                                                        <span className="text-xl mb-1">{style.icon}</span>
+                                                        <span className="text-xl mb-1 drop-shadow-sm">{style.icon}</span>
                                                         <span className="text-[9px] font-medium text-center truncate w-full text-gray-700 dark:text-gray-300">{name}</span>
-                                                        {isExamMode && isSelected && <CheckCircle2 size={10} className="absolute top-1 right-1 text-indigo-500" />}
+                                                        {isExamMode && isSelected && <CheckCircle2 size={12} className="absolute top-1 right-1 text-indigo-500 fill-white dark:fill-gray-900" />}
                                                     </button>
                                                 );
                                             })}
@@ -291,16 +299,16 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                             {isExamMode ? (
                                 <div className="space-y-3">
                                     <label className="text-xs font-bold text-gray-500">مباحث آزمون</label>
-                                    {selectedExamSubjects.length === 0 && <p className="text-xs text-gray-400 italic">هیچ درسی انتخاب نشده است.</p>}
+                                    {selectedExamSubjects.length === 0 && <p className="text-xs text-gray-400 italic text-center py-2 bg-gray-50 dark:bg-gray-800/30 rounded-lg">هیچ درسی انتخاب نشده است.</p>}
                                     {selectedExamSubjects.map(subj => (
-                                        <div key={subj} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-xl">
+                                        <div key={subj} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/40 p-2 rounded-xl border border-gray-100 dark:border-gray-700/50">
                                             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white dark:bg-gray-700 shadow-sm text-lg">
                                                 {SUBJECT_ICONS[subj]?.icon || '📚'}
                                             </div>
                                             <input
                                                 type="text"
                                                 placeholder={`مبحث ${subj}...`}
-                                                className="flex-1 bg-transparent text-sm outline-none px-2 text-gray-800 dark:text-white"
+                                                className="flex-1 bg-transparent text-sm outline-none px-2 text-gray-800 dark:text-white placeholder:text-gray-400"
                                                 value={subTaskInputs[subj]?.topic || ''}
                                                 onChange={e => handleSubTaskInput(subj, 'topic', e.target.value)}
                                             />
@@ -312,7 +320,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             type="text"
                                             value={formData.details || ''}
                                             onChange={e => setFormData({ ...formData, details: e.target.value })}
-                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 transition"
+                                            className="w-full bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition"
                                             placeholder="مثلا: آزمون قلم‌چی جامع ۱"
                                         />
                                     </div>
@@ -326,7 +334,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             type="text"
                                             value={formData.topic || ''}
                                             onChange={e => setFormData({ ...formData, topic: e.target.value })}
-                                            className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white"
+                                            className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white shadow-sm"
                                             placeholder="مثلا: نوسان و موج"
                                         />
                                     </div>
@@ -339,7 +347,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                 type="text"
                                                 value={formData.details || ''}
                                                 onChange={e => setFormData({ ...formData, details: e.target.value })}
-                                                className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 transition"
+                                                className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
                                                 placeholder="۴۵ تست"
                                             />
                                         </div>
@@ -349,7 +357,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                 type="text"
                                                 value={formData.testRange || ''}
                                                 onChange={e => setFormData({ ...formData, testRange: e.target.value })}
-                                                className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 transition"
+                                                className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
                                                 placeholder="اختیاری"
                                             />
                                         </div>
@@ -358,7 +366,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                             )}
 
                             {/* Tags */}
-                            <div className="bg-gray-50 dark:bg-gray-800/30 p-3 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <div className="bg-gray-50/50 dark:bg-gray-800/20 p-3 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">تگ‌ها</label>
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {(formData.tags || []).map(tag => (
@@ -384,7 +392,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     )}
 
                     {tab === 'report' && (
-                        <div className="p-6 space-y-6 animate-in slide-in-from-right-2 duration-300">
+                        <div className="p-5 space-y-6 animate-in slide-in-from-right-2 duration-300">
                             {/* Duration */}
                             <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-5 rounded-3xl border border-indigo-100 dark:border-indigo-500/20">
                                 <div className="flex items-center gap-2 mb-3 text-indigo-600 dark:text-indigo-400">
@@ -518,9 +526,9 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 </form>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 z-10">
-                    <button onClick={handleSubmit} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-200 dark:shadow-none active:scale-[0.98] flex items-center justify-center gap-2 text-lg">
-                        {tab === 'info' ? 'ذخیره تغییرات' : 'ثبت عملکرد'}
+                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md z-10">
+                    <button onClick={handleSubmit} className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 active:scale-[0.98] flex items-center justify-center gap-2 text-md">
+                        {tab === 'info' ? 'ذخیره فعالیت' : 'ثبت عملکرد'}
                         {tab === 'report' ? <CheckCircle2 size={20} /> : null}
                     </button>
                 </div>
