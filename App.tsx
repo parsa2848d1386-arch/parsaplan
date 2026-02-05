@@ -9,6 +9,7 @@ import Analysis from './pages/Analysis';
 import Settings from './pages/Settings';
 import Leaderboard from './pages/Leaderboard';
 import History from './pages/History';
+import AIChat from './pages/AIChat';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
             <Route path="leaderboard" element={<Leaderboard />} />
             <Route path="settings" element={<Settings />} />
             <Route path="history" element={<History />} />
+            <Route path="ai-chat" element={<AIChat />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

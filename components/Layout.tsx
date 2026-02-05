@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, History as HistoryIcon } from 'lucide-react';
+import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, History as HistoryIcon, Sparkles } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import FocusTimer from './FocusTimer';
 import { ToastContainer, ConfirmModal } from './Feedback';
@@ -18,6 +18,7 @@ const Layout = () => {
 
     const navItems = [
         { to: '/', icon: Home, label: 'داشبورد' },
+        { to: '/ai-chat', icon: Sparkles, label: 'هوش مصنوعی' },
         { to: '/routine', icon: CalendarClock, label: 'روتین' },
         { to: '/subjects', icon: BookOpen, label: 'دروس' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل' },

@@ -5,6 +5,7 @@ import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../co
 import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { calculateLevelInfo, getXpReward } from '../utils/xpSystem';
 
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
@@ -88,6 +89,9 @@ interface StoreContextType {
     // Gamification
     xp: number;
     level: number;
+    currentLevelXp: number;
+    xpForNextLevel: number;
+    progressPercent: number;
     dailyQuote: string;
 
     // Data
@@ -182,7 +186,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [showQuotes, setShowQuotes] = useState(true);
     const toggleShowQuotes = () => setShowQuotes(prev => !prev);
 
-    const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+    // Calculate Level Info dynamically from XP
+    const { level, currentLevelXp, xpForNextLevel, progressPercent } = calculateLevelInfo(xp);
+
 
     // --- HELPERS ---
     const showToast = (message: string, type: ToastType = 'info') => {
@@ -882,7 +888,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setTasks(prev => prev.map(t => {
             if (t.id === taskId) {
                 const newState = !t.isCompleted;
-                newState ? addXp(50) : addXp(-50);
+                const reward = getXpReward(t.studyType === 'exam' ? 'COMPLETE_TASK' : 'COMPLETE_TASK'); // Adjust based on task type if needed
+                newState ? addXp(reward) : addXp(-reward);
                 return { ...t, isCompleted: newState };
             }
             return t;
@@ -946,7 +953,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const key = `${dayId}-${slotId}`;
         setCompletedRoutine(prev => {
             const exists = prev.includes(key);
-            exists ? addXp(-20) : addXp(20);
+            const reward = getXpReward('COMPLETE_ROUTINE');
+            exists ? addXp(-reward) : addXp(reward);
             return exists ? prev.filter(k => k !== key) : [...prev, key];
         });
     };
@@ -1038,7 +1046,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             isTimerOpen, setIsTimerOpen,
             isCommandPaletteOpen, setIsCommandPaletteOpen,
             saveStatus, sidebarCollapsed, setSidebarCollapsed,
-            xp, level, dailyQuote, shiftIncompleteTasks,
+            xp, level, currentLevelXp, xpForNextLevel, progressPercent, dailyQuote, shiftIncompleteTasks,
             totalDays, setTotalDays,
             subjects, addSubject, updateSubject, deleteSubject,
             auditLog, moods, setMood,

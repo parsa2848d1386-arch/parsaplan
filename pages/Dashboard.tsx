@@ -19,7 +19,7 @@ const Dashboard = () => {
         tasks: allTasks,
         getDailyNote, saveDailyNote,
         viewMode, setIsTimerOpen,
-        level, xp, dailyQuote, shiftIncompleteTasks,
+        level, xp, currentLevelXp, xpForNextLevel, progressPercent, dailyQuote, shiftIncompleteTasks,
         totalDays, showQuotes, settings, subjects
     } = useStore();
 
@@ -154,14 +154,19 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-5 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-white/40 dark:border-gray-700/50">
                     <div>
                         <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight leading-tight">سلام، {userName} 👋</h1>
-                        <div className="flex items-center gap-3 mt-2">
-                            <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800/50">
-                                <Trophy size={14} className="text-amber-500" />
-                                <span className="text-[11px] font-black text-amber-700 dark:text-amber-400">سطح {level}</span>
+                        <div className="flex flex-col mt-3 w-40 sm:w-48">
+                            <div className="flex justify-between items-center mb-1 px-0.5">
+                                <div className="flex items-center gap-1">
+                                    <Trophy size={11} className="text-amber-500" />
+                                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">سطح {level}</span>
+                                </div>
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{Math.floor(currentLevelXp)} / {xpForNextLevel} XP</span>
                             </div>
-                            <div className="flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-800/50">
-                                <Zap size={14} className="text-indigo-500" />
-                                <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-400">{xp} XP</span>
+                            <div className="h-2 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden border border-gray-100 dark:border-gray-700/50 p-0.5">
+                                <div
+                                    className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.3)] transition-all duration-1000 ease-out"
+                                    style={{ width: `${progressPercent}%` }}
+                                ></div>
                             </div>
                         </div>
                     </div>
