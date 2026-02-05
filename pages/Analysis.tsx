@@ -176,10 +176,7 @@ const Analysis = () => {
                     </div>
                 </div>
 
-                {/* 2. Mood Analysis (Removed) */}
-                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center items-center text-center">
-                    <p className="text-gray-400 text-sm">بخش تحلیل وضعیت روحی حذف شده است.</p>
-                </div>
+
 
                 {/* 2. Detailed Table/Bars */}
                 <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
