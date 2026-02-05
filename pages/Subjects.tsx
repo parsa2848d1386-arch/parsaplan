@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../context/StoreContext';
 import { Subject, SubjectTask, getSubjectStyle, SUBJECT_ICONS, CustomSubject, SUBJECT_LISTS } from '../types';
 import { ChevronDown, ChevronUp, Circle, CheckCircle2, Pencil, Trash2, Plus, X, Check, LayoutGrid } from 'lucide-react';
@@ -55,7 +56,7 @@ const SubjectModal: React.FC<{
         setSelectedColor(style.color);
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
             {/* Backdrop */}
             <div
@@ -74,7 +75,7 @@ const SubjectModal: React.FC<{
                     </button>
                 </div>
 
-                <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh]">
+                <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh] custom-scrollbar">
                     {/* Name Input */}
                     <div>
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">نام درس</label>
@@ -91,7 +92,7 @@ const SubjectModal: React.FC<{
                     {/* Suggested Subjects */}
                     <div>
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">دروس پیشنهادی</label>
-                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
+                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 custom-scrollbar">
                             {suggestedSubjects.map(([subjectName, style]) => (
                                 <button
                                     key={subjectName}
@@ -152,7 +153,8 @@ const SubjectModal: React.FC<{
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
