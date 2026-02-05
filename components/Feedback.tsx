@@ -7,11 +7,11 @@ export const ToastContainer = () => {
     const { toasts, removeToast } = useStore();
 
     return (
-        <div className="fixed bottom-4 left-0 right-0 z-[100] flex flex-col items-center gap-2 pointer-events-none px-4">
+        <div className="fixed top-20 md:top-4 left-0 right-0 z-[100] flex flex-col items-center gap-2 pointer-events-none px-4 transition-all duration-500">
             {toasts.map(toast => (
-                <div 
+                <div
                     key={toast.id}
-                    className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border animate-in slide-in-from-bottom-5 fade-in duration-300 max-w-sm w-full backdrop-blur-md
+                    className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border animate-in slide-in-from-top-5 fade-in duration-300 max-w-sm w-full backdrop-blur-md transition-all
                         ${toast.type === 'success' ? 'bg-emerald-50/90 border-emerald-200 text-emerald-800 dark:bg-emerald-900/90 dark:border-emerald-700 dark:text-emerald-100' : ''}
                         ${toast.type === 'error' ? 'bg-rose-50/90 border-rose-200 text-rose-800 dark:bg-rose-900/90 dark:border-rose-700 dark:text-rose-100' : ''}
                         ${toast.type === 'warning' ? 'bg-amber-50/90 border-amber-200 text-amber-800 dark:bg-amber-900/90 dark:border-amber-700 dark:text-amber-100' : ''}
@@ -22,9 +22,9 @@ export const ToastContainer = () => {
                     {toast.type === 'error' && <AlertOctagon size={20} />}
                     {toast.type === 'warning' && <AlertTriangle size={20} />}
                     {toast.type === 'info' && <Info size={20} />}
-                    
+
                     <p className="text-sm font-bold flex-1">{toast.message}</p>
-                    
+
                     <button onClick={() => removeToast(toast.id)} className="opacity-60 hover:opacity-100">
                         <X size={16} />
                     </button>
@@ -50,13 +50,13 @@ export const ConfirmModal = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed">{confirmState.message}</p>
                 </div>
                 <div className="p-4 flex gap-3 bg-white dark:bg-gray-800">
-                    <button 
+                    <button
                         onClick={closeConfirm}
                         className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition"
                     >
                         انصراف
                     </button>
-                    <button 
+                    <button
                         onClick={() => { confirmState.onConfirm(); closeConfirm(); }}
                         className={`flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 ${confirmState.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-200 dark:shadow-none' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none'}`}
                     >

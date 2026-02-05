@@ -244,7 +244,7 @@ const Dashboard = () => {
             {/* Quick Actions */}
             <div>
                 <h2 className="text-xs font-bold text-gray-400 mb-2 px-1">دسترسی سریع</h2>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                     <button onClick={openAdd} className="col-span-1 bg-gray-900 dark:bg-indigo-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-gray-200 dark:shadow-none active:scale-95 transition-all">
                         <Plus size={20} />
                         <span className="text-[10px] font-bold">تسک جدید</span>
@@ -256,10 +256,6 @@ const Dashboard = () => {
                     <button onClick={() => setIsTimerOpen(true)} className="col-span-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-gray-700">
                         <Clock size={20} className="text-indigo-500" />
                         <span className="text-[10px] font-bold">تایمر</span>
-                    </button>
-                    <button onClick={() => navigate('/routine')} className="col-span-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <Zap size={20} className="text-amber-500" />
-                        <span className="text-[10px] font-bold">روتین</span>
                     </button>
                 </div>
             </div>
