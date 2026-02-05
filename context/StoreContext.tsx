@@ -355,6 +355,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (data.settings) {
                     setDarkMode(data.settings.darkMode);
                     setViewModeState(data.settings.viewMode);
+                    if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
+                    if (data.settings.stream) setStream(data.settings.stream);
                 }
 
                 console.log(`Data loaded successfully for user: ${storedUserId}`);
@@ -491,7 +493,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 clearTimeout(syncTimeoutRef.current);
             }
         };
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, isInitialized, db, userId, user]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, isInitialized, db, userId, user]);
 
     // --- REAL-TIME LISTENER (Listen for changes from other devices) ---
     const listenerSetupRef = useRef(false);

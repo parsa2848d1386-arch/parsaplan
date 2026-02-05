@@ -1,26 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="75%">
-      <stop offset="30%" stop-color="#5D5FEF" />
+    <radialGradient id="grad" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#5B5EED" />
       <stop offset="100%" stop-color="#2D2FA3" />
     </radialGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="15" />
-      <feOffset dx="0" dy="12" result="offsetblur" />
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="15"/>
+      <feOffset dx="0" dy="15" result="offsetblur"/>
       <feComponentTransfer>
-        <feFuncA type="linear" slope="0.45" />
+        <feFuncA type="linear" slope="0.5"/>
       </feComponentTransfer>
-      <feMerge>
-        <feMergeNode />
-        <feMergeNode in="SourceGraphic" />
+      <feMerge> 
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/> 
       </feMerge>
     </filter>
   </defs>
-  <rect width="512" height="512" rx="140" fill="url(#bg)" />
-  <g filter="url(#softShadow)" stroke="white" stroke-width="52" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Main Path: Refined Checkmark-P combo based on user image -->
-    <path d="M125 255 L190 325 C235 240 260 160 340 160 C425 160 425 315 340 315 C300 315 260 290 240 405" />
-    <!-- Clock Hands (Time is approx 12:20 for aesthetic) -->
-    <path d="M340 215 L340 260 L380 290" stroke-width="36" />
+  <!-- Background squircle -->
+  <rect width="512" height="512" rx="140" fill="url(#grad)" />
+  
+  <g filter="url(#shadow)">
+    <!-- Main Path: Checkmark that flows into a circle -->
+    <path d="M110 260 L185 330 C220 250 250 150 345 150 C440 150 440 330 345 330 C300 330 260 300 240 430" 
+          fill="none" stroke="white" stroke-width="55" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- Clock Center Dot -->
+    <circle cx="345" cy="240" r="10" fill="white" />
+    
+    <!-- Clock Hands -->
+    <path d="M345 190 L345 240 L395 240" 
+          fill="none" stroke="white" stroke-width="35" stroke-linecap="round" stroke-linejoin="round" />
   </g>
 </svg>

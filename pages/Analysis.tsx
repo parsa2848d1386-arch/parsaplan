@@ -38,26 +38,19 @@ const Analysis = () => {
         : 0;
 
     // --- 3. Subject-wise Deep Analysis ---
-    // Get all active subjects from Store (dynamic list) - ensures new/empty subjects are shown
     const allSubjectNames = subjects.map(s => s.name);
-
-    // Sort logic? Maybe default order or alphabetical? 
-    // Store order is likely insertion order, which is fine.
 
     const subjectAnalysis = allSubjectNames.map(subject => {
         const subTasks = tasks.filter(t => t.subject === subject);
         const subCompleted = subTasks.filter(t => t.isCompleted);
 
-        // Progress
         const progress = subTasks.length > 0 ? Math.round((subCompleted.length / subTasks.length) * 100) : 0;
 
-        // Avg Quality
         const subRated = subCompleted.filter(t => t.qualityRating);
         const avgQ = subRated.length > 0
             ? (subRated.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / subRated.length)
             : 0;
 
-        // Test Stats - Count tests per subject
         const subTested = subCompleted.filter(t => t.testStats && t.testStats.total > 0);
         const sTotal = subTested.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
         const sCorrect = subTested.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
@@ -67,13 +60,12 @@ const Analysis = () => {
         return {
             subject,
             progress,
-            qualityScore: avgQ * 20, // 1-5 to 20-100
+            qualityScore: avgQ * 20,
             displayQuality: avgQ,
             accuracy: sAcc > 0 ? sAcc : 0,
             realAccuracy: sAcc,
             completedCount: subCompleted.length,
             totalCount: subTasks.length,
-            // NEW: Test counts
             totalTests: sTotal,
             correctTests: sCorrect,
             wrongTests: sWrong
@@ -94,13 +86,10 @@ const Analysis = () => {
         </div>
     );
 
-    // --- 4. Tabs & UI ---
     const [activeTab, setActiveTab] = React.useState<'general' | 'exam'>('general');
 
-    // --- Exam Specific Data ---
     const examTasks = tasks.filter(t => t.studyType === 'exam' && t.isCompleted);
 
-    // Exam Trend Data (Date vs Score)
     const examTrendData = examTasks
         .filter(t => t.testStats && t.testStats.total > 0)
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -110,8 +99,8 @@ const Analysis = () => {
             const wrong = t.testStats!.wrong;
             const percentage = total > 0 ? Math.round(((correct * 3 - wrong) / (total * 3)) * 100) : 0;
             return {
-                date: t.date.split('T')[0], // Simple date
-                shamsiDate: new Date(t.date).toLocaleDateString('fa-IR'), // Rough estimation or use helper
+                date: t.date.split('T')[0],
+                shamsiDate: new Date(t.date).toLocaleDateString('fa-IR'),
                 score: percentage > 0 ? percentage : 0,
                 subject: t.subject
             };
@@ -125,7 +114,6 @@ const Analysis = () => {
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">نگاهی عمیق به کمیت و کیفیت مطالعه شما</p>
                 </div>
 
-                {/* Tab Switcher */}
                 <div className="bg-gray-100 dark:bg-gray-700 p-1 rounded-xl flex">
                     <button
                         onClick={() => setActiveTab('general')}
@@ -144,10 +132,8 @@ const Analysis = () => {
 
             {activeTab === 'general' ? (
                 <>
-                    {/* Feature 2: Heatmap */}
                     <ActivityHeatmap />
 
-                    {/* Top Stats Grid */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard
                             title="ساعت مطالعه کل"
@@ -180,8 +166,6 @@ const Analysis = () => {
                     </div>
 
                     <div className="grid lg:grid-cols-3 gap-6">
-
-                        {/* 1. Radar Chart */}
                         <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
                             <div className="mb-4">
                                 <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
@@ -217,9 +201,18 @@ const Analysis = () => {
                                     </RadarChart>
                                 </ResponsiveContainer>
                             </div>
+                            <div className="flex justify-center gap-4 mt-2">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
+                                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">پیشرفت حجمی</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">دقت تست‌زنی</span>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* 2. Detailed Table/Bars */}
                         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
                                 <TrendingUp size={18} className="text-emerald-500" />
@@ -267,7 +260,6 @@ const Analysis = () => {
                 </>
             ) : (
                 <div className="space-y-6 animate-in slide-in-from-bottom-5">
-                    {/* Exam Stats Grid */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard
                             title="تعداد آزمون‌ها"
@@ -283,10 +275,8 @@ const Analysis = () => {
                             icon={Award}
                             colorName="amber"
                         />
-                        {/* More exam stats can be added here */}
                     </div>
 
-                    {/* Exam Trend Chart */}
                     <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 min-h-[300px]">
                         <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
                             <TrendingUp size={18} className="text-indigo-500" />

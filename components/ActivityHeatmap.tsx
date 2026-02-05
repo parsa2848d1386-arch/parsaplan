@@ -9,7 +9,7 @@ const ActivityHeatmap = () => {
     // Mood Colors mapping
     const moodColors: Record<string, string> = {
         'happy': 'ring-emerald-400 dark:ring-emerald-400',
-        'energetic': 'ring-amber-400 dark:ring-amber-400',
+        'energetic': 'ring-violet-400 dark:ring-violet-400',
         'neutral': 'ring-gray-300 dark:ring-gray-500',
         'tired': 'ring-orange-400 dark:ring-orange-400',
         'sad': 'ring-rose-400 dark:ring-rose-400',

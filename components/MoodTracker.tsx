@@ -11,7 +11,7 @@ const MoodTracker = () => {
     const currentMood = moods[today];
 
     const moodOptions: { type: MoodType, icon: any, label: string, color: string }[] = [
-        { type: 'energetic', icon: Zap, label: 'پرانرژی', color: 'text-amber-500 bg-amber-50 border-amber-200' },
+        { type: 'energetic', icon: Zap, label: 'پرانرژی', color: 'text-violet-500 bg-violet-50 border-violet-200' },
         { type: 'happy', icon: Smile, label: 'خوشحال', color: 'text-emerald-500 bg-emerald-50 border-emerald-200' },
         { type: 'neutral', icon: Meh, label: 'معمولی', color: 'text-gray-500 bg-gray-50 border-gray-200' },
         { type: 'tired', icon: BatteryLow, label: 'خسته', color: 'text-orange-500 bg-orange-50 border-orange-200' },
@@ -26,11 +26,10 @@ const MoodTracker = () => {
                     <button
                         key={opt.type}
                         onClick={() => setMood(today, opt.type)}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                            currentMood === opt.type 
-                                ? `${opt.color} ring-2 ring-offset-1 dark:ring-offset-gray-900` 
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${currentMood === opt.type
+                                ? `${opt.color} ring-2 ring-offset-1 dark:ring-offset-gray-900`
                                 : 'bg-transparent border-transparent opacity-50 hover:opacity-100 hover:bg-gray-50 dark:hover:bg-gray-700'
-                        }`}
+                            }`}
                     >
                         <opt.icon size={24} className={currentMood === opt.type ? '' : 'text-gray-400 dark:text-gray-500'} />
                     </button>
