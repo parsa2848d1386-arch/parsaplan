@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, History as HistoryIcon, Sparkles } from 'lucide-react';
@@ -16,7 +15,7 @@ const Layout = () => {
         currentDay, darkMode, setIsTimerOpen, level, xp,
         syncData, isSyncing, cloudStatus, saveStatus,
         totalDays, sidebarCollapsed, setSidebarCollapsed,
-        user, login, register
+        user, login, register, currentLevelXp, xpForNextLevel, progressPercent
     } = useStore();
 
     const daysLeft = Math.max(0, totalDays - currentDay);
@@ -91,24 +90,41 @@ const Layout = () => {
                         <div className={`px-4 pt-4 space-y-3 ${sidebarCollapsed ? 'px-2' : ''}`}>
                             {/* Level Card */}
                             {!sidebarCollapsed && (
-                                <div className="bg-amber-50 dark:bg-gray-700 p-3 rounded-xl border border-amber-100 dark:border-gray-600 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-500">
-                                            <Trophy size={16} />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">سطح شما</p>
-                                            <p className="text-sm font-black text-gray-800 dark:text-white">Level {level}</p>
+                                <div className="bg-amber-50 dark:bg-gray-700 p-3 rounded-xl border border-amber-100 dark:border-gray-600 relative overflow-hidden group">
+                                    {/* Progress Background */}
+                                    <div
+                                        className="absolute bottom-0 left-0 h-1 bg-amber-400/50 transition-all duration-1000 ease-out"
+                                        style={{ width: `${progressPercent}%` }}
+                                    ></div>
+
+                                    <div className="flex items-center justify-between relative z-10">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-500 group-hover:scale-110 transition-transform duration-300">
+                                                <Trophy size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">سطح {level}</p>
+                                                <p className="text-xs font-black text-gray-800 dark:text-white mt-0.5">
+                                                    {Math.floor(currentLevelXp)} <span className="text-[10px] font-normal text-gray-400">/ {xpForNextLevel} XP</span>
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <span className="text-[10px] font-mono text-gray-400">{xp} XP</span>
                                 </div>
                             )}
 
                             {sidebarCollapsed && (
-                                <div className="flex justify-center">
-                                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-500" title={`Level ${level} - ${xp} XP`}>
-                                        <Trophy size={18} />
+                                <div className="flex justify-center relative group">
+                                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-500 relative overflow-hidden" title={`Level ${level} - ${Math.floor(currentLevelXp)}/${xpForNextLevel} XP`}>
+                                        <div
+                                            className="absolute bottom-0 left-0 right-0 bg-amber-400/20 transition-all duration-1000"
+                                            style={{ height: `${progressPercent}%` }}
+                                        ></div>
+                                        <Trophy size={18} className="relative z-10" />
+                                    </div>
+                                    {/* Tooltip for collapsed sidebar */}
+                                    <div className="absolute left-full top-2 ml-2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                                        {Math.floor(currentLevelXp)} / {xpForNextLevel} XP
                                     </div>
                                 </div>
                             )}
@@ -185,7 +201,7 @@ const Layout = () => {
                         </div>
 
                         <div className={`flex-1 ${isAIChat ? 'overflow-hidden pb-0' : 'overflow-y-auto no-scrollbar pb-24 md:pb-5'} scroll-smooth relative z-10 h-full`}>
-                            <div className="max-w-5xl mx-auto w-full min-h-full">
+                            <div className={`mx-auto w-full ${isAIChat ? 'h-full max-w-full' : 'max-w-5xl min-h-full'}`}>
                                 <Outlet />
                             </div>
                         </div>

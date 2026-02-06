@@ -484,7 +484,7 @@ Type B (Series):
                 )}
 
                 {/* Messages List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar pb-24 scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth">
                     {messages.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center opacity-50 space-y-4">
                             <MessageSquare size={48} className="text-gray-300 dark:text-gray-600" />
@@ -538,7 +538,7 @@ Type B (Series):
                 </div>
 
                 {/* Input Area */}
-                <div className="p-3 md:p-4 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 sticky bottom-0 z-20">
+                <div className="p-3 md:p-4 bg-white dark:bg-gray-950 border-t border-gray-100 dark:border-gray-800 z-20 shrink-0 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
                     <div className="flex gap-2 items-end bg-gray-50 dark:bg-gray-900 p-2 rounded-2xl border border-gray-200 dark:border-gray-800 focus-within:ring-1 focus-within:ring-indigo-500 transition-all">
                         <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="پیام خود را بنویسید..." className="flex-1 bg-transparent border-none focus:ring-0 p-3 max-h-32 min-h-[50px] resize-none text-sm custom-scrollbar dark:text-white" rows={1} dir="rtl" />
                         <button onClick={handleSend} disabled={!input.trim() || isTyping} className="p-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg shadow-indigo-500/30 hover:scale-105 active:scale-95 mb-0.5">
