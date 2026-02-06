@@ -162,14 +162,7 @@ const Layout = () => {
                         )}
                     </aside>
 
-                    {/* Desktop Docked Panel Slot (The Magic Part) */}
-                    <div
-                        id="desktop-panel-portal"
-                        className="hidden md:block transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width] overflow-hidden border-l border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md"
-                        style={{ width: '0px' }} // Default closed state, managed via CSS or Ref logic but :empty is trickier with React portals sometimes leaving comments.
-                    >
-                        {/* Content ported here will force width expansion */}
-                    </div>
+
 
                     {/* Main Content Area */}
                     <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 dark:bg-gray-950">
