@@ -326,7 +326,7 @@ Type B (Series):
     const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false); // History toggle
 
     return (
-        <div className="flex h-[100dvh] bg-slate-50 dark:bg-gray-950 overflow-hidden relative">
+        <div className="flex h-full bg-slate-50 dark:bg-gray-950 overflow-hidden relative">
 
             {/* --- SIDEBAR --- */}
             <aside className={`
@@ -484,7 +484,7 @@ Type B (Series):
                 )}
 
                 {/* Messages List */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth">
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar scroll-smooth min-h-0">
                     {messages.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center opacity-50 space-y-4">
                             <MessageSquare size={48} className="text-gray-300 dark:text-gray-600" />
