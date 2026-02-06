@@ -323,23 +323,28 @@ Type B (Series):
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
     };
 
+    const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false); // History toggle
+
     return (
         <div className="flex h-[100dvh] bg-slate-50 dark:bg-gray-950 overflow-hidden relative">
 
             {/* --- SIDEBAR --- */}
             <aside className={`
-                fixed inset-y-0 right-0 z-40 w-64 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0
+                fixed inset-y-0 right-0 z-40 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 transform transition-all duration-300 ease-in-out md:relative md:translate-x-0
                 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+                ${isHistoryCollapsed ? 'w-16' : 'w-64'}
             `}>
                 <div className="h-full flex flex-col">
                     {/* Sidebar Header */}
-                    <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                        <h2 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                            <History size={18} />
-                            تاریخچه
-                        </h2>
-                        <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-1 hover:bg-gray-100 rounded-lg">
-                            <X size={18} />
+                    <div className={`p-4 border-b border-gray-100 dark:border-gray-800 flex items-center ${isHistoryCollapsed ? 'justify-center' : 'justify-between'}`}>
+                        {!isHistoryCollapsed && (
+                            <h2 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+                                <History size={18} />
+                                تاریخچه
+                            </h2>
+                        )}
+                        <button onClick={() => isSidebarOpen ? setIsSidebarOpen(false) : setIsHistoryCollapsed(!isHistoryCollapsed)} className={`p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500 ${isHistoryCollapsed ? '' : 'md:hover:bg-gray-100'}`}>
+                            {window.innerWidth < 768 ? <X size={18} /> : (isHistoryCollapsed ? <ChevronLeft size={18} className="rotate-180" /> : <ChevronLeft size={18} />)}
                         </button>
                     </div>
 
@@ -347,9 +352,11 @@ Type B (Series):
                     <div className="p-4">
                         <button
                             onClick={createNewChat}
-                            className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition-all shadow-md active:scale-95"
+                            className={`w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition-all shadow-md active:scale-95 ${isHistoryCollapsed ? 'aspect-square p-0' : ''}`}
+                            title="چت جدید"
                         >
-                            <Plus size={18} /> چت جدید
+                            <Plus size={18} />
+                            {!isHistoryCollapsed && <span>چت جدید</span>}
                         </button>
                     </div>
 
@@ -363,41 +370,49 @@ Type B (Series):
                                     ${activeSessionId === session.id
                                         ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
                                         : 'bg-white dark:bg-gray-800/50 border-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
-                                    }`}
+                                    }
+                                    ${isHistoryCollapsed ? 'flex justify-center items-center aspect-square p-0' : ''}
+                                `}
                             >
-                                <div className="flex items-start justify-between gap-2 overflow-hidden">
-                                    <div className="flex-1 min-w-0">
-                                        {/* Editable Title */}
-                                        <div className="font-bold text-sm text-gray-700 dark:text-gray-200 truncate mb-0.5" title={session.title}>
-                                            {session.title}
+                                {!isHistoryCollapsed ? (
+                                    <>
+                                        <div className="flex items-start justify-between gap-2 overflow-hidden">
+                                            <div className="flex-1 min-w-0">
+                                                {/* Editable Title */}
+                                                <div className="font-bold text-sm text-gray-700 dark:text-gray-200 truncate mb-0.5" title={session.title}>
+                                                    {session.title}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 truncate">
+                                                    {new Date(session.timestamp).toLocaleDateString('fa-IR')}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="text-[10px] text-gray-400 truncate">
-                                            {new Date(session.timestamp).toLocaleDateString('fa-IR')}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {/* Actions (Variables opacity) */}
-                                <div className={`absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm ${activeSessionId === session.id ? 'opacity-100' : ''}`}>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const newName = prompt('نام جدید:', session.title);
-                                            if (newName) renameSession(session.id, newName);
-                                        }}
-                                        className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-md"
-                                        title="تغییر نام"
-                                    >
-                                        <Edit2 size={12} />
-                                    </button>
-                                    <button
-                                        onClick={(e) => deleteSession(session.id, e)}
-                                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md"
-                                        title="حذف"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                </div>
+                                        {/* Actions */}
+                                        <div className={`absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm ${activeSessionId === session.id ? 'opacity-100' : ''}`}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const newName = prompt('نام جدید:', session.title);
+                                                    if (newName) renameSession(session.id, newName);
+                                                }}
+                                                className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-md"
+                                                title="تغییر نام"
+                                            >
+                                                <Edit2 size={12} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => deleteSession(session.id, e)}
+                                                className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md"
+                                                title="حذف"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <MessageSquare size={20} className={activeSessionId === session.id ? 'text-indigo-600' : 'text-gray-400'} />
+                                )}
                             </div>
                         ))}
                     </div>
