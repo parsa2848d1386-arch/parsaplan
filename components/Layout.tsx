@@ -18,7 +18,7 @@ const Layout = () => {
 
     const navItems = [
         { to: '/', icon: Home, label: 'داشبورد' },
-        { to: '/ai-chat', icon: Sparkles, label: 'هوش مصنوعی' },
+
         { to: '/routine', icon: CalendarClock, label: 'روتین' },
         { to: '/subjects', icon: BookOpen, label: 'دروس' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل' },
