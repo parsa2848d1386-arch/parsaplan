@@ -59,7 +59,11 @@ interface StoreContextType {
 
     // Auth Methods
     login: (u: string, p: string) => Promise<boolean>;
+<<<<<<< HEAD
     register: (u: string, p: string, name: string) => Promise<boolean>;
+=======
+    register: (u: string, p: string) => Promise<boolean>;
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
     logout: () => Promise<void>;
 
     // Firebase Config Management
@@ -139,7 +143,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // --- STATE ---
     const [userId, setUserId] = useState<string>('');
+<<<<<<< HEAD
     const [userName, setUserNameState] = useState('');
+=======
+    const [userName, setUserNameState] = useState('پارسا');
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
     const [currentDay, setCurrentDayState] = useState(1);
     const [todayDayId, setTodayDayId] = useState(1);
     const [startDate, setStartDateState] = useState(detectedStart);
@@ -191,7 +199,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const prevLevelRef = useRef(level);
     useEffect(() => {
+<<<<<<< HEAD
         if (isInitialized && level > prevLevelRef.current && prevLevelRef.current > 0) {
+=======
+        if (isInitialized && level > prevLevelRef.current) {
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
             showToast(`تبریک! به سطح ${level} رسیدید! 🎉`, 'success');
             logAction('level_up', `ارتقا به سطح ${level}`);
         }
@@ -416,6 +428,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setStartDateState(data.startDate);
                 recalcToday(data.startDate);
             }
+<<<<<<< HEAD
+=======
+            showToast(`خوش آمدید، ${data.userName}`, 'success');
+        } else {
+            // Fresh User: Clear State
+            console.log("No data for this user. Starting fresh.");
+            setTasks([]);
+            setRoutineTemplateState(DAILY_ROUTINE);
+            setCompletedRoutine([]);
+            setDailyNotes({});
+            setXp(0);
+            setAuditLog([]);
+            setMoods({});
+            // Keep startDate/settings or reset? Resetting is safer for "Fresh" feel
+            const freshStart = findBahman11();
+            setStartDateState(freshStart);
+            recalcToday(freshStart);
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
         }
     }, [userId]); // Removed isInitialized dependency loop, just trigger on userId change
 
@@ -644,7 +674,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     };
 
+<<<<<<< HEAD
     const register = async (u: string, p: string, name: string): Promise<boolean> => {
+=======
+    const register = async (u: string, p: string): Promise<boolean> => {
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
         if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
         try {
             const cred = await createUserWithEmailAndPassword(auth, generateEmail(u), p);
@@ -652,7 +686,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (cred.user && db) {
                 const emptyData = {
                     tasks: [], // Empty tasks for new user
+<<<<<<< HEAD
                     userName: name, // Use registered display name
+=======
+                    userName: u, // Use registration username
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
                     routine: [],
                     routineTemplate: DAILY_ROUTINE,
                     notes: {},
@@ -669,13 +707,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 await setDoc(doc(db, "users", cred.user.uid), emptyData);
                 // Also update local state to be empty
                 setTasks([]);
+<<<<<<< HEAD
                 setUserNameState(name);
+=======
+                setUserNameState(u);
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
                 setCompletedRoutine([]);
                 setDailyNotes({});
                 setXp(0);
                 setAuditLog([]);
                 setMoods({});
+<<<<<<< HEAD
                 showToast(`حساب با موفقیت ساخته شد. خوش آمدید ${name}!`, 'success');
+=======
+                showToast('حساب با موفقیت ساخته شد - شروع تازه!', 'success');
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
             }
             return true;
         } catch (e: any) {

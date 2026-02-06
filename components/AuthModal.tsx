@@ -6,14 +6,21 @@ interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
     onLogin: (u: string, p: string) => Promise<void>;
+<<<<<<< HEAD
     onRegister: (u: string, p: string, name: string) => Promise<void>;
+=======
+    onRegister: (u: string, p: string) => Promise<void>;
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
     isLoading: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegister, isLoading }) => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [username, setUsername] = useState('');
+<<<<<<< HEAD
     const [displayName, setDisplayName] = useState('');
+=======
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
@@ -24,7 +31,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
         if (mode === 'login') {
             await onLogin(username, password);
         } else {
+<<<<<<< HEAD
             await onRegister(username, password, displayName);
+=======
+            await onRegister(username, password);
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
         }
     };
 
@@ -96,6 +107,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                             </div>
                         </div>
 
+<<<<<<< HEAD
                         {mode === 'register' && (
                             <div className="space-y-2 animate-in fade-in zoom-in duration-300">
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
@@ -115,6 +127,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                             </div>
                         )}
 
+=======
+>>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
                                 رمز عبور

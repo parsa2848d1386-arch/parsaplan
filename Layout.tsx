@@ -5,7 +5,6 @@ import { Home, CalendarClock, BookOpen, Settings, CheckCircle2, BarChart2, Timer
 import { useStore } from '../context/StoreContext';
 import FocusTimer from './FocusTimer';
 import { ToastContainer, ConfirmModal } from './Feedback';
-import { AuthModal } from './AuthModal';
 import PrintableSchedule from './PrintableSchedule';
 
 const Layout = () => {
@@ -15,8 +14,7 @@ const Layout = () => {
     const {
         currentDay, darkMode, setIsTimerOpen, level, xp,
         syncData, isSyncing, cloudStatus, saveStatus,
-        totalDays, sidebarCollapsed, setSidebarCollapsed,
-        user, login, register
+        totalDays, sidebarCollapsed, setSidebarCollapsed
     } = useStore();
 
     const daysLeft = Math.max(0, totalDays - currentDay);
@@ -56,13 +54,6 @@ const Layout = () => {
             {/* Screen View (Hidden on print) */}
             <div className="flex h-screen overflow-hidden no-print">
                 {/* Overlays */}
-                <AuthModal
-                    isOpen={!user}
-                    onClose={() => { }} // Cannot close unique auth modal
-                    onLogin={login}
-                    onRegister={register}
-                    isLoading={false}
-                />
                 <FocusTimer />
                 <ToastContainer />
                 <ConfirmModal />
@@ -143,7 +134,7 @@ const Layout = () => {
                                     className={({ isActive }) => `flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${sidebarCollapsed ? 'justify-center' : ''} ${isActive ? 'bg-indigo-50 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'}`}
                                     title={sidebarCollapsed ? item.label : undefined}
                                 >
-                                    <item.icon size={20} fontWeight={2} />
+                                    <item.icon size={20} strokeWidth={2} />
                                     {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                                 </NavLink>
                             ))}
@@ -205,7 +196,7 @@ const Layout = () => {
                                                 {isActive && <div className="absolute inset-0 bg-indigo-400/30 blur-xl rounded-full transform scale-150"></div>}
 
                                                 <div className={`p-2.5 rounded-full transition-all duration-500 relative z-10 ${isActive ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-300 dark:shadow-indigo-900/50 scale-110 ring-2 ring-white dark:ring-gray-900' : 'bg-transparent group-hover:bg-gray-100 dark:group-hover:bg-gray-800'}`}>
-                                                    <item.icon size={22} fontWeight={isActive ? 2.5 : 2} />
+                                                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                                                 </div>
                                                 <span className={`text-[10px] font-bold mt-1.5 transition-all duration-300 absolute -bottom-5 whitespace-nowrap ${isActive ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-75'}`}>{item.label}</span>
                                             </div>
