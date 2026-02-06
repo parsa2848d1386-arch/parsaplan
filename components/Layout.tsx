@@ -56,8 +56,9 @@ const Layout = () => {
                 <ConfirmModal />
 
                 <div className="flex w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 transition-colors duration-300">
-                    {/* Desktop Sidebar */}
+                    {/* Sidebar */}
                     <aside className={`hidden md:flex flex-col glass dark:bg-gray-800/80 border-l border-gray-200/50 dark:border-gray-700/50 h-full transition-all duration-300 shadow-glass ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+                        {/* ... existing sidebar content ... */}
                         <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                             <div className="flex items-center gap-2">
                                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200 dark:shadow-none">
@@ -160,6 +161,15 @@ const Layout = () => {
                             </div>
                         )}
                     </aside>
+
+                    {/* Desktop Docked Panel Slot (The Magic Part) */}
+                    <div
+                        id="desktop-panel-portal"
+                        className="hidden md:block transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)] will-change-[width] overflow-hidden border-l border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md"
+                        style={{ width: '0px' }} // Default closed state, managed via CSS or Ref logic but :empty is trickier with React portals sometimes leaving comments.
+                    >
+                        {/* Content ported here will force width expansion */}
+                    </div>
 
                     {/* Main Content Area */}
                     <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 dark:bg-gray-950">
