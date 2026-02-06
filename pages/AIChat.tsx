@@ -202,9 +202,18 @@ Type B (Series/Autopilot):
 
         } catch (error: any) {
             console.error("Gemini API Error:", error);
+
+            let errorMessage = error.message || 'مشکل در ارتباط با سرور یا کلید نامعتبر';
+
+            if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+                errorMessage = `مدل '${selectedModel}' یافت نشد (خطای 404). لطفاً نام مدل را بررسی کنید یا از 'gemini-pro' استفاده کنید.`;
+            } else if (errorMessage.includes('API key')) {
+                errorMessage = 'کلید API نامعتبر است. لطفاً کلید صحیح را وارد کنید.';
+            }
+
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
-                text: `خطا: ${error.message || 'مشکل در ارتباط با سرور یا کلید نامعتبر'}`,
+                text: errorMessage,
                 sender: 'ai',
                 timestamp: new Date(),
                 isError: true
@@ -345,6 +354,14 @@ Type B (Series/Autopilot):
                                     : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-800 rounded-tl-none'
                                 }`}>
                                 {msg.text}
+                                {msg.isError && (
+                                    <button
+                                        onClick={() => setShowSettings(true)}
+                                        className="block mt-3 text-xs bg-white/50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg hover:bg-white transition-colors w-full text-center"
+                                    >
+                                        بررسی تنظیمات و مدل
+                                    </button>
+                                )}
                             </div>
                         </div>
 
