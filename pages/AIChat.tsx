@@ -37,7 +37,7 @@ const AIChat: React.FC = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-    const [selectedModel, setSelectedModel] = useState(localStorage.getItem('gemini_model') || 'gemini-1.5-flash');
+    const [selectedModel, setSelectedModel] = useState(localStorage.getItem('gemini_model') || 'gemini-2.5-flash');
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 
     // References
@@ -471,6 +471,11 @@ Type B (Series):
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 mb-1.5 block">API Key</label>
                                     <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr" placeholder="AI Key..." />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل هوش مصنوعی</label>
+                                    <input type="text" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr" placeholder="gemini-2.5-flash" />
+                                    <p className="text-[10px] text-gray-400 mt-1.5">مثال: gemini-2.5-flash، gemini-1.5-pro</p>
                                 </div>
                                 <button onClick={saveSettings} className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700">ذخیره</button>
                             </div>
