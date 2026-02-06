@@ -5,7 +5,7 @@ import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../co
 import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { calculateLevelInfo, getXpReward } from '../utils/xpSystem';
+import { calculateLevelInfo, getXpReward, XP_REWARDS } from '../utils/xpSystem';
 
 // Import Firebase (Dynamic import handling in browser environment logic)
 import { initializeApp, getApps, deleteApp, FirebaseApp } from 'firebase/app';
@@ -188,6 +188,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // Calculate Level Info dynamically from XP
     const { level, currentLevelXp, xpForNextLevel, progressPercent } = calculateLevelInfo(xp);
+
+    const prevLevelRef = useRef(level);
+    useEffect(() => {
+        if (isInitialized && level > prevLevelRef.current) {
+            showToast(`تبریک! به سطح ${level} رسیدید! 🎉`, 'success');
+            logAction('level_up', `ارتقا به سطح ${level}`);
+        }
+        prevLevelRef.current = level;
+    }, [level, isInitialized]);
 
 
     // --- HELPERS ---
@@ -888,8 +897,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setTasks(prev => prev.map(t => {
             if (t.id === taskId) {
                 const newState = !t.isCompleted;
-                const reward = getXpReward(t.studyType === 'exam' ? 'COMPLETE_TASK' : 'COMPLETE_TASK'); // Adjust based on task type if needed
+                let rewardType: keyof typeof XP_REWARDS = 'COMPLETE_TASK';
+                if (t.studyType === 'exam') rewardType = 'COMPLETE_EXAM';
+                else if (t.studyType === 'analysis' || t.studyType === 'review') rewardType = 'COMPLETE_ANALYSIS';
+
+                const reward = getXpReward(rewardType, 0); // Streak could be added here if available
                 newState ? addXp(reward) : addXp(-reward);
+
+                if (newState) {
+                    showToast(`+${reward} XP`, 'success');
+                }
+
                 return { ...t, isCompleted: newState };
             }
             return t;

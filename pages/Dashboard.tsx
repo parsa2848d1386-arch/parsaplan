@@ -261,7 +261,7 @@ const Dashboard = () => {
                         <Plus size={20} />
                         <span className="text-[10px] font-bold">تسک جدید</span>
                     </button>
-                    <button onClick={() => setIsAIOpen(true)} className="col-span-1 bg-gradient-to-br from-violet-500 to-purple-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-violet-200 dark:shadow-none active:scale-95 transition-all">
+                    <button onClick={() => navigate('/ai-chat')} className="col-span-1 bg-gradient-to-br from-violet-500 to-purple-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-violet-200 dark:shadow-none active:scale-95 transition-all">
                         <Bot size={20} />
                         <span className="text-[10px] font-bold">دستیار AI</span>
                     </button>
