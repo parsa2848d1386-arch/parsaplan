@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Trash2, Pencil, Plus, Search, AlertTriangle, ArrowDownToLine, X, Calendar, SlidersHorizontal, BookOpen, Clock, Zap, StickyNote, Save, Quote, Trophy, ArrowRightCircle, Target, Bot } from 'lucide-react';
-import AISettings from '../components/AISettings';
+
 import ProgressBar from '../components/ProgressBar';
 import { Subject, SubjectTask, SUBJECT_LISTS, getSubjectStyle } from '../types';
 import TaskModal from '../components/TaskModal';
@@ -31,7 +31,6 @@ const Dashboard = () => {
     const [filterSubject, setFilterSubject] = useState<string>('ALL');
     const [noteExpanded, setNoteExpanded] = useState(false);
     const [currentNote, setCurrentNote] = useState('');
-    const [isAIOpen, setIsAIOpen] = useState(false);
 
     const overallProgress = getProgress();
 
@@ -424,8 +423,6 @@ const Dashboard = () => {
                     onSave={handleSaveTask}
                 />
             )}
-            {/* AI Settings Modal */}
-            <AISettings isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
         </div>
     );
 };
