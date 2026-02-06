@@ -169,19 +169,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
         });
     };
 
-    const [portalTarget, setPortalTarget] = useState<HTMLElement>(document.body);
+    const [mounted, setMounted] = useState(false);
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
     useEffect(() => {
-        // Dynamic portal target: If desktop panel exists, use it. Else generic body.
-        const desktopPortal = document.getElementById('desktop-panel-portal');
-        if (window.innerWidth >= 768 && desktopPortal) {
-            setPortalTarget(desktopPortal);
-        } else {
-            setPortalTarget(document.body);
-        }
-
-        // Handle resize to switch modes dynamic (optional polish)
-        const handleResize = () => {
+        setMounted(true);
+        const updateTarget = () => {
             const desktopPortal = document.getElementById('desktop-panel-portal');
             if (window.innerWidth >= 768 && desktopPortal) {
                 setPortalTarget(desktopPortal);
@@ -189,10 +182,16 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 setPortalTarget(document.body);
             }
         };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
 
+        // Initial check
+        updateTarget();
+
+        window.addEventListener('resize', updateTarget);
+        return () => window.removeEventListener('resize', updateTarget);
     }, []);
+
+    // Safety: If not mounted or no target, don't render portal yet
+    if (!mounted || !portalTarget) return null;
 
     const isDocked = portalTarget.id === 'desktop-panel-portal';
 
@@ -579,7 +578,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 </div>
             </div>
         </div>,
-        portalTarget
+        document.body
     );
 };
 
