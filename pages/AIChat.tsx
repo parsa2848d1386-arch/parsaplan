@@ -15,12 +15,7 @@ interface Message {
     pendingTasks?: ParsedTask[]; // Tasks waiting to be reviewed
 }
 
-const AVAILABLE_MODELS = [
-    { value: 'gemini-pro', label: 'Gemini Pro (Stable)' },
-    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Fast)' },
-    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Smart)' },
-    { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash (Experimental)' },
-];
+
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
@@ -265,7 +260,7 @@ Type B (Series/Autopilot):
                     <div>
                         <h1 className="font-bold text-gray-800 dark:text-white">دستیار هوشمند</h1>
                         <p className="text-[10px] text-indigo-500 font-mono bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full inline-block mt-1 border border-indigo-100 dark:border-indigo-800">
-                            {AVAILABLE_MODELS.find(m => m.value === selectedModel)?.label || selectedModel}
+                            {selectedModel}
                         </p>
                     </div>
                 </div>
@@ -311,18 +306,14 @@ Type B (Series/Autopilot):
 
                             <div>
                                 <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل هوش مصنوعی</label>
-                                <div className="grid grid-cols-1 gap-2">
-                                    {AVAILABLE_MODELS.map(model => (
-                                        <button
-                                            key={model.value}
-                                            onClick={() => setSelectedModel(model.value)}
-                                            className={`p-3 rounded-xl text-xs font-bold flex justify-between items-center transition-all ${selectedModel === model.value ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100'}`}
-                                        >
-                                            {model.label}
-                                            {selectedModel === model.value && <Check size={14} />}
-                                        </button>
-                                    ))}
-                                </div>
+                                <input
+                                    type="text"
+                                    value={selectedModel}
+                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    placeholder="نام مدل (مثلاً gemini-1.5-flash)..."
+                                    className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border-transparent focus:bg-white dark:focus:bg-black border focus:border-indigo-500 text-sm outline-none transition-all font-mono text-left"
+                                    dir="ltr"
+                                />
                             </div>
 
                             <button onClick={saveSettings} className="w-full bg-indigo-600 text-white p-3 rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition-all">
