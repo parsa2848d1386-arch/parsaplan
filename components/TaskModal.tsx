@@ -145,11 +145,17 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     };
 
     // SubTask scoring update
-    const handleSubTaskScore = (subjectIdx: number, field: keyof typeof formData.testStats, value: number) => {
+    const handleSubTaskScore = (subjectIdx: number, field: keyof import('../types').TestStats, value: number) => {
         const newSubTasks = [...(formData.subTasks || [])];
-        if (!newSubTasks[subjectIdx].testStats) newSubTasks[subjectIdx].testStats = { correct: 0, wrong: 0, total: 0 };
-        // @ts-ignore
-        newSubTasks[subjectIdx].testStats![field] = value;
+        const targetTask = newSubTasks[subjectIdx];
+
+        if (!targetTask.testStats) {
+            targetTask.testStats = { correct: 0, wrong: 0, total: 0 };
+        }
+
+        if (targetTask.testStats) {
+            targetTask.testStats[field] = value;
+        }
 
         // Recalculate total for main task
         const totalCorrect = newSubTasks.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);

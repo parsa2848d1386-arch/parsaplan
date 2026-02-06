@@ -22,14 +22,35 @@ const AIChat: React.FC = () => {
     const { settings, subjects, addTask, updateSettings, startDate, currentDay, totalDays } = useStore();
 
     // State
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            text: 'سلام! من دستیار هوشمند شما هستم. می‌تونم برنامه‌ریزی کنم، تسک بسازم یا روتین بهت پیشنهاد بدم. چطور کمکت کنم؟',
-            sender: 'ai',
-            timestamp: new Date()
+    // Load initial messages from LocalStorage if available
+    const [messages, setMessages] = useState<Message[]>(() => {
+        const saved = localStorage.getItem('gemini_chat_history');
+        return saved ? JSON.parse(saved) : [
+            {
+                id: '1',
+                text: 'سلام! من دستیار هوشمند شما هستم. می‌تونم برنامه‌ریزی کنم، تسک بسازم یا روتین بهت پیشنهاد بدم. چطور کمکت کنم؟',
+                sender: 'ai',
+                timestamp: new Date() // Will be stringified, handled below
+            }
+        ];
+    });
+
+    // Fix timestamp objects after hydration
+    useEffect(() => {
+        const saved = localStorage.getItem('gemini_chat_history');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                const fixed = parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
+                setMessages(fixed);
+            } catch (e) { console.error("Failed to parse chat history"); }
         }
-    ]);
+    }, []);
+
+    // Save history
+    useEffect(() => {
+        localStorage.setItem('gemini_chat_history', JSON.stringify(messages));
+    }, [messages]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
 
@@ -275,6 +296,23 @@ Type B (Series/Autopilot):
                 </div>
                 <div className="flex items-center gap-2">
                     <button
+                        onClick={() => {
+                            if (window.confirm('آیا تاریخچه چت پاک شود؟')) {
+                                setMessages([{
+                                    id: '1',
+                                    text: 'سلام! من دستیار هوشمند شما هستم. چطور کمکت کنم؟',
+                                    sender: 'ai',
+                                    timestamp: new Date()
+                                }]);
+                                localStorage.removeItem('gemini_chat_history');
+                            }
+                        }}
+                        className="p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-gray-500 hover:text-rose-500 rounded-xl transition"
+                        title="پاک کردن تاریخچه"
+                    >
+                        <History size={20} />
+                    </button>
+                    <button
                         onClick={() => setShowSettings(!showSettings)}
                         className={`p-2 rounded-xl transition ${showSettings ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
                     >
@@ -355,12 +393,25 @@ Type B (Series/Autopilot):
                                 }`}>
                                 {msg.text}
                                 {msg.isError && (
-                                    <button
-                                        onClick={() => setShowSettings(true)}
-                                        className="block mt-3 text-xs bg-white/50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg hover:bg-white transition-colors w-full text-center"
-                                    >
-                                        بررسی تنظیمات و مدل
-                                    </button>
+                                    <div className="flex flex-col gap-2 mt-2 w-full">
+                                        <button
+                                            onClick={() => setShowSettings(true)}
+                                            className="text-xs bg-white/50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg hover:bg-white transition-colors text-center"
+                                        >
+                                            بررسی تنظیمات و مدل
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                // Retry logic: Remove this error message and fill input with last user message
+                                                const lastUserMsg = messages.slice().reverse().find(m => m.sender === 'user');
+                                                if (lastUserMsg) setInput(lastUserMsg.text);
+                                                setMessages(prev => prev.filter(m => m.id !== msg.id));
+                                            }}
+                                            className="text-xs bg-rose-100 border border-rose-200 text-rose-700 px-3 py-1.5 rounded-lg hover:bg-rose-200 transition-colors text-center font-bold"
+                                        >
+                                            تلاش مجدد
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>

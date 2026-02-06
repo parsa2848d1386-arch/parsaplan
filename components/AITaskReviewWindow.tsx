@@ -111,7 +111,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none" style={{ zIndex: 2147483647 }}>
+        <div className="fixed inset-0 z-[50] flex items-center justify-center pointer-events-none" style={{ zIndex: 50 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 pointer-events-auto"

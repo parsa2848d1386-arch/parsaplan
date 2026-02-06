@@ -169,7 +169,7 @@ const Layout = () => {
                             <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-100/40 dark:bg-purple-900/10 rounded-full blur-[120px]"></div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto no-scrollbar pb-32 md:pb-5 scroll-smooth relative z-10 h-full">
+                        <div className="flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-5 scroll-smooth relative z-10 h-full">
                             <div className="max-w-5xl mx-auto w-full min-h-full">
                                 <Outlet />
                             </div>
