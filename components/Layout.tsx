@@ -53,7 +53,7 @@ const Layout = () => {
             <PrintableSchedule />
 
             {/* Screen View (Hidden on print) */}
-            <div className="flex h-screen overflow-hidden no-print">
+            <div className="flex h-[100dvh] overflow-hidden no-print">
                 {/* Overlays */}
                 <AuthModal
                     isOpen={!user}

@@ -326,7 +326,7 @@ Type B (Series):
     const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false); // History toggle
 
     return (
-        <div className="flex h-full bg-slate-50 dark:bg-gray-950 overflow-hidden relative">
+        <div className="flex h-[100dvh] bg-slate-50 dark:bg-gray-950 overflow-hidden relative">
 
             {/* --- SIDEBAR --- */}
             <aside className={`
