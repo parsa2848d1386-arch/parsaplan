@@ -170,7 +170,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     };
 
     return createPortal(
-        <div className="fixed inset-0 flex items-end sm:items-center justify-center pointer-events-none" style={{ zIndex: 99999 }}>
+        <div className="fixed inset-0 flex items-end sm:items-center md:items-stretch md:justify-end justify-center pointer-events-none" style={{ zIndex: 99999 }}>
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
@@ -178,7 +178,11 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
             />
 
             {/* Modal Container */}
-            <div className="relative pointer-events-auto w-full max-w-xl m-4 bg-white/90 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 fade-in duration-300">
+            <div className={`relative pointer-events-auto w-full max-w-xl m-4 md:m-0 md:w-[480px] md:h-full md:max-h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl 
+                rounded-2xl md:rounded-none md:rounded-l-3xl 
+                shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 md:border-none md:border-l md:border-white/10
+                overflow-hidden flex flex-col max-h-[85vh] 
+                animate-in zoom-in-95 md:zoom-in-100 fade-in slide-in-from-bottom-10 md:slide-in-from-bottom-0 md:slide-in-from-right duration-300 ease-out fill-mode-forwards`}>
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">
