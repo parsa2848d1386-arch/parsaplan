@@ -6,21 +6,14 @@ interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
     onLogin: (u: string, p: string) => Promise<void>;
-<<<<<<< HEAD
     onRegister: (u: string, p: string, name: string) => Promise<void>;
-=======
-    onRegister: (u: string, p: string) => Promise<void>;
->>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
     isLoading: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegister, isLoading }) => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [username, setUsername] = useState('');
-<<<<<<< HEAD
     const [displayName, setDisplayName] = useState('');
-=======
->>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
@@ -31,11 +24,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
         if (mode === 'login') {
             await onLogin(username, password);
         } else {
-<<<<<<< HEAD
             await onRegister(username, password, displayName);
-=======
-            await onRegister(username, password);
->>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
         }
     };
 
@@ -107,28 +96,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                             </div>
                         </div>
 
-<<<<<<< HEAD
-                        {mode === 'register' && (
-                            <div className="space-y-2 animate-in fade-in zoom-in duration-300">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
-                                    نام نمایشی
-                                </label>
-                                <div className="relative">
-                                    <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                    <input
-                                        type="text"
-                                        required
-                                        value={displayName}
-                                        onChange={e => setDisplayName(e.target.value)}
-                                        placeholder="مثلا: پارسا"
-                                        className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                    />
+                        {
+                            mode === 'register' && (
+                                <div className="space-y-2 animate-in fade-in zoom-in duration-300">
+                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                                        نام نمایشی
+                                    </label>
+                                    <div className="relative">
+                                        <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={displayName}
+                                            onChange={e => setDisplayName(e.target.value)}
+                                            placeholder="مثلا: پارسا"
+                                            className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-
-=======
->>>>>>> 9f59b18cad60161bb96d71e5e241a5bc1ef6c994
+                            )
+                        }
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
                                 رمز عبور
@@ -171,9 +158,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                                 </>
                             )}
                         </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+                    </form >
+                </div >
+            </div >
+        </div >
     );
 };
