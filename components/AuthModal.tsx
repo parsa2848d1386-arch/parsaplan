@@ -5,8 +5,8 @@ import { X, User, Lock, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onLogin: (u: string, p: string) => Promise<void>;
-    onRegister: (u: string, p: string, name: string) => Promise<void>;
+    onLogin: (u: string, p: string) => Promise<any>;
+    onRegister: (u: string, p: string, name: string) => Promise<any>;
     isLoading: boolean;
 }
 

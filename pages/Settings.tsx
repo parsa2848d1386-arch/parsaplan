@@ -70,7 +70,7 @@ const InlineAuthForm = () => {
         setLoading(true);
         try {
             if (isLogin) await login(username, password);
-            else await register(username, password);
+            else await register(username, password, username); // Using username as default name for inline form
         } finally {
             setLoading(false);
         }
@@ -511,6 +511,33 @@ const Settings = () => {
                         <Printer size={18} />
                         دانلود / چاپ برنامه
                     </button>
+                </div>
+            </div>
+
+            {/* --- AI Settings --- */}
+            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
+                    <Sparkles size={20} />
+                    <h2 className="font-bold">تنظیمات هوش مصنوعی</h2>
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">مدل هوش مصنوعی (Gemini)</label>
+                        <select
+                            value={settings?.geminiModel || 'gemini-2.5-flash'}
+                            onChange={(e) => updateSettings({ geminiModel: e.target.value })}
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition appearance-none cursor-pointer text-gray-800 dark:text-white"
+                            dir="ltr"
+                        >
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        </select>
+                        <p className="text-[10px] text-gray-400 mt-2 leading- relaxed">
+                            مدل 2.5 Flash سریع‌ترین و بهینه‌ترین گزینه است. مدل 1.5 Pro برای تحلیل‌های پیچیده مناسب‌تر است اما سرعت کمتری دارد.
+                        </p>
+                    </div>
                 </div>
             </div>
 

@@ -204,6 +204,7 @@ export interface AppSettings {
     notifications: boolean;
     soundEnabled: boolean;
     language: 'fa' | 'en';
+    geminiModel: string;
 }
 
 export interface AppState {

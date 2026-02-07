@@ -158,6 +158,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [auditLog, setAuditLog] = useState<LogEntry[]>([]);
     const [moods, setMoods] = useState<Record<string, MoodType>>({});
     const [stream, setStream] = useState<StreamType>('general');
+    const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
 
     // App State Control
     const [isInitialized, setIsInitialized] = useState(false);
@@ -372,6 +373,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     setViewModeState(data.settings.viewMode);
                     if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
                     if (data.settings.stream) setStream(data.settings.stream);
+                    if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
                 }
 
                 console.log(`Data loaded successfully for user: ${storedUserId}`);
@@ -411,6 +413,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setViewModeState(data.settings.viewMode);
                 if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
                 if (data.settings.stream) setStream(data.settings.stream);
+                if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
             }
             if (data.startDate) {
                 setStartDateState(data.startDate);
@@ -454,7 +457,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             totalDays, subjects, archivedPlans,
             settings: {
                 darkMode, viewMode, showQuotes, stream,
-                notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+                geminiModel
             },
             lastUpdated: Date.now()
         };
@@ -462,7 +466,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // Save to the SPECIFIC user bucket
         StorageManager.save(fullData, userId);
 
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, totalDays, subjects, isInitialized, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -489,7 +493,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     notes: dailyNotes, xp, logs: auditLog, moods, startDate,
                     settings: {
                         darkMode, viewMode, showQuotes, stream,
-                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+                        geminiModel
                     },
                     lastUpdated: Date.now()
                 };
@@ -676,7 +681,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     startDate: detectedStart,
                     settings: {
                         darkMode: false, viewMode: 'normal', showQuotes: true, stream: 'general',
-                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+                        geminiModel: 'gemini-2.5-flash'
                     },
                     lastUpdated: Date.now()
                 };
@@ -735,7 +741,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     subjects, archivedPlans,
                     settings: {
                         darkMode, viewMode, showQuotes, stream,
-                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+                        geminiModel
                     },
                     lastUpdated: Date.now()
                 };
@@ -804,13 +811,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         stream,
         notifications: true,
         soundEnabled: true,
-        language: 'fa' as 'fa' | 'en'
+        language: 'fa' as 'fa' | 'en',
+        geminiModel
     };
     const updateSettings = (newSettings: Partial<AppSettings>) => {
         if (newSettings.darkMode !== undefined) setDarkMode(newSettings.darkMode);
         if (newSettings.viewMode !== undefined) setViewModeState(newSettings.viewMode);
         if (newSettings.showQuotes !== undefined) setShowQuotes(newSettings.showQuotes);
         if (newSettings.stream !== undefined) setStream(newSettings.stream);
+        if (newSettings.geminiModel !== undefined) setGeminiModel(newSettings.geminiModel);
         showToast('تنظیمات بروز شد', 'success');
     };
 

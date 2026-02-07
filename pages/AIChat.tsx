@@ -8,7 +8,7 @@ import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
 import { ChatMessage } from '../components/AIChat/ChatMessage';
 import { ChatInput } from '../components/AIChat/ChatInput';
 import { WelcomeScreen } from '../components/AIChat/WelcomeScreen';
-import { Menu, Settings as SettingsIcon, ChevronLeft, X } from 'lucide-react';
+import { Menu, Settings as SettingsIcon, ChevronLeft, X, Sparkles } from 'lucide-react';
 
 // --- TYPES (Internal) ---
 interface Message {
@@ -26,7 +26,7 @@ interface Message {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, subjects, addTask, startDate, currentDay, totalDays } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -41,8 +41,7 @@ const AIChat: React.FC = () => {
 
     // Settings (Persisted)
     const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-    // Enforced Default Model
-    const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+    const [selectedModel, setSelectedModel] = useState(settings.geminiModel || 'gemini-2.5-flash');
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 
@@ -143,7 +142,7 @@ const AIChat: React.FC = () => {
 
     const saveSettings = () => {
         localStorage.setItem('gemini_api_key', apiKey);
-        // localStorage.setItem('gemini_model', selectedModel); // No longer needed as we enforce 2.5 flash
+        updateSettings({ geminiModel: selectedModel });
         setShowSettings(false);
     };
 
@@ -363,9 +362,18 @@ Type B (Series):
                                     <label className="text-xs font-bold text-gray-500 mb-1.5 block">API Key (Google Gemini)</label>
                                     <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr" placeholder="AI Key..." />
                                 </div>
-                                <div className="opacity-50 pointer-events-none">
-                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل (پیش‌فرض)</label>
-                                    <input type="text" value="gemini-2.5-flash" disabled className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent outline-none text-sm font-mono dir-ltr text-gray-500" />
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل هوش مصنوعی</label>
+                                    <select
+                                        value={selectedModel}
+                                        onChange={(e) => setSelectedModel(e.target.value)}
+                                        className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr"
+                                    >
+                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Super Fast)</option>
+                                        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Powerful)</option>
+                                    </select>
                                 </div>
                                 <button onClick={saveSettings} className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700 transition">ذخیره تنظیمات</button>
                             </div>
