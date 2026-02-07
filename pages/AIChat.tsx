@@ -26,7 +26,7 @@ interface Message {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -160,6 +160,12 @@ const AIChat: React.FC = () => {
 
         const routineSummary = routineTemplate.map(r => `- ${r.time}: ${r.title} (${r.type})`).join('\n');
 
+
+
+        // Context: Progress & Mood
+        const recentMoods = Object.entries(moods).slice(-7).map(([date, mood]) => `${date}: ${mood}`).join(', ');
+        const recentLogs = auditLog.slice(-5).map(l => `- ${l.action}: ${l.details}`).join('\n');
+
         // Filter tasks for today and tomorrow to save context window
         const relevantTasks = tasks.filter(t => t.date === todayIso || t.date === tomorrowIso);
         const tasksSummary = relevantTasks.map(t => `- [${t.date}] ${t.subject}: ${t.topic} (${t.isCompleted ? 'Done' : 'Pending'})`).join('\n');
@@ -172,12 +178,18 @@ Context:
 - Plan Start Date: ${startDate}
 - Stream: ${currentStream}
 - Valid Subjects: ${validSubjects}
+- XP: ${xp} (Level ${level})
+- Progress: ${Math.round(progressPercent)}%
+- Recent Moods: ${recentMoods || 'No data'}
 
 User's Routine:
 ${routineSummary}
 
 Recent Tasks (Today & Tomorrow):
 ${tasksSummary}
+
+Recent Activities (Logs):
+${recentLogs}
 
 **CRITICAL INSTRUCTIONS:**
 1. Speak **PERSIAN (Farsi)** only.
@@ -448,6 +460,7 @@ Type B (Series):
             {reviewTasks && (
                 <AITaskReviewWindow
                     tasks={reviewTasks}
+                    currentDayId={currentDay}
                     onClose={() => setReviewTasks(null)}
                     onConfirm={handleConfirmTasks}
                     onUpdateTasks={setReviewTasks}

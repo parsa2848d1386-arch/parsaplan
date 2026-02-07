@@ -22,13 +22,15 @@ interface AITaskReviewWindowProps {
     onClose: () => void;
     onConfirm: () => void;
     onUpdateTasks: (tasks: ParsedTask[]) => void;
+    currentDayId: number;
 }
 
 const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
     tasks,
     onClose,
     onConfirm,
-    onUpdateTasks
+    onUpdateTasks,
+    currentDayId // We need to know current day to show relative days
 }) => {
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -141,7 +143,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 {/* List Content */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
                     <div className="text-xs text-center font-medium text-gray-500 mb-2 bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300">
-                        {tasks.length} تسک توسط هوش مصنوعی پیشنهاد شده است.
+                        {tasks.length} تسک برای روز {currentDayId} و روزهای آینده پیشنهاد شده است.
                     </div>
 
                     <div className="space-y-3 pb-4">

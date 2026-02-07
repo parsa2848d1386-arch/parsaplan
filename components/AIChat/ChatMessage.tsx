@@ -55,10 +55,10 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
                 {/* Bubble */}
                 <div className={`relative flex flex-col min-w-[120px]`}>
                     <div className={`
-                        p-4 md:p-5 rounded-3xl text-sm md:text-base leading-7 shadow-sm transition-all
+                        p-4 md:p-5 rounded-2xl text-sm md:text-base leading-7 shadow-sm transition-all relative
                         ${isUser
-                            ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-tr-sm'
-                            : 'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800 rounded-tl-sm hover:shadow-md'
+                            ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm shadow-indigo-200 dark:shadow-none'
+                            : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 rounded-tl-sm hover:shadow-md'
                         }
                         ${message.isError ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50' : ''}
                     `}>
