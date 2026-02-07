@@ -419,6 +419,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setStartDateState(data.startDate);
                 recalcToday(data.startDate);
             }
+            if (data.lastUpdated) {
+                setLastSyncTime(data.lastUpdated);
+            }
         } else {
             // Fresh User: Clear State
             console.log("No data for this user. Starting fresh.");
@@ -433,6 +436,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const freshStart = findBahman11();
             setStartDateState(freshStart);
             recalcToday(freshStart);
+            setLastSyncTime(0); // Reset for new user
         }
     }, [userId]); // Removed isInitialized dependency loop, just trigger on userId change
 
@@ -488,9 +492,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         syncTimeoutRef.current = setTimeout(async () => {
             try {
-                const fullData = {
+                const rawData = {
                     tasks, userName, routine: completedRoutine, routineTemplate,
                     notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+                    totalDays, subjects, archivedPlans,
                     settings: {
                         darkMode, viewMode, showQuotes, stream,
                         notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
@@ -499,11 +504,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     lastUpdated: Date.now()
                 };
 
+                const fullData = JSON.parse(JSON.stringify(rawData)); // Sanitize undefined values
+
                 await setDoc(doc(db, "users", userId), fullData);
-                setLastSyncTime(Date.now());
-                console.log("Auto-synced to cloud");
+                setLastSyncTime(rawData.lastUpdated);
+                setCloudStatus('connected');
+                // console.log("Auto-synced to cloud");
             } catch (e) {
                 console.error("Auto-sync failed:", e);
+                setCloudStatus('error');
             }
         }, 5000); // 5 second debounce
 
@@ -573,6 +582,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 
     // --- CLOUD SYNC ---
+    // Helper to sanitize data for Firestore (remove undefined)
+    const sanitizeForFirestore = (obj: any): any => {
+        return JSON.parse(JSON.stringify(obj));
+    };
+
     const syncData = async () => {
         if (!db || !firebaseConfig) {
             showToast('تنظیمات فایربیس وارد نشده است.', 'warning');
@@ -581,18 +595,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         setIsSyncing(true);
         try {
-            const fullData = {
+            const rawData = {
                 tasks, userName, routine: completedRoutine, routineTemplate,
                 notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+                totalDays, subjects, archivedPlans,
                 settings: {
                     darkMode, viewMode, showQuotes, stream,
-                    notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en'
+                    notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+                    geminiModel
                 },
                 lastUpdated: Date.now()
             };
 
+            const fullData = sanitizeForFirestore(rawData);
+
             await setDoc(doc(db, "users", userId), fullData);
-            setLastSyncTime(Date.now());
+            setLastSyncTime(rawData.lastUpdated);
             setCloudStatus('connected');
             showToast('اطلاعات با موفقیت در فضای ابری ذخیره شد', 'success');
             logAction('cloud_upload', 'آپلود موفق به سرور');
@@ -1018,7 +1036,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // --- IMPORT/EXPORT ---
     const exportData = () => {
-        const data = { tasks, userName, routine: completedRoutine, notes: dailyNotes, xp, logs: auditLog, moods, startDate, settings: { darkMode, viewMode } };
+        const data = {
+            tasks, userName, routine: completedRoutine, routineTemplate,
+            notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+            totalDays, subjects, archivedPlans,
+            settings: {
+                darkMode, viewMode, showQuotes, stream,
+                notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+                geminiModel
+            },
+            lastUpdated: Date.now()
+        };
         const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
