@@ -26,7 +26,7 @@ interface Message {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -165,6 +165,7 @@ const AIChat: React.FC = () => {
         // Context: Progress & Mood
         const planCompletion = Math.round((currentDay / totalDays) * 100);
         const taskCompletion = getProgress();
+        const overdueTasksCount = tasks.filter(t => t.date < todayIso && !t.isCompleted).length;
         const recentMoods = Object.entries(moods).slice(-7).map(([date, mood]) => `${date}: ${mood}`).join(', ');
         const recentLogs = auditLog.slice(-5).map(l => `- ${l.action}: ${l.details}`).join('\n');
 
@@ -175,6 +176,7 @@ const AIChat: React.FC = () => {
         return `
 You are an expert Study Assistant for 'ParsaPlan'.
 Context:
+- User Name: ${userName}
 - Today: ${todayIso} (Day ${currentDay} of ${totalDays})
 - Tomorrow: ${tomorrowIso} (Day ${Math.min(currentDay + 1, totalDays)} of ${totalDays})
 - Plan Start Date: ${startDate}
@@ -182,8 +184,9 @@ Context:
 - Valid Subjects: ${validSubjects}
 - XP: ${xp} (Level ${level})
 - Level Progress: ${Math.round(progressPercent)}% (XP towards next level)
-- Plan Day Progress: ${planCompletion}% (Day ${currentDay} of ${totalDays})
-- Overall Task Completion: ${taskCompletion}% (of all tasks)
+- Time Elapsed: ${planCompletion}% (Day ${currentDay} of ${totalDays})
+- Actual Task Completion: ${taskCompletion}% (of all tasks)
+- Overdue Tasks: ${overdueTasksCount} (Tasks from previous days not completed)
 - Recent Moods: ${recentMoods || 'No data'}
 
 User's Routine:
@@ -197,7 +200,8 @@ ${recentLogs}
 
 **CRITICAL INSTRUCTIONS:**
 1. Speak **PERSIAN (Farsi)** only.
-2. If asked to add tasks, output a JSON object.
+2. Address the user by their name ("${userName}") occasionally to be friendly.
+3. If asked to add tasks, output a JSON object.
 3. Supported JSON Types: "preview_tasks", "autopilot_series".
 4. For tasks, you can suggest 'exam' (آزمون), 'analysis' (تحلیل), 'review' (مرور), or 'study' (مطالعه) as 'studyType'.
 5. **DATE AWARENESS**: 
