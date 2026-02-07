@@ -26,7 +26,7 @@ interface Message {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -148,24 +148,46 @@ const AIChat: React.FC = () => {
 
     // --- GEMINI LOGIC ---
     const generateSystemPrompt = () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayIso = today.toISOString().split('T')[0];
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        const tomorrowIso = tomorrow.toISOString().split('T')[0];
+
         const currentStream = settings?.stream || 'general';
         const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
         const validSubjects = streamSubjects.join(', ');
 
+        const routineSummary = routineTemplate.map(r => `- ${r.time}: ${r.title} (${r.type})`).join('\n');
+
+        // Filter tasks for today and tomorrow to save context window
+        const relevantTasks = tasks.filter(t => t.date === todayIso || t.date === tomorrowIso);
+        const tasksSummary = relevantTasks.map(t => `- [${t.date}] ${t.subject}: ${t.topic} (${t.isCompleted ? 'Done' : 'Pending'})`).join('\n');
+
         return `
 You are an expert Study Assistant for 'ParsaPlan'.
 Context:
-- Today: ${today}
-- Plan Start: ${startDate}
-- Current Day: ${currentDay} of ${totalDays}
-- Subjects: ${validSubjects}
+- Today: ${todayIso} (Day ${currentDay} of ${totalDays})
+- Tomorrow: ${tomorrowIso} (Day ${Math.min(currentDay + 1, totalDays)} of ${totalDays})
+- Plan Start Date: ${startDate}
+- Stream: ${currentStream}
+- Valid Subjects: ${validSubjects}
+
+User's Routine:
+${routineSummary}
+
+Recent Tasks (Today & Tomorrow):
+${tasksSummary}
 
 **CRITICAL INSTRUCTIONS:**
 1. Speak **PERSIAN (Farsi)** only.
 2. If asked to add tasks, output a JSON object.
 3. Supported JSON Types: "preview_tasks", "autopilot_series".
 4. For tasks, you can suggest 'exam' (آزمون), 'analysis' (تحلیل), 'review' (مرور), or 'study' (مطالعه) as 'studyType'.
+5. **DATE AWARENESS**: 
+   - If user says "Tomorrow", use ${tomorrowIso}.
+   - If user says "Today", use ${todayIso}.
+   - Always calculate dates relative to Today (${todayIso}).
 
 **JSON COMPATIBILITY:**
 Type A (Explicit Tasks):
@@ -331,10 +353,10 @@ Type B (Series):
                             <Menu size={24} />
                         </button>
                         <div className="flex flex-col">
-                            <h1 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 text-lg">
+                            <h1 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 text-sm md:text-lg">
                                 {activeSession?.title || 'دستیار هوشمند'}
                             </h1>
-                            <span className="text-[10px] text-indigo-500 font-mono opacity-80 mt-0.5">Gemini 2.5 Flash</span>
+                            <span className="text-[10px] text-indigo-500 font-mono opacity-80 mt-0.5 truncate max-w-[150px]">{selectedModel}</span>
                         </div>
                     </div>
 
@@ -363,17 +385,21 @@ Type B (Series):
                                     <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr" placeholder="AI Key..." />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل هوش مصنوعی</label>
-                                    <select
+                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل هوش مصنوعی (تایپ یا انتخاب)</label>
+                                    <input
+                                        list="gemini-models"
                                         value={selectedModel}
                                         onChange={(e) => setSelectedModel(e.target.value)}
                                         className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr"
-                                    >
-                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Super Fast)</option>
-                                        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Powerful)</option>
-                                    </select>
+                                        placeholder="نام مدل را وارد کنید (مثلاً gemini-1.5-pro)"
+                                    />
+                                    <datalist id="gemini-models">
+                                        <option value="gemini-2.5-flash" />
+                                        <option value="gemini-2.0-flash" />
+                                        <option value="gemini-1.5-flash" />
+                                        <option value="gemini-1.5-pro" />
+                                        <option value="gemini-pro" />
+                                    </datalist>
                                 </div>
                                 <button onClick={saveSettings} className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700 transition">ذخیره تنظیمات</button>
                             </div>

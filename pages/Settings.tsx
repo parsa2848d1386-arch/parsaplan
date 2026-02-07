@@ -522,20 +522,24 @@ const Settings = () => {
                 </div>
                 <div className="space-y-4">
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">مدل هوش مصنوعی (Gemini)</label>
-                        <select
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">مدل هوش مصنوعی (تایپ یا انتخاب)</label>
+                        <input
+                            list="gemini-models-settings"
                             value={settings?.geminiModel || 'gemini-2.5-flash'}
                             onChange={(e) => updateSettings({ geminiModel: e.target.value })}
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition appearance-none cursor-pointer text-gray-800 dark:text-white"
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition text-gray-800 dark:text-white"
                             dir="ltr"
-                        >
-                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                        </select>
-                        <p className="text-[10px] text-gray-400 mt-2 leading- relaxed">
-                            مدل 2.5 Flash سریع‌ترین و بهینه‌ترین گزینه است. مدل 1.5 Pro برای تحلیل‌های پیچیده مناسب‌تر است اما سرعت کمتری دارد.
+                            placeholder="نام مدل را وارد کنید (مثلاً gemini-1.5-pro)"
+                        />
+                        <datalist id="gemini-models-settings">
+                            <option value="gemini-2.5-flash" />
+                            <option value="gemini-2.0-flash" />
+                            <option value="gemini-1.5-flash" />
+                            <option value="gemini-1.5-pro" />
+                            <option value="gemini-pro" />
+                        </datalist>
+                        <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">
+                            مدل 2.5 Flash سریع‌ترین و بهینه‌ترین گزینه است. شما می‌توانید مدل‌های دیگر گوگل (مثل gemini-pro) را نیز تایپ کنید.
                         </p>
                     </div>
                 </div>
