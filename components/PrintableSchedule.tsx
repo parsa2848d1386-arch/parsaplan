@@ -5,9 +5,9 @@ import { TOTAL_DAYS } from '../constants';
 import { getShamsiDate } from '../utils';
 
 const PrintableSchedule = () => {
-    const { getTasksForDay, getDayDate, userName, startDate, getProgress } = useStore();
+    const { getTasksForDay, getDayDate, userName, startDate, getProgress, totalDays } = useStore();
 
-    const days = Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1);
+    const days = Array.from({ length: totalDays }, (_, i) => i + 1);
 
     const getSubjectColor = (subject: string) => {
         if (subject.includes('زیست')) return '#10b981';
@@ -27,7 +27,7 @@ const PrintableSchedule = () => {
                     </div>
                     <h1 className="text-4xl font-black mb-4">برنامه مطالعاتی ۱۲ روزه</h1>
                     <h2 className="text-2xl font-bold text-gray-600 mb-8">پارسا پلن</h2>
-                    
+
                     <div className="border-t-2 border-b-2 border-gray-300 py-6 my-8">
                         <div className="grid grid-cols-2 gap-8 text-right max-w-md mx-auto">
                             <div>
@@ -40,7 +40,7 @@ const PrintableSchedule = () => {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">تعداد روزها</p>
-                                <p className="text-xl font-bold">{TOTAL_DAYS} روز</p>
+                                <p className="text-xl font-bold">{totalDays} روز</p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">پیشرفت کلی</p>
@@ -114,8 +114,8 @@ const PrintableSchedule = () => {
                                         <td className="border-2 border-gray-800 p-3 text-center font-bold">{idx + 1}</td>
                                         <td className="border-2 border-gray-800 p-3">
                                             <div className="flex items-center gap-2">
-                                                <div 
-                                                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                                                <div
+                                                    className="w-3 h-3 rounded-full flex-shrink-0"
                                                     style={{ backgroundColor: getSubjectColor(task.subject) }}
                                                 ></div>
                                                 <span className="font-bold">{task.subject}</span>
@@ -149,7 +149,7 @@ const PrintableSchedule = () => {
 
                         {/* Footer */}
                         <div className="mt-auto pt-6 text-center text-xs text-gray-400 absolute bottom-8 left-0 right-0">
-                            ParsaPlan | روز {dayId} از {TOTAL_DAYS}
+                            ParsaPlan | روز {dayId} از {totalDays}
                         </div>
                     </div>
                 );

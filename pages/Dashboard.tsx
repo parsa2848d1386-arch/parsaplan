@@ -10,6 +10,7 @@ import { TaskCard } from '../components/TaskCard';
 import MoodTracker from '../components/MoodTracker';
 import { getShamsiDate, toIsoString, isHoliday, parseTestCount } from '../utils';
 import { useNavigate } from 'react-router-dom';
+import WeeklyView from '../components/WeeklyView';
 
 const Dashboard = () => {
     const {
@@ -177,6 +178,9 @@ const Dashboard = () => {
                         <span className="absolute text-[10px] font-black text-indigo-700 dark:text-indigo-300">{overallProgress}%</span>
                     </div>
                 </div>
+
+                {/* Week View */}
+                <WeeklyView />
 
                 {/* Mood Tracker (Feature 10) */}
                 {isTodayView && (
@@ -418,9 +422,10 @@ const Dashboard = () => {
                 <TaskModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
+                    onSave={handleSaveTask}
                     initialData={editingTask}
                     currentDayId={currentDay}
-                    onSave={handleSaveTask}
+                    defaultDateStr={activeDateIso}
                 />
             )}
         </div>

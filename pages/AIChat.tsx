@@ -213,8 +213,11 @@ Type A (Explicit Tasks):
 
 Type B (Series):
 \`\`\`json
-{ "type": "autopilot_series", "message": "...", "series": { "subject": "فیزیک", "topic": "نوسان", "startDay": ${currentDay}, "endDay": ${Math.min(currentDay + 5, totalDays)}, "dailyCount": 30, "startTest": 1 } }
+{ "type": "autopilot_series", "message": "...", "series": { "subject": "فیزیک", "topic": "نوسان", "startDay": ${currentDay}, "endDay": ${Math.min(currentDay + 5, totalDays)}, "interval": 2, "dailyCount": 30, "startTest": 1 } }
 \`\`\`
+6. **Multi-Subject Exams**: If an exam covers multiple subjects, use a combined name like "ریاضی + فیزیک" in the "subject" field.
+7. **Comprehensive Exam**: Suggest "Comprehensive Exam" (آزمون جامع) as a subject/topic if appropriate.
+8. **Interval**: Use "interval" in autopilot_series (e.g., 2 for every other day).
 `.trim();
     };
 
@@ -268,17 +271,23 @@ Type B (Series):
                 try {
                     const action = JSON.parse(jsonMatch[0]);
                     if (action.type === 'autopilot_series' && action.series) {
-                        const { subject, topic, startDay, endDay, dailyCount, startTest } = action.series;
+                        const { subject, topic, startDay, endDay, dailyCount, startTest, interval = 1 } = action.series;
                         parsedTasks = [];
                         let currentTest = startTest || 1;
                         const planStart = new Date(startDate);
-                        for (let day = startDay; day <= endDay; day++) {
+
+                        // Loop relative to plan start
+                        for (let day = startDay; day <= endDay; day += interval) {
+                            if (day > totalDays) break;
                             const taskDate = new Date(planStart);
                             taskDate.setDate(planStart.getDate() + (day - 1));
+
                             const endTest = currentTest + dailyCount - 1;
+                            const range = dailyCount > 0 ? `${currentTest}-${endTest}` : '';
+
                             parsedTasks.push({
-                                title: `${subject}`, subject, topic, details: `تست ${currentTest} تا ${endTest}`,
-                                testRange: `${currentTest}-${endTest}`, date: taskDate.toISOString().split('T')[0],
+                                title: `${subject}`, subject, topic, details: dailyCount > 0 ? `تست ${currentTest} تا ${endTest}` : 'مرور/مطالعه',
+                                testRange: range, date: taskDate.toISOString().split('T')[0],
                                 studyType: 'test_educational'
                             });
                             currentTest = endTest + 1;

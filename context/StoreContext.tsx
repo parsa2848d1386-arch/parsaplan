@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS, AppSettings, StreamType, ArchivedPlan, SUBJECT_LISTS } from '../types';
+import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, SUBJECT_ICONS, AppSettings, StreamType, ArchivedPlan, SUBJECT_LISTS, getSubjectStyle } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
@@ -346,15 +346,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     setSubjects(data.subjects);
                 } else {
                     // Fallback/Migration: Load defaults + old custom subjects
-                    const allowedDefaults = ['زیست‌شناسی', 'شیمی', 'فیزیک', 'ریاضیات'];
-                    const defaultSubjects = Object.entries(SUBJECT_ICONS)
-                        .filter(([name]) => allowedDefaults.includes(name))
-                        .map(([name, style]) => ({
+                    // Fallback/Migration: Load defaults based on stream
+                    const stream = data.settings?.stream || 'general';
+                    const defaultList = SUBJECT_LISTS[stream] || SUBJECT_LISTS['general'];
+                    const defaultSubjects = defaultList.map(name => {
+                        const style = getSubjectStyle(name);
+                        return {
                             id: name,
                             name: name,
                             icon: style.icon,
                             color: style.color
-                        }));
+                        };
+                    });
 
                     const oldCustoms = data.customSubjects || [];
                     const merged = [...defaultSubjects, ...oldCustoms];
@@ -556,6 +559,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     if (data.notes) setDailyNotes(data.notes);
                     if (data.xp) setXp(data.xp);
                     if (data.moods) setMoods(data.moods);
+                    if (data.totalDays) setTotalDaysState(data.totalDays);
+                    if (data.subjects) setSubjects(data.subjects);
+                    if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
                     if (data.startDate) {
                         setStartDateState(data.startDate);
                         recalcToday(data.startDate);
@@ -565,6 +571,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                         setViewModeState(data.settings.viewMode);
                         if (data.settings.showQuotes !== undefined) setShowQuotes(data.settings.showQuotes);
                         if (data.settings.stream) setStream(data.settings.stream);
+                        if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
                     }
                     setLastSyncTime(remoteLastUpdated);
                     // Removed toast to avoid annoying popup - user can see cloud icon status
