@@ -26,7 +26,7 @@ interface Message {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -163,6 +163,8 @@ const AIChat: React.FC = () => {
 
 
         // Context: Progress & Mood
+        const planCompletion = Math.round((currentDay / totalDays) * 100);
+        const taskCompletion = getProgress();
         const recentMoods = Object.entries(moods).slice(-7).map(([date, mood]) => `${date}: ${mood}`).join(', ');
         const recentLogs = auditLog.slice(-5).map(l => `- ${l.action}: ${l.details}`).join('\n');
 
@@ -179,7 +181,9 @@ Context:
 - Stream: ${currentStream}
 - Valid Subjects: ${validSubjects}
 - XP: ${xp} (Level ${level})
-- Progress: ${Math.round(progressPercent)}%
+- Level Progress: ${Math.round(progressPercent)}% (XP towards next level)
+- Plan Day Progress: ${planCompletion}% (Day ${currentDay} of ${totalDays})
+- Overall Task Completion: ${taskCompletion}% (of all tasks)
 - Recent Moods: ${recentMoods || 'No data'}
 
 User's Routine:
