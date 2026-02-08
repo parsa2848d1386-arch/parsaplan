@@ -98,7 +98,7 @@ const SubjectModal: React.FC<{
                                     key={subjectName}
                                     onClick={() => handleSelectSuggested(subjectName)}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${name === subjectName
-                                        ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
+                                        ? 'bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300'
                                         : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
                                         }`}
                                 >
@@ -111,7 +111,7 @@ const SubjectModal: React.FC<{
 
                     {/* Selected Icon Preview */}
                     <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                        <div className={`w-16 h-16 rounded-2xl bg-${selectedColor}-100 dark:bg-${selectedColor}-900/30 text-${selectedColor}-600 dark:text-${selectedColor}-400 flex items-center justify-center text-2xl`}>
+                        <div className={`w-16 h-16 rounded-2xl bg-${selectedColor}-100 dark:bg-${selectedColor}-500/20 text-${selectedColor}-600 dark:text-${selectedColor}-400 flex items-center justify-center text-2xl`}>
                             {selectedIcon}
                         </div>
                         <div>
@@ -279,7 +279,7 @@ const Subjects = () => {
                     const style = {
                         icon: subject.icon,
                         color: subject.color,
-                        bgColor: `bg-${subject.color}-50 dark:bg-${subject.color}-900/30`
+                        bgColor: `bg-${subject.color}-50 dark:bg-${subject.color}-500/20`
                     };
 
                     const completedCount = subjectTasks.filter(t => t.isCompleted).length;
@@ -365,7 +365,7 @@ const Subjects = () => {
                                                                     <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-full animate-pulse font-black">الان</span>
                                                                 )}
                                                             </div>
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold bg-${style.color}-100 dark:bg-${style.color}-900/30 text-${style.color}-800 dark:text-${style.color}-300`}>{task.details}</span>
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold bg-${style.color}-100 dark:bg-${style.color}-500/20 text-${style.color}-800 dark:text-${style.color}-300`}>{task.details}</span>
                                                         </div>
                                                         <p className={`text-sm text-gray-800 dark:text-gray-200 font-bold leading-5 transition-all ${isDone ? 'line-through' : ''}`}>{task.topic}</p>
                                                         {task.testRange && <p className="text-xs text-gray-500 mt-1 font-mono bg-white dark:bg-gray-700 inline-block px-1 rounded border border-gray-100 dark:border-gray-600">{task.testRange}</p>}
