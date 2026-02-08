@@ -148,6 +148,26 @@ const AIChat: React.FC = () => {
         setShowSettings(false);
     };
 
+    // --- HELPERS ---
+    const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result as string;
+                // Remove data url prefix (e.g. "data:image/jpeg;base64,")
+                const base64Data = base64String.split(',')[1];
+                resolve({
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: file.type
+                    }
+                });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     // --- GEMINI LOGIC ---
     const generateSystemPrompt = () => {
         const today = new Date();
@@ -179,51 +199,37 @@ const AIChat: React.FC = () => {
 You are an expert Study Assistant for 'ParsaPlan'.
 Context:
 - User Name: ${userName}
-- Today: ${todayIso} (Day ${currentDay} of ${totalDays})
-- Tomorrow: ${tomorrowIso} (Day ${Math.min(currentDay + 1, totalDays)} of ${totalDays})
-- Plan Start Date: ${startDate}
+- Today: ${todayIso}
+- Tomorrow: ${tomorrowIso}
 - Stream: ${currentStream}
 - Valid Subjects: ${validSubjects}
 - XP: ${xp} (Level ${level})
-- Level Progress: ${Math.round(progressPercent)}% (XP towards next level)
-- Time Elapsed: ${planCompletion}% (Day ${currentDay} of ${totalDays})
-- Actual Task Completion: ${taskCompletion}% (of all tasks)
-- Overdue Tasks: ${overdueTasksCount} (Tasks from previous days not completed)
-- Recent Moods: ${recentMoods || 'No data'}
 
 User's Routine:
 ${routineSummary}
 
-Recent Tasks (Today & Tomorrow):
+Recent Tasks:
 ${tasksSummary}
-
-Recent Activities (Logs):
-${recentLogs}
 
 **CRITICAL INSTRUCTIONS:**
 1. Speak **PERSIAN (Farsi)** only.
-2. Address the user by their name ("${userName}") occasionally to be friendly.
+2. Address the user by their name ("${userName}") occasionally.
 3. If asked to add tasks, output a JSON object.
-3. Supported JSON Types: "preview_tasks", "autopilot_series".
-4. For tasks, you can suggest 'exam' (آزمون), 'analysis' (تحلیل), 'review' (مرور), or 'study' (مطالعه) as 'studyType'.
-5. **DATE AWARENESS**: 
-   - If user says "Tomorrow", use ${tomorrowIso}.
-   - If user says "Today", use ${todayIso}.
-   - Always calculate dates relative to Today (${todayIso}).
+4. **Distinguish "Tests" vs "Exam"**:
+   - If user asks for "tests", "practice questions", "tard" or "test-e-amoozeshi" (e.g. "40 ta test zist"), create a task with 'studyType': 'study' or 'review', and in details mention "Practice 40 tests". DO NOT call it an "Exam" or "Azmoon".
+   - Only use 'studyType': 'exam' (Azmoon) if the user explicitly asks for an **Exam**, **Mock Exam**, or **Azmoon**.
+   - For "Analysis" of tests, use 'studyType': 'analysis'.
 
-**JSON COMPATIBILITY:**
+5. **JSON Formats**:
 Type A (Explicit Tasks):
 \`\`\`json
-{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "زیست", "topic": "...", "details": "...", "date": "2024-01-01", "studyType": "study" }] }
+{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "Ziast", "topic": "...", "details": "40 Test Practice", "date": "${todayIso}", "studyType": "study" }] }
 \`\`\`
 
 Type B (Series):
 \`\`\`json
-{ "type": "autopilot_series", "message": "...", "series": { "subject": "فیزیک", "topic": "نوسان", "startDay": ${currentDay}, "endDay": ${Math.min(currentDay + 5, totalDays)}, "interval": 2, "dailyCount": 30, "startTest": 1 } }
+{ "type": "autopilot_series", "message": "...", "series": { "subject": "Physics", "topic": "...", "startDay": ${currentDay}, "dailyCount": 30 } }
 \`\`\`
-6. **Multi-Subject Exams**: If an exam covers multiple subjects, use a combined name like "ریاضی + فیزیک" in the "subject" field.
-7. **Comprehensive Exam**: Suggest "Comprehensive Exam" (آزمون جامع) as a subject/topic if appropriate.
-8. **Interval**: Use "interval" in autopilot_series (e.g., 2 for every other day).
 `.trim();
     };
 
@@ -239,12 +245,24 @@ Type B (Series):
         }
 
         let msgAttachments: { type: 'image' | 'video' | 'file'; url: string; name: string }[] | undefined;
+        let generativeParts: any[] = [];
+
         if (attachments && attachments.length > 0) {
+            // Create UI attachments
             msgAttachments = attachments.map(file => ({
                 type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file',
-                url: URL.createObjectURL(file), // Note: This URL is temporary
+                url: URL.createObjectURL(file),
                 name: file.name
             }));
+
+            // Create Gemini Parts
+            try {
+                const partsPromises = attachments.map(file => fileToGenerativePart(file));
+                generativeParts = await Promise.all(partsPromises);
+            } catch (error) {
+                console.error("Error processing files:", error);
+                // Continue without files if error, or handle error UI
+            }
         }
 
         const userMsg: Message = {
@@ -266,23 +284,25 @@ Type B (Series):
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: selectedModel }); // Enforced 2.5 Flash
+            const model = genAI.getGenerativeModel({ model: selectedModel });
 
-            const historyForApi = updatedMsgs.slice(0, -1).map(m => ({
+            const history = updatedMsgs.slice(0, -1).map(m => ({
                 role: m.sender === 'user' ? 'user' : 'model',
                 parts: [{ text: m.text }]
             }));
 
             const chat = model.startChat({
-                history: [
-                    { role: "user", parts: [{ text: `SYSTEM_PROMPT: ${generateSystemPrompt()}` }] },
-                    { role: "model", parts: [{ text: "باشه، من آماده‌ام. من دستیار درسی پارسا پلن هستم و به زبان فارسی صحبت می‌کنم." }] },
-                    ...historyForApi
-                ],
+                history: history,
+                systemInstruction: generateSystemPrompt(),
             });
 
-            // Note: signal support depends on SDK version, wrapping in try/catch generally good
-            const result = await chat.sendMessage(textToSend);
+            // Combine text and attachments
+            const currentParts: (string | { text: string } | { inlineData: { data: string; mimeType: string } })[] = [{ text: textToSend }];
+            if (generativeParts && generativeParts.length > 0) {
+                currentParts.push(...generativeParts);
+            }
+
+            const result = await chat.sendMessage(currentParts as any);
             const response = result.response;
             const text = response.text();
 
@@ -293,6 +313,7 @@ Type B (Series):
             if (jsonMatch) {
                 try {
                     const action = JSON.parse(jsonMatch[0]);
+
                     if (action.type === 'autopilot_series' && action.series) {
                         const { subject, topic, startDay, endDay, dailyCount, startTest, interval = 1 } = action.series;
                         parsedTasks = [];
@@ -309,14 +330,21 @@ Type B (Series):
                             const range = dailyCount > 0 ? `${currentTest}-${endTest}` : '';
 
                             parsedTasks.push({
-                                title: `${subject}`, subject, topic, details: dailyCount > 0 ? `تست ${currentTest} تا ${endTest}` : 'مرور/مطالعه',
-                                testRange: range, date: taskDate.toISOString().split('T')[0],
-                                studyType: 'test_educational'
+                                title: `${subject}`,
+                                subject,
+                                topic,
+                                details: dailyCount > 0 ? `تست ${currentTest} تا ${endTest}` : 'مرور/مطالعه',
+                                date: taskDate.toISOString().split('T')[0],
+                                studyType: 'study', // Default to study for series unless specified
+                                id: crypto.randomUUID()
                             });
                             currentTest = endTest + 1;
                         }
-                    } else if (action.tasks || Array.isArray(action)) {
-                        parsedTasks = action.tasks || action;
+                    } else if (action.type === 'preview_tasks' && action.tasks) {
+                        parsedTasks = action.tasks.map((t: any) => ({
+                            ...t,
+                            id: crypto.randomUUID()
+                        }));
                     }
                 } catch (e) { console.error("JSON Error", e); }
             }
@@ -332,6 +360,7 @@ Type B (Series):
             };
 
             updateActiveSessionMessages([...updatedMsgs, aiMsg]);
+            setIsTyping(false);
 
         } catch (error: any) {
             if (error.name !== 'AbortError') {

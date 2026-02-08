@@ -11,10 +11,12 @@ export interface ParsedTask {
     subject: string;
     topic: string;
     details: string;
-    testRange: string;
+    testRange?: string;
     date: string;
     studyType?: 'exam' | 'analysis' | 'test_educational' | 'test_speed' | 'review' | 'study';
     subTasks?: { subject: string; topic: string; }[];
+    id?: string;
+    isCompleted?: boolean;
 }
 
 interface AITaskReviewWindowProps {
