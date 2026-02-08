@@ -19,6 +19,7 @@ interface Message {
     timestamp: Date;
     isError?: boolean;
     pendingTasks?: ParsedTask[];
+    attachments?: { type: 'image' | 'video' | 'file'; url: string; name: string }[];
 }
 
 // NOTE: ChatSession is imported from ChatSidebar to ensure consistency, 
@@ -226,16 +227,33 @@ Type B (Series):
 `.trim();
     };
 
-    const handleSend = async (manualInput?: string) => {
+    const handleSend = async (manualInput?: string, attachments?: File[]) => {
         const textToSend = manualInput || input;
-        if (!textToSend.trim()) return;
+
+        // Allow sending if there are attachments even if no text
+        if (!textToSend.trim() && (!attachments || attachments.length === 0)) return;
 
         if (!apiKey) {
             setShowSettings(true);
             return;
         }
 
-        const userMsg: Message = { id: Date.now().toString(), text: textToSend, sender: 'user', timestamp: new Date() };
+        let msgAttachments: { type: 'image' | 'video' | 'file'; url: string; name: string }[] | undefined;
+        if (attachments && attachments.length > 0) {
+            msgAttachments = attachments.map(file => ({
+                type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file',
+                url: URL.createObjectURL(file), // Note: This URL is temporary
+                name: file.name
+            }));
+        }
+
+        const userMsg: Message = {
+            id: Date.now().toString(),
+            text: textToSend,
+            sender: 'user',
+            timestamp: new Date(),
+            attachments: msgAttachments
+        };
 
         // Optimistic Update
         const currentMsgs = activeSession?.messages || [];
@@ -469,7 +487,7 @@ Type B (Series):
                     input={input}
                     setInput={setInput}
                     isTyping={isTyping}
-                    onSend={() => handleSend()}
+                    onSend={(files) => handleSend(undefined, files)}
                     onStop={handleStop}
                 />
             </main>

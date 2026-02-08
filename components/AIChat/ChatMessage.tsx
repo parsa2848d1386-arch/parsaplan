@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, Bot, Copy, Volume2, RotateCcw, Check, ListChecks, ChevronLeft, AlertTriangle } from 'lucide-react';
+import { User, Bot, Copy, Volume2, RotateCcw, Check, ListChecks, ChevronLeft, Download, FileText, Image as ImageIcon, PlayCircle } from 'lucide-react';
 import { ParsedTask } from '../AITaskReviewWindow';
 
 export interface MessageProps {
@@ -12,6 +12,7 @@ export interface MessageProps {
         timestamp: Date;
         isError?: boolean;
         pendingTasks?: ParsedTask[];
+        attachments?: { type: 'image' | 'video' | 'file'; url: string; name: string }[];
     };
     onRetry?: (text: string) => void;
     onReviewTasks?: (tasks: ParsedTask[]) => void;
@@ -44,8 +45,18 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
     };
 
     return (
-        <div className={`flex flex-col space-y-2 ${isUser ? 'items-end' : 'items-start'} group mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-            <div className={`flex gap-2.5 max-w-[88%] md:max-w-[75%] lg:max-w-[60%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className={`flex flex-col space-y-2 ${isUser ? 'items-start' : 'items-end'} group mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+            {/* Note: In RTL, items-start is Right, items-end is Left. 
+               We want User on Right, AI on Left.
+               So User -> items-start. AI -> items-end. 
+            */}
+
+            <div className={`flex gap-2.5 max-w-[88%] md:max-w-[75%] lg:max-w-[60%] ${isUser ? 'flex-row' : 'flex-row-reverse'}`}>
+                {/* 
+                   In RTL flex-row: [RightItem] [LeftItem] ...
+                   User (Right): [Avatar] [Bubble] -> flex-row
+                   AI (Left): [Bubble] [Avatar] -> flex-row-reverse (swaps logical order)
+                */}
 
                 {/* Avatar */}
                 <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm transform transition-transform hover:scale-105 ${isUser ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-gray-800 text-indigo-500 border border-gray-100 dark:border-gray-700'}`}>
@@ -53,7 +64,7 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
                 </div>
 
                 {/* Bubble */}
-                <div className={`relative flex flex-col min-w-[100px]`}>
+                <div className={`relative flex flex-col min-w-[100px] ${isUser ? 'items-start' : 'items-end'}`}>
                     <div className={`
                         px-3.5 py-2.5 md:px-5 md:py-3.5 rounded-[1.25rem] text-[13px] md:text-[14.5px] leading-6 shadow-sm transition-all relative
                         ${isUser
@@ -62,6 +73,30 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
                         }
                         ${message.isError ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50' : ''}
                     `}>
+
+                        {/* Attachments */}
+                        {message.attachments && message.attachments.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {message.attachments.map((file, idx) => (
+                                    <div key={idx} className="relative group/file overflow-hidden rounded-lg border border-white/20 dark:border-gray-700">
+                                        {file.type === 'image' ? (
+                                            <img src={file.url} alt={file.name} className="max-w-[200px] max-h-[150px] object-cover" />
+                                        ) : file.type === 'video' ? (
+                                            <div className="relative max-w-[200px]">
+                                                <video src={file.url} className="max-w-full max-h-[150px] object-cover bg-black" />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/30"><PlayCircle className="text-white" /></div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 p-3 bg-white/10 backdrop-blur-sm min-w-[150px]">
+                                                <FileText size={20} />
+                                                <span className="text-xs truncate max-w-[100px]">{file.name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Markdown Content */}
                         {!isUser ? (
                             <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none dir-rtl break-words">
@@ -135,7 +170,8 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
 
             {/* Pending Tasks Review Card */}
             {!isUser && message.pendingTasks && message.pendingTasks.length > 0 && onReviewTasks && (
-                <div className="w-full max-w-[85%] lg:max-w-[75%] mr-auto pr-[52px]">
+                <div className="w-full max-w-[85%] lg:max-w-[75%] lg:mr-auto lg:ml-0 mr-auto pr-10">
+                    {/* Adjusted margins for AI alignment */}
                     <button
                         onClick={() => onReviewTasks(message.pendingTasks!)}
                         className="w-full md:w-auto flex items-center justify-between gap-4 p-4 bg-gradient-to-r from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-900 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-300 transition-all group/task"
