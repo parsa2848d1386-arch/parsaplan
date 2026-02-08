@@ -58,14 +58,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
     };
 
     return (
-        <div className="p-3 md:p-4 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-t border-gray-100 dark:border-gray-800 z-20 shrink-0">
+        <div className="p-3 md:p-4 w-full z-20 shrink-0">
             <div className="max-w-3xl mx-auto w-full">
 
                 {previews.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 mb-2 custom-scrollbar">
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-2 custom-scrollbar px-1">
                         {previews.map((preview, idx) => (
-                            <div key={idx} className="relative group shrink-0">
-                                <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
+                            <div key={idx} className="relative group shrink-0 shadow-sm">
+                                <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center">
                                     {preview.type === 'image' ? (
                                         <img src={preview.url} alt={preview.name} className="w-full h-full object-cover" />
                                     ) : (
@@ -80,7 +80,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                     </div>
                 )}
 
-                <div className="flex items-end gap-2 bg-gray-50 dark:bg-gray-900/50 p-1.5 pr-2 pl-2 rounded-[2rem] border border-gray-200 dark:border-gray-800 focus-within:border-indigo-300 dark:focus-within:border-indigo-700/50 focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-900/20 transition-all shadow-sm hover:shadow-md">
+                <div className="flex items-end gap-2 bg-white dark:bg-gray-900 p-1.5 pr-2 pl-2 rounded-[2rem] border border-gray-200 dark:border-gray-800 shadow-xl dark:shadow-black/50 focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-900/20 transition-all">
 
                     <button onClick={() => fileInputRef.current?.click()} className="p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full transition-colors mb-0.5" title="افزودن فایل">
                         <Paperclip size={20} />
