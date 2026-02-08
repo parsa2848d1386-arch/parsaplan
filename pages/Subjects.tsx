@@ -159,7 +159,7 @@ const SubjectModal: React.FC<{
 };
 
 const Subjects = () => {
-    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, settings } = useStore();
+    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, settings, todayDayId } = useStore();
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
@@ -359,12 +359,22 @@ const Subjects = () => {
                                                     </div>
                                                     <div className={`flex-1 transition-all duration-500 pl-10 ${isDone ? 'opacity-50 grayscale' : ''}`}>
                                                         <div className="flex justify-between items-center mb-1">
-                                                            <span className="text-[10px] font-bold text-gray-400">روز {task.dayId} ({getDayDate(task.dayId)})</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-bold text-gray-400">روز {task.dayId} ({getDayDate(task.dayId)})</span>
+                                                                {task.dayId === todayDayId && (
+                                                                    <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-full animate-pulse font-black">الان</span>
+                                                                )}
+                                                            </div>
                                                             <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold bg-${style.color}-100 dark:bg-${style.color}-900/30 text-${style.color}-800 dark:text-${style.color}-300`}>{task.details}</span>
                                                         </div>
                                                         <p className={`text-sm text-gray-800 dark:text-gray-200 font-bold leading-5 transition-all ${isDone ? 'line-through' : ''}`}>{task.topic}</p>
                                                         {task.testRange && <p className="text-xs text-gray-500 mt-1 font-mono bg-white dark:bg-gray-700 inline-block px-1 rounded border border-gray-100 dark:border-gray-600">{task.testRange}</p>}
                                                     </div>
+
+                                                    {/* Current Position Marker */}
+                                                    {task.dayId === todayDayId && (
+                                                        <div className="absolute right-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-l-full shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-pulse" />
+                                                    )}
 
                                                     {/* Edit controls */}
                                                     <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity pl-1 absolute left-2 top-4">
