@@ -301,7 +301,10 @@ Type B (Series):
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: selectedModel });
+            const model = genAI.getGenerativeModel({
+                model: selectedModel,
+                systemInstruction: generateSystemPrompt()
+            });
 
             const history = updatedMsgs.slice(0, -1).map(m => ({
                 role: m.sender === 'user' ? 'user' : 'model',
@@ -310,7 +313,6 @@ Type B (Series):
 
             const chat = model.startChat({
                 history: history,
-                systemInstruction: generateSystemPrompt(),
             });
 
             // Combine text and attachments
@@ -381,14 +383,22 @@ Type B (Series):
 
         } catch (error: any) {
             if (error.name !== 'AbortError') {
+                console.error("Gemini Error:", error);
+                // Sanitize error message to prevent huge dumps
+                const rawError = error.message || '';
+                const cleanError = rawError.length > 200
+                    ? 'متاسفانه خطایی در ارتباط با هوش مصنوعی رخ داد. لطفاً تنظیمات مدل یا اینترنت خود را بررسی کنید.'
+                    : rawError;
+
                 const errorMsg: Message = {
                     id: Date.now().toString(),
-                    text: error.message || 'خطا در ارتباط با هوش مصنوعی',
+                    text: cleanError,
                     sender: 'ai',
                     timestamp: new Date(),
                     isError: true
                 };
                 updateActiveSessionMessages([...updatedMsgs, errorMsg]);
+                setIsTyping(false);
             }
         } finally {
             setIsTyping(false);
