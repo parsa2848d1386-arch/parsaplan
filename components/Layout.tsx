@@ -206,29 +206,27 @@ const Layout = () => {
                             </div>
                         </div>
 
-                        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/20 dark:bg-black/40 backdrop-blur-3xl border border-white/40 dark:border-white/10 px-1 py-1 flex justify-between items-end pb-safe shadow-[0_8px_32px_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-[2rem] z-50 ring-1 ring-white/30 dark:ring-white/5 transition-all duration-300">
-                            {navItems.map((item) => (
-                                <NavLink
-                                    key={item.to}
-                                    to={item.to}
-                                    className={({ isActive }) => `flex flex-col items-center justify-end flex-1 min-w-0 transition-all duration-300 gap-0.5 rounded-2xl py-2 ${isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-400'}`}
-                                >
-                                    {({ isActive }) => (
-                                        <>
-                                            {/* Icon Container */}
-                                            <div className={`p-2 rounded-2xl transition-all duration-300 relative z-10 ${isActive ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 -translate-y-2 scale-110 mb-1' : 'bg-transparent'}`}>
-                                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                                            </div>
+                        {!isAIChat && (
+                            <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/20 dark:bg-black/40 backdrop-blur-3xl border border-white/30 dark:border-white/10 px-1.5 py-1.5 flex justify-between items-center pb-safe shadow-[0_8px_32px_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-full z-50 ring-1 ring-white/30 dark:ring-white/5 mx-auto max-w-sm transition-all duration-300">
+                                {navItems.map((item) => (
+                                    <NavLink
+                                        key={item.to}
+                                        to={item.to}
+                                        className={({ isActive }) => `flex items-center justify-center rounded-full transition-all duration-500 ease-out ${isActive ? 'bg-indigo-500/20 dark:bg-indigo-400/20 text-indigo-800 dark:text-indigo-100 shadow-sm ring-1 ring-indigo-500/10 px-4 py-2 flex-[2]' : 'bg-transparent text-gray-500 dark:text-gray-400 p-2 flex-1 hover:bg-white/10'}`}
+                                    >
+                                        {({ isActive }) => (
+                                            <div className="flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap">
+                                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
 
-                                            {/* Label */}
-                                            <span className={`text-[10px] font-bold transition-all duration-300 whitespace-nowrap overflow-hidden ${isActive ? 'h-auto opacity-100 max-h-4 translate-y-0' : 'h-0 opacity-0 max-h-0 translate-y-2'}`}>
-                                                {item.label}
-                                            </span>
-                                        </>
-                                    )}
-                                </NavLink>
-                            ))}
-                        </nav>
+                                                <span className={`text-[11px] font-bold transition-all duration-500 ${isActive ? 'max-w-[100px] opacity-100 translate-x-0 ml-1' : 'max-w-0 opacity-0 -translate-x-2'}`}>
+                                                    {item.label}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </NavLink>
+                                ))}
+                            </nav>
+                        )}
                     </main>
                 </div>
             </div>
