@@ -470,10 +470,16 @@ Type B (Series):
                                 />
                             ))}
                             {isTyping && (
-                                <div className="flex gap-3 mb-6 animate-pulse opacity-70">
-                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center"><Sparkles size={16} className="text-indigo-500" /></div>
-                                    <div className="bg-white dark:bg-gray-900 px-4 py-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-800 text-sm italic text-gray-500">
-                                        در حال فکر کردن...
+                                <div className="flex flex-row-reverse items-end gap-3 mb-6 animate-pulse opacity-70">
+                                    <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center border border-indigo-200 dark:border-indigo-800/50 flex-shrink-0">
+                                        <Sparkles size={18} className="text-indigo-600 animate-spin-slow" />
+                                    </div>
+                                    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-5 py-3.5 rounded-[1.25rem] rounded-tl-sm border border-gray-100 dark:border-gray-800 text-sm font-medium text-gray-500 shadow-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                            <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                            <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></span>
+                                        </div>
                                     </div>
                                 </div>
                             )}

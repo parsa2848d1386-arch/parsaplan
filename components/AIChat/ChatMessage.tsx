@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, Bot, Copy, Volume2, RotateCcw, Check, ListChecks, ChevronLeft, Download, FileText, Image as ImageIcon, PlayCircle } from 'lucide-react';
+import { User, Bot, Copy, Volume2, RotateCcw, Check, ListChecks, ChevronLeft, Download, FileText, Image as ImageIcon, PlayCircle, ChevronDown, Eye } from 'lucide-react';
 import { ParsedTask } from '../AITaskReviewWindow';
 
 export interface MessageProps {
@@ -22,6 +22,7 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
     const isUser = message.sender === 'user';
     const [copied, setCopied] = useState(false);
     const [speaking, setSpeaking] = useState(false);
+    const [showTasks, setShowTasks] = useState(true);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(message.text);
@@ -52,11 +53,6 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
             */}
 
             <div className={`flex gap-2.5 max-w-[88%] md:max-w-[75%] lg:max-w-[60%] ${isUser ? 'flex-row' : 'flex-row-reverse'}`}>
-                {/* 
-                   In RTL flex-row: [RightItem] [LeftItem] ...
-                   User (Right): [Avatar] [Bubble] -> flex-row
-                   AI (Left): [Bubble] [Avatar] -> flex-row-reverse (swaps logical order)
-                */}
 
                 {/* Avatar */}
                 <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm transform transition-transform hover:scale-105 ${isUser ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-gray-800 text-indigo-500 border border-gray-100 dark:border-gray-700'}`}>
@@ -168,25 +164,66 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
                 </div>
             </div>
 
-            {/* Pending Tasks Review Card */}
+            {/* Pending Tasks Review Card - Animated Inline Preview */}
             {!isUser && message.pendingTasks && message.pendingTasks.length > 0 && onReviewTasks && (
-                <div className="w-full max-w-[85%] lg:max-w-[75%] lg:mr-auto lg:ml-0 mr-auto pr-10">
-                    {/* Adjusted margins for AI alignment */}
-                    <button
-                        onClick={() => onReviewTasks(message.pendingTasks!)}
-                        className="w-full md:w-auto flex items-center justify-between gap-4 p-4 bg-gradient-to-r from-indigo-50 to-white dark:from-indigo-900/20 dark:to-gray-900 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-300 transition-all group/task"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="bg-white dark:bg-gray-800 p-2 rounded-xl text-indigo-600 shadow-sm group-hover/task:scale-110 transition-transform">
-                                <ListChecks size={20} />
+                <div className="w-full max-w-[85%] lg:max-w-[75%] lg:mr-auto lg:ml-0 mr-auto pr-10 animate-in fade-in slide-in-from-top-4 duration-500 ease-out fill-mode-backwards" style={{ animationDelay: '200ms' }}>
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/50 rounded-2xl shadow-lg overflow-hidden transition-all hover:shadow-xl hover:border-indigo-200 dark:hover:border-indigo-800">
+                        {/* Header */}
+                        <div
+                            onClick={() => setShowTasks(!showTasks)}
+                            className="bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900 p-3 flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-800"
+                        >
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center">
+                                    <ListChecks size={18} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                        پیشنهاد {message.pendingTasks.length} تسک جدید
+                                    </span>
+                                    {showTasks ? (
+                                        <span className="text-[10px] text-indigo-500 font-medium">برای بستن کلیک کنید</span>
+                                    ) : (
+                                        <span className="text-[10px] text-gray-400">برای مشاهده کلیک کنید</span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <span className="block text-sm font-bold text-gray-800 dark:text-gray-200">پیشنهاد {message.pendingTasks.length} تسک جدید</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 group-hover/task:text-indigo-500 transition-colors">برای بررسی و افزودن کلیک کنید</span>
+                            <ChevronDown size={18} className={`text-gray-400 transition-transform duration-300 ${showTasks ? 'rotate-180' : ''}`} />
+                        </div>
+
+                        {/* Inline Content */}
+                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showTasks ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="p-3 bg-gray-50/50 dark:bg-black/20">
+                                <div className="space-y-2 mb-3">
+                                    {message.pendingTasks.slice(0, 3).map((task, i) => (
+                                        <div key={i} className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-sm text-xs">
+                                            <div className={`w-1.5 h-8 rounded-full ${i % 2 === 0 ? 'bg-indigo-400' : 'bg-purple-400'}`}></div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-gray-700 dark:text-gray-300 truncate">{task.subject}</div>
+                                                <div className="text-gray-500 dark:text-gray-500 truncate text-[10px]">{task.topic}</div>
+                                            </div>
+                                            <div className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px] text-gray-500">
+                                                {task.date}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {message.pendingTasks.length > 3 && (
+                                        <div className="text-center text-[10px] text-gray-400 pt-1">
+                                            و {message.pendingTasks.length - 3} مورد دیگر...
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => onReviewTasks(message.pendingTasks!)}
+                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2"
+                                >
+                                    <Eye size={14} />
+                                    بررسی کامل و افزودن
+                                </button>
                             </div>
                         </div>
-                        <ChevronLeft size={18} className="text-gray-400 group-hover/task:-translate-x-1 transition-transform" />
-                    </button>
+                    </div>
                 </div>
             )}
         </div>
