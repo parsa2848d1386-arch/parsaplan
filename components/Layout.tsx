@@ -207,18 +207,18 @@ const Layout = () => {
                         </div>
 
                         {!isAIChat && (
-                            <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/20 dark:bg-black/40 backdrop-blur-3xl border border-white/30 dark:border-white/10 px-1.5 py-1.5 flex justify-between items-center pb-safe shadow-[0_8px_32px_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-full z-50 ring-1 ring-white/30 dark:ring-white/5 mx-auto max-w-sm transition-all duration-300">
+                            <nav className="md:hidden fixed bottom-5 left-6 right-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-2 py-2 flex justify-between items-center pb-safe shadow-2xl dark:shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-full z-50 mx-auto max-w-sm transition-all duration-300 h-16">
                                 {navItems.map((item) => (
                                     <NavLink
                                         key={item.to}
                                         to={item.to}
-                                        className={({ isActive }) => `flex items-center justify-center rounded-full transition-all duration-500 ease-out ${isActive ? 'bg-indigo-500/20 dark:bg-indigo-400/20 text-indigo-800 dark:text-indigo-100 shadow-sm ring-1 ring-indigo-500/10 px-4 py-2 flex-[2]' : 'bg-transparent text-gray-500 dark:text-gray-400 p-2 flex-1 hover:bg-white/10'}`}
+                                        className={({ isActive }) => `flex items-center justify-center rounded-full transition-all duration-500 ease-out h-full ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 px-5 flex-[2]' : 'bg-transparent text-gray-400 dark:text-gray-500 flex-1 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
                                         {({ isActive }) => (
-                                            <div className="flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap">
+                                            <div className="flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap h-full">
                                                 <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
 
-                                                <span className={`text-[11px] font-bold transition-all duration-500 ${isActive ? 'max-w-[100px] opacity-100 translate-x-0 ml-1' : 'max-w-0 opacity-0 -translate-x-2'}`}>
+                                                <span className={`text-[11px] font-bold transition-all duration-500 ${isActive ? 'max-w-[100px] opacity-100 translate-x-0 ml-1' : 'max-w-0 opacity-0 -translate-x-2 hidden'}`}>
                                                     {item.label}
                                                 </span>
                                             </div>
