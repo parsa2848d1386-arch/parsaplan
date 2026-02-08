@@ -289,17 +289,48 @@ ${recentLogs}
 **YOUR OPERATIONAL PROTOCOL:**
 1. Speak **PERSIAN (Farsi)** exclusively.
 2. You have 'eyes' on every part of the app. Use the above context to provide deeply personalized advice.
-3. If user mentions "last night" or "yesterday", check the 'Daily reflections' and 'Recent Tasks' for context.
-4. If asked to add/update tasks, use the JSON format.
-5. **DISTINGUISH TESTS VS EXAMS**: 
-   - Requests for "tests" or "practice questions" → details property = "Practice X tests".
+3. **If asked to plan, add, or schedule tasks, YOU MUST output a JSON block** within your response.
+4. **DISTINGUISH TESTS VS EXAMS**: 
+   - Requests for "tests" or "practice questions" → studyType = "study", details = "Practice X tests".
    - Requests for "Azmoon" or "Exam" → studyType = "exam".
 
-**JSON CAPABILITIES:**
-- preview_tasks: Suggest specific tasks.
-- autopilot_series: Schedule a repeating study sequence.
+**JSON SCHEMAS (MANDATORY FORMAT):**
 
-**FINAL COMMAND**: Be proactive. If you see the user is lagging behind (${overdueTasksCount} overdue), offer to reschedule or motivate them based on their recent moods.
+Type A: Specific Tasks (For discrete tasks)
+\`\`\`json
+{ 
+  "type": "preview_tasks", 
+  "message": "یک پیام کوتاه فارسی برای کاربر...", 
+  "tasks": [
+    { 
+      "subject": "NameOfSubject", 
+      "topic": "Topic...", 
+      "details": "Details...", 
+      "date": "YYYY-MM-DD", 
+      "studyType": "study" 
+    }
+  ] 
+}
+\`\`\`
+
+Type B: Study Series (For recurring tasks over multiple days)
+\`\`\`json
+{ 
+  "type": "autopilot_series", 
+  "message": "پیام فارسی...", 
+  "series": { 
+    "subject": "NameOfSubject", 
+    "topic": "Topic...", 
+    "startDay": ${currentDay}, 
+    "endDay": ${currentDay + 5}, 
+    "dailyCount": 30, 
+    "startTest": 1,
+    "interval": 1
+  } 
+}
+\`\`\`
+
+**FINAL COMMAND**: Be proactive and helpful. Use the user's name (${userName}) correctly. If you suggest a plan, always include the JSON.
 `.trim();
     };
 
@@ -381,25 +412,30 @@ ${recentLogs}
             // JSON Logic
             let parsedTasks: ParsedTask[] | undefined;
             const jsonMatch = text.match(/\{[\s\S]*\}/);
+            let jsonString = "";
 
             if (jsonMatch) {
                 try {
-                    const action = JSON.parse(jsonMatch[0]);
+                    jsonString = jsonMatch[0];
+                    const action = JSON.parse(jsonString);
 
                     if (action.type === 'autopilot_series' && action.series) {
                         const { subject, topic, startDay, endDay, dailyCount, startTest, interval = 1 } = action.series;
+
+                        const safeStartDay = startDay || currentDay;
+                        const safeEndDay = endDay || safeStartDay;
+
                         parsedTasks = [];
                         let currentTest = startTest || 1;
                         const planStart = new Date(startDate);
 
                         // Loop relative to plan start
-                        for (let day = startDay; day <= endDay; day += interval) {
+                        for (let day = safeStartDay; day <= safeEndDay; day += interval) {
                             if (day > totalDays) break;
                             const taskDate = new Date(planStart);
                             taskDate.setDate(planStart.getDate() + (day - 1));
 
                             const endTest = currentTest + dailyCount - 1;
-                            const range = dailyCount > 0 ? `${currentTest}-${endTest}` : '';
 
                             parsedTasks.push({
                                 title: `${subject}`,
@@ -407,7 +443,7 @@ ${recentLogs}
                                 topic,
                                 details: dailyCount > 0 ? `تست ${currentTest} تا ${endTest}` : 'مرور/مطالعه',
                                 date: taskDate.toISOString().split('T')[0],
-                                studyType: 'study', // Default to study for series unless specified
+                                studyType: 'study',
                                 id: crypto.randomUUID()
                             });
                             currentTest = endTest + 1;
@@ -418,10 +454,17 @@ ${recentLogs}
                             id: crypto.randomUUID()
                         }));
                     }
-                } catch (e) { console.error("JSON Error", e); }
+                } catch (e) {
+                    console.error("JSON Error", e);
+                    jsonString = ""; // Reset if invalid
+                }
             }
 
-            const cleanText = text.replace(/```json[\s\S]*?```/g, '').trim();
+            // Remove JSON from the speech text
+            let cleanText = text.replace(/```json[\s\S]*?```/g, '').trim();
+            if (jsonString && cleanText.includes(jsonString)) {
+                cleanText = cleanText.replace(jsonString, '').trim();
+            }
 
             const aiMsg: Message = {
                 id: Date.now().toString(),
