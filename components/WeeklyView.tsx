@@ -20,6 +20,27 @@ const WeeklyView = () => {
     const currentWeekEnd = Math.min(currentWeekStart + 6, totalDays);
     const weekDays = Array.from({ length: currentWeekEnd - currentWeekStart + 1 }, (_, i) => currentWeekStart + i);
 
+    // Scroll to current day on mount and when day changes
+    React.useEffect(() => {
+        if (scrollRef.current) {
+            const currentDayElement = document.getElementById(`day-element-${currentDay}`);
+            if (currentDayElement) {
+                const container = scrollRef.current;
+                const elementLeft = currentDayElement.offsetLeft;
+                const elementWidth = currentDayElement.offsetWidth;
+                const containerWidth = container.offsetWidth;
+
+                // Center the element
+                const scrollLeft = elementLeft - (containerWidth / 2) + (elementWidth / 2);
+
+                container.scrollTo({
+                    left: scrollLeft,
+                    behavior: 'smooth'
+                });
+            }
+        }
+    }, [currentDay, currentWeekStart]);
+
     return (
         <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] p-5 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="flex justify-between items-center mb-4">
@@ -37,7 +58,11 @@ const WeeklyView = () => {
                     const dateShamsi = getShamsiDate(dateIso);
 
                     return (
-                        <div key={dayId} className={`min-w-[280px] sm:min-w-[200px] md:min-w-[250px] lg:min-w-0 lg:flex-1 p-3 rounded-2xl border ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 ring-1 ring-indigo-200 dark:ring-indigo-500/30' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'} flex flex-col gap-2 snap-center transition-all duration-300`}>
+                        <div
+                            key={dayId}
+                            id={`day-element-${dayId}`}
+                            className={`min-w-[280px] sm:min-w-[200px] md:min-w-[250px] lg:min-w-0 lg:flex-1 p-3 rounded-2xl border ${isToday ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 ring-1 ring-indigo-200 dark:ring-indigo-500/30' : 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'} flex flex-col gap-2 snap-center transition-all duration-300`}
+                        >
                             <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
                                 <div className="flex items-center gap-2">
                                     <span className={`text-sm font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-200'}`}>
