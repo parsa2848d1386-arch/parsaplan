@@ -198,6 +198,30 @@ const AIChat: React.FC = () => {
         const taskCompletion = getProgress();
         const overdueTasksCount = tasks.filter(t => t.date < todayIso && !t.isCompleted).length;
 
+        // Deep Performance Metrics
+        const completedTasks = tasks.filter(t => t.isCompleted);
+        const totalMinutes = completedTasks.reduce((acc, t) => acc + (t.actualDuration || 0), 0);
+        const studyHours = Math.round(totalMinutes / 60 * 10) / 10;
+
+        const ratedTasks = completedTasks.filter(t => t.qualityRating);
+        const avgFocus = ratedTasks.length > 0
+            ? Math.round((ratedTasks.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / ratedTasks.length) * 10) / 10
+            : 0;
+
+        const testedTasks = completedTasks.filter(t => t.testStats && t.testStats.total > 0);
+        const tTotal = testedTasks.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
+        const tCorrect = testedTasks.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
+        const tWrong = testedTasks.reduce((acc, t) => acc + (t.testStats?.wrong || 0), 0);
+        const accuracy = tTotal > 0 ? Math.round(((tCorrect * 3 - tWrong) / (tTotal * 3)) * 100) : 0;
+
+        // Subject-wise performance (summary)
+        const subPerformance = SUBJECT_LISTS[currentStream]?.map(sub => {
+            const subTasks = tasks.filter(t => t.subject === sub);
+            if (subTasks.length === 0) return null;
+            const subDone = subTasks.filter(t => t.isCompleted).length;
+            return `${sub}: ${Math.round((subDone / subTasks.length) * 100)}%`;
+        }).filter(Boolean).join(', ');
+
         // Extended Task Summary (Last 3 days + Next 7 days)
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(today.getDate() - 3);
@@ -230,8 +254,22 @@ Identity: You are built to manage, optimize, and oversee ${userName}'s entire ed
 - All Subjects: ${allSubjects}
 - Current Level: ${level} (XP: ${xp}, Progress: ${Math.round(progressPercent || 0)}%)
 - Plan Progress: ${planCompletion}% (Day ${currentDay} of ${totalDays})
-- Overall Task Mastery: ${taskCompletion}%
 - Overdue Tasks: ${overdueTasksCount}
+
+**Performance Analytical Data:**
+- Overall Mastery: ${taskCompletion}%
+- Total Study Time: ${studyHours} hours
+- Average Focus Quality: ${avgFocus}/5
+- Global Test Accuracy: ${accuracy}%
+- Subject Completion: ${subPerformance}
+- Recent Exam Scores: ${tasks.filter(t => t.studyType === 'exam' && t.isCompleted && t.testStats && t.testStats.total > 0)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 5)
+                .map(t => {
+                    const score = Math.round(((t.testStats!.correct * 3 - t.testStats!.wrong) / (t.testStats!.total * 3)) * 100);
+                    return `${t.subject} (${t.date}): ${score}%`;
+                }).join(', ') || 'None yet'
+            }
 
 **User's Daily Routine (Schedule):**
 ${routineSummary}
