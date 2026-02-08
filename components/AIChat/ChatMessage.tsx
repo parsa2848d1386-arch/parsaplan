@@ -202,8 +202,8 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
                                                 <div className="font-bold text-gray-700 dark:text-gray-300 truncate">{task.subject}</div>
                                                 <div className="text-gray-500 dark:text-gray-500 truncate text-[10px]">{task.topic}</div>
                                             </div>
-                                            <div className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px] text-gray-500">
-                                                {task.date}
+                                            <div className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px] text-gray-500 font-mono dir-rtl">
+                                                {new Date(task.date).toLocaleDateString('fa-IR-u-ca-persian', { month: 'long', day: 'numeric' })}
                                             </div>
                                         </div>
                                     ))}

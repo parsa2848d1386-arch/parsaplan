@@ -168,13 +168,24 @@ const AIChat: React.FC = () => {
         });
     };
 
+    const toShamsi = (date: Date) => {
+        return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(date);
+    };
+
     // --- GEMINI LOGIC ---
     const generateSystemPrompt = () => {
         const today = new Date();
         const todayIso = today.toISOString().split('T')[0];
+        const todayShamsi = toShamsi(today);
+
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1);
         const tomorrowIso = tomorrow.toISOString().split('T')[0];
+        const tomorrowShamsi = toShamsi(tomorrow);
 
         const currentStream = settings?.stream || 'general';
         const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
@@ -199,8 +210,9 @@ const AIChat: React.FC = () => {
 You are an expert Study Assistant for 'ParsaPlan'.
 Context:
 - User Name: ${userName}
-- Today: ${todayIso}
-- Tomorrow: ${tomorrowIso}
+- Today (Gregorian): ${todayIso}
+- Today (Shamsi): ${todayShamsi}
+- Tomorrow (Shamsi): ${tomorrowShamsi}
 - Stream: ${currentStream}
 - Valid Subjects: ${validSubjects}
 - XP: ${xp} (Level ${level})
@@ -230,6 +242,11 @@ Type B (Series):
 \`\`\`json
 { "type": "autopilot_series", "message": "...", "series": { "subject": "Physics", "topic": "...", "startDay": ${currentDay}, "dailyCount": 30 } }
 \`\`\`
+
+**DATE HANDLING**:
+- Always output valid Gregorian ISO Dates (YYYY-MM-DD) in the JSON "date" fields for system compatibility.
+- When *speaking* to the user, use Shamsi dates (e.g., "برای 1403/12/01 برنامه ریزی کردم").
+- If user refers to a Shamsi date (e.g. "Bahman 20th"), convert it to the corresponding Gregorian ISO date in the JSON.
 `.trim();
     };
 
