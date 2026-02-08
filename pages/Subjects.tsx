@@ -298,7 +298,7 @@ const Subjects = () => {
                         <div key={subject.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
                             <div
                                 onClick={() => setExpandedSubject(isExpanded ? null : subjectName)}
-                                className="p-4 flex items-center justify-between cursor-pointer active:bg-gray-50 dark:active:bg-gray-700 select-none"
+                                className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 active:scale-[0.99] transition-all select-none"
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={`w-12 h-12 rounded-2xl ${style.bgColor} flex items-center justify-center text-2xl`}>
@@ -335,7 +335,7 @@ const Subjects = () => {
                             </div>
 
                             {/* Progress Bar Line */}
-                            <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-700">
+                            <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-900/50">
                                 <div className={`h-full bg-${style.color}-500 transition-all duration-500`} style={{ width: `${progress}%` }}></div>
                             </div>
 
@@ -352,7 +352,7 @@ const Subjects = () => {
                                                 <div
                                                     key={task.id}
                                                     onClick={() => toggleTask(task.id)}
-                                                    className={`group p-4 flex items-start gap-3 transition-all duration-200 hover:bg-white dark:hover:bg-gray-800 cursor-pointer relative ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''}`}
+                                                    className={`group p-4 flex items-start gap-3 transition-all duration-200 border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-white dark:hover:bg-gray-700/50 cursor-pointer relative ${isDone ? 'bg-gray-50 dark:bg-gray-900/40' : 'bg-transparent'}`}
                                                 >
                                                     <div className={`mt-1 transition-all duration-300 ${isDone ? `text-${style.color}-500 scale-110` : 'text-gray-300 dark:text-gray-600 hover:text-gray-400'}`}>
                                                         {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={20} strokeWidth={2} />}

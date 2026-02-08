@@ -27,8 +27,8 @@ const MoodTracker = () => {
                         key={opt.type}
                         onClick={() => setMood(today, opt.type)}
                         className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${currentMood === opt.type
-                                ? `${opt.color} ring-2 ring-offset-1 dark:ring-offset-gray-900`
-                                : 'bg-transparent border-transparent opacity-50 hover:opacity-100 hover:bg-gray-50 dark:hover:bg-gray-700'
+                            ? `${opt.color} ring-2 ring-offset-1 dark:ring-offset-gray-900`
+                            : 'bg-transparent border-transparent opacity-60 hover:opacity-100 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-400'
                             }`}
                     >
                         <opt.icon size={24} className={currentMood === opt.type ? '' : 'text-gray-400 dark:text-gray-500'} />
