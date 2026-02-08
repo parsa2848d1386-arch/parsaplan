@@ -7,6 +7,7 @@ import ProgressBar from '../components/ProgressBar';
 import { Subject, SubjectTask, SUBJECT_LISTS, getSubjectStyle } from '../types';
 import TaskModal from '../components/TaskModal';
 import { TaskCard } from '../components/TaskCard';
+import { VirtualTaskList } from '../components/VirtualTaskList';
 import MoodTracker from '../components/MoodTracker';
 import { getShamsiDate, toIsoString, isHoliday, parseTestCount } from '../utils';
 import { useNavigate } from 'react-router-dom';
@@ -398,16 +399,28 @@ const Dashboard = () => {
                 )}
 
                 {processedTasks.length > 0 ? (
-                    processedTasks.map(task => (
-                        <TaskCard
-                            key={task.id}
-                            task={task}
-                            onToggle={toggleTask}
-                            onEdit={openEdit}
-                            onDelete={handleDelete}
+                    // If tasks are few, simple map is better (less overhead, no nested scrollbar). 
+                    // But for "List Virtualization" task, let's use it for lists > 5.
+                    processedTasks.length > 5 ? (
+                        <VirtualTaskList
+                            tasks={processedTasks}
+                            toggleTask={toggleTask}
+                            openEdit={openEdit}
+                            handleDelete={handleDelete}
                             viewMode={viewMode}
                         />
-                    ))
+                    ) : (
+                        processedTasks.map(task => (
+                            <TaskCard
+                                key={task.id}
+                                task={task}
+                                onToggle={toggleTask}
+                                onEdit={openEdit}
+                                onDelete={handleDelete}
+                                viewMode={viewMode}
+                            />
+                        ))
+                    )
                 ) : (
                     <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 border-dashed">
                         <p className="text-gray-400 text-sm font-medium">هیچ تسکی نیست!</p>

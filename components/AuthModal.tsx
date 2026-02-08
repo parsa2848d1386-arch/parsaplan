@@ -1,6 +1,24 @@
 
 import React, { useState } from 'react';
 import { X, User, Lock, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+// --- ZOD SCHEMAS ---
+const loginSchema = z.object({
+    username: z.string().min(3, "نام کاربری باید حداقل ۳ کاراکتر باشد"),
+    password: z.string().min(6, "رمز عبور باید حداقل ۶ کاراکتر باشد"),
+});
+
+const registerSchema = z.object({
+    username: z.string().min(3, "نام کاربری باید حداقل ۳ کاراکتر باشد").regex(/^[a-zA-Z0-9_]+$/, "فقط حروف انگلیسی، اعداد و زیرخط مجاز است"),
+    password: z.string().min(6, "رمز عبور باید حداقل ۶ کاراکتر باشد"),
+    displayName: z.string().min(2, "نام نمایشی باید حداقل ۲ کاراکتر باشد"),
+});
+
+type LoginFormInputs = z.infer<typeof loginSchema>;
+type RegisterFormInputs = z.infer<typeof registerSchema>;
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -12,20 +30,41 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegister, isLoading }) => {
     const [mode, setMode] = useState<'login' | 'register'>('login');
-    const [username, setUsername] = useState('');
-    const [displayName, setDisplayName] = useState('');
-    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+
+    // React Hook Form Setup
+    const {
+        register: registerLogin,
+        handleSubmit: handleSubmitLogin,
+        formState: { errors: loginErrors },
+        reset: resetLogin
+    } = useForm<LoginFormInputs>({
+        resolver: zodResolver(loginSchema)
+    });
+
+    const {
+        register: registerRegister,
+        handleSubmit: handleSubmitRegister,
+        formState: { errors: registerErrors },
+        reset: resetRegister
+    } = useForm<RegisterFormInputs>({
+        resolver: zodResolver(registerSchema)
+    });
 
     if (!isOpen) return null;
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (mode === 'login') {
-            await onLogin(username, password);
-        } else {
-            await onRegister(username, password, displayName);
-        }
+    const onModeChange = (newMode: 'login' | 'register') => {
+        setMode(newMode);
+        resetLogin();
+        resetRegister();
+    };
+
+    const onSubmitLogin = async (data: LoginFormInputs) => {
+        await onLogin(data.username, data.password);
+    };
+
+    const onSubmitRegister = async (data: RegisterFormInputs) => {
+        await onRegister(data.username, data.password, data.displayName);
     };
 
     return (
@@ -56,7 +95,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                     {/* Segmented Control */}
                     <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-xl mb-6">
                         <button
-                            onClick={() => setMode('login')}
+                            onClick={() => onModeChange('login')}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'login'
                                 ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
@@ -66,7 +105,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                             ورود
                         </button>
                         <button
-                            onClick={() => setMode('register')}
+                            onClick={() => onModeChange('register')}
                             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${mode === 'register'
                                 ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-white shadow-sm'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
@@ -77,88 +116,139 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
-                                نام کاربری (ID)
-                            </label>
-                            <div className="relative">
-                                <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="text"
-                                    required
-                                    value={username}
-                                    onChange={e => setUsername(e.target.value)}
-                                    placeholder="مثلا: parsa2025"
-                                    className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                    dir="ltr"
-                                />
-                            </div>
-                        </div>
-
-                        {
-                            mode === 'register' && (
-                                <div className="space-y-2 animate-in fade-in zoom-in duration-300">
-                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
-                                        نام نمایشی
-                                    </label>
-                                    <div className="relative">
-                                        <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                        <input
-                                            type="text"
-                                            required
-                                            value={displayName}
-                                            onChange={e => setDisplayName(e.target.value)}
-                                            placeholder="مثلا: پارسا"
-                                            className="w-full pr-10 pl-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                        />
-                                    </div>
+                    {mode === 'login' ? (
+                        <form onSubmit={handleSubmitLogin(onSubmitLogin)} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                                    نام کاربری (ID)
+                                </label>
+                                <div className="relative">
+                                    <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type="text"
+                                        {...registerLogin('username')}
+                                        placeholder="مثلا: parsa2025"
+                                        className={`w-full pr-10 pl-4 py-3 rounded-xl border ${loginErrors.username ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white`}
+                                        dir="ltr"
+                                    />
                                 </div>
-                            )
-                        }
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
-                                رمز عبور
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    required
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full pr-10 pl-12 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
-                                    dir="ltr"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
+                                {loginErrors.username && <p className="text-xs text-red-500">{loginErrors.username.message}</p>}
                             </div>
-                        </div>
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`w-full py-3 px-4 text-white font-bold rounded-xl shadow-lg transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 ${mode === 'login'
-                                ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-indigo-500/30'
-                                : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/30'
-                                }`}
-                        >
-                            {isLoading ? (
-                                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    {mode === 'login' ? <LogIn size={20} /> : <UserPlus size={20} />}
-                                    {mode === 'login' ? 'ورود به حساب' : 'ایجاد حساب کاربری'}
-                                </>
-                            )}
-                        </button>
-                    </form >
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                                    رمز عبور
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        {...registerLogin('password')}
+                                        placeholder="••••••••"
+                                        className={`w-full pr-10 pl-12 py-3 rounded-xl border ${loginErrors.password ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white`}
+                                        dir="ltr"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                {loginErrors.password && <p className="text-xs text-red-500">{loginErrors.password.message}</p>}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className={`w-full py-3 px-4 text-white font-bold rounded-xl shadow-lg transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-indigo-500/30`}
+                            >
+                                {isLoading ? (
+                                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        <LogIn size={20} />
+                                        ورود به حساب
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleSubmitRegister(onSubmitRegister)} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                                    نام کاربری (ID)
+                                </label>
+                                <div className="relative">
+                                    <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type="text"
+                                        {...registerRegister('username')}
+                                        placeholder="مثلا: parsa2025"
+                                        className={`w-full pr-10 pl-4 py-3 rounded-xl border ${registerErrors.username ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white`}
+                                        dir="ltr"
+                                    />
+                                </div>
+                                {registerErrors.username && <p className="text-xs text-red-500">{registerErrors.username.message}</p>}
+                            </div>
+
+                            <div className="space-y-2 animate-in fade-in zoom-in duration-300">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                                    نام نمایشی
+                                </label>
+                                <div className="relative">
+                                    <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type="text"
+                                        {...registerRegister('displayName')}
+                                        placeholder="مثلا: پارسا"
+                                        className={`w-full pr-10 pl-4 py-3 rounded-xl border ${registerErrors.displayName ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white`}
+                                    />
+                                </div>
+                                {registerErrors.displayName && <p className="text-xs text-red-500">{registerErrors.displayName.message}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                                    رمز عبور
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        {...registerRegister('password')}
+                                        placeholder="••••••••"
+                                        className={`w-full pr-10 pl-12 py-3 rounded-xl border ${registerErrors.password ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white`}
+                                        dir="ltr"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                                {registerErrors.password && <p className="text-xs text-red-500">{registerErrors.password.message}</p>}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className={`w-full py-3 px-4 text-white font-bold rounded-xl shadow-lg transform transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-6 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/30`}
+                            >
+                                {isLoading ? (
+                                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        <UserPlus size={20} />
+                                        ایجاد حساب کاربری
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    )}
                 </div >
             </div >
         </div >

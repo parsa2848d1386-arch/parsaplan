@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
+// @ts-ignore
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { SubjectTask, SUBJECT_LISTS } from '../types';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
