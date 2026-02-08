@@ -45,20 +45,20 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
 
     return (
         <div className={`flex flex-col space-y-2 ${isUser ? 'items-end' : 'items-start'} group mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-            <div className={`flex gap-3 max-w-[95%] md:max-w-[85%] lg:max-w-[75%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className={`flex gap-2.5 max-w-[88%] md:max-w-[75%] lg:max-w-[60%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
 
                 {/* Avatar */}
-                <div className={`w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-md transform transition-transform hover:scale-105 ${isUser ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white' : 'bg-white dark:bg-gray-800 text-indigo-600 border border-indigo-100 dark:border-indigo-900'}`}>
-                    {isUser ? <User size={20} /> : <Bot size={22} />}
+                <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm transform transition-transform hover:scale-105 ${isUser ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-gray-800 text-indigo-500 border border-gray-100 dark:border-gray-700'}`}>
+                    {isUser ? <User size={16} /> : <Bot size={18} />}
                 </div>
 
                 {/* Bubble */}
-                <div className={`relative flex flex-col min-w-[120px]`}>
+                <div className={`relative flex flex-col min-w-[100px]`}>
                     <div className={`
-                        p-4 md:p-5 rounded-2xl text-sm md:text-base leading-7 shadow-sm transition-all relative
+                        px-3.5 py-2.5 md:px-5 md:py-3.5 rounded-[1.25rem] text-[13px] md:text-[14.5px] leading-6 shadow-sm transition-all relative
                         ${isUser
-                            ? 'bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-tr-sm shadow-indigo-200 dark:shadow-none'
-                            : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 rounded-tl-sm hover:shadow-md'
+                            ? 'bg-indigo-600 dark:bg-indigo-600 text-white rounded-tr-sm shadow-indigo-100 dark:shadow-none'
+                            : 'bg-white dark:bg-gray-800/80 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 rounded-tl-sm hover:shadow-md'
                         }
                         ${message.isError ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50' : ''}
                     `}>
