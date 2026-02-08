@@ -28,7 +28,7 @@ interface Message {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -189,64 +189,79 @@ const AIChat: React.FC = () => {
 
         const currentStream = settings?.stream || 'general';
         const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
-        const validSubjects = streamSubjects.join(', ');
+        const allSubjects = [...new Set([...streamSubjects, ...(subjects?.map(s => s.name) || [])])].join(', ');
 
         const routineSummary = routineTemplate.map(r => `- ${r.time}: ${r.title} (${r.type})`).join('\n');
 
-
-
-        // Context: Progress & Mood
+        // Context: Progress & Mood & Notes
         const planCompletion = Math.round((currentDay / totalDays) * 100);
         const taskCompletion = getProgress();
         const overdueTasksCount = tasks.filter(t => t.date < todayIso && !t.isCompleted).length;
-        const recentMoods = Object.entries(moods).slice(-7).map(([date, mood]) => `${date}: ${mood}`).join(', ');
-        const recentLogs = auditLog.slice(-5).map(l => `- ${l.action}: ${l.details}`).join('\n');
 
-        // Filter tasks for today and tomorrow to save context window
-        const relevantTasks = tasks.filter(t => t.date === todayIso || t.date === tomorrowIso);
+        // Extended Task Summary (Last 3 days + Next 7 days)
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 3);
+        const sevenDaysFromNow = new Date(today);
+        sevenDaysFromNow.setDate(today.getDate() + 7);
+
+        const relevantTasks = tasks.filter(t => {
+            const d = new Date(t.date);
+            return d >= sevenDaysAgo && d <= sevenDaysFromNow;
+        });
         const tasksSummary = relevantTasks.map(t => `- [${t.date}] ${t.subject}: ${t.topic} (${t.isCompleted ? 'Done' : 'Pending'})`).join('\n');
 
-        return `
-You are an expert Study Assistant for 'ParsaPlan'.
-Context:
-- User Name: ${userName}
-- Today (Gregorian): ${todayIso}
-- Today (Shamsi): ${todayShamsi}
-- Tomorrow (Shamsi): ${tomorrowShamsi}
-- Stream: ${currentStream}
-- Valid Subjects: ${validSubjects}
-- XP: ${xp} (Level ${level})
+        // Daily Notes Summary (Last 5 days)
+        const notesSummary = Object.entries(dailyNotes || {})
+            .slice(-5)
+            .map(([date, note]) => `- ${date}: ${note}`)
+            .join('\n');
 
-User's Routine:
+        const recentMoods = Object.entries(moods || {}).slice(-7).map(([date, mood]) => `${date}: ${mood}`).join(', ');
+        const recentLogs = (auditLog || []).slice(-10).map(l => `- ${l.action}: ${l.details}`).join('\n');
+
+        return `
+You are the **ParsasPlan Ultra Intelligence**, an advanced study assistant with FULL ACCESS to the user's account, history, and preferences.
+Identity: You are built to manage, optimize, and oversee ${userName}'s entire educational journey.
+
+**Comprehensive Context for ${userName}:**
+- Today: ${todayIso} (Shamsi: ${todayShamsi})
+- Tomorrow (Shamsi): ${tomorrowShamsi}
+- Study Stream: ${currentStream}
+- All Subjects: ${allSubjects}
+- Current Level: ${level} (XP: ${xp}, Progress: ${Math.round(progressPercent || 0)}%)
+- Plan Progress: ${planCompletion}% (Day ${currentDay} of ${totalDays})
+- Overall Task Mastery: ${taskCompletion}%
+- Overdue Tasks: ${overdueTasksCount}
+
+**User's Daily Routine (Schedule):**
 ${routineSummary}
 
-Recent Tasks:
-${tasksSummary}
+**Historical & Future Task Timeline (Window):**
+${tasksSummary || 'No upcoming tasks scheduled.'}
 
-**CRITICAL INSTRUCTIONS:**
-1. Speak **PERSIAN (Farsi)** only.
-2. Address the user by their name ("${userName}") occasionally.
-3. If asked to add tasks, output a JSON object.
-4. **Distinguish "Tests" vs "Exam"**:
-   - If user asks for "tests", "practice questions", "tard" or "test-e-amoozeshi" (e.g. "40 ta test zist"), create a task with 'studyType': 'study' or 'review', and in details mention "Practice 40 tests". DO NOT call it an "Exam" or "Azmoon".
-   - Only use 'studyType': 'exam' (Azmoon) if the user explicitly asks for an **Exam**, **Mock Exam**, or **Azmoon**.
-   - For "Analysis" of tests, use 'studyType': 'analysis'.
+**Daily reflections & Notes:**
+${notesSummary || 'No recent notes.'}
 
-5. **JSON Formats**:
-Type A (Explicit Tasks):
-\`\`\`json
-{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "Ziast", "topic": "...", "details": "40 Test Practice", "date": "${todayIso}", "studyType": "study" }] }
-\`\`\`
+**Mood & Energy levels (Last 7 days):**
+${recentMoods || 'Stable'}
 
-Type B (Series):
-\`\`\`json
-{ "type": "autopilot_series", "message": "...", "series": { "subject": "Physics", "topic": "...", "startDay": ${currentDay}, "dailyCount": 30 } }
-\`\`\`
+**Recent System Activities:**
+${recentLogs}
 
-**DATE HANDLING**:
-- Always output valid Gregorian ISO Dates (YYYY-MM-DD) in the JSON "date" fields for system compatibility.
-- When *speaking* to the user, use Shamsi dates (e.g., "برای 1403/12/01 برنامه ریزی کردم").
-- If user refers to a Shamsi date (e.g. "Bahman 20th"), convert it to the corresponding Gregorian ISO date in the JSON.
+**YOUR OPERATIONAL PROTOCOL:**
+1. Speak **PERSIAN (Farsi)** exclusively.
+2. You have 'eyes' on every part of the app. Use the above context to provide deeply personalized advice.
+3. If user mentions "last night" or "yesterday", check the 'Daily reflections' and 'Recent Tasks' for context.
+4. If asked to add/update tasks, use the JSON format.
+5. **DISTINGUISH TESTS VS EXAMS**: 
+   - Requests for "tests" or "practice questions" → details property = "Practice X tests".
+   - Requests for "Azmoon" or "Exam" → studyType = "exam".
+
+**JSON CAPABILITIES:**
+- preview_tasks: Suggest specific tasks.
+- autopilot_series: Schedule a repeating study sequence.
+
+**FINAL COMMAND**: Be proactive. If you see the user is lagging behind (${overdueTasksCount} overdue), offer to reschedule or motivate them based on their recent moods.
 `.trim();
     };
 
