@@ -208,20 +208,28 @@ const Layout = () => {
 
                         {/* Mobile Bottom Nav - Enhanced Premium Look */}
                         {!isAIChat && (
-                            <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-gray-200 dark:border-gray-700 px-3 py-3 flex justify-between items-center pb-safe shadow-2xl rounded-2xl z-50">
+                            <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/20 dark:bg-black/30 backdrop-blur-3xl border border-white/40 dark:border-white/10 px-2 py-2 flex justify-between items-center pb-safe shadow-[0_8px_32px_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-[2.5rem] z-50 ring-1 ring-white/30 dark:ring-white/5">
                                 {navItems.map((item) => (
                                     <NavLink
                                         key={item.to}
                                         to={item.to}
-                                        className={({ isActive }) => `flex flex-col items-center justify-center flex-1 min-w-0 transition-all duration-300 gap-1 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                        className={({ isActive }) => `flex flex-col items-center justify-center flex-1 min-w-0 transition-all duration-300 gap-1 text-xs relative ${isActive ? 'text-indigo-600 dark:text-indigo-300 -translate-y-2' : 'text-gray-600 dark:text-gray-400'}`}
                                     >
                                         {({ isActive }) => (
-                                            <>
-                                                <div className={`p-1.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-transparent'}`}>
-                                                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                            <div className="flex flex-col items-center relative group">
+                                                {/* Active Glow Background */}
+                                                {isActive && <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full scale-150"></div>}
+
+                                                {/* Icon Container */}
+                                                <div className={`p-2.5 rounded-full transition-all duration-500 relative z-10 ${isActive ? 'bg-gradient-to-br from-indigo-500/90 to-violet-600/90 text-white shadow-lg shadow-indigo-500/30' : 'bg-transparent group-active:scale-90'}`}>
+                                                    <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                                                 </div>
-                                                <span className={`text-[10px] font-bold transition-all duration-300 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0 h-0 w-0 overflow-hidden'}`}>{item.label}</span>
-                                            </>
+
+                                                {/* Label */}
+                                                <span className={`font-bold transition-all duration-300 absolute -bottom-5 whitespace-nowrap drop-shadow-sm ${isActive ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-75 -translate-y-2'}`}>
+                                                    {item.label}
+                                                </span>
+                                            </div>
                                         )}
                                     </NavLink>
                                 ))}
