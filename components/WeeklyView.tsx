@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
 import { useStore } from '../context/StoreContext';
-import { getShamsiDate, toIsoString } from '../utils';
+import { getShamsiDate } from '../utils';
 import { SubjectTask, Subject } from '../types';
 import { ChevronRight, ChevronLeft, Calendar } from 'lucide-react';
 
 const WeeklyView = () => {
-    const { currentDay, totalDays, getTasksByDate, startDate, goToToday } = useStore();
+    const { currentDay, totalDays, getTasksByDate, getDayDate, goToToday } = useStore();
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Calculate Week Range (e.g., current week involves currentDay)
@@ -52,7 +52,7 @@ const WeeklyView = () => {
 
             <div className="flex gap-3 overflow-x-auto pb-4 px-1 custom-scrollbar snap-x snap-mandatory" ref={scrollRef}>
                 {weekDays.map(dayId => {
-                    const dateIso = toIsoString(new Date(new Date(startDate).getTime() + (dayId - 1) * 86400000));
+                    const dateIso = getDayDate(dayId);
                     const tasks = getTasksByDate(dateIso);
                     const isToday = dayId === currentDay;
                     const dateShamsi = getShamsiDate(dateIso);

@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             تلاش مجدد (رفرش)
                         </button>
 
-                        {this.state.error && process.env.NODE_ENV === 'development' && (
+                        {this.state.error && (
                             <details className="mt-6 text-left text-xs text-red-600 bg-red-50 p-2 rounded overflow-auto max-h-40" dir="ltr">
                                 <summary>جزئیات تکنیکال</summary>
                                 {this.state.error.toString()}

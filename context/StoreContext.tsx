@@ -194,63 +194,59 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         const initApp = async () => {
             console.log("App Initializing...");
 
-            // We rely on AuthContext to provide userId. 
-            // If not logged in, AuthContext gives 'parsaplan_local_user'.
-            // However, AuthContext might still be initializing. 
-            // We should wait? No, AuthContext defaults to local_user if not 'loading'?
-            // Assuming AuthContext resolves quickly or we just react to userId changes.
+            try {
+                // Create a safety backup
+                StorageManager.createBackup();
 
-            // Create a safety backup
-            StorageManager.createBackup();
+                // Load Data
+                const data = StorageManager.load(userId || 'parsaplan_local_user');
 
-            // Load Data
-            const data = StorageManager.load(userId || 'parsaplan_local_user');
+                if (data) {
+                    if (data.tasks) setTasks(data.tasks);
+                    if (data.userName) setUserNameState(data.userName);
+                    if (data.routine) setCompletedRoutine(data.routine);
+                    if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
+                    if (data.notes) setDailyNotes(data.notes);
+                    if (data.xp) setXp(data.xp);
+                    if (data.logs) setAuditLog(data.logs);
+                    if (data.moods) setMoods(data.moods);
+                    if (data.totalDays) setTotalDaysState(data.totalDays);
+                    if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
 
-            if (data) {
-                if (data.tasks) setTasks(data.tasks);
-                if (data.userName) setUserNameState(data.userName);
-                if (data.routine) setCompletedRoutine(data.routine);
-                if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
-                if (data.notes) setDailyNotes(data.notes);
-                if (data.xp) setXp(data.xp);
-                if (data.logs) setAuditLog(data.logs);
-                if (data.moods) setMoods(data.moods);
-                if (data.totalDays) setTotalDaysState(data.totalDays);
-                if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+                    if (data.subjects && data.subjects.length > 0) {
+                        setSubjects(data.subjects);
+                    } else {
+                        const stream = data.settings?.stream || 'general';
+                        const defaultList = SUBJECT_LISTS[stream] || SUBJECT_LISTS['general'];
+                        const defaultSubjects = defaultList.map(name => {
+                            const style = getSubjectStyle(name);
+                            return { id: name, name: name, icon: style.icon, color: style.color };
+                        });
+                        const oldCustoms = data.customSubjects || [];
+                        const merged = [...defaultSubjects, ...oldCustoms];
+                        setSubjects(merged);
+                    }
 
-                if (data.subjects && data.subjects.length > 0) {
-                    setSubjects(data.subjects);
+                    if (data.startDate) {
+                        setStartDateState(data.startDate);
+                        recalcToday(data.startDate, data.totalDays || TOTAL_DAYS);
+                    } else {
+                        recalcToday(detectedStart, data.totalDays || TOTAL_DAYS);
+                    }
+
+                    if (data.settings) {
+                        if (data.settings.darkMode !== undefined && data.settings.darkMode !== darkMode) toggleDarkMode();
+                        if (data.settings.viewMode !== undefined && data.settings.viewMode !== viewMode) setViewMode(data.settings.viewMode);
+                        if (data.settings.showQuotes !== undefined && data.settings.showQuotes !== showQuotes) toggleShowQuotes();
+
+                        if (data.settings.stream) setStream(data.settings.stream);
+                        if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
+                    }
                 } else {
-                    const stream = data.settings?.stream || 'general';
-                    const defaultList = SUBJECT_LISTS[stream] || SUBJECT_LISTS['general'];
-                    const defaultSubjects = defaultList.map(name => {
-                        const style = getSubjectStyle(name);
-                        return { id: name, name: name, icon: style.icon, color: style.color };
-                    });
-                    const oldCustoms = data.customSubjects || [];
-                    const merged = [...defaultSubjects, ...oldCustoms];
-                    setSubjects(merged);
+                    loadDefaultPlan();
                 }
-
-                if (data.startDate) {
-                    setStartDateState(data.startDate);
-                    recalcToday(data.startDate);
-                } else {
-                    recalcToday(detectedStart);
-                }
-
-                if (data.settings) {
-                    // We update ThemeContext implicitly? 
-                    // No, ThemeContext logic is separate. 
-                    // If we want to load theme from JSON and Apply it:
-                    if (data.settings.darkMode !== undefined && data.settings.darkMode !== darkMode) toggleDarkMode();
-                    if (data.settings.viewMode !== undefined && data.settings.viewMode !== viewMode) setViewMode(data.settings.viewMode);
-                    if (data.settings.showQuotes !== undefined && data.settings.showQuotes !== showQuotes) toggleShowQuotes();
-
-                    if (data.settings.stream) setStream(data.settings.stream);
-                    if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
-                }
-            } else {
+            } catch (error) {
+                console.error("Error during app initialization, loading defaults:", error);
                 loadDefaultPlan();
             }
 
@@ -269,27 +265,26 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             date: toIsoString(addDays(start, task.dayId - 1))
         }));
         setTasks(hydratedPlan);
-        recalcToday(start);
+        recalcToday(start, TOTAL_DAYS);
     };
+
+    // --- DATA SNAPSHOT HELPER (DRY) ---
+    const buildDataSnapshot = () => ({
+        tasks, userName, routine: completedRoutine, routineTemplate,
+        notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+        totalDays, subjects, archivedPlans,
+        settings: {
+            darkMode, viewMode, showQuotes, stream,
+            notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
+            geminiModel
+        },
+        lastUpdated: Date.now()
+    });
 
     // --- PERSISTENCE (AUTO-SAVE) ---
     useEffect(() => {
         if (!isInitialized) return;
-
-        const fullData = {
-            tasks, userName, routine: completedRoutine, routineTemplate,
-            notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-            totalDays, subjects, archivedPlans,
-            settings: {
-                darkMode, viewMode, showQuotes, stream,
-                notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
-                geminiModel
-            },
-            lastUpdated: Date.now()
-        };
-
-        StorageManager.save(fullData, userId || 'parsaplan_local_user');
-
+        StorageManager.save(buildDataSnapshot(), userId || 'parsaplan_local_user');
     }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
@@ -304,23 +299,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
         syncTimeoutRef.current = setTimeout(async () => {
             try {
-                const rawData = {
-                    tasks, userName, routine: completedRoutine, routineTemplate,
-                    notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-                    totalDays, subjects, archivedPlans,
-                    settings: {
-                        darkMode, viewMode, showQuotes, stream,
-                        notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
-                        geminiModel
-                    },
-                    lastUpdated: Date.now()
-                };
-                const fullData = JSON.parse(JSON.stringify(rawData));
+                const snapshot = buildDataSnapshot();
+                const fullData = JSON.parse(JSON.stringify(snapshot));
                 await setDoc(doc(db, "users", userId), fullData);
-                setLastSyncTime(rawData.lastUpdated);
-                // setCloudStatus('connected'); // Handled in Auth/Listener? No, should be here or UI? 
-                // AuthContext has cloudStatus, can we update it? No.
-                // We should probably rely on AuthContext initialization for 'connected' status. 
+                setLastSyncTime(snapshot.lastUpdated);
             } catch (e) {
                 console.error("Auto-sync failed:", e);
             }
@@ -355,7 +337,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
                     if (data.startDate) {
                         setStartDateState(data.startDate);
-                        recalcToday(data.startDate);
+                        recalcToday(data.startDate, data.totalDays || totalDays);
                     }
                     if (data.settings) {
                         if (data.settings.darkMode !== undefined && data.settings.darkMode !== darkMode) toggleDarkMode();
@@ -379,26 +361,40 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (!db || !firebaseConfig) { showToast('تنظیمات فایربیس وارد نشده است.', 'warning'); return; }
         setIsSyncing(true);
         try {
-            const rawData = {
-                tasks, userName, routine: completedRoutine, routineTemplate,
-                notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-                totalDays, subjects, archivedPlans,
-                settings: {
-                    darkMode, viewMode, showQuotes, stream,
-                    notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
-                    geminiModel
-                },
-                lastUpdated: Date.now()
-            };
-            const fullData = JSON.parse(JSON.stringify(rawData));
+            const snapshot = buildDataSnapshot();
+            const fullData = JSON.parse(JSON.stringify(snapshot));
             await setDoc(doc(db, "users", userId), fullData);
-            setLastSyncTime(rawData.lastUpdated);
+            setLastSyncTime(snapshot.lastUpdated);
             showToast('اطلاعات با موفقیت در فضای ابری ذخیره شد', 'success');
         } catch (e) {
             console.error(e);
             showToast('خطا در اتصال به سرور', 'error');
         } finally {
             setIsSyncing(false);
+        }
+    };
+
+    const applyCloudData = (data: any) => {
+        if (data.tasks) setTasks(data.tasks);
+        if (data.userName) setUserNameState(data.userName);
+        if (data.routine) setCompletedRoutine(data.routine);
+        if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
+        if (data.notes) setDailyNotes(data.notes);
+        if (data.xp) setXp(data.xp);
+        if (data.moods) setMoods(data.moods);
+        if (data.totalDays) setTotalDaysState(data.totalDays);
+        if (data.subjects) setSubjects(data.subjects);
+        if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+        if (data.startDate) {
+            setStartDateState(data.startDate);
+            recalcToday(data.startDate, data.totalDays || totalDays);
+        }
+        if (data.settings) {
+            if (data.settings.darkMode !== undefined && data.settings.darkMode !== darkMode) toggleDarkMode();
+            if (data.settings.viewMode !== undefined && data.settings.viewMode !== viewMode) setViewMode(data.settings.viewMode);
+            if (data.settings.showQuotes !== undefined && data.settings.showQuotes !== showQuotes) toggleShowQuotes();
+            if (data.settings.stream) setStream(data.settings.stream);
+            if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
         }
     };
 
@@ -409,9 +405,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             const docSnap = await getDoc(doc(db, "users", userId));
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                // Apply data... (Simplified duplication for brevity, same as listener)
-                if (data.tasks) setTasks(data.tasks);
-                // ... (Apply all fields)
+                applyCloudData(data);
                 showToast('اطلاعات از سرور دریافت شد', 'success');
             } else {
                 showToast('هیچ اطلاعاتی در سرور یافت نشد', 'warning');
@@ -442,13 +436,14 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const autoFixDate = () => setStartDate(findBahman11());
 
-    const recalcToday = (start: string) => {
+    const recalcToday = (start: string, days?: number) => {
+        const effectiveTotalDays = days ?? totalDays;
         const todayStr = toIsoString(new Date());
         const dayDiff = getDiffDays(start, todayStr);
         const detectedDay = dayDiff + 1;
         let targetDay = 1;
-        if (detectedDay >= 1 && detectedDay <= totalDays) targetDay = detectedDay;
-        else if (detectedDay > totalDays) targetDay = totalDays;
+        if (detectedDay >= 1 && detectedDay <= effectiveTotalDays) targetDay = detectedDay;
+        else if (detectedDay > effectiveTotalDays) targetDay = effectiveTotalDays;
         setTodayDayId(targetDay);
         setCurrentDayState(targetDay);
     };
@@ -585,18 +580,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const getDailyNote = (date: string) => dailyNotes[date] || '';
 
     const exportData = () => {
-        const data = {
-            tasks, userName, routine: completedRoutine, routineTemplate,
-            notes: dailyNotes, xp, logs: auditLog, moods, startDate,
-            totalDays, subjects, archivedPlans,
-            settings: {
-                darkMode, viewMode, showQuotes, stream,
-                notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
-                geminiModel
-            },
-            lastUpdated: Date.now()
-        };
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(buildDataSnapshot())], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;

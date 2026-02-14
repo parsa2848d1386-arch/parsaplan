@@ -296,7 +296,7 @@ const Leaderboard = () => {
 
                         <div className="flex items-center gap-4 mt-2">
                             <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-bold">
-                                {viewingProfile.userName[0]}
+                                {viewingProfile.userName?.[0] || '?'}
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold">{viewingProfile.userName}</h2>
@@ -606,7 +606,7 @@ const Leaderboard = () => {
                                         </div>
 
                                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
-                                            {profile.userName[0]}
+                                            {profile.userName?.[0] || '?'}
                                         </div>
 
                                         <div className="flex-1">

@@ -31,7 +31,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const KEY_FB_CONFIG = KEY_PREFIX + 'firebase_config';
 
     const [user, setUser] = useState<User | null>(null);
-    const [userId, setUserId] = useState<string>('');
+    const [userId, setUserId] = useState<string>('parsaplan_local_user');
     const [userName, setUserNameState] = useState('');
     const [firebaseConfig, setFirebaseConfig] = useState<FirebaseConfig | null>(null);
     const [db, setDb] = useState<Firestore | null>(null);

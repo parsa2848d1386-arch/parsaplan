@@ -1,7 +1,5 @@
 import React, { CSSProperties } from 'react';
-// @ts-ignore
 import { List } from 'react-window';
-// @ts-ignore
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import { SubjectTask } from '../types';
 import { TaskCard } from './TaskCard';
