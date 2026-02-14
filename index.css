@@ -12,10 +12,78 @@
   }
 }
 
-/* Custom Scrollbar */
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Page entrance animation */
+.animate-page-enter {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* Staggered card animations */
+.animate-card-enter {
+  animation: fadeInUp 0.35s ease-out backwards;
+}
+
+.animate-card-enter:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.animate-card-enter:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.animate-card-enter:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.animate-card-enter:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+/* Sidebar nav item hover */
+.sidebar-nav-item {
+  position: relative;
+}
+
+.sidebar-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* ===== CUSTOM SCROLLBAR ===== */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -23,14 +91,29 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  @apply bg-gray-200 dark:bg-gray-700 rounded-full;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-500;
+  @apply bg-gray-300 dark:bg-gray-600;
 }
 
-/* Print Styles */
+/* ===== HIDE SCROLLBAR ===== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ===== TOOLTIP STYLES ===== */
+[title] {
+  position: relative;
+}
+
+/* ===== PRINT STYLES ===== */
 @media print {
   @page {
     size: A4;

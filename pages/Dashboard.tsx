@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Trash2, Pencil, Plus, Search, AlertTriangle, ArrowDownToLine, X, Calendar, SlidersHorizontal, BookOpen, Clock, Zap, StickyNote, Save, Quote, Trophy, ArrowRightCircle, Target, Bot } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Trash2, Pencil, Plus, Search, AlertTriangle, ArrowDownToLine, X, Calendar, SlidersHorizontal, BookOpen, Clock, Zap, StickyNote, Save, Quote, Trophy, ArrowRightCircle, Target, Bot, TrendingUp, ListTodo, Flame } from 'lucide-react';
 
 import ProgressBar from '../components/ProgressBar';
 import { Subject, SubjectTask, SUBJECT_LISTS, getSubjectStyle } from '../types';
@@ -63,9 +63,6 @@ const Dashboard = () => {
     // Filter by Stream (Hide tasks from other streams, unless Custom)
     processedTasks = processedTasks.filter(t => {
         if (t.isCustom) return true;
-        // Check if subject exists in current stream or if it's a general subject
-        // For simplicity, we just check if it's in the list. 
-        // Note: Global "Custom" logic might need better handling if user named it "Math" manually.
         const isStandard = streamSubjects.includes(t.subject);
         const isGeneral = SUBJECT_LISTS['general'].includes(t.subject);
         return isStandard || isGeneral || t.isCustom;
@@ -95,7 +92,7 @@ const Dashboard = () => {
         { name: 'Completed', value: completedDailyTasks },
         { name: 'Remaining', value: Math.max(0, dailyTasksForChart.length - completedDailyTasks) },
     ];
-    const CHART_COLORS = ['#4f46e5', '#f3f4f6'];
+    const CHART_COLORS = ['#4f46e5', '#e5e7eb'];
 
     const handleSaveTask = (taskData: Partial<SubjectTask>) => {
         if (editingTask) {
@@ -137,10 +134,18 @@ const Dashboard = () => {
         setIsModalOpen(true);
     }
 
+    // Greeting based on time
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return 'صبح بخیر';
+        if (hour < 17) return 'ظهر بخیر';
+        return 'عصر بخیر';
+    };
 
+    const daysLeft = Math.max(0, totalDays - currentDay);
 
     return (
-        <div className="p-4 space-y-5 animate-in fade-in duration-500">
+        <div className="p-4 md:p-6 space-y-5 animate-in fade-in duration-500">
             <TaskModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -150,33 +155,68 @@ const Dashboard = () => {
                 defaultDateStr={activeDateIso}
             />
 
-            {/* Header & Quote */}
-            <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-5 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-white/40 dark:border-gray-700/50">
+            {/* ===== HEADER & STATS ===== */}
+            <div className="space-y-4">
+                {/* Welcome Header */}
+                <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight leading-tight">سلام، {userName} 👋</h1>
-                        <div className="flex flex-col mt-3 w-40 sm:w-48">
-                            <div className="flex justify-between items-center mb-1 px-0.5">
-                                <div className="flex items-center gap-1">
-                                    <Trophy size={11} className="text-amber-500" />
-                                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">سطح {level}</span>
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{Math.floor(currentLevelXp)} / {xpForNextLevel} XP</span>
-                            </div>
-                            <div className="h-2 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden border border-gray-100 dark:border-gray-700/50 p-0.5">
-                                <div
-                                    className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.3)] transition-all duration-1000 ease-out"
-                                    style={{ width: `${progressPercent}%` }}
-                                ></div>
-                            </div>
-                        </div>
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-800 dark:text-white tracking-tight leading-tight">{getGreeting()}، {userName} 👋</h1>
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 font-medium">امروز چه برنامه‌ای داری؟</p>
                     </div>
-                    <div className="relative w-14 h-14 flex items-center justify-center">
+                    {/* Mobile: small progress circle */}
+                    <div className="relative w-14 h-14 flex items-center justify-center md:hidden">
                         <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-indigo-50 dark:text-gray-700" />
+                            <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-100 dark:text-gray-800" />
                             <circle cx="28" cy="28" r="24" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={150.72} strokeDashoffset={150.72 - (overallProgress / 100) * 150.72} className="text-indigo-600 dark:text-indigo-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
                         </svg>
                         <span className="absolute text-[10px] font-black text-indigo-700 dark:text-indigo-300">{overallProgress}%</span>
+                    </div>
+                </div>
+
+                {/* Stat Cards Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {/* Progress Card */}
+                    <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500">
+                                <TrendingUp size={16} />
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">پیشرفت کل</span>
+                        </div>
+                        <p className="text-2xl font-black text-gray-800 dark:text-white">{overallProgress}<span className="text-sm text-gray-400 mr-0.5">%</span></p>
+                    </div>
+
+                    {/* Tasks Today */}
+                    <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-500">
+                                <ListTodo size={16} />
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">تسک‌های امروز</span>
+                        </div>
+                        <p className="text-2xl font-black text-gray-800 dark:text-white">{completedDailyTasks}<span className="text-sm text-gray-400 mr-0.5">/{dailyTasksForChart.length}</span></p>
+                    </div>
+
+                    {/* Day Progress */}
+                    <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-500">
+                                <Calendar size={16} />
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">روز فعلی</span>
+                        </div>
+                        <p className="text-2xl font-black text-gray-800 dark:text-white">{currentDay}<span className="text-sm text-gray-400 mr-0.5">/{totalDays}</span></p>
+                    </div>
+
+                    {/* XP / Streak */}
+                    <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-500">
+                                <Flame size={16} />
+                            </div>
+                            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">باقیمانده</span>
+                        </div>
+                        <p className="text-2xl font-black text-gray-800 dark:text-white">{daysLeft}<span className="text-sm text-gray-400 mr-0.5"> روز</span></p>
                     </div>
                 </div>
 
@@ -185,15 +225,15 @@ const Dashboard = () => {
 
                 {/* Mood Tracker (Feature 10) */}
                 {isTodayView && (
-                    <div className="bg-white/40 dark:bg-gray-800/20 backdrop-blur-sm rounded-[2rem] p-4 border border-white/40 dark:border-gray-700/30">
+                    <div className="bg-white/60 dark:bg-gray-800/30 backdrop-blur-sm rounded-2xl p-4 border border-gray-100 dark:border-gray-700/30">
                         <MoodTracker />
                     </div>
                 )}
 
                 {/* Daily Quote */}
                 {showQuotes && (
-                    <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
-                        <Quote size={40} className="absolute right-2 top-2 text-white/10 rotate-180" />
+                    <div className="bg-gradient-to-l from-violet-600 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                        <Quote size={36} className="absolute left-3 top-3 text-white/10 rotate-180" />
                         <p className="text-sm font-medium leading-7 relative z-10 text-center px-4">
                             "{dailyQuote}"
                         </p>
@@ -201,8 +241,8 @@ const Dashboard = () => {
                 )}
             </div>
 
-            {/* Day Navigator */}
-            <div className={`bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all ${isTodayView ? 'ring-2 ring-indigo-50 dark:ring-indigo-900/30 border-indigo-200 dark:border-indigo-800' : ''}`}>
+            {/* ===== DAY NAVIGATOR ===== */}
+            <div className={`bg-white dark:bg-gray-800/80 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50 transition-all ${isTodayView ? 'ring-2 ring-indigo-50 dark:ring-indigo-900/30 border-indigo-200 dark:border-indigo-800' : ''}`}>
 
                 {!isTodayView && (
                     <div className="flex justify-center mb-5">
@@ -212,7 +252,7 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-5">
                     <button onClick={() => setCurrentDay(currentDay - 1)} disabled={currentDay === 1} className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-30 hover:bg-indigo-50 dark:hover:bg-gray-600 hover:text-indigo-600 transition flex items-center justify-center active:scale-95">
                         <ChevronRight size={20} />
                     </button>
@@ -257,27 +297,27 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* ===== QUICK ACTIONS ===== */}
             <div>
-                <h2 className="text-xs font-bold text-gray-400 mb-2 px-1">دسترسی سریع</h2>
-                <div className="grid grid-cols-3 gap-2">
-                    <button onClick={openAdd} className="col-span-1 bg-gray-900 dark:bg-indigo-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-gray-200 dark:shadow-none active:scale-95 transition-all">
+                <h2 className="text-xs font-bold text-gray-400 mb-2.5 px-1">دسترسی سریع</h2>
+                <div className="grid grid-cols-3 gap-2.5">
+                    <button onClick={openAdd} className="bg-gray-900 dark:bg-indigo-600 text-white p-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-lg shadow-gray-200/50 dark:shadow-none active:scale-95 transition-all hover:shadow-xl">
                         <Plus size={20} />
                         <span className="text-[10px] font-bold">تسک جدید</span>
                     </button>
-                    <button onClick={() => navigate('/ai-chat')} className="col-span-1 bg-gradient-to-br from-violet-500 to-purple-600 text-white p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg shadow-violet-200 dark:shadow-none active:scale-95 transition-all">
+                    <button onClick={() => navigate('/ai-chat')} className="bg-gradient-to-br from-violet-500 to-purple-600 text-white p-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-lg shadow-violet-200/50 dark:shadow-none active:scale-95 transition-all hover:shadow-xl">
                         <Bot size={20} />
                         <span className="text-[10px] font-bold">دستیار AI</span>
                     </button>
-                    <button onClick={() => setIsTimerOpen(true)} className="col-span-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 p-3 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <button onClick={() => setIsTimerOpen(true)} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 p-3.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-md">
                         <Clock size={20} className="text-indigo-500" />
                         <span className="text-[10px] font-bold">تایمر</span>
                     </button>
                 </div>
             </div>
 
-            {/* Daily Note Section */}
-            <div className={`bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-[2rem] p-5 border border-white/40 dark:border-gray-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.02)] transition-all duration-500 ${noteExpanded ? 'ring-2 ring-amber-100 dark:ring-amber-900/20' : ''}`}>
+            {/* ===== DAILY NOTE ===== */}
+            <div className={`bg-white dark:bg-gray-800/60 rounded-2xl p-5 border border-gray-100 dark:border-gray-700/50 shadow-sm transition-all duration-500 ${noteExpanded ? 'ring-2 ring-amber-100 dark:ring-amber-900/20' : ''}`}>
                 <div className="flex justify-between items-center mb-3 cursor-pointer group" onClick={() => setNoteExpanded(!noteExpanded)}>
                     <h3 className="text-sm font-black text-gray-700 dark:text-gray-200 flex items-center gap-2">
                         <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
@@ -311,14 +351,14 @@ const Dashboard = () => {
                 )}
             </div>
 
-            {/* Filter Bar */}
+            {/* ===== FILTER BAR ===== */}
             <div className="relative">
                 <input
                     type="text"
                     placeholder="جستجو (نام درس، مبحث، تگ)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 pl-10 text-sm outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition shadow-sm placeholder:text-gray-400 dark:text-white"
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-4 py-3 pl-10 text-sm outline-none focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition shadow-sm placeholder:text-gray-400 dark:text-white"
                 />
                 <button onClick={() => setShowFilters(!showFilters)} className={`absolute left-2 top-2 p-1.5 rounded-lg transition-colors ${showFilters || filterSubject !== 'ALL' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' : 'text-gray-400 hover:text-gray-600'}`}>
                     <SlidersHorizontal size={18} />
@@ -328,7 +368,6 @@ const Dashboard = () => {
             {showFilters && (
                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                     <button onClick={() => setFilterSubject('ALL')} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filterSubject === 'ALL' ? 'bg-gray-800 text-white border-gray-800 dark:bg-white dark:text-gray-900' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>همه</button>
-                    {/* Combine stream subjects with any custom user subjects */}
                     {Array.from(new Set([...streamSubjects, ...subjects.map(s => s.name).filter(n => !Object.values(Subject).includes(n as any))])).map(sub => {
                         const style = getSubjectStyle(sub);
                         return (
@@ -341,7 +380,7 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {/* List */}
+            {/* ===== TASK LIST ===== */}
             <div className="pb-24 space-y-3">
                 {searchQuery === '' && (
                     <div className="flex items-center justify-between mb-2 px-1">
@@ -361,7 +400,6 @@ const Dashboard = () => {
                                     <h3>{rawOverdueTasks.length} تسک عقب‌افتاده</h3>
                                     {(() => {
                                         const overdueTests = rawOverdueTasks.reduce((acc, t) => {
-                                            // Calculate based on testRange using helper
                                             const planned = parseTestCount(t.testRange);
                                             return acc + (planned > 0 ? planned : 0);
                                         }, 0);
@@ -399,8 +437,6 @@ const Dashboard = () => {
                 )}
 
                 {processedTasks.length > 0 ? (
-                    // If tasks are few, simple map is better (less overhead, no nested scrollbar). 
-                    // But for "List Virtualization" task, let's use it for lists > 5.
                     processedTasks.length > 5 ? (
                         <VirtualTaskList
                             tasks={processedTasks}
@@ -422,9 +458,12 @@ const Dashboard = () => {
                         ))
                     )
                 ) : (
-                    <div className="text-center py-10 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 border-dashed">
-                        <p className="text-gray-400 text-sm font-medium">هیچ تسکی نیست!</p>
-                        <button onClick={openAdd} className="mt-2 text-indigo-600 dark:text-indigo-400 text-sm font-bold hover:underline">افزودن</button>
+                    <div className="text-center py-12 bg-white dark:bg-gray-800/60 rounded-2xl border border-gray-100 dark:border-gray-700/50 border-dashed">
+                        <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center mx-auto mb-3 text-gray-300 dark:text-gray-600">
+                            <ListTodo size={24} />
+                        </div>
+                        <p className="text-gray-400 text-sm font-medium mb-1">هیچ تسکی نیست!</p>
+                        <button onClick={openAdd} className="text-indigo-600 dark:text-indigo-400 text-sm font-bold hover:underline">افزودن تسک جدید</button>
                     </div>
                 )}
             </div>

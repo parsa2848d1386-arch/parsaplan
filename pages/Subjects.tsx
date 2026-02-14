@@ -251,15 +251,15 @@ const Subjects = () => {
                 existingSubjectNames={subjects.map(s => s.name)}
             />
 
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-black text-gray-800 dark:text-white flex items-center gap-2 tracking-tight">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
-                            <LayoutGrid className="text-white" size={24} />
-                        </div>
-                        بودجه‌بندی دروس
-                    </h1>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">وضعیت مطالعه و تست‌های هر درس به تفکیک</p>
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none shrink-0">
+                        <LayoutGrid className="text-white" size={22} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">مدیریت دروس</h1>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">وضعیت مطالعه و تست‌ها به تفکیک درس</p>
+                    </div>
                 </div>
                 <button
                     onClick={openAddSubject}

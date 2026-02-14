@@ -110,12 +110,12 @@ const Analysis = () => {
         <div className="p-4 md:p-6 pb-32 space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
-                        <Activity className="text-white" size={28} />
+                    <div className="w-11 h-11 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none shrink-0">
+                        <Activity className="text-white" size={22} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-gray-800 dark:text-white tracking-tight">پنل تحلیل و آمار</h1>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">نگاهی عمیق به عملکرد و استمرار مطالعه شما</p>
+                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">تحلیل عملکرد</h1>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">عملکرد و استمرار مطالعه شما</p>
                     </div>
                 </div>
 
