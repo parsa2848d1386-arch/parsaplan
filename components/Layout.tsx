@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, Sparkles, Bell, Search, User, ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, Sparkles, Bell, Search, User, ChevronLeft, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import FocusTimer from './FocusTimer';
 import { ToastContainer, ConfirmModal } from './Feedback';
@@ -20,6 +20,7 @@ const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
 
 const Layout = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const isAIChat = location.pathname === '/ai-chat';
 
     const {
@@ -27,9 +28,10 @@ const Layout = () => {
         syncData, isSyncing, cloudStatus, saveStatus,
         totalDays, sidebarCollapsed, setSidebarCollapsed,
         user, login, register, currentLevelXp, xpForNextLevel, progressPercent,
-        userName
+        userName, showToast
     } = useStore();
 
+    const [showSearchOverlay, setShowSearchOverlay] = useState(false);
     const daysLeft = Math.max(0, totalDays - currentDay);
     const currentPage = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
 
@@ -260,15 +262,39 @@ const Layout = () => {
 
                                 {/* Header Actions */}
                                 <div className="flex items-center gap-2">
-                                    <button className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center justify-center" title="جستجو">
-                                        <Search size={17} />
+                                    <button
+                                        onClick={() => setShowSearchOverlay(!showSearchOverlay)}
+                                        className={`w-9 h-9 rounded-xl transition flex items-center justify-center ${showSearchOverlay ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                        title="جستجو"
+                                    >
+                                        {showSearchOverlay ? <X size={17} /> : <Search size={17} />}
                                     </button>
-                                    <button className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center justify-center relative" title="اعلان‌ها">
+                                    <button
+                                        onClick={() => showToast('اعلان جدیدی وجود ندارد', 'info')}
+                                        className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center justify-center relative"
+                                        title="اعلان‌ها"
+                                    >
                                         <Bell size={17} />
-                                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                                     </button>
                                 </div>
                             </header>
+                        )}
+
+                        {/* Search Overlay */}
+                        {showSearchOverlay && (
+                            <div className="hidden md:flex items-center h-12 px-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 z-20 gap-3 animate-in slide-in-from-top-2 duration-200">
+                                <Search size={16} className="text-gray-400 flex-shrink-0" />
+                                <input
+                                    type="text"
+                                    placeholder="جستجو در صفحات، تسک‌ها..."
+                                    className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder:text-gray-400"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Escape') setShowSearchOverlay(false);
+                                    }}
+                                />
+                                <span className="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">ESC</span>
+                            </div>
                         )}
 
                         {/* Background Decorative Elements */}
@@ -285,17 +311,17 @@ const Layout = () => {
 
                         {/* Mobile Bottom Nav */}
                         {!isAIChat && (
-                            <nav className="md:hidden fixed bottom-5 left-6 right-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-2 flex justify-between items-center pb-safe shadow-2xl dark:shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-full z-50 mx-auto max-w-sm transition-all duration-300 h-14">
-                                {mainNavItems.map((item) => (
+                            <nav className="md:hidden fixed bottom-5 left-4 right-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-1.5 flex justify-between items-center pb-safe shadow-2xl dark:shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-full z-50 mx-auto max-w-md transition-all duration-300 h-14">
+                                {[...mainNavItems, ...secondaryNavItems].map((item) => (
                                     <NavLink
                                         key={item.to}
                                         to={item.to}
-                                        className={({ isActive }) => `flex items-center justify-center rounded-full transition-all duration-500 ease-out h-10 my-auto ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 px-5 flex-[2]' : 'bg-transparent text-gray-400 dark:text-gray-500 flex-1 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                        className={({ isActive }) => `flex items-center justify-center rounded-full transition-all duration-500 ease-out h-10 my-auto ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 px-3 flex-[2]' : 'bg-transparent text-gray-400 dark:text-gray-500 flex-1 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                                     >
                                         {({ isActive }) => (
-                                            <div className="flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap h-full">
-                                                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
-                                                <span className={`text-[11px] font-bold transition-all duration-500 ${isActive ? 'max-w-[100px] opacity-100 translate-x-0 ml-1' : 'max-w-0 opacity-0 -translate-x-2 hidden'}`}>
+                                            <div className="flex items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap h-full">
+                                                <item.icon size={19} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
+                                                <span className={`text-[10px] font-bold transition-all duration-500 ${isActive ? 'max-w-[80px] opacity-100 translate-x-0' : 'max-w-0 opacity-0 -translate-x-2 hidden'}`}>
                                                     {item.label}
                                                 </span>
                                             </div>
