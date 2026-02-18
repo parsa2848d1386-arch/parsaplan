@@ -2,12 +2,15 @@
 // Parses "YYYY-MM-DD" into a local Date object set to 00:00:00
 export const parseDate = (str: string): Date => {
     if (!str) return new Date();
-    const [y, m, d] = str.split('-').map(Number);
+    const parts = str.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return new Date(); // Fallback to now
+    const [y, m, d] = parts;
     return new Date(y, m - 1, d);
 };
 
 // Returns YYYY-MM-DD string from a Date object using local time
 export const toIsoString = (date: Date): string => {
+    if (isNaN(date.getTime())) return toIsoString(new Date()); // Fallback
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -19,6 +22,8 @@ export const getDiffDays = (startStr: string, endStr: string): number => {
     const d1 = parseDate(startStr);
     const d2 = parseDate(endStr);
 
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return 0;
+
     // Normalize to UTC noon to avoid any DST shifts
     const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate(), 12, 0, 0);
     const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate(), 12, 0, 0);
@@ -28,17 +33,24 @@ export const getDiffDays = (startStr: string, endStr: string): number => {
 };
 
 export const getShamsiDate = (dateOrString: Date | string): string => {
-    const date = typeof dateOrString === 'string' ? parseDate(dateOrString) : dateOrString;
-    return new Intl.DateTimeFormat('fa-IR', { month: 'long', day: 'numeric' }).format(date);
+    try {
+        const date = typeof dateOrString === 'string' ? parseDate(dateOrString) : dateOrString;
+        if (isNaN(date.getTime())) return '-';
+        return new Intl.DateTimeFormat('fa-IR', { month: 'long', day: 'numeric' }).format(date);
+    } catch (e) { return '-'; }
 };
 
 export const getFullShamsiDate = (dateOrString: Date | string): string => {
-    const date = typeof dateOrString === 'string' ? parseDate(dateOrString) : dateOrString;
-    return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(date);
+    try {
+        const date = typeof dateOrString === 'string' ? parseDate(dateOrString) : dateOrString;
+        if (isNaN(date.getTime())) return '-';
+        return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(date);
+    } catch (e) { return '-'; }
 };
 
 export const addDays = (dateOrString: Date | string, days: number): Date => {
     const date = typeof dateOrString === 'string' ? parseDate(dateOrString) : new Date(dateOrString);
+    if (isNaN(date.getTime())) return new Date();
     const result = new Date(date);
     result.setDate(result.getDate() + days);
     return result;

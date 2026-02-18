@@ -3,18 +3,18 @@
 
 // Constants
 export const BASE_XP_PER_LEVEL = 200;
-export const XP_MULTIPLIER = 1.6; // Progressive difficulty curve
+export const XP_MULTIPLIER = 150; // Linear increment
 export const MAX_LEVEL = 100;
 
 /**
  * Returns the XP required to reach the NEXT level from the current level.
- * Formula: Base * (Level ^ Multiplier)
+ * Formula: Base + (Level * 150)
  */
 export const getXpForNextLevel = (currentLevel: number): number => {
-    // Level 1 -> 2: 200 * 1^1.6 = 200
-    // Level 5 -> 6: 200 * 5^1.6 ~= 2623 XP
-    // Level 10 -> 11: 200 * 10^1.6 ~= 7962 XP
-    return Math.floor(BASE_XP_PER_LEVEL * Math.pow(currentLevel, XP_MULTIPLIER));
+    // Level 1 -> 2: 200 + (1 * 150) = 350
+    // Level 5 -> 6: 200 + (5 * 150) = 950
+    // Level 10 -> 11: 200 + (10 * 150) = 1700
+    return BASE_XP_PER_LEVEL + (currentLevel * XP_MULTIPLIER);
 };
 
 /**

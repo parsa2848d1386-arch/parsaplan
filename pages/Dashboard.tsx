@@ -86,11 +86,11 @@ const Dashboard = () => {
                 </p>
             </div>
 
-            {/* ===== ۳ کارت آماری افقی ===== */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* ===== ۳ کارت آماری افقی (Carousel در موبایل) ===== */}
+            <div className="flex overflow-x-auto pb-4 gap-4 snap-x md:grid md:grid-cols-3 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
 
                 {/* کارت ۱: وضعیت پیشرفت */}
-                <div className="bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50 animate-card-enter hover:shadow-md transition-shadow duration-300">
+                <div className="min-w-[85vw] md:min-w-0 snap-center bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50 animate-card-enter hover:shadow-md transition-shadow duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -112,7 +112,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* کارت ۲: تسک‌های امروز */}
-                <div className="bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50 animate-card-enter hover:shadow-md transition-shadow duration-300">
+                <div className="min-w-[85vw] md:min-w-0 snap-center bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50 animate-card-enter hover:shadow-md transition-shadow duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
@@ -134,7 +134,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* کارت ۳: روزهای باقیمانده */}
-                <div className="bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50 animate-card-enter hover:shadow-md transition-shadow duration-300">
+                <div className="min-w-[85vw] md:min-w-0 snap-center bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50 animate-card-enter hover:shadow-md transition-shadow duration-300">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">

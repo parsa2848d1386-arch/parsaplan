@@ -4,7 +4,6 @@ import {
     GraduationCap, ClipboardList, CalendarDays, BookOpen, School, Loader2
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-// @ts-ignore
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { SUBJECT_LISTS } from '../types';
 import AITaskReviewWindow, { ParsedTask } from './AITaskReviewWindow';
