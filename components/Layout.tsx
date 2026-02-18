@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy, Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft, RotateCw, Sparkles, Bell, Search, User, ChevronLeft, X } from 'lucide-react';
+import {
+    Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
+    Cloud, CloudOff, AlertTriangle, PanelLeftClose, PanelLeft,
+    RotateCw, Sparkles, Bell, Search, User, ChevronLeft, X,
+    Menu, MessageSquare, Plus
+} from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import FocusTimer from './FocusTimer';
 import { ToastContainer, ConfirmModal } from './Feedback';
 import { AuthModal } from './AuthModal';
 import PrintableSchedule from './PrintableSchedule';
+import AIChatPanel from './AIChatPanel';
 
+/* ===== تنظیمات عنوان و Breadcrumb هر صفحه ===== */
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/': { title: 'داشبورد', breadcrumb: 'خانه' },
     '/routine': { title: 'روتین روزانه', breadcrumb: 'روتین' },
@@ -17,6 +24,13 @@ const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/history': { title: 'تاریخچه', breadcrumb: 'تاریخچه' },
     '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'دستیار AI' },
 };
+
+/* ===== داده‌های نمونه تب‌های کاربر (Profile Tabs) ===== */
+const USER_TABS = [
+    { id: 'amir', name: 'Amir Baghian', avatar: '🧑‍🎓', active: true },
+    { id: 'leila', name: 'Leila Baghian', avatar: '👩‍🎓', badge: 2 },
+    { id: 'nick', name: 'Nick Baghian', avatar: '👨‍🎓' },
+];
 
 const Layout = () => {
     const location = useLocation();
@@ -31,10 +45,15 @@ const Layout = () => {
         userName, showToast
     } = useStore();
 
+    /* ===== state موبایل: نمایش sidebar و پنل AI ===== */
+    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
+    const [activeTab, setActiveTab] = useState('amir');
+
     const daysLeft = Math.max(0, totalDays - currentDay);
     const currentPage = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
 
+    /* ===== آیتم‌های ناوبری اصلی ===== */
     const mainNavItems = [
         { to: '/', icon: Home, label: 'داشبورد' },
         { to: '/routine', icon: CalendarClock, label: 'روتین' },
@@ -43,12 +62,13 @@ const Layout = () => {
         { to: '/leaderboard', icon: Trophy, label: 'لیگ' },
     ];
 
+    /* ===== آیتم‌های ناوبری ثانویه ===== */
     const secondaryNavItems = [
         { to: '/ai-chat', icon: Sparkles, label: 'دستیار AI' },
         { to: '/settings', icon: Settings, label: 'تنظیمات' },
     ];
 
-    // Determine cloud icon color based on status
+    /* ===== تعیین رنگ آیکون ابر (وضعیت ذخیره‌سازی) ===== */
     const getCloudIconColor = () => {
         if (isSyncing) return 'text-yellow-500 animate-pulse';
         if (cloudStatus === 'error' || saveStatus === 'error') return 'text-red-500';
@@ -65,17 +85,22 @@ const Layout = () => {
 
     const CloudIcon = getCloudIcon();
 
+    /* ===== بستن sidebar موبایل هنگام تغییر صفحه ===== */
+    useEffect(() => {
+        setShowMobileSidebar(false);
+    }, [location.pathname]);
+
     return (
         <div className={`${darkMode ? 'dark' : ''}`}>
-            {/* Print View (Visible only on print) */}
+            {/* نمای چاپ */}
             <PrintableSchedule />
 
-            {/* Screen View (Hidden on print) */}
+            {/* نمای صفحه */}
             <div className="flex h-[100dvh] overflow-hidden no-print">
-                {/* Overlays */}
+                {/* مدال‌ها و Overlay‌ها */}
                 <AuthModal
                     isOpen={!user}
-                    onClose={() => { }} // Cannot close unique auth modal
+                    onClose={() => { }}
                     onLogin={login}
                     onRegister={register}
                     isLoading={false}
@@ -85,10 +110,13 @@ const Layout = () => {
                 <ConfirmModal />
 
                 <div className="flex w-full h-full bg-slate-50 dark:bg-gray-950 transition-colors duration-300">
-                    {/* ===== SIDEBAR (DESKTOP) ===== */}
-                    <aside className={`hidden md:flex flex-col bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 h-full transition-all duration-300 ${sidebarCollapsed ? 'w-[76px]' : 'w-64'}`}>
 
-                        {/* Logo */}
+                    {/* ============================================================
+                        ستون ۱: SIDEBAR (دسکتاپ — ثابت)
+                    ============================================================ */}
+                    <aside className={`hidden md:flex flex-col bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 h-full transition-all duration-300 flex-shrink-0 ${sidebarCollapsed ? 'w-[76px]' : 'w-64'}`}>
+
+                        {/* لوگو */}
                         <div className={`p-4 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} h-16`}>
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200/50 dark:shadow-none flex-shrink-0">
@@ -106,9 +134,9 @@ const Layout = () => {
                             </div>
                         </div>
 
-                        {/* Level + Cloud in compact row */}
+                        {/* کارت سطح + وضعیت ابر */}
                         <div className={`px-3 pb-3 space-y-2 ${sidebarCollapsed ? 'px-2' : ''}`}>
-                            {/* Level Card */}
+                            {/* کارت سطح (Level) */}
                             {!sidebarCollapsed ? (
                                 <div className="bg-gradient-to-l from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/30 p-3 rounded-xl relative overflow-hidden">
                                     <div
@@ -144,7 +172,7 @@ const Layout = () => {
                                 </div>
                             )}
 
-                            {/* Cloud Status */}
+                            {/* دکمه وضعیت ابری (Cloud) */}
                             <button
                                 onClick={syncData}
                                 disabled={isSyncing}
@@ -166,10 +194,10 @@ const Layout = () => {
                             </button>
                         </div>
 
-                        {/* Divider */}
+                        {/* خط جداکننده */}
                         <div className="mx-3 border-t border-gray-100 dark:border-gray-800"></div>
 
-                        {/* Main Navigation */}
+                        {/* ناوبری اصلی */}
                         <nav className={`flex-1 py-3 space-y-0.5 overflow-y-auto ${sidebarCollapsed ? 'px-2' : 'px-3'}`}>
                             {!sidebarCollapsed && <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 px-3 mb-2 tracking-wider">منو اصلی</p>}
                             {mainNavItems.map((item) => (
@@ -189,7 +217,7 @@ const Layout = () => {
                                 </NavLink>
                             ))}
 
-                            {/* Separator */}
+                            {/* خط جداکننده */}
                             <div className={`my-3 ${sidebarCollapsed ? 'mx-1' : 'mx-2'} border-t border-gray-100 dark:border-gray-800`}></div>
                             {!sidebarCollapsed && <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 px-3 mb-2 tracking-wider">ابزارها</p>}
 
@@ -211,7 +239,7 @@ const Layout = () => {
                             ))}
                         </nav>
 
-                        {/* Day Progress Card */}
+                        {/* کارت روز‌های باقیمانده */}
                         {!sidebarCollapsed && (
                             <div className="px-3 pb-2">
                                 <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-3.5 text-white shadow-lg shadow-indigo-200/40 dark:shadow-none">
@@ -224,9 +252,8 @@ const Layout = () => {
                             </div>
                         )}
 
-                        {/* Collapse + User */}
+                        {/* پروفایل کاربر + دکمه جمع کردن */}
                         <div className="border-t border-gray-100 dark:border-gray-800">
-                            {/* User Profile Section */}
                             <div className={`p-3 flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-300 flex-shrink-0">
                                     <User size={17} />
@@ -248,20 +275,133 @@ const Layout = () => {
                         </div>
                     </aside>
 
-                    {/* ===== MAIN CONTENT ===== */}
-                    <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-                        {/* Top Header Bar (Desktop) */}
+                    {/* ============================================================
+                        SIDEBAR موبایل (Overlay — فقط در صفحه‌های کوچک)
+                    ============================================================ */}
+                    {showMobileSidebar && (
+                        <div className="md:hidden fixed inset-0 z-50 flex">
+                            {/* پس‌زمینه تاریک */}
+                            <div
+                                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                                onClick={() => setShowMobileSidebar(false)}
+                            />
+                            {/* پنل sidebar */}
+                            <aside className="relative w-72 max-w-[85vw] bg-white dark:bg-gray-900 h-full shadow-2xl animate-slide-in-right flex flex-col">
+                                {/* هدر با دکمه بستن */}
+                                <div className="p-4 flex items-center justify-between h-16 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-xl flex items-center justify-center p-1.5 shadow-lg shadow-indigo-200/50 dark:shadow-none">
+                                            <svg viewBox="0 0 512 512" className="w-full h-full text-white fill-none stroke-current" strokeWidth="32" strokeLinecap="round" strokeLinejoin="round">
+                                                <g transform="translate(256, 256) scale(0.85) translate(-256, -256)">
+                                                    <path d="M140 280 L210 350 C230 310 230 220 230 220 C230 140 380 140 380 230 C380 320 250 320 250 440" strokeWidth="45" />
+                                                </g>
+                                            </svg>
+                                        </div>
+                                        <h1 className="text-lg font-extrabold text-gray-800 dark:text-white">ParsaPlan</h1>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowMobileSidebar(false)}
+                                        className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+
+                                {/* ناوبری */}
+                                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 px-3 mb-2 tracking-wider">منو اصلی</p>
+                                    {mainNavItems.map((item) => (
+                                        <NavLink
+                                            key={item.to}
+                                            to={item.to}
+                                            className={({ isActive }) => `flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                        >
+                                            {({ isActive }) => (
+                                                <>
+                                                    <item.icon size={19} strokeWidth={isActive ? 2.2 : 1.8} />
+                                                    <span className="text-[13px]">{item.label}</span>
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    ))}
+
+                                    <div className="my-3 mx-2 border-t border-gray-100 dark:border-gray-800"></div>
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 px-3 mb-2 tracking-wider">ابزارها</p>
+
+                                    {secondaryNavItems.map((item) => (
+                                        <NavLink
+                                            key={item.to}
+                                            to={item.to}
+                                            className={({ isActive }) => `flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                                        >
+                                            {({ isActive }) => (
+                                                <>
+                                                    <item.icon size={19} strokeWidth={isActive ? 2.2 : 1.8} />
+                                                    <span className="text-[13px]">{item.label}</span>
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    ))}
+                                </nav>
+
+                                {/* پروفایل */}
+                                <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-300">
+                                            <User size={17} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate">{userName || 'کاربر'}</p>
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500">سطح {level}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </aside>
+                        </div>
+                    )}
+
+                    {/* ============================================================
+                        ستون ۲: محتوای اصلی (MAIN CONTENT)
+                    ============================================================ */}
+                    <main className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
+
+                        {/* هدر بالا — دسکتاپ */}
                         {!isAIChat && (
-                            <header className="hidden md:flex items-center justify-between h-14 px-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg flex-shrink-0 z-20">
-                                {/* Breadcrumb */}
-                                <div className="flex items-center gap-2 text-sm">
+                            <header className="hidden md:flex items-center h-14 px-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg flex-shrink-0 z-20">
+                                {/* سمت راست: Breadcrumb */}
+                                <div className="flex items-center gap-2 text-sm flex-1">
                                     <span className="text-gray-400 dark:text-gray-500">ParsaPlan</span>
                                     <ChevronLeft size={14} className="text-gray-300 dark:text-gray-600" />
                                     <span className="text-gray-700 dark:text-gray-200 font-bold">{currentPage.breadcrumb}</span>
                                 </div>
 
-                                {/* Header Actions */}
-                                <div className="flex items-center gap-2">
+                                {/* وسط: تب‌های کاربر (Profile Tabs) */}
+                                <div className="flex items-center gap-1">
+                                    {USER_TABS.map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${activeTab === tab.id
+                                                    ? 'bg-white dark:bg-gray-800 shadow-md border border-gray-200/80 dark:border-gray-700 text-gray-800 dark:text-white'
+                                                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                                                }`}
+                                        >
+                                            <span className="text-sm">{tab.avatar}</span>
+                                            <span>{tab.name}</span>
+                                            {tab.badge && (
+                                                <span className="w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold">
+                                                    {tab.badge}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                    <button className="w-7 h-7 rounded-full border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 flex items-center justify-center hover:border-gray-400 hover:text-gray-500 transition ml-1">
+                                        <Plus size={13} />
+                                    </button>
+                                </div>
+
+                                {/* سمت چپ: دکمه‌های عملیات */}
+                                <div className="flex items-center gap-2 flex-1 justify-end">
                                     <button
                                         onClick={() => setShowSearchOverlay(!showSearchOverlay)}
                                         className={`w-9 h-9 rounded-xl transition flex items-center justify-center ${showSearchOverlay ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
@@ -280,7 +420,37 @@ const Layout = () => {
                             </header>
                         )}
 
-                        {/* Search Overlay */}
+                        {/* هدر بالا — موبایل */}
+                        {!isAIChat && (
+                            <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg flex-shrink-0 z-20">
+                                <button
+                                    onClick={() => setShowMobileSidebar(true)}
+                                    className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                >
+                                    <Menu size={20} />
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-lg flex items-center justify-center">
+                                        <svg viewBox="0 0 512 512" className="w-4 h-4 text-white fill-none stroke-current" strokeWidth="40" strokeLinecap="round" strokeLinejoin="round">
+                                            <g transform="translate(256, 256) scale(0.85) translate(-256, -256)">
+                                                <path d="M140 280 L210 350 C230 310 230 220 230 220 C230 140 380 140 380 230 C380 320 250 320 250 440" strokeWidth="45" />
+                                            </g>
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-extrabold text-gray-800 dark:text-white">{currentPage.breadcrumb}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => showToast('اعلان جدیدی وجود ندارد', 'info')}
+                                        className="p-2 rounded-xl text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                    >
+                                        <Bell size={18} />
+                                    </button>
+                                </div>
+                            </header>
+                        )}
+
+                        {/* نوار جستجو (دسکتاپ) */}
                         {showSearchOverlay && (
                             <div className="hidden md:flex items-center h-12 px-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 z-20 gap-3 animate-in slide-in-from-top-2 duration-200">
                                 <Search size={16} className="text-gray-400 flex-shrink-0" />
@@ -297,19 +467,20 @@ const Layout = () => {
                             </div>
                         )}
 
-                        {/* Background Decorative Elements */}
+                        {/* المان‌های تزئینی پس‌زمینه */}
                         <div className="absolute inset-0 overflow-hidden pointer-events-none">
                             <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-100/30 dark:bg-indigo-900/10 rounded-full blur-[120px]"></div>
                             <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-100/30 dark:bg-purple-900/10 rounded-full blur-[120px]"></div>
                         </div>
 
+                        {/* محتوای صفحه */}
                         <div className={`flex-1 ${isAIChat ? 'overflow-hidden pb-0' : 'overflow-y-auto no-scrollbar pb-24 md:pb-5'} scroll-smooth relative z-10 h-full`}>
                             <div className={`mx-auto w-full ${isAIChat ? 'h-full max-w-full' : 'max-w-5xl min-h-full'}`}>
                                 <Outlet />
                             </div>
                         </div>
 
-                        {/* Mobile Bottom Nav */}
+                        {/* ناوبری پایین — موبایل */}
                         {!isAIChat && (
                             <nav className="md:hidden fixed bottom-5 left-4 right-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 px-1.5 flex justify-between items-center pb-safe shadow-2xl dark:shadow-[0_0_20px_rgba(0,0,0,0.5)] rounded-full z-50 mx-auto max-w-md transition-all duration-300 h-14">
                                 {[...mainNavItems, ...secondaryNavItems].map((item) => (
@@ -331,6 +502,15 @@ const Layout = () => {
                             </nav>
                         )}
                     </main>
+
+                    {/* ============================================================
+                        ستون ۳: پنل دستیار AI (فقط دسکتاپ بزرگ — xl و بالاتر)
+                    ============================================================ */}
+                    {!isAIChat && (
+                        <aside className="hidden xl:flex flex-col w-[320px] h-full flex-shrink-0 p-3 pl-0">
+                            <AIChatPanel />
+                        </aside>
+                    )}
                 </div>
             </div>
         </div>
