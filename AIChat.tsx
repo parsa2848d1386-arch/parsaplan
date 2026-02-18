@@ -25,7 +25,7 @@ interface ChatSession {
 
 const AIChat: React.FC = () => {
     const navigate = useNavigate();
-    const { settings, subjects, addTask, updateSettings, startDate, currentDay, totalDays } = useStore();
+    const { settings, subjects, addTask, updateSettings, startDate, currentDay, totalDays, getDayDate } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -198,12 +198,14 @@ Context:
 **JSON FORMATS:**
 Type A (Explicit Tasks):
 \`\`\`json
-{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "زیست", "topic": "...", "details": "...", "date": "2024-01-01" }] }
+{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "زیست", "topic": "...", "details": "...", "date": "2024-01-01", "studyType": "study", "testRange": "" }] }
 \`\`\`
+Valid studyType values: "exam", "analysis", "test_educational", "test_speed", "review", "study" (default: "study")
+testRange example: "1-30" (for tests)
 
 Type B (Series):
 \`\`\`json
-{ "type": "autopilot_series", "message": "...", "series": { "subject": "فیزیک", "topic": "نوسان", "startDay": ${currentDay}, "endDay": ${Math.min(currentDay + 5, totalDays)}, "dailyCount": 30, "startTest": 1 } }
+{ "type": "autopilot_series", "message": "...", "series": { "subject": "فیزیک", "topic": "نوسان", "startDay": ${currentDay}, "endDay": ${Math.min(currentDay + 5, totalDays)}, "dailyCount": 30, "startTest": 1, "studyType": "test_educational" } }
 \`\`\`
 `.trim();
     };
@@ -304,10 +306,30 @@ Type B (Series):
     const handleConfirmTasks = () => {
         if (reviewTasks) {
             reviewTasks.forEach(t => {
+                // محاسبه dayId از تاریخ تسک
+                let computedDayId = 0;
+                if (t.date && startDate) {
+                    const taskDate = new Date(t.date);
+                    const planStart = new Date(startDate);
+                    const diffTime = taskDate.getTime() - planStart.getTime();
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    computedDayId = diffDays + 1;
+                    if (computedDayId < 1 || computedDayId > totalDays) computedDayId = 0;
+                }
+
                 addTask({
-                    id: crypto.randomUUID(), dayId: 0, date: t.date, subject: t.subject as any,
-                    topic: t.topic, details: t.details, testRange: t.testRange,
-                    isCompleted: false, isCustom: true, studyType: t.studyType, subTasks: t.subTasks as any, tags: ['AI']
+                    id: crypto.randomUUID(),
+                    dayId: computedDayId,
+                    date: t.date,
+                    subject: t.subject as any,
+                    topic: t.topic,
+                    details: t.details,
+                    testRange: t.testRange || '',
+                    isCompleted: false,
+                    isCustom: computedDayId === 0,
+                    studyType: t.studyType || 'study',
+                    subTasks: t.subTasks as any,
+                    tags: ['AI']
                 });
             });
             const successMsg: Message = {

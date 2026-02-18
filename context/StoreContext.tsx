@@ -595,11 +595,33 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             const data = JSON.parse(json);
             if (!data.tasks) throw new Error();
             askConfirm('بازگردانی', 'اطلاعات فعلی حذف می‌شود. ادامه می‌دهید؟', () => {
+                // بازگردانی کامل تمام فیلدها
                 if (data.tasks) setTasks(data.tasks);
                 if (data.userName) setUserNameState(data.userName);
                 if (data.routine) setCompletedRoutine(data.routine);
+                if (data.routineTemplate) setRoutineTemplateState(data.routineTemplate);
                 if (data.notes) setDailyNotes(data.notes);
-                if (data.startDate) setStartDate(data.startDate);
+                if (data.xp !== undefined) setXp(data.xp);
+                if (data.moods) setMoods(data.moods);
+                if (data.subjects && data.subjects.length > 0) setSubjects(data.subjects);
+                if (data.totalDays) setTotalDaysState(data.totalDays);
+                if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+                if (data.logs) setAuditLog(data.logs);
+                if (data.startDate) {
+                    setStartDateState(data.startDate);
+                    setTasks(prev => prev.map(t => {
+                        if (t.dayId > 0 && !t.isCustom) return { ...t, date: toIsoString(addDays(data.startDate, t.dayId - 1)) };
+                        return t;
+                    }));
+                    recalcToday(data.startDate, data.totalDays || totalDays);
+                }
+                if (data.settings) {
+                    if (data.settings.darkMode !== undefined && data.settings.darkMode !== darkMode) toggleDarkMode();
+                    if (data.settings.viewMode !== undefined && data.settings.viewMode !== viewMode) setViewMode(data.settings.viewMode);
+                    if (data.settings.showQuotes !== undefined && data.settings.showQuotes !== showQuotes) toggleShowQuotes();
+                    if (data.settings.stream) setStream(data.settings.stream);
+                    if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
+                }
                 showToast('اطلاعات بازگردانی شد', 'success');
             }, 'danger');
             return true;
@@ -629,14 +651,23 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     // Settings Update Helper
     const updateSettings = (newSettings: Partial<AppSettings>) => {
-        // Just Update Local State if needed for export... 
-        // Sync triggers automatically
-        if (newSettings.darkMode !== undefined) toggleDarkMode(); // Assuming ThemeContext toggles it
-        // We need to keep local ref of settings for export, but we are using Context hooks values for Export?
-        // Ah, exportData uses 'darkMode' variable. 'darkMode' comes from useTheme().
-        // So we don't need to manually update local state.
+        if (newSettings.darkMode !== undefined) toggleDarkMode();
 
-        if (newSettings.stream) setStream(newSettings.stream);
+        if (newSettings.stream && newSettings.stream !== stream) {
+            setStream(newSettings.stream);
+            // آپدیت لیست دروس بر اساس رشته جدید
+            const newStreamList = SUBJECT_LISTS[newSettings.stream] || SUBJECT_LISTS['general'];
+            const newDefaultSubjects = newStreamList.map(name => {
+                const style = getSubjectStyle(name);
+                return { id: name, name: name, icon: style.icon, color: style.color };
+            });
+            // حفظ دروس سفارشی کاربر و جایگزینی فقط دروس پیش‌فرض
+            const customSubjects = subjects.filter(s => !SUBJECT_LISTS[stream]?.includes(s.name));
+            setSubjects([...newDefaultSubjects, ...customSubjects]);
+        } else if (newSettings.stream) {
+            setStream(newSettings.stream);
+        }
+
         if (newSettings.geminiModel) setGeminiModel(newSettings.geminiModel);
 
         showToast('تنظیمات ذخیره شد', 'success');

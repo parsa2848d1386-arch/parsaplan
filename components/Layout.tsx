@@ -25,12 +25,6 @@ const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'دستیار AI' },
 };
 
-/* ===== داده‌های نمونه تب‌های کاربر (Profile Tabs) ===== */
-const USER_TABS = [
-    { id: 'amir', name: 'Amir Baghian', avatar: '🧑‍🎓', active: true },
-    { id: 'leila', name: 'Leila Baghian', avatar: '👩‍🎓', badge: 2 },
-    { id: 'nick', name: 'Nick Baghian', avatar: '👨‍🎓' },
-];
 
 const Layout = () => {
     const location = useLocation();
@@ -48,7 +42,7 @@ const Layout = () => {
     /* ===== state موبایل: نمایش sidebar و پنل AI ===== */
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
-    const [activeTab, setActiveTab] = useState('amir');
+    const [showAIPanel, setShowAIPanel] = useState(true);
 
     const daysLeft = Math.max(0, totalDays - currentDay);
     const currentPage = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
@@ -375,28 +369,22 @@ const Layout = () => {
                                     <span className="text-gray-700 dark:text-gray-200 font-bold">{currentPage.breadcrumb}</span>
                                 </div>
 
-                                {/* وسط: تب‌های کاربر (Profile Tabs) */}
-                                <div className="flex items-center gap-1">
-                                    {USER_TABS.map((tab) => (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => setActiveTab(tab.id)}
-                                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${activeTab === tab.id
-                                                    ? 'bg-white dark:bg-gray-800 shadow-md border border-gray-200/80 dark:border-gray-700 text-gray-800 dark:text-white'
-                                                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                                                }`}
-                                        >
-                                            <span className="text-sm">{tab.avatar}</span>
-                                            <span>{tab.name}</span>
-                                            {tab.badge && (
-                                                <span className="w-4 h-4 rounded-full bg-indigo-500 text-white text-[9px] flex items-center justify-center font-bold">
-                                                    {tab.badge}
-                                                </span>
-                                            )}
-                                        </button>
-                                    ))}
-                                    <button className="w-7 h-7 rounded-full border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600 flex items-center justify-center hover:border-gray-400 hover:text-gray-500 transition ml-1">
-                                        <Plus size={13} />
+                                {/* وسط: نام کاربر و وضعیت */}
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-gray-800 shadow-md border border-gray-200/80 dark:border-gray-700 text-gray-800 dark:text-white text-xs font-bold">
+                                        <span className="text-sm">🧑‍🎓</span>
+                                        <span>{userName || 'کاربر'}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowAIPanel(!showAIPanel)}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${showAIPanel
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
+                                            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                                            }`}
+                                        title={showAIPanel ? 'بستن پنل AI' : 'نمایش پنل AI'}
+                                    >
+                                        <MessageSquare size={14} />
+                                        <span>دستیار AI</span>
                                     </button>
                                 </div>
 
@@ -506,7 +494,7 @@ const Layout = () => {
                     {/* ============================================================
                         ستون ۳: پنل دستیار AI (فقط دسکتاپ بزرگ — xl و بالاتر)
                     ============================================================ */}
-                    {!isAIChat && (
+                    {!isAIChat && showAIPanel && (
                         <aside className="hidden xl:flex flex-col w-[320px] h-full flex-shrink-0 p-3 pl-0">
                             <AIChatPanel />
                         </aside>

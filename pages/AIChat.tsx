@@ -512,10 +512,30 @@ Type B: Study Series (For recurring tasks over multiple days)
     const handleConfirmTasks = () => {
         if (reviewTasks) {
             reviewTasks.forEach(t => {
+                // محاسبه dayId از تاریخ تسک
+                let computedDayId = 0;
+                if (t.date && startDate) {
+                    const taskDate = new Date(t.date);
+                    const planStart = new Date(startDate);
+                    const diffTime = taskDate.getTime() - planStart.getTime();
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    computedDayId = diffDays + 1;
+                    if (computedDayId < 1 || computedDayId > totalDays) computedDayId = 0;
+                }
+
                 addTask({
-                    id: crypto.randomUUID(), dayId: 0, date: t.date, subject: t.subject as any,
-                    topic: t.topic, details: t.details, testRange: t.testRange,
-                    isCompleted: false, isCustom: true, studyType: t.studyType, subTasks: t.subTasks as any, tags: ['AI']
+                    id: crypto.randomUUID(),
+                    dayId: computedDayId,
+                    date: t.date,
+                    subject: t.subject as any,
+                    topic: t.topic,
+                    details: t.details,
+                    testRange: t.testRange || '',
+                    isCompleted: false,
+                    isCustom: computedDayId === 0,
+                    studyType: t.studyType || 'study',
+                    subTasks: t.subTasks as any,
+                    tags: ['AI']
                 });
             });
             const successMsg: Message = {

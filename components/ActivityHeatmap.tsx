@@ -4,7 +4,7 @@ import { useStore } from '../context/StoreContext';
 import { addDays, toIsoString, getShamsiDate, toJalaali, toGregorian } from '../utils';
 
 const ActivityHeatmap = () => {
-    const { tasks, getTasksByDate, moods } = useStore();
+    const { tasks, getTasksByDate, moods, routineTemplate, isRoutineSlotCompleted, currentDay } = useStore();
 
     // Mood Colors mapping
     const moodColors: Record<string, string> = {
@@ -28,23 +28,48 @@ const ActivityHeatmap = () => {
     const { jy, jm } = toJalaali(today.getFullYear(), today.getMonth() + 1, today.getDate());
 
     // Determine days in current Shamsi month
-    const daysInMonth = jm <= 6 ? 31 : (jm <= 11 ? 30 : (jy % 4 === 3 ? 30 : 29)); // Rough leap year check for basics
+    const daysInMonth = jm <= 6 ? 31 : (jm <= 11 ? 30 : (jy % 4 === 3 ? 30 : 29));
 
     const days = [];
-    // Generate all days for the current month: 1 to daysInMonth
-    // We want Day 1 to be first (Top Right in RTL). 
-    // Since flex-wrap flows start-to-end (Right-to-Left in RTL), pushing Day 1 first works.
     for (let d = 1; d <= daysInMonth; d++) {
         const gDate = toGregorian(jy, jm, d);
         days.push(gDate);
     }
 
-    const getColor = (count: number) => {
-        if (count === 0) return 'bg-gray-100 dark:bg-gray-800';
-        if (count <= 2) return 'bg-indigo-200 dark:bg-indigo-900/40';
-        if (count <= 4) return 'bg-indigo-400 dark:bg-indigo-700/60';
-        if (count <= 6) return 'bg-indigo-600 dark:bg-indigo-600';
-        return 'bg-indigo-800 dark:bg-indigo-400';
+    // === محاسبه ساعات مطالعه تخمینی ===
+    // هر تسک تکمیل‌شده ≈ 1 ساعت (با وزن‌دهی بر اساس نوع تسک)
+    const getStudyHours = (iso: string): number => {
+        const dailyTasks = getTasksByDate(iso);
+        let hours = 0;
+        dailyTasks.forEach(t => {
+            if (t.isCompleted) {
+                // تسک‌های آزمون/تحلیل = 1.5 ساعت، بقیه = 1 ساعت
+                if (t.studyType === 'exam' || t.studyType === 'analysis') hours += 1.5;
+                else hours += 1;
+            }
+        });
+        return hours;
+    };
+
+    // === رنگ‌بندی بر اساس ساعات مطالعه ===
+    // 10 ساعت = عالی (حداکثر رنگ)
+    const getColor = (hours: number) => {
+        if (hours === 0) return 'bg-gray-100 dark:bg-gray-800';
+        if (hours <= 2) return 'bg-indigo-200 dark:bg-indigo-900/40';    // کم
+        if (hours <= 4) return 'bg-indigo-300 dark:bg-indigo-800/50';    // متوسط
+        if (hours <= 6) return 'bg-indigo-400 dark:bg-indigo-700/60';    // خوب
+        if (hours <= 8) return 'bg-indigo-500 dark:bg-indigo-600/70';    // خیلی خوب
+        return 'bg-indigo-700 dark:bg-indigo-400';                        // عالی (10+ ساعت)
+    };
+
+    // === توضیح ساعات برای tooltip ===
+    const getLabel = (hours: number): string => {
+        if (hours === 0) return 'بدون فعالیت';
+        if (hours <= 2) return 'کم';
+        if (hours <= 4) return 'متوسط';
+        if (hours <= 6) return 'خوب';
+        if (hours <= 8) return 'خیلی خوب';
+        return 'عالی 🔥';
     };
 
     return (
@@ -54,17 +79,16 @@ const ActivityHeatmap = () => {
                 {days.map((date, idx) => {
                     const iso = toIsoString(date);
                     const shamsi = getShamsiDate(iso);
-                    const dailyTasks = getTasksByDate(iso);
-                    const completed = dailyTasks.filter(t => t.isCompleted).length;
+                    const hours = getStudyHours(iso);
 
-                    const mood = moods[iso]; // Get mood for this day
+                    const mood = moods[iso];
                     const moodRing = mood ? `ring-2 ${moodColors[mood] || 'ring-gray-200'}` : '';
 
                     return (
                         <div
                             key={idx}
-                            title={`${shamsi}: ${completed} تسک${mood ? ` | حس: ${mood}` : ''}`}
-                            className={`w-4 h-4 rounded-sm ${getColor(completed)} ${moodRing} transition-all hover:scale-125 hover:z-10 cursor-default`}
+                            title={`${shamsi}: ${hours.toFixed(1)} ساعت (${getLabel(hours)})${mood ? ` | حس: ${moodLabels[mood]}` : ''}`}
+                            className={`w-4 h-4 rounded-sm ${getColor(hours)} ${moodRing} transition-all hover:scale-125 hover:z-10 cursor-default`}
                         ></div>
                     )
                 })}
@@ -84,17 +108,18 @@ const ActivityHeatmap = () => {
                     ))}
                 </div>
 
-                {/* Activity Legend */}
+                {/* Activity Legend — بر اساس ساعت */}
                 <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                    <span>کم</span>
+                    <span>0h</span>
                     <div className="flex gap-1">
-                        <div className="w-3 h-3 bg-gray-100 dark:bg-gray-800 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-indigo-200 dark:bg-indigo-900/40 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-indigo-400 dark:bg-indigo-700/60 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-indigo-600 dark:bg-indigo-600 rounded-sm"></div>
-                        <div className="w-3 h-3 bg-indigo-800 dark:bg-indigo-400 rounded-sm"></div>
+                        <div className="w-3 h-3 bg-gray-100 dark:bg-gray-800 rounded-sm" title="0 ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-200 dark:bg-indigo-900/40 rounded-sm" title="1-2 ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-300 dark:bg-indigo-800/50 rounded-sm" title="3-4 ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-400 dark:bg-indigo-700/60 rounded-sm" title="5-6 ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-500 dark:bg-indigo-600/70 rounded-sm" title="7-8 ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-700 dark:bg-indigo-400 rounded-sm" title="10+ ساعت"></div>
                     </div>
-                    <span>زیاد</span>
+                    <span>10h+</span>
                 </div>
             </div>
         </div>
