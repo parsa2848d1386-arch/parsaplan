@@ -4,7 +4,7 @@ import { useStore } from '../context/StoreContext';
 import { addDays, toIsoString, getShamsiDate, toJalaali, toGregorian } from '../utils';
 
 const ActivityHeatmap = () => {
-    const { tasks, getTasksByDate, moods, routineTemplate, isRoutineSlotCompleted, currentDay } = useStore();
+    const { tasks, getTasksByDate, moods, studyHoursLog, routineTemplate, isRoutineSlotCompleted, currentDay } = useStore();
 
     // Mood Colors mapping
     const moodColors: Record<string, string> = {
@@ -26,8 +26,6 @@ const ActivityHeatmap = () => {
     // Generate Current Shamsi Month Days
     const today = new Date();
     const { jy, jm } = toJalaali(today.getFullYear(), today.getMonth() + 1, today.getDate());
-
-    // Determine days in current Shamsi month
     const daysInMonth = jm <= 6 ? 31 : (jm <= 11 ? 30 : (jy % 4 === 3 ? 30 : 29));
 
     const days = [];
@@ -36,14 +34,19 @@ const ActivityHeatmap = () => {
         days.push(gDate);
     }
 
-    // === محاسبه ساعات مطالعه تخمینی ===
-    // هر تسک تکمیل‌شده ≈ 1 ساعت (با وزن‌دهی بر اساس نوع تسک)
+    // === محاسبه ساعات مطالعه ===
+    // 1. اول ساعات ثبت‌شده توسط کاربر (studyHoursLog) رو چک می‌کنه
+    // 2. اگه کاربر ثبت نکرده بود، تخمین از تسک‌ها محاسبه میشه
     const getStudyHours = (iso: string): number => {
+        // ساعات واقعی ثبت‌شده
+        const loggedHours = studyHoursLog?.[iso];
+        if (loggedHours !== undefined && loggedHours >= 0) return loggedHours;
+
+        // fallback: تخمین از تسک‌ها
         const dailyTasks = getTasksByDate(iso);
         let hours = 0;
         dailyTasks.forEach(t => {
             if (t.isCompleted) {
-                // تسک‌های آزمون/تحلیل = 1.5 ساعت، بقیه = 1 ساعت
                 if (t.studyType === 'exam' || t.studyType === 'analysis') hours += 1.5;
                 else hours += 1;
             }
@@ -52,24 +55,25 @@ const ActivityHeatmap = () => {
     };
 
     // === رنگ‌بندی بر اساس ساعات مطالعه ===
-    // 10 ساعت = عالی (حداکثر رنگ)
     const getColor = (hours: number) => {
         if (hours === 0) return 'bg-gray-100 dark:bg-gray-800';
-        if (hours <= 2) return 'bg-indigo-200 dark:bg-indigo-900/40';    // کم
-        if (hours <= 4) return 'bg-indigo-300 dark:bg-indigo-800/50';    // متوسط
-        if (hours <= 6) return 'bg-indigo-400 dark:bg-indigo-700/60';    // خوب
-        if (hours <= 8) return 'bg-indigo-500 dark:bg-indigo-600/70';    // خیلی خوب
-        return 'bg-indigo-700 dark:bg-indigo-400';                        // عالی (10+ ساعت)
+        if (hours <= 2) return 'bg-indigo-200 dark:bg-indigo-900/40';
+        if (hours <= 4) return 'bg-indigo-300 dark:bg-indigo-800/50';
+        if (hours <= 6) return 'bg-indigo-400 dark:bg-indigo-700/60';
+        if (hours <= 8) return 'bg-indigo-500 dark:bg-indigo-600/70';
+        return 'bg-indigo-700 dark:bg-indigo-400';
     };
 
     // === توضیح ساعات برای tooltip ===
-    const getLabel = (hours: number): string => {
-        if (hours === 0) return 'بدون فعالیت';
-        if (hours <= 2) return 'کم';
-        if (hours <= 4) return 'متوسط';
-        if (hours <= 6) return 'خوب';
-        if (hours <= 8) return 'خیلی خوب';
-        return 'عالی 🔥';
+    const getLabel = (hours: number, iso: string): string => {
+        const isLogged = studyHoursLog?.[iso] !== undefined && studyHoursLog?.[iso] >= 0;
+        const prefix = isLogged ? '✅ ثبت‌شده' : '📊 تخمینی';
+        if (hours === 0) return `${prefix}: بدون فعالیت`;
+        if (hours <= 2) return `${prefix}: کم`;
+        if (hours <= 4) return `${prefix}: متوسط`;
+        if (hours <= 6) return `${prefix}: خوب`;
+        if (hours <= 8) return `${prefix}: خیلی خوب`;
+        return `${prefix}: عالی 🔥`;
     };
 
     return (
@@ -80,14 +84,13 @@ const ActivityHeatmap = () => {
                     const iso = toIsoString(date);
                     const shamsi = getShamsiDate(iso);
                     const hours = getStudyHours(iso);
-
                     const mood = moods[iso];
                     const moodRing = mood ? `ring-2 ${moodColors[mood] || 'ring-gray-200'}` : '';
 
                     return (
                         <div
                             key={idx}
-                            title={`${shamsi}: ${hours.toFixed(1)} ساعت (${getLabel(hours)})${mood ? ` | حس: ${moodLabels[mood]}` : ''}`}
+                            title={`${shamsi}: ${hours.toFixed(1)} ساعت (${getLabel(hours, iso)})${mood ? ` | حس: ${moodLabels[mood]}` : ''}`}
                             className={`w-4 h-4 rounded-sm ${getColor(hours)} ${moodRing} transition-all hover:scale-125 hover:z-10 cursor-default`}
                         ></div>
                     )
@@ -96,8 +99,6 @@ const ActivityHeatmap = () => {
 
             {/* Legends */}
             <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center mt-4 gap-3">
-
-                {/* Mood Legend */}
                 <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 flex-wrap">
                     <span className="ml-1">حس روز:</span>
                     {Object.entries(moodColors).map(([m, color]) => (
@@ -107,8 +108,6 @@ const ActivityHeatmap = () => {
                         </div>
                     ))}
                 </div>
-
-                {/* Activity Legend — بر اساس ساعت */}
                 <div className="flex items-center gap-2 text-[10px] text-gray-400">
                     <span>0h</span>
                     <div className="flex gap-1">

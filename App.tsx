@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { StoreProvider } from './context/StoreContext';
 import Layout from './components/Layout';
 import { LoadingSpinner } from './components/LoadingSpinner';
+import ScrollToTop from './components/ScrollToTop';
 
 // Lazy Load Pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -13,6 +14,7 @@ const Settings = React.lazy(() => import('./pages/Settings'));
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const History = React.lazy(() => import('./pages/History'));
 const AIChat = React.lazy(() => import('./pages/AIChat'));
+const Welcome = React.lazy(() => import('./pages/Welcome'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -21,8 +23,10 @@ function App() {
     <StoreProvider>
       <ErrorBoundary>
         <HashRouter>
+          <ScrollToTop />
           <Suspense fallback={<LoadingSpinner fullScreen />}>
             <Routes>
+              <Route path="/welcome" element={<Welcome />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="routine" element={<DailyRoutine />} />

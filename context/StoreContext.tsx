@@ -99,6 +99,9 @@ interface StoreContextType {
     auditLog: LogEntry[];
     moods: Record<string, MoodType>;
     setMood: (date: string, mood: MoodType) => void;
+    studyHoursLog: Record<string, number>;
+    logStudyHours: (date: string, hours: number) => void;
+    getStudyHoursForDate: (date: string) => number;
     routineTemplate: DailyRoutineSlot[];
     setRoutineTemplate: (slots: DailyRoutineSlot[]) => void;
     updateRoutineIcon: (slotId: number, newIcon: string) => void;
@@ -112,6 +115,7 @@ interface StoreContextType {
     addSubject: (subject: CustomSubject) => void;
     updateSubject: (subject: CustomSubject) => void;
     deleteSubject: (subjectId: string) => void;
+    reorderSubjects: (newOrder: CustomSubject[]) => void;
 
     // Feedback System
     toasts: ToastMessage[];
@@ -158,6 +162,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [xp, setXp] = useState(0);
     const [auditLog, setAuditLog] = useState<LogEntry[]>([]);
     const [moods, setMoods] = useState<Record<string, MoodType>>({});
+    const [studyHoursLog, setStudyHoursLog] = useState<Record<string, number>>({});
     const [stream, setStream] = useState<StreamType>('general');
     const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
 
@@ -271,7 +276,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // --- DATA SNAPSHOT HELPER (DRY) ---
     const buildDataSnapshot = () => ({
         tasks, userName, routine: completedRoutine, routineTemplate,
-        notes: dailyNotes, xp, logs: auditLog, moods, startDate,
+        notes: dailyNotes, xp, logs: auditLog, moods, studyHoursLog, startDate,
         totalDays, subjects, archivedPlans,
         settings: {
             darkMode, viewMode, showQuotes, stream,
@@ -285,7 +290,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     useEffect(() => {
         if (!isInitialized) return;
         StorageManager.save(buildDataSnapshot(), userId || 'parsaplan_local_user');
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, isInitialized, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -311,7 +316,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         return () => {
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
         };
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, startDate, darkMode, viewMode, showQuotes, stream, isInitialized, db, userId, user]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, isInitialized, db, userId, user]);
 
     // --- REAL-TIME LISTENER ---
     const listenerSetupRef = useRef(false);
@@ -332,6 +337,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.notes) setDailyNotes(data.notes);
                     if (data.xp) setXp(data.xp);
                     if (data.moods) setMoods(data.moods);
+                    if (data.studyHoursLog) setStudyHoursLog(data.studyHoursLog);
                     if (data.totalDays) setTotalDaysState(data.totalDays);
                     if (data.subjects) setSubjects(data.subjects);
                     if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
@@ -572,6 +578,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     const setMood = (date: string, mood: MoodType) => setMoods(prev => ({ ...prev, [date]: mood }));
+    const logStudyHours = (date: string, hours: number) => setStudyHoursLog(prev => ({ ...prev, [date]: hours }));
+    const getStudyHoursForDate = (date: string) => studyHoursLog[date] ?? -1; // -1 = not logged
     const saveDailyNote = (date: string, note: string) => { setDailyNotes(prev => ({ ...prev, [date]: note })); showToast('یادداشت ذخیره شد', 'success'); };
     const getTasksForDay = (dayId: number) => tasks.filter(t => t.date === getDayDate(dayId));
     const getDayDate = (dayId: number) => toIsoString(addDays(startDate, dayId - 1));
@@ -648,6 +656,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setSubjects(prev => prev.filter(s => s.id !== id));
         showToast('درس حذف شد', 'warning');
     };
+    const reorderSubjects = (newOrder: CustomSubject[]) => { setSubjects(newOrder); };
 
     // Settings Update Helper
     const updateSettings = (newSettings: Partial<AppSettings>) => {
@@ -695,8 +704,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         dailyNotes, saveDailyNote, getDailyNote,
         exportData, importData, syncData, loadFromCloud, isSyncing, lastSyncTime,
         xp, level, currentLevelXp, xpForNextLevel, progressPercent, dailyQuote,
-        subjects, addSubject, updateSubject, deleteSubject,
-        auditLog, moods, setMood,
+        subjects, addSubject, updateSubject, deleteSubject, reorderSubjects,
+        auditLog, moods, setMood, studyHoursLog, logStudyHours, getStudyHoursForDate,
         isTimerOpen, setIsTimerOpen, isCommandPaletteOpen, setIsCommandPaletteOpen,
         saveStatus, sidebarCollapsed, setSidebarCollapsed,
         settings: currentSettings, updateSettings,

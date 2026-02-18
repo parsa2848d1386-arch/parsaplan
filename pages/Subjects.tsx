@@ -122,7 +122,7 @@ const SubjectModal: React.FC<{
 type ViewMode = 'subjects' | 'daily' | 'monthly';
 
 const Subjects = () => {
-    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, settings, todayDayId, currentDay, totalDays, startDate } = useStore();
+    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, reorderSubjects, settings, todayDayId, currentDay, totalDays, startDate } = useStore();
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
@@ -132,6 +132,7 @@ const Subjects = () => {
 
     // === Drag & Drop State ===
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+    const [draggedSubjectId, setDraggedSubjectId] = useState<string | null>(null);
 
     const currentStream = settings?.stream || 'general';
     const streamSubjects = SUBJECT_LISTS[currentStream] || [];
@@ -214,6 +215,40 @@ const Subjects = () => {
 
     const handleDragEnd = () => {
         setDraggedTaskId(null);
+    };
+
+    // === Subject Drag & Drop ===
+    const handleSubjectDragStart = (e: React.DragEvent, subjectId: string) => {
+        setDraggedSubjectId(subjectId);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', subjectId);
+    };
+
+    const handleSubjectDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleSubjectDrop = (e: React.DragEvent, targetSubjectId: string) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent propagation to task drop
+        if (!draggedSubjectId || draggedSubjectId === targetSubjectId) return;
+
+        const sourceIndex = subjects.findIndex(s => s.id === draggedSubjectId);
+        const targetIndex = subjects.findIndex(s => s.id === targetSubjectId);
+
+        if (sourceIndex === -1 || targetIndex === -1) return;
+
+        const newSubjects = [...subjects];
+        const [removed] = newSubjects.splice(sourceIndex, 1);
+        newSubjects.splice(targetIndex, 0, removed);
+
+        reorderSubjects(newSubjects);
+        setDraggedSubjectId(null);
+    };
+
+    const handleSubjectDragEnd = () => {
+        setDraggedSubjectId(null);
     };
 
     // === نمای روزانه: گروه‌بندی تسک‌ها بر اساس تاریخ ===
@@ -382,9 +417,20 @@ const Subjects = () => {
                         const isOriginalDefault = Object.keys(SUBJECT_ICONS).includes(subjectName) && subjectName !== 'شخصی';
 
                         return (
-                            <div key={subject.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+                            <div
+                                key={subject.id}
+                                draggable
+                                onDragStart={(e) => handleSubjectDragStart(e, subject.id)}
+                                onDragOver={handleSubjectDragOver}
+                                onDrop={(e) => handleSubjectDrop(e, subject.id)}
+                                onDragEnd={handleSubjectDragEnd}
+                                className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md ${draggedSubjectId === subject.id ? 'opacity-50 scale-95 border-indigo-300 border-dashed' : ''} cursor-grab active:cursor-grabbing`}
+                            >
                                 <div onClick={() => setExpandedSubject(isExpanded ? null : subjectName)} className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 active:scale-[0.99] transition-all select-none">
                                     <div className="flex items-center gap-3">
+                                        <div className="text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity absolute right-2">
+                                            {/* We can add grip here but the whole card is draggable now */}
+                                        </div>
                                         <div className={`w-12 h-12 rounded-2xl ${style.bgColor} flex items-center justify-center text-2xl`}>{style.icon}</div>
                                         <div>
                                             <div className="flex items-center gap-2">
