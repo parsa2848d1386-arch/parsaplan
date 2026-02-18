@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import {
-    ChevronLeft, ChevronRight, Plus, Target, Clock, Users,
-    Clipboard, CalendarDays, Sparkles, GraduationCap, Pencil,
-    BookOpen, ChevronDown, ArrowLeft, ArrowRight, Globe, Lock,
-    ArrowDownToLine, Filter
+    Plus, Target, Clock, CalendarDays,
+    Clipboard, Sparkles, Pencil,
+    ArrowDownToLine
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getShamsiDate, toIsoString, addDays } from '../utils';
@@ -19,26 +18,7 @@ import { SubjectTask } from '../types';
    ۴. تقویم کوچک ماهانه با نقاط رنگی رویداد
 */
 
-// ===== داده‌های تقویم شمسی (اسفند ۱۴۰۴) =====
-const CALENDAR_DAYS = [
-    { day: 0, empty: true }, { day: 0, empty: true }, { day: 0, empty: true },
-    { day: 0, empty: true }, { day: 1 }, { day: 2 }, { day: 3 },
-    { day: 4 }, { day: 5, hasEvent: true, eventColor: 'purple' },
-    { day: 6 }, { day: 7 }, { day: 8 }, { day: 9, hasEvent: true, eventColor: 'orange' },
-    { day: 10 },
-    { day: 11 }, { day: 12 }, { day: 13 },
-    { day: 14, isToday: true, hasEvent: true, eventColor: 'blue' },
-    { day: 15 }, { day: 16 }, { day: 17 },
-    { day: 18 }, { day: 19, hasEvent: true, eventColor: 'orange' },
-    { day: 20 }, { day: 21 }, { day: 22 }, { day: 23 }, { day: 24 },
-    { day: 25, hasEvent: true, eventColor: 'green' },
-    { day: 26, hasEvent: true, eventColor: 'orange' },
-    { day: 27 }, { day: 28 },
-    { day: 29, hasEvent: true, eventColor: 'orange' },
-    { day: 30, hasEvent: true, eventColor: 'purple' },
-];
 
-const WEEKDAYS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
 const Dashboard = () => {
     const {
@@ -226,7 +206,7 @@ const Dashboard = () => {
                         تسک‌های عقب‌افتاده ({overdueTasks.length})
                     </h3>
                     <div className="space-y-3">
-                        {overdueTasks.slice(0, 5).map(task => (
+                        {overdueTasks.map(task => (
                             <TaskCard
                                 key={task.id}
                                 task={task}
@@ -238,56 +218,11 @@ const Dashboard = () => {
                                 onMoveToToday={handleMoveToToday}
                             />
                         ))}
-                        {overdueTasks.length > 5 && (
-                            <p className="text-xs text-gray-400 text-center">و {overdueTasks.length - 5} تسک دیگر...</p>
-                        )}
                     </div>
                 </div>
             )}
 
-            {/* ===== تقویم ماهانه ===== */}
-            <div className="bg-white dark:bg-gray-800/80 rounded-3xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100/80 dark:border-gray-700/50">
-                <h3 className="text-sm font-extrabold text-gray-700 dark:text-gray-200 mb-4">برنامه</h3>
 
-                {/* هدر هفته */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        {WEEKDAYS.map((d) => (
-                            <span key={d} className="w-8 h-6 text-center text-[11px] font-bold text-gray-400 dark:text-gray-500">
-                                {d}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-
-                {/* گرید تقویم */}
-                <div className="grid grid-cols-7 gap-1">
-                    {CALENDAR_DAYS.map((item, index) => (
-                        <div
-                            key={index}
-                            className={`relative w-8 h-8 mx-auto flex flex-col items-center justify-center rounded-xl text-xs font-bold transition-all cursor-pointer
-                  ${item.empty ? 'opacity-0 pointer-events-none' : ''}
-                  ${item.isToday
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200/50 dark:shadow-none'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }
-                `}
-                        >
-                            <span>{item.day || ''}</span>
-                            {item.hasEvent && !item.isToday && (
-                                <div className={`absolute -bottom-0.5 w-1 h-1 rounded-full ${item.eventColor === 'purple' ? 'bg-purple-400' :
-                                    item.eventColor === 'orange' ? 'bg-orange-400' :
-                                        item.eventColor === 'blue' ? 'bg-blue-400' :
-                                            'bg-emerald-400'
-                                    }`} />
-                            )}
-                            {item.hasEvent && item.isToday && (
-                                <div className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-white" />
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
 
             {/* ===== Task Modal ===== */}
             {isModalOpen && (
