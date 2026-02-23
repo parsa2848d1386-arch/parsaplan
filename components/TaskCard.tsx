@@ -28,6 +28,29 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     onMoveToToday
 }) => {
 
+    // Gesture Handling
+    const x = useMotionValue(0);
+    const controls = useAnimation();
+
+    // Background visibility transforms
+    const bgOpacityRight = useTransform(x, [20, 100], [0, 1]);
+    const bgOpacityLeft = useTransform(x, [-20, -100], [0, 1]);
+
+    const bind = useDrag(({ down, movement: [mx], cancel }) => {
+        if (down) {
+            controls.set({ x: mx });
+        } else {
+            if (mx > 100) {
+                haptics.success();
+                onToggle(task.id!);
+            } else if (mx < -100) {
+                haptics.heavy();
+                onDelete({ stopPropagation: () => { }, preventDefault: () => { } } as React.MouseEvent, task.id!);
+            }
+            controls.start({ x: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
+        }
+    }, { axis: 'x', filterTaps: true, rubberband: true });
+
     // 1. Check for Exam/Analysis Type
     if (task.studyType === 'exam' || task.studyType === 'analysis') {
         const handleExamEdit = (e: React.MouseEvent, t: SubjectTask) => onEdit(e, t);
@@ -58,29 +81,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
     const hasTestStats = task.testStats && task.testStats.total > 0;
     const accuracy = hasTestStats ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100) : 0;
-
-    // Gesture Handling
-    const x = useMotionValue(0);
-    const controls = useAnimation();
-
-    // Background visibility transforms
-    const bgOpacityRight = useTransform(x, [20, 100], [0, 1]);
-    const bgOpacityLeft = useTransform(x, [-20, -100], [0, 1]);
-
-    const bind = useDrag(({ down, movement: [mx], cancel }) => {
-        if (down) {
-            controls.set({ x: mx });
-        } else {
-            if (mx > 100) {
-                haptics.success();
-                onToggle(task.id!);
-            } else if (mx < -100) {
-                haptics.heavy();
-                onDelete({ stopPropagation: () => { }, preventDefault: () => { } } as React.MouseEvent, task.id!);
-            }
-            controls.start({ x: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
-        }
-    }, { axis: 'x', filterTaps: true, rubberband: true });
 
     if (viewMode === 'compact') {
         return (
