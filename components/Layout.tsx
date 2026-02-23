@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
     Menu, Bell, Search, X, LogOut, Moon, Sun,
@@ -356,23 +356,20 @@ const Layout = () => {
 
                     {/* Page Content */}
                     <div className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={location.pathname}
-                                initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
-                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                                exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
-                                transition={{ duration: 0.25, ease: 'easeOut' }}
-                                className={`min-h-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}
-                            >
-                                <Outlet />
-                                <div className="h-20 md:h-0" />
-                            </motion.div>
-                        </AnimatePresence>
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
+                            className={`min-h-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}
+                        >
+                            <Outlet />
+                            <div className="h-20 md:h-0" />
+                        </motion.div>
                     </div>
 
                     {/* Bottom Nav — Mobile Pill */}
-                    <nav className="mobile-bottom-nav md:hidden">
+                    <nav className="mobile-bottom-nav flex md:hidden">
                         {[...mainNavItems, ...secondaryNavItems].map((item) => (
                             <NavLink
                                 key={item.to}
@@ -385,9 +382,15 @@ const Layout = () => {
                                     <>
                                         {isActive && (
                                             <motion.div
-                                                layoutId="mobile-nav-pill"
-                                                className="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/30 rounded-full -z-10"
-                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                                layoutId="mobileNavBubble"
+                                                className="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/40 rounded-[1.25rem] -z-10"
+                                                initial={false}
+                                                transition={{
+                                                    type: "spring",
+                                                    stiffness: 500,
+                                                    damping: 35,
+                                                    mass: 0.8
+                                                }}
                                             />
                                         )}
                                         <item.icon
