@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, useAnimation, useMotionValue, useTransform } from 'framer-motion';
+import { motion, animate, useMotionValue, useTransform } from 'framer-motion';
 import { useDrag } from '@use-gesture/react';
 import { haptics } from '../utils/haptics';
 import { SubjectTask, SUBJECT_ICONS, getSubjectStyle } from '../types';
@@ -28,7 +28,6 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
 
     // Gesture Handling
     const x = useMotionValue(0);
-    const controls = useAnimation();
 
     // Background visibility transforms
     const bgOpacityRight = useTransform(x, [20, 100], [0, 1]);
@@ -36,7 +35,7 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
 
     const bind = useDrag(({ down, movement: [mx], cancel }) => {
         if (down) {
-            controls.set({ x: mx });
+            x.set(mx);
         } else {
             if (mx > 100) {
                 haptics.success();
@@ -45,7 +44,7 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
                 haptics.heavy();
                 onDelete({ stopPropagation: () => { }, preventDefault: () => { } } as React.MouseEvent, task.id!);
             }
-            controls.start({ x: 0, transition: { type: 'spring', stiffness: 400, damping: 25 } });
+            animate(x, 0, { type: 'spring', stiffness: 400, damping: 25 });
         }
     }, { axis: 'x', filterTaps: true, rubberband: true });
 
@@ -64,7 +63,7 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
             <motion.div
                 {...(bind() as any)}
                 style={{ x, touchAction: 'pan-y' }}
-                animate={controls}
+                animate={{ opacity: 1, y: 0 }}
                 layout
                 initial={{ opacity: 0, y: 20 }}
                 exit={{ opacity: 0, scale: 0.9 }}
