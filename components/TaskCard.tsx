@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { SubjectTask, getSubjectStyle } from '../types';
 import { getShamsiDate } from '../utils';
 import { CheckCircle2, Circle, Trash2, Pencil, Calendar, ArrowDownToLine, Target } from 'lucide-react';
@@ -58,9 +59,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
     if (viewMode === 'compact') {
         return (
-            <div
+            <motion.div
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => onToggle(task.id!)}
-                className={`group relative bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
+                className={`group relative bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
             >
                 <div className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
                     {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={20} strokeWidth={2} />}
@@ -90,14 +97,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     <button onClick={(e) => onEdit(e, task)} className="text-gray-400 hover:text-blue-500" aria-label="ویرایش"><Pencil size={14} /></button>
                     <button onClick={(e) => onDelete(e, task.id!)} className="text-gray-400 hover:text-rose-500" aria-label="حذف"><Trash2 size={14} /></button>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     return (
-        <div
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onToggle(task.id!)}
-            className={`group relative bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3 transition-all duration-300 active:scale-[0.99] cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
+            className={`group relative bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3 cursor-pointer ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
         >
             {/* Top Section: Icon + Content (Row Layout) */}
             <div className="flex items-start gap-3 w-full">
@@ -157,6 +170,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     </button>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 };

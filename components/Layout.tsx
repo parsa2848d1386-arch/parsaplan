@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
     Menu, Bell, Search, X, LogOut, Moon, Sun,
@@ -64,7 +65,6 @@ const Layout = () => {
         userName, showToast
     } = useStore();
 
-    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
     const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
     const [aiPanelWidth, setAiPanelWidth] = useState(360);
@@ -123,7 +123,7 @@ const Layout = () => {
     };
     const CloudIcon = getCloudIcon();
 
-    useEffect(() => { setShowMobileSidebar(false); }, [location.pathname]);
+    // Mobile sidebar removed
 
     const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -274,77 +274,7 @@ const Layout = () => {
                     </div>
                 </aside>
 
-                {/* Mobile sidebar overlay */}
-                {showMobileSidebar && (
-                    <div
-                        className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
-                        onClick={() => setShowMobileSidebar(false)}
-                    />
-                )}
-
-                {/* Mobile Sidebar */}
-                <div className={`fixed inset-y-0 right-0 w-72 bg-white dark:bg-gray-900 z-50 flex flex-col transform transition-transform duration-300 md:hidden shadow-2xl ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
-                    <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 dark:border-gray-800">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md">
-                                <span className="text-white font-black text-sm">P</span>
-                            </div>
-                            <span className="font-black text-lg text-gray-800 dark:text-white">ParsaPlan</span>
-                        </div>
-                        <button onClick={() => setShowMobileSidebar(false)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    {/* Mobile XP */}
-                    <div className="px-4 py-3">
-                        <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-2xl p-3">
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <XpRing percent={progressPercent} size={40} stroke={3} />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-[10px] font-black text-indigo-600">{level}</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-black text-gray-800 dark:text-white">{userName || 'کاربر'}</p>
-                                    <p className="text-[11px] text-indigo-500 font-bold">سطح {level} • {xp} XP</p>
-                                </div>
-                            </div>
-                            <div className="mt-2 w-full h-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-l from-indigo-500 to-violet-500 rounded-full transition-all duration-1000"
-                                    style={{ width: `${progressPercent}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <nav className="flex-1 overflow-y-auto px-3 space-y-1">
-                        {[...mainNavItems, ...secondaryNavItems].map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                onClick={() => setShowMobileSidebar(false)}
-                                className={({ isActive }) =>
-                                    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium
-                                    ${isActive
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold'
-                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                    }`
-                                }
-                            >
-                                {({ isActive }) => (
-                                    <>
-                                        <item.icon size={20} className={isActive ? 'text-indigo-500' : item.color} />
-                                        <span>{item.label}</span>
-                                    </>
-                                )}
-                            </NavLink>
-                        ))}
-                    </nav>
-                </div>
-
+                {/* Mobile sidebar removed */}
                 {/* ====================================================
                     MAIN CONTENT
                    ==================================================== */}
@@ -398,11 +328,9 @@ const Layout = () => {
                     </header>
 
                     {/* Mobile Header */}
-                    <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg flex-shrink-0 z-20">
-                        <button onClick={() => setShowMobileSidebar(true)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
-                            <Menu size={20} />
-                        </button>
-                        <span className="font-bold text-sm text-gray-800 dark:text-white">{currentPage.title}</span>
+                    <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg flex-shrink-0 z-20 relative">
+                        <div className="w-8 h-8"></div>
+                        <span className="font-bold text-sm text-gray-800 dark:text-white absolute left-1/2 -translate-x-1/2">{currentPage.title}</span>
                         <button
                             onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
                             className={`p-2 rounded-xl transition ${isAiPanelOpen ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
@@ -427,25 +355,41 @@ const Layout = () => {
                     )}
 
                     {/* Page Content */}
-                    <div className="flex-1 overflow-y-auto relative custom-scrollbar">
-                        <div className={`h-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}>
-                            <Outlet />
-                            <div className="h-20 md:h-0" />
-                        </div>
+                    <div className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={location.pathname}
+                                initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+                                transition={{ duration: 0.25, ease: 'easeOut' }}
+                                className={`min-h-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}
+                            >
+                                <Outlet />
+                                <div className="h-20 md:h-0" />
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
 
                     {/* Bottom Nav — Mobile Pill */}
                     <nav className="mobile-bottom-nav md:hidden">
-                        {mainNavItems.map((item) => (
+                        {[...mainNavItems, ...secondaryNavItems].map((item) => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
                                 className={({ isActive }) =>
-                                    `nav-pill-item ${isActive ? 'active' : ''}`
+                                    `nav-pill-item relative z-10 ${isActive ? 'active' : ''}`
                                 }
                             >
                                 {({ isActive }) => (
                                     <>
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="mobile-nav-pill"
+                                                className="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/30 rounded-full -z-10"
+                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            />
+                                        )}
                                         <item.icon
                                             size={17}
                                             strokeWidth={isActive ? 2.5 : 1.8}

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { SubjectTask, SUBJECT_ICONS, getSubjectStyle } from '../types';
 import { Clock, Star, Target, ChevronDown, ChevronUp, MoreVertical, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 
@@ -24,7 +25,15 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
         : 'bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20';
 
     return (
-        <div className={`relative group rounded-3xl p-4 border transition-all duration-300 hover:shadow-lg ${borderColor} ${bgGradient} ${task.isCompleted ? 'opacity-90 grayscale-[0.3]' : ''}`}>
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+            whileTap={{ scale: 0.98 }}
+            className={`relative group rounded-3xl p-4 border ${borderColor} ${bgGradient} ${task.isCompleted ? 'opacity-90 grayscale-[0.3]' : ''}`}
+        >
 
             {/* Header */}
             <div className="flex justify-between items-start mb-3">
@@ -119,6 +128,6 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
                     ))}
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 };

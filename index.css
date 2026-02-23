@@ -513,12 +513,10 @@
 }
 
 .nav-pill-item.active {
-  background: #eef2ff;
   color: #4f46e5;
 }
 
 .dark .nav-pill-item.active {
-  background: rgba(79, 70, 229, 0.2);
   color: #818cf8;
 }
 
