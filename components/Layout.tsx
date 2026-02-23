@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -9,10 +9,10 @@ import {
     Zap, Star, TrendingUp
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import AIChatPanel from './AIChatPanel';
+const AIChatPanel = React.lazy(() => import('./AIChatPanel'));
 import { useAuth } from '../context/AuthContext';
-import { AuthModal } from './AuthModal';
-import PrintableSchedule from './PrintableSchedule';
+const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
+const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { getShamsiDate } from '../utils';
 
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
@@ -130,10 +130,14 @@ const Layout = () => {
 
     return (
         <div className={`${darkMode ? 'dark' : ''}`}>
-            <PrintableSchedule />
+            <Suspense fallback={null}>
+                <PrintableSchedule />
+            </Suspense>
 
             <div className="flex h-[100dvh] overflow-hidden no-print bg-slate-50 dark:bg-gray-950 text-right" dir="rtl">
-                <AuthModal isOpen={!user} onClose={() => { }} onLogin={login} onRegister={register} isLoading={false} />
+                <Suspense fallback={null}>
+                    <AuthModal isOpen={!user} onClose={() => { }} onLogin={login} onRegister={register} isLoading={false} />
+                </Suspense>
 
                 {/* ====================================================
                     SIDEBAR — DESKTOP
@@ -436,7 +440,9 @@ const Layout = () => {
                                     <X size={18} />
                                 </button>
                             </div>
-                            <AIChatPanel />
+                            <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">درحال بارگذاری...</div>}>
+                                <AIChatPanel />
+                            </Suspense>
                         </aside>
                     </>
                 )}
