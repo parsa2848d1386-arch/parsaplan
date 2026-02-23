@@ -4,7 +4,7 @@ import {
     Plus, Target, Clock, CalendarDays,
     Clipboard, Sparkles, Zap, TrendingUp,
     CheckCircle2, Circle, Star, Flame,
-    ArrowDownToLine, BookOpen, Play
+    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getShamsiDate, toIsoString, addDays } from '../utils';
@@ -61,7 +61,7 @@ const ProgressRing = ({
 
 /* ===== Quick Week Mini-View ===== */
 const WeekMini = () => {
-    const { getTasksByDate, getDayDate, currentDay, totalDays } = useStore();
+    const { getTasksByDate, getDayDate, currentDay, totalDays, setCurrentDay } = useStore();
     const today = toIsoString(new Date());
     const days = Array.from({ length: 7 }, (_, i) => {
         const dayId = Math.max(1, currentDay - 3 + i);
@@ -80,7 +80,10 @@ const WeekMini = () => {
         <div className="flex items-end gap-2 justify-center">
             {days.map((d, i) => (
                 <div key={i} className="flex flex-col items-center gap-1">
-                    <div className="relative w-8 flex flex-col items-center justify-end h-14 bg-gray-100 dark:bg-gray-700/50 rounded-xl overflow-hidden">
+                    <button
+                        onClick={() => setCurrentDay(d.dayId)}
+                        className={`relative w-8 flex flex-col items-center justify-end h-14 bg-gray-100 dark:bg-gray-700/50 rounded-xl overflow-hidden hover:opacity-80 transition cursor-pointer ${d.dayId === currentDay ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900' : ''}`}
+                    >
                         <div
                             className={`w-full rounded-xl transition-all duration-700 ${d.pct > 0.8 ? 'bg-emerald-500' : d.pct > 0.4 ? 'bg-indigo-400' : d.pct > 0 ? 'bg-indigo-300' : 'bg-transparent'}`}
                             style={{ height: `${Math.max(d.pct * 100, 0)}%` }}
@@ -90,7 +93,7 @@ const WeekMini = () => {
                                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
                             </div>
                         )}
-                    </div>
+                    </button>
                     <span className={`text-[9px] font-bold ${d.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
                         {weekDays[i]}
                     </span>
@@ -107,7 +110,7 @@ const Dashboard = () => {
         tasks: allTasks, totalDays, setIsTimerOpen, level, xp, progressPercent,
         currentLevelXp, xpForNextLevel,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote,
-        isNewUser, setIsNewUser
+        isNewUser, setIsNewUser, addTask, setCurrentDay
     } = useStore();
 
     const navigate = useNavigate();
@@ -145,7 +148,11 @@ const Dashboard = () => {
         e.stopPropagation(); deleteTask(id);
     };
     const handleSaveTask = (taskData: Partial<SubjectTask>) => {
-        if (editingTask) updateTask({ ...editingTask, ...taskData } as SubjectTask);
+        if (editingTask) {
+            updateTask({ ...editingTask, ...taskData } as SubjectTask);
+        } else {
+            addTask({ id: crypto.randomUUID(), ...taskData } as SubjectTask);
+        }
         setIsModalOpen(false); setEditingTask(null);
     };
     const handleMoveToToday = (taskId: string) => moveTaskToDate(taskId, todayIso);
@@ -173,9 +180,18 @@ const Dashboard = () => {
                         <h1 className="text-xl font-black text-white leading-tight">
                             {getGreeting()}، {userName || 'کاربر'} 👋
                         </h1>
-                        <p className="text-indigo-200 text-xs mt-1">
-                            روز <span className="font-bold text-white">{currentDay}</span> از <span className="font-bold text-white">{totalDays}</span> — {daysLeft} روز مانده
-                        </p>
+                        <div className="text-indigo-200 text-xs mt-2 flex items-center gap-2">
+                            <button onClick={() => setCurrentDay(Math.max(1, currentDay - 1))} className="p-1 bg-white/10 rounded-lg hover:bg-white/20 active:scale-95 transition">
+                                <ChevronRight size={14} />
+                            </button>
+                            <span>
+                                روز <span className="font-bold text-white text-sm">{currentDay}</span> از <span className="font-bold text-white text-sm">{totalDays}</span>
+                            </span>
+                            <button onClick={() => setCurrentDay(Math.min(totalDays, currentDay + 1))} className="p-1 bg-white/10 rounded-lg hover:bg-white/20 active:scale-95 transition">
+                                <ChevronLeft size={14} />
+                            </button>
+                            <span className="opacity-60 hidden sm:inline">— {daysLeft} روز مانده</span>
+                        </div>
                     </div>
 
                     {/* XP Ring */}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Subject, SubjectTask, SUBJECT_ICONS, StudyType, SubTask, SUBJECT_LISTS } from '../types';
 import { useStore } from '../context/StoreContext';
+import { useUI } from '../context/UIContext';
 import { X, Clock, Star, Target, Calendar, CheckCircle2, Tag, CalendarClock, ChevronRight, ChevronLeft, LayoutGrid, List, Beaker, BookOpen, Search, GraduationCap } from 'lucide-react';
 
 interface Props {
@@ -24,6 +25,7 @@ const STUDY_TYPES: { id: StudyType; label: string; icon: any }[] = [
 
 const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDayId, defaultDateStr }) => {
     const { scheduleReview, totalDays, subjects: customSubjects, settings, startDate } = useStore();
+    const { showToast } = useUI();
     const [formData, setFormData] = useState<Partial<SubjectTask>>({});
     const [tab, setTab] = useState<'info' | 'report'>('info');
     const [tagInput, setTagInput] = useState('');
@@ -77,6 +79,27 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validation & Error Categorization
+        if (isExamMode) {
+            if (selectedExamSubjects.length === 0) {
+                showToast('لطفاً حداقل یک درس برای آزمون انتخاب کنید!', 'error');
+                return;
+            }
+        } else {
+            if (!formData.topic || formData.topic.trim() === '') {
+                showToast('لطفاً مبحث (Topic) را وارد کنید!', 'error');
+                return;
+            }
+            if (!formData.details || formData.details.trim() === '') {
+                showToast('لطفاً جزئیات (مثلاً تعداد تست) را وارد کنید!', 'warning');
+                return;
+            }
+            if (!formData.subject) {
+                showToast('لطفاً یک درس انتخاب کنید!', 'error');
+                return;
+            }
+        }
 
         if (isExamMode) {
             // Build subTasks
@@ -216,8 +239,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         type="button"
                                         onClick={() => setFormData({ ...formData, studyType: type.id })}
                                         className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200 ${formData.studyType === type.id
-                                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                                                : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                                            : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
                                             }`}
                                     >
                                         <type.icon size={18} className="mb-1" />
@@ -287,8 +310,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                         type="button"
                                                         onClick={() => isExamMode ? handleExamSubjectToggle(name) : setFormData({ ...formData, subject: name as Subject })}
                                                         className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 active:scale-95 aspect-square ${isSelected
-                                                                ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-indigo-800/40 border-indigo-200 dark:border-indigo-500/50 shadow-md ring-1 ring-indigo-400/30 dark:ring-indigo-500/30'
-                                                                : 'bg-white/50 dark:bg-gray-800/30 border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 grayscale hover:grayscale-0'
+                                                            ? 'bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/50 dark:to-indigo-800/40 border-indigo-200 dark:border-indigo-500/50 shadow-md ring-1 ring-indigo-400/30 dark:ring-indigo-500/30'
+                                                            : 'bg-white/50 dark:bg-gray-800/30 border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 grayscale hover:grayscale-0'
                                                             }`}
                                                     >
                                                         <span className="text-xl mb-1 drop-shadow-sm">{style.icon}</span>
