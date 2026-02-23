@@ -17,6 +17,7 @@ const AIChat = React.lazy(() => import('./pages/AIChat'));
 const Welcome = React.lazy(() => import('./pages/Welcome'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             </Routes>
           </Suspense>
         </HashRouter>
+        <PWAUpdatePrompt />
       </ErrorBoundary>
     </StoreProvider>
   );

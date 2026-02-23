@@ -11,6 +11,7 @@ import { getShamsiDate, toIsoString, addDays } from '../utils';
 import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import { SubjectTask } from '../types';
+import { WelcomeBanner } from '../components/WelcomeBanner';
 
 /* ===== Animated Counter ===== */
 const AnimatedNumber = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
@@ -105,7 +106,8 @@ const Dashboard = () => {
         userName, currentDay, getProgress, getTasksByDate, getDayDate,
         tasks: allTasks, totalDays, setIsTimerOpen, level, xp, progressPercent,
         currentLevelXp, xpForNextLevel,
-        toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote
+        toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote,
+        isNewUser, setIsNewUser
     } = useStore();
 
     const navigate = useNavigate();
@@ -152,6 +154,12 @@ const Dashboard = () => {
 
     return (
         <div className="p-4 md:p-6 space-y-5 animate-page-enter pb-24 md:pb-6">
+
+            {/* ===== WELCOME BANNER FOR NEW USERS ===== */}
+            <WelcomeBanner
+                visible={isNewUser}
+                onDismiss={() => setIsNewUser(false)}
+            />
 
             {/* ===== HERO GREETING ===== */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-indigo-600 via-indigo-500 to-violet-600 p-5 shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30">

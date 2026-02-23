@@ -133,6 +133,10 @@ interface StoreContextType {
     archivedPlans: ArchivedPlan[];
     archiveCurrentPlan: (title: string) => void;
     deleteArchivedPlan: (planId: string) => void;
+
+    // New user onboarding
+    isNewUser: boolean;
+    setIsNewUser: (v: boolean) => void;
 }
 
 const DataContext = createContext<Partial<StoreContextType> | undefined>(undefined);
@@ -162,6 +166,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [subjects, setSubjects] = useState<CustomSubject[]>([]);
     const [totalDays, setTotalDaysState] = useState(TOTAL_DAYS);
     const [archivedPlans, setArchivedPlans] = useState<ArchivedPlan[]>([]);
+    const [isNewUser, setIsNewUser] = useState(false);
 
     const [xp, setXp] = useState(0);
     const [auditLog, setAuditLog] = useState<LogEntry[]>([]);
@@ -271,11 +276,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const loadDefaultPlan = () => {
         const start = detectedStart;
         setStartDateState(start);
-        const hydratedPlan = PLAN_DATA.map(task => ({
-            ...task,
-            date: toIsoString(addDays(start, task.dayId - 1))
-        }));
-        setTasks(hydratedPlan);
+        // New users start with a completely blank slate
+        setTasks([]);
+        setRoutineTemplateState([]);
+        setIsNewUser(true);
         recalcToday(start, TOTAL_DAYS);
     };
 
@@ -721,7 +725,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         saveStatus, sidebarCollapsed, setSidebarCollapsed,
         settings: currentSettings, updateSettings,
         geminiApiKey, setGeminiApiKey,
-        archivedPlans, archiveCurrentPlan, deleteArchivedPlan
+        archivedPlans, archiveCurrentPlan, deleteArchivedPlan,
+        isNewUser, setIsNewUser: (v: boolean) => setIsNewUser(v)
     };
 
     if (!isInitialized) return <LoadingSpinner fullScreen message="درحال بارگذاری..." />;
