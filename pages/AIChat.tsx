@@ -296,36 +296,27 @@ ${recentLogs}
 
 **JSON SCHEMAS (MANDATORY FORMAT):**
 
-Type A: Specific Tasks (For discrete tasks)
+Type A: Specific Tasks or Macro Planner (For one or multiple tasks across multiple days)
 \`\`\`json
 { 
   "type": "preview_tasks", 
-  "message": "یک پیام کوتاه فارسی برای کاربر...", 
+  "message": "یک پیام کوتاه...", 
   "tasks": [
-    { 
-      "subject": "NameOfSubject", 
-      "topic": "Topic...", 
-      "details": "Details...", 
-      "date": "YYYY-MM-DD", 
-      "studyType": "study" 
-    }
+    { "subject": "Math", "topic": "Functions", "details": "Read chapter 1", "date": "YYYY-MM-DD", "studyType": "study" },
+    { "subject": "Physics", "topic": "Dynamics", "details": "50 tests", "date": "YYYY-MM-DD", "studyType": "test_educational" }
   ] 
 }
 \`\`\`
 
-Type B: Study Series (For recurring tasks over multiple days)
+Type B: Recurring Study Series (Daily consecutive repeat)
 \`\`\`json
 { 
   "type": "autopilot_series", 
-  "message": "پیام فارسی...", 
+  "message": "پیام...", 
   "series": { 
-    "subject": "NameOfSubject", 
-    "topic": "Topic...", 
-    "startDay": ${currentDay}, 
-    "endDay": ${currentDay + 5}, 
-    "dailyCount": 30, 
-    "startTest": 1,
-    "interval": 1
+    "subject": "NameOfSubject", "topic": "Topic...", 
+    "startDay": ${currentDay}, "endDay": ${currentDay + 5}, 
+    "dailyCount": 30, "startTest": 1, "interval": 1
   } 
 }
 \`\`\`

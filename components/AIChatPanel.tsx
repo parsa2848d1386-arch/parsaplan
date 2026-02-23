@@ -60,9 +60,9 @@ Stream: ${currentStream}, Subjects: ${allSubjects}
 Day ${currentDay}/${totalDays}, Progress: ${taskCompletion}%, Overdue: ${overdueCount}
 Today: ${today}
 
-If user asks for tasks, output JSON:
+If user asks for a plan or tasks (even for multiple days), output JSON:
 \`\`\`json
-{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "...", "topic": "...", "details": "...", "date": "YYYY-MM-DD", "studyType": "study" }] }
+{ "type": "preview_tasks", "message": "...", "tasks": [{ "subject": "Math", "topic": "Functions", "details": "Read", "date": "YYYY-MM-DD", "studyType": "study" }] }
 \`\`\`
 Valid studyType: "exam", "analysis", "test_educational", "test_speed", "review", "study"
 Always respond in Persian. Be concise.`.trim();

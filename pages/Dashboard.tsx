@@ -4,7 +4,7 @@ import {
     Plus, Target, Clock, CalendarDays,
     Clipboard, Sparkles, Zap, TrendingUp,
     CheckCircle2, Circle, Star, Flame,
-    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft
+    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getShamsiDate, toIsoString, addDays } from '../utils';
@@ -110,7 +110,7 @@ const Dashboard = () => {
         tasks: allTasks, totalDays, setIsTimerOpen, level, xp, progressPercent,
         currentLevelXp, xpForNextLevel,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote,
-        isNewUser, setIsNewUser, addTask, setCurrentDay
+        isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan
     } = useStore();
 
     const navigate = useNavigate();
@@ -378,10 +378,19 @@ const Dashboard = () => {
             {/* ===== تسک‌های عقب‌افتاده ===== */}
             {overdueTasks.length > 0 && (
                 <div>
-                    <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 mb-3 flex items-center gap-1.5">
-                        <ArrowDownToLine size={14} />
-                        عقب‌افتاده ({overdueTasks.length})
-                    </h3>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            <ArrowDownToLine size={14} />
+                            عقب‌افتاده ({overdueTasks.length})
+                        </h3>
+                        <button
+                            onClick={rebalancePlan}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100/50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-[11px] font-bold rounded-xl transition duration-200"
+                        >
+                            <GitCompare size={13} />
+                            بالانس خودکار (Rebalance)
+                        </button>
+                    </div>
                     <div className="space-y-2.5">
                         {overdueTasks.map(task => (
                             <TaskCard

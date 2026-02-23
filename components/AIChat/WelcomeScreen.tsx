@@ -16,7 +16,7 @@ const QUICK_TAGS = [
 
 const QUICK_PROMPTS = [
     { text: "۱۰ سوال ریاضی بساز", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-900/20" },
-    { text: "برنامه امتحان بساز", icon: ClipboardList, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
+    { text: "یک برنامه فشرده ۱۲ روزه بساز", icon: ClipboardList, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
     { text: "تحلیل عملکرد درسی من", icon: Brain, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-900/20" },
     { text: "یک جمله انگیزشی بگو", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-900/20" },
 ];

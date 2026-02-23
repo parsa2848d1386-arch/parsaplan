@@ -40,6 +40,7 @@ interface StoreContextType {
     todayDayId: number;
     autoFixDate: () => void;
     shiftIncompleteTasks: () => void;
+    rebalancePlan: () => void;
     totalDays: number;
     setTotalDays: (days: number) => void;
 
@@ -559,6 +560,38 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         });
     };
 
+    const rebalancePlan = () => {
+        const todayStr = toIsoString(new Date());
+        const overdueTasks = tasks.filter(t => !t.isCompleted && t.date < todayStr);
+        if (overdueTasks.length === 0) {
+            showToast('شما هیچ تسک عقب‌افتاده‌ای ندارید!', 'info');
+            return;
+        }
+
+        const remainingDays = Math.max(1, totalDays - todayDayId);
+
+        askConfirm('تعادل دوباره (Rebalance)', `${overdueTasks.length} تسک عقب‌افتاده پیدا شد. آیا می‌خواهید آنها را روی ${remainingDays} روز آینده پخش کنید؟`, () => {
+            let currentModifyDateStr = getDayDate(todayDayId);
+
+            setTasks(prev => {
+                const newTasks = [...prev];
+                overdueTasks.forEach((overdueT, idx) => {
+                    // Spread over remaining days starting from today modulo the rest of days
+                    const offset = idx % remainingDays;
+                    const newDateStr = toIsoString(addDays(todayStr, offset));
+
+                    const taskIndex = newTasks.findIndex(t => t.id === overdueT.id);
+                    if (taskIndex !== -1) {
+                        newTasks[taskIndex] = { ...newTasks[taskIndex], date: newDateStr, dayId: 0, isCustom: true };
+                    }
+                });
+                return newTasks;
+            });
+            showToast('تسک‌های عقب‌افتاده با موفقیت پخش شدند', 'success');
+            logAction('rebalance', 'پخش دوباره تسک‌های عقب‌افتاده');
+        });
+    };
+
     const toggleRoutineSlot = (dayId: number, slotId: number) => {
         const key = `${dayId}-${slotId}`;
         setCompletedRoutine(prev => {
@@ -714,7 +747,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         tasks, toggleTask, addTask, updateTask, deleteTask, moveTaskToDate, scheduleReview,
         currentDay, setCurrentDay, startDate, setStartDate,
         routineTemplate, setRoutineTemplate, toggleRoutineSlot, isRoutineSlotCompleted, updateRoutineIcon, resetRoutineToDefault, addRoutineSlot, updateRoutineSlot, deleteRoutineSlot,
-        getTasksForDay, getDayDate, getTasksByDate, getProgress, resetProgress, goToToday, todayDayId, autoFixDate, shiftIncompleteTasks,
+        getTasksForDay, getDayDate, getTasksByDate, getProgress, resetProgress, goToToday, todayDayId, autoFixDate, shiftIncompleteTasks, rebalancePlan,
         totalDays, setTotalDays,
         dailyNotes, saveDailyNote, getDailyNote,
         exportData, importData, syncData, loadFromCloud, isSyncing, lastSyncTime,
