@@ -230,6 +230,7 @@ export interface AppSettings {
     soundEnabled: boolean;
     language: 'fa' | 'en';
     geminiModel: string;
+    geminiApiKey?: string;
 }
 
 export interface AppState {

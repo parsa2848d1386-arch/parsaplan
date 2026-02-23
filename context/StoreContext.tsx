@@ -87,6 +87,10 @@ interface StoreContextType {
     settings: AppSettings;
     updateSettings: (newSettings: Partial<AppSettings>) => void;
 
+    // API Key
+    geminiApiKey: string;
+    setGeminiApiKey: (key: string) => void;
+
     // Gamification
     xp: number;
     level: number;
@@ -165,6 +169,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [studyHoursLog, setStudyHoursLog] = useState<Record<string, number>>({});
     const [stream, setStream] = useState<StreamType>('general');
     const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
+    const [geminiApiKey, setGeminiApiKeyState] = useState<string>('');
 
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -246,6 +251,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
                         if (data.settings.stream) setStream(data.settings.stream);
                         if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
+                        if (data.settings.geminiApiKey) setGeminiApiKeyState(data.settings.geminiApiKey);
                     }
                 } else {
                     loadDefaultPlan();
@@ -281,7 +287,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         settings: {
             darkMode, viewMode, showQuotes, stream,
             notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
-            geminiModel
+            geminiModel, geminiApiKey
         },
         lastUpdated: Date.now()
     });
@@ -682,10 +688,15 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         showToast('تنظیمات ذخیره شد', 'success');
     };
 
+    const setGeminiApiKey = (key: string) => {
+        setGeminiApiKeyState(key);
+        showToast(key ? 'API Key ذخیره شد ✓' : 'API Key حذف شد', key ? 'success' : 'info');
+    };
+
     // Construct the settings object for export/sync
     const currentSettings: AppSettings = {
         darkMode, viewMode, showQuotes, stream,
-        notifications: true, soundEnabled: true, language: 'fa', geminiModel
+        notifications: true, soundEnabled: true, language: 'fa', geminiModel, geminiApiKey
     };
 
     // Composite Value
@@ -709,6 +720,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         isTimerOpen, setIsTimerOpen, isCommandPaletteOpen, setIsCommandPaletteOpen,
         saveStatus, sidebarCollapsed, setSidebarCollapsed,
         settings: currentSettings, updateSettings,
+        geminiApiKey, setGeminiApiKey,
         archivedPlans, archiveCurrentPlan, deleteArchivedPlan
     };
 

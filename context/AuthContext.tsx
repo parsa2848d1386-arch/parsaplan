@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User, Auth } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, User, Auth } from 'firebase/auth';
 import { FirebaseConfig, ToastType } from '../types';
 import { DEFAULT_FIREBASE_CONFIG, IS_DEFAULT_FIREBASE_ENABLED } from '../firebaseConfig';
 import { useUI } from './UIContext';
@@ -14,6 +14,7 @@ interface AuthContextType {
     setUserName: (name: string) => void;
     login: (u: string, p: string) => Promise<boolean>;
     register: (u: string, p: string, name: string) => Promise<boolean>;
+    loginAsGuest: () => Promise<boolean>;
     logout: () => Promise<void>;
     firebaseConfig: FirebaseConfig | null;
     updateFirebaseConfig: (config: FirebaseConfig) => void;
@@ -133,14 +134,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const register = async (u: string, p: string, name: string): Promise<boolean> => {
         if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
         try {
-            const cred = await createUserWithEmailAndPassword(auth, generateEmail(u), p);
-            // NOTE: Data initialization for new user is handled in DataContext
+            await createUserWithEmailAndPassword(auth, generateEmail(u), p);
+            showToast(`خوش آمدی ${name} 🎉`, 'success');
             return true;
         } catch (e: any) {
             let msg = 'خطا در ثبت نام';
-            if (e.code === 'auth/email-already-in-use') msg = 'این نام کاربری قبلاً استفاده شده است';
-            else if (e.code === 'auth/weak-password') msg = 'رمز عبور باید حداقل ۶ رقم باشد';
+            if (e.code === 'auth/email-already-in-use') msg = `⚠️ نام کاربری "${u}" قبلاً ثبت شده! یک نام دیگر انتخاب کن`;
+            else if (e.code === 'auth/weak-password') msg = 'رمز عبور باید حداقل ۶ کاراکتر باشد';
+            else if (e.code === 'auth/invalid-email') msg = 'فرمت نام کاربری اشتباه است';
             showToast(msg, 'error');
+            return false;
+        }
+    };
+
+    const loginAsGuest = async (): Promise<boolean> => {
+        if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
+        try {
+            await signInAnonymously(auth);
+            setUserNameState('مهمان');
+            showToast('به عنوان مهمان وارد شدید 👋', 'info');
+            return true;
+        } catch (e: any) {
+            console.error(e);
+            showToast('خطا در ورود به عنوان مهمان', 'error');
             return false;
         }
     };
@@ -155,7 +171,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return (
         <AuthContext.Provider value={{
-            user, userId, userName, setUserName, login, register, logout,
+            user, userId, userName, setUserName, login, register, loginAsGuest, logout,
             firebaseConfig, updateFirebaseConfig, removeFirebaseConfig,
             cloudStatus, db, auth
         }}>

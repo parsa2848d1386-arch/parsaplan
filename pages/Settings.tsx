@@ -4,7 +4,8 @@ import { useStore } from '../context/StoreContext';
 import {
     Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Sun, Bell, Volume2, Globe, Shield, RefreshCcw, LogOut, ChevronLeft,
     Crown, Sparkles, Layout, Palette, Type, Smartphone, Check, Laptop, Trash2, FileText, GraduationCap, X, Settings2, Printer, Quote,
-    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye, History as HistoryIcon, BarChart2
+    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye, History as HistoryIcon, BarChart2,
+    KeyRound, EyeOff, CheckCircle2, AlertCircle, Copy
 } from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig } from '../types';
@@ -118,7 +119,173 @@ const InlineAuthForm = () => {
     );
 };
 
+/* ──────────────────────────────────────────────
+   Gemini API Key Settings Component
+   ────────────────────────────────────────────── */
+const GeminiApiKeySettings = () => {
+    const { geminiApiKey, setGeminiApiKey, settings, updateSettings } = useStore();
+    const [draft, setDraft] = useState(geminiApiKey || '');
+    const [show, setShow] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => { setDraft(geminiApiKey || ''); }, [geminiApiKey]);
+
+    const isActive = !!geminiApiKey;
+    const isDirty = draft !== (geminiApiKey || '');
+
+    const handleSave = () => {
+        setGeminiApiKey(draft.trim());
+    };
+
+    const handleRemove = () => {
+        setDraft('');
+        setGeminiApiKey('');
+    };
+
+    const handleCopy = () => {
+        if (geminiApiKey) {
+            navigator.clipboard.writeText(geminiApiKey);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const masked = geminiApiKey
+        ? geminiApiKey.slice(0, 6) + '••••••••••••' + geminiApiKey.slice(-4)
+        : '';
+
+    return (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none">
+                        <KeyRound size={17} className="text-white" />
+                    </div>
+                    <div>
+                        <h2 className="font-bold text-gray-800 dark:text-white text-sm">کلید API هوش مصنوعی</h2>
+                        <p className="text-[11px] text-gray-400 mt-0.5">Gemini API Key شخصی شما</p>
+                    </div>
+                </div>
+                {/* Status Badge */}
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${isActive
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-gray-50 dark:bg-gray-700/50 text-gray-400 border-gray-200 dark:border-gray-600'
+                    }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
+                    {isActive ? 'فعال' : 'غیرفعال'}
+                </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+                {/* Info Banner */}
+                <div className="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-800">
+                    <Sparkles size={14} className="text-indigo-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                        با وارد کردن API Key شخصی‌ات، هوش مصنوعی از سهمیه خودت استفاده می‌کنه.
+                        از <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline font-bold">Google AI Studio</a> می‌تونی رایگان دریافت کنی.
+                    </p>
+                </div>
+
+                {/* Active Key Display */}
+                {isActive && !isDirty && (
+                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 border border-gray-200 dark:border-gray-600">
+                        <KeyRound size={13} className="text-gray-400 flex-shrink-0" />
+                        <code className="flex-1 text-xs font-mono text-gray-600 dark:text-gray-300 tracking-wider">
+                            {show ? geminiApiKey : masked}
+                        </code>
+                        <div className="flex gap-1">
+                            <button
+                                onClick={() => setShow(!show)}
+                                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 transition"
+                                title={show ? 'مخفی کردن' : 'نمایش'}
+                            >
+                                {show ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                            <button
+                                onClick={handleCopy}
+                                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 transition"
+                                title="کپی"
+                            >
+                                {copied ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Input Field */}
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block">
+                        {isActive ? 'جایگزین کردن کلید' : 'وارد کردن کلید API'}
+                    </label>
+                    <div className="relative">
+                        <input
+                            type={show ? 'text' : 'password'}
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder="AIza••••••••••••••••••••••••••••••••••••"
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono outline-none focus:border-indigo-500 dark:focus:border-indigo-400 transition text-gray-800 dark:text-white placeholder:font-sans placeholder:text-gray-400"
+                            dir="ltr"
+                        />
+                        <button
+                            onClick={() => setShow(!show)}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                        >
+                            {show ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                        کلید با فرمت <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-[10px]">AIza...</code> شروع می‌شه
+                    </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-1">
+                    <button
+                        onClick={handleSave}
+                        disabled={!draft.trim() || !isDirty}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-200/50 dark:shadow-none"
+                    >
+                        <Save size={14} />
+                        ذخیره کلید
+                    </button>
+                    {isActive && (
+                        <button
+                            onClick={handleRemove}
+                            className="px-4 py-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl text-xs font-bold border border-rose-100 dark:border-rose-800 transition"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
+                </div>
+
+                {/* Model Selector */}
+                <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-2">مدل Gemini</label>
+                    <input
+                        list="gemini-models-settings"
+                        value={settings?.geminiModel || 'gemini-2.5-flash'}
+                        onChange={(e) => updateSettings({ geminiModel: e.target.value })}
+                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 transition text-gray-800 dark:text-white"
+                        dir="ltr"
+                        placeholder="gemini-2.5-flash"
+                    />
+                    <datalist id="gemini-models-settings">
+                        <option value="gemini-2.5-flash" />
+                        <option value="gemini-2.0-flash" />
+                        <option value="gemini-1.5-flash" />
+                        <option value="gemini-1.5-pro" />
+                        <option value="gemini-pro" />
+                    </datalist>
+                    <p className="text-[10px] text-gray-400 mt-1.5">مدل 2.5 Flash سریع‌ترین گزینه است</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const FirebaseSettings = () => {
+
     const { firebaseConfig, updateFirebaseConfig, removeFirebaseConfig, cloudStatus } = useStore();
     const [isEditing, setIsEditing] = useState(!firebaseConfig);
     const [form, setForm] = useState<FirebaseConfig>({
@@ -390,6 +557,9 @@ const Settings = () => {
             </div>
 
 
+
+            {/* --- 2. Gemini AI API Key --- */}
+            <GeminiApiKeySettings />
 
             {/* --- 3. Account & Data --- */}
             <div className="grid md:grid-cols-2 gap-6">

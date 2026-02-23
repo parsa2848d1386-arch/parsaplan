@@ -3,8 +3,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
-    Menu, Bell, Search, X, LogOut, Moon, Sun, Monitor,
-    Cloud, CloudOff, AlertTriangle, MessageSquare, Sparkles, ChevronLeft, ChevronRight, GripVertical
+    Menu, Bell, Search, X, LogOut, Moon, Sun,
+    Cloud, CloudOff, AlertTriangle, MessageSquare, Sparkles, ChevronLeft, ChevronRight,
+    Zap, Star, TrendingUp
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import AIChatPanel from './AIChatPanel';
@@ -13,24 +14,46 @@ import { AuthModal } from './AuthModal';
 import PrintableSchedule from './PrintableSchedule';
 import { getShamsiDate } from '../utils';
 
-/* ===== ثابت‌ها ===== */
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/': { title: 'داشبورد', breadcrumb: 'داشبورد' },
     '/routine': { title: 'برنامه روزانه', breadcrumb: 'روتین' },
     '/subjects': { title: 'مدیریت دروس', breadcrumb: 'دروس' },
     '/analysis': { title: 'تحلیل عملکرد', breadcrumb: 'تحلیل' },
-    '/leaderboard': { title: 'لیدر بورد', breadcrumb: 'لیگ' },
+    '/leaderboard': { title: 'لیدربورد', breadcrumb: 'لیگ' },
     '/settings': { title: 'تنظیمات', breadcrumb: 'تنظیمات' },
     '/history': { title: 'تاریخچه', breadcrumb: 'تاریخچه' },
-    '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'دستیار AI' },
+    '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'AI' },
+};
+
+/* ===== XP Progress Ring ===== */
+const XpRing = ({ percent, size = 36, stroke = 3 }: { percent: number; size?: number; stroke?: number }) => {
+    const r = (size - stroke * 2) / 2;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (percent / 100) * circ;
+    return (
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="xp-ring -rotate-90">
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-indigo-100 dark:text-indigo-900/50" />
+            <circle
+                cx={size / 2} cy={size / 2} r={r} fill="none"
+                stroke="url(#xpGrad)" strokeWidth={stroke}
+                strokeLinecap="round"
+                strokeDasharray={circ}
+                strokeDashoffset={offset}
+                className="transition-all duration-1000 ease-out"
+            />
+            <defs>
+                <linearGradient id="xpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#6366f1" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+            </defs>
+        </svg>
+    );
 };
 
 const Layout = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    // اگر در روت اصلی ai-chat هستیم، این true می‌شود. اما طبق درخواست کاربر می‌خواهیم یکپارچه باشد.
-    // شاید منظور کاربر این است که حتی در صفحه ai-chat هم همان پنل بماند، یا اینکه کلاً ai-chat page حذف شود و فقط پنل باشد.
-    // اما فعلا فرض ما این است که پنل کناری (Sidebar) در همه صفحات بجز login/etc باز می‌شود.
     const isAIChatPage = location.pathname === '/ai-chat';
 
     const {
@@ -41,41 +64,24 @@ const Layout = () => {
         userName, showToast
     } = useStore();
 
-    /* ===== state موبایل: نمایش sidebar ===== */
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
-
-    /* ===== AI Panel State ===== */
-    const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
-    const [aiPanelWidth, setAiPanelWidth] = useState(350); // عرض پیش‌فرض
+    const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+    const [aiPanelWidth, setAiPanelWidth] = useState(360);
     const sidebarRef = useRef<HTMLDivElement>(null);
     const isResizingRef = useRef(false);
 
-    const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
-        mouseDownEvent.preventDefault();
+    const startResizing = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
         isResizingRef.current = true;
     }, []);
 
-    const stopResizing = useCallback(() => {
-        isResizingRef.current = false;
-    }, []);
+    const stopResizing = useCallback(() => { isResizingRef.current = false; }, []);
 
-    const resize = useCallback((mouseMoveEvent: MouseEvent) => {
+    const resize = useCallback((e: MouseEvent) => {
         if (isResizingRef.current) {
-            // محاسبه عرض جدید (از سمت چپ صفحه تا محل موس، ولی ما سمت راست هستیم پس: window.innerWidth - mouseX)
-            // اما چون در RTL هستیم ممکن است برعکس باشد؟ 
-            // در حالت LTR، پنل سمت راست است. در RTL پنل سمت چپ است؟ 
-            // در کد قبلی: flex-row بود. ستون ۱ (nav)، ستون ۲ (main)، ستون ۳ (AI Panel).
-            // پس AI Panel سمت راست (یا چپ بسته به جهت) است. 
-            // در HTML direction: rtl نیست مگر در body تنظیم شده باشد. 
-            // اگر جهت LTR باشد، پنل سمت راست است. 
-            // بیایید فرض کنیم پنل سمت راست است (flex-row items order).
-            // عرض جدید = window.innerWidth - mouseMoveEvent.clientX
-            // بیایید لاگین کنیم که بفهمیم.
-            const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-            if (newWidth > 250 && newWidth < 600) {
-                setAiPanelWidth(newWidth);
-            }
+            const newWidth = window.innerWidth - e.clientX;
+            if (newWidth > 280 && newWidth < 620) setAiPanelWidth(newWidth);
         }
     }, []);
 
@@ -91,22 +97,17 @@ const Layout = () => {
     const daysLeft = Math.max(0, totalDays - currentDay);
     const currentPage = PAGE_TITLES[location.pathname] || PAGE_TITLES['/'];
 
-    /* ===== آیتم‌های ناوبری اصلی ===== */
     const mainNavItems = [
-        { to: '/', icon: Home, label: 'داشبورد' },
-        { to: '/routine', icon: CalendarClock, label: 'روتین' },
-        { to: '/subjects', icon: BookOpen, label: 'دروس' },
-        { to: '/analysis', icon: BarChart2, label: 'تحلیل' },
-        { to: '/leaderboard', icon: Trophy, label: 'لیگ' },
+        { to: '/', icon: Home, label: 'داشبورد', color: 'text-indigo-500' },
+        { to: '/routine', icon: CalendarClock, label: 'روتین', color: 'text-blue-500' },
+        { to: '/subjects', icon: BookOpen, label: 'دروس', color: 'text-violet-500' },
+        { to: '/analysis', icon: BarChart2, label: 'تحلیل', color: 'text-cyan-500' },
+        { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
     ];
-
-    /* ===== آیتم‌های ناوبری ثانویه ===== */
     const secondaryNavItems = [
-        // { to: '/ai-chat', icon: Sparkles, label: 'دستیار AI' }, // حذف لینک جداگانه اگر پنل یکپارچه است
-        { to: '/settings', icon: Settings, label: 'تنظیمات' },
+        { to: '/settings', icon: Settings, label: 'تنظیمات', color: 'text-gray-400' },
     ];
 
-    /* ===== تعیین رنگ آیکون ابر (وضعیت ذخیره‌سازی) ===== */
     const getCloudIconColor = () => {
         if (isSyncing) return 'text-yellow-500 animate-pulse';
         if (cloudStatus === 'error' || saveStatus === 'error') return 'text-red-500';
@@ -120,292 +121,374 @@ const Layout = () => {
         if (cloudStatus === 'disconnected') return CloudOff;
         return Cloud;
     };
-
     const CloudIcon = getCloudIcon();
 
-    /* ===== بستن sidebar موبایل هنگام تغییر صفحه ===== */
-    useEffect(() => {
-        setShowMobileSidebar(false);
-    }, [location.pathname]);
+    useEffect(() => { setShowMobileSidebar(false); }, [location.pathname]);
 
-    const toggleAiPanel = () => {
-        setIsAiPanelOpen(!isAiPanelOpen);
-    };
+    const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
     return (
         <div className={`${darkMode ? 'dark' : ''}`}>
-            {/* نمای چاپ */}
             <PrintableSchedule />
 
-            {/* نمای صفحه */}
-            <div className="flex h-[100dvh] overflow-hidden no-print bg-gray-50 dark:bg-gray-950 text-right" dir="rtl">
-                {/* مدال‌ها و Overlay‌ها */}
-                <AuthModal
-                    isOpen={!user}
-                    onClose={() => { }}
-                    onLogin={login}
-                    onRegister={register}
-                    isLoading={false}
-                />
+            <div className="flex h-[100dvh] overflow-hidden no-print bg-slate-50 dark:bg-gray-950 text-right" dir="rtl">
+                <AuthModal isOpen={!user} onClose={() => { }} onLogin={login} onRegister={register} isLoading={false} />
 
-                {/* ============================================================
-                    ستون ۱: ناوبری کناری (Sidebar) - دسکتاپ
-                   ============================================================ */}
-                <aside
-                    className={`hidden md:flex flex-col h-full bg-white dark:bg-gray-900 border-l border-gray-100 dark:border-gray-800 transition-all duration-300 z-30 flex-shrink-0 relative ${sidebarCollapsed ? 'w-20' : 'w-64'}`}
-                >
-                    {/* لوگو و نام برنامه */}
-                    <div className="h-16 flex items-center px-6 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none flex-shrink-0">
+                {/* ====================================================
+                    SIDEBAR — DESKTOP
+                   ==================================================== */}
+                <aside className={`
+                    hidden md:flex flex-col h-full z-30 flex-shrink-0 relative
+                    bg-white dark:bg-gray-900
+                    border-l border-gray-100/80 dark:border-gray-800/80
+                    transition-all duration-300
+                    ${sidebarCollapsed ? 'w-[72px]' : 'w-64'}
+                `}>
+                    {/* Logo */}
+                    <div className="h-16 flex items-center px-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 gap-3">
+                        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex-shrink-0">
                             <span className="text-white font-black text-sm">P</span>
                         </div>
                         {!sidebarCollapsed && (
-                            <span className="mr-3 font-black text-xl text-gray-800 dark:text-white tracking-tight">ParsaPlan</span>
+                            <div className="flex-1 min-w-0">
+                                <span className="font-black text-lg text-gray-800 dark:text-white tracking-tight">ParsaPlan</span>
+                            </div>
                         )}
                         <button
                             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            className="mr-auto p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition md:hidden lg:block"
+                            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition ml-auto"
                         >
-                            {sidebarCollapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+                            {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                         </button>
                     </div>
 
-                    {/* لیست منو */}
-                    <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
+                    {/* Nav Items */}
+                    <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1 custom-scrollbar">
                         {mainNavItems.map((item) => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
-                                className={({ isActive }) => `flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold'
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200 font-medium'
-                                    }`}
+                                title={sidebarCollapsed ? item.label : undefined}
+                                className={({ isActive }) =>
+                                    `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group font-medium text-sm
+                                    ${isActive
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/25 text-indigo-600 dark:text-indigo-400 font-bold'
+                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-800 dark:hover:text-gray-200'
+                                    }`
+                                }
                             >
-                                <item.icon size={20} className="flex-shrink-0" />
-                                {!sidebarCollapsed && <span>{item.label}</span>}
-                                {sidebarCollapsed && (
-                                    <div className="absolute right-16 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none z-50 whitespace-nowrap">
-                                        {item.label}
-                                    </div>
+                                {({ isActive }) => (
+                                    <>
+                                        {isActive && (
+                                            <span className="absolute right-0 top-1/4 bottom-1/4 w-0.5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-l-full" />
+                                        )}
+                                        <item.icon
+                                            size={19}
+                                            className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-indigo-500' : item.color}`}
+                                        />
+                                        {!sidebarCollapsed && <span>{item.label}</span>}
+                                    </>
                                 )}
                             </NavLink>
                         ))}
 
-                        <div className="my-4 border-t border-gray-100 dark:border-gray-800"></div>
+                        <div className="my-3 mx-2 border-t border-gray-100 dark:border-gray-800" />
 
                         {secondaryNavItems.map((item) => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
-                                className={({ isActive }) => `flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold'
-                                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200 font-medium'
-                                    }`}
+                                title={sidebarCollapsed ? item.label : undefined}
+                                className={({ isActive }) =>
+                                    `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm
+                                    ${isActive
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/25 text-indigo-600 dark:text-indigo-400 font-bold'
+                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-800 dark:hover:text-gray-200'
+                                    }`
+                                }
                             >
-                                <item.icon size={20} className="flex-shrink-0" />
-                                {!sidebarCollapsed && <span>{item.label}</span>}
+                                {({ isActive }) => (
+                                    <>
+                                        <item.icon size={19} className={`flex-shrink-0 ${isActive ? 'text-indigo-500' : item.color}`} />
+                                        {!sidebarCollapsed && <span>{item.label}</span>}
+                                    </>
+                                )}
                             </NavLink>
                         ))}
                     </nav>
 
-                    {/* فوتر سایدبار (کاربر و سینک) */}
-                    <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                    {/* XP + User Footer */}
+                    <div className={`flex-shrink-0 border-t border-gray-100 dark:border-gray-800 ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
                         {!sidebarCollapsed ? (
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400">
-                                        <CloudIcon size={14} className={getCloudIconColor()} />
-                                        <span>وضعیت ابری</span>
+                                {/* XP Bar */}
+                                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-2.5">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <div className="flex items-center gap-1.5">
+                                            <Zap size={13} className="text-indigo-500" />
+                                            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">سطح {level}</span>
+                                        </div>
+                                        <span className="text-[10px] text-indigo-400 font-bold">{currentLevelXp}/{xpForNextLevel} XP</span>
                                     </div>
-                                    <span className={`w-2 h-2 rounded-full ${cloudStatus === 'connected' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                    <div className="w-full h-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-gradient-to-l from-indigo-500 to-violet-500 rounded-full transition-all duration-1000"
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-sm">
-                                        {userName ? userName.charAt(0).toUpperCase() : 'U'}
+
+                                {/* User Info */}
+                                <div className="flex items-center gap-2.5">
+                                    <div className="relative flex-shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-xs shadow-md shadow-indigo-200 dark:shadow-none">
+                                            {userInitial}
+                                        </div>
+                                        <span className={`absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900 ${cloudStatus === 'connected' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-bold text-gray-800 dark:text-white truncate">{userName || 'کاربر مهمان'}</p>
-                                        <p className="text-[10px] text-gray-400 truncate">سطح {level}</p>
+                                        <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{userName || 'کاربر مهمان'}</p>
+                                        <p className="text-[10px] text-gray-400 truncate flex items-center gap-1">
+                                            <Star size={9} className="text-amber-400 fill-amber-400" />
+                                            {xp} امتیاز کل
+                                        </p>
                                     </div>
+                                    <CloudIcon size={15} className={`flex-shrink-0 ${getCloudIconColor()}`} />
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center gap-3">
-                                <CloudIcon size={18} className={getCloudIconColor()} />
-                                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xs">
-                                    {userName ? userName.charAt(0).toUpperCase() : 'U'}
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="relative">
+                                    <XpRing percent={progressPercent} size={38} stroke={3} />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400">{level}</span>
+                                    </div>
                                 </div>
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-xs">
+                                    {userInitial}
+                                </div>
+                                <CloudIcon size={14} className={getCloudIconColor()} />
                             </div>
                         )}
                     </div>
                 </aside>
 
-                {/* سایه موبایل برای بستن سایدبار */}
+                {/* Mobile sidebar overlay */}
                 {showMobileSidebar && (
                     <div
-                        className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+                        className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
                         onClick={() => setShowMobileSidebar(false)}
-                    ></div>
+                    />
                 )}
 
-                {/* سایدبار موبایل */}
-                <div className={`fixed inset-y-0 right-0 w-64 bg-white dark:bg-gray-900 z-50 transform transition-transform duration-300 md:hidden shadow-2xl ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
-                    <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-800">
-                        <span className="font-black text-xl text-gray-800 dark:text-white">ParsaPlan</span>
-                        <button onClick={() => setShowMobileSidebar(false)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
-                            <X size={20} />
+                {/* Mobile Sidebar */}
+                <div className={`fixed inset-y-0 right-0 w-72 bg-white dark:bg-gray-900 z-50 flex flex-col transform transition-transform duration-300 md:hidden shadow-2xl ${showMobileSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md">
+                                <span className="text-white font-black text-sm">P</span>
+                            </div>
+                            <span className="font-black text-lg text-gray-800 dark:text-white">ParsaPlan</span>
+                        </div>
+                        <button onClick={() => setShowMobileSidebar(false)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
+                            <X size={18} />
                         </button>
                     </div>
-                    <nav className="p-4 space-y-1">
+
+                    {/* Mobile XP */}
+                    <div className="px-4 py-3">
+                        <div className="bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-2xl p-3">
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <XpRing percent={progressPercent} size={40} stroke={3} />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <span className="text-[10px] font-black text-indigo-600">{level}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-gray-800 dark:text-white">{userName || 'کاربر'}</p>
+                                    <p className="text-[11px] text-indigo-500 font-bold">سطح {level} • {xp} XP</p>
+                                </div>
+                            </div>
+                            <div className="mt-2 w-full h-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-l from-indigo-500 to-violet-500 rounded-full transition-all duration-1000"
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <nav className="flex-1 overflow-y-auto px-3 space-y-1">
                         {[...mainNavItems, ...secondaryNavItems].map((item) => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
                                 onClick={() => setShowMobileSidebar(false)}
-                                className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-gray-500 hover:bg-gray-50'}`}
+                                className={({ isActive }) =>
+                                    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium
+                                    ${isActive
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold'
+                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`
+                                }
                             >
-                                <item.icon size={20} />
-                                <span>{item.label}</span>
+                                {({ isActive }) => (
+                                    <>
+                                        <item.icon size={20} className={isActive ? 'text-indigo-500' : item.color} />
+                                        <span>{item.label}</span>
+                                    </>
+                                )}
                             </NavLink>
                         ))}
                     </nav>
                 </div>
 
-                {/* ============================================================
-                    ستون ۲: محتوای اصلی (Main Content)
-                   ============================================================ */}
-                <main className="flex-1 flex flex-col min-w-0 relative h-full transition-all">
-                    {/* هدر بالا — دسکتاپ */}
-                    <header className="hidden md:flex items-center justify-between h-16 px-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md flex-shrink-0 z-20">
-                        {/* سمت راست: عنوان صفحه یا مسیر */}
+                {/* ====================================================
+                    MAIN CONTENT
+                   ==================================================== */}
+                <main className="flex-1 flex flex-col min-w-0 relative h-full">
+                    {/* Desktop Header */}
+                    <header className="hidden md:flex items-center justify-between h-16 px-6 border-b border-gray-100/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md flex-shrink-0 z-20">
                         <div className="flex items-center gap-3">
-                            <h2 className="text-lg font-black text-gray-800 dark:text-white">{currentPage.title}</h2>
+                            <h2 className="text-base font-black text-gray-800 dark:text-white">{currentPage.title}</h2>
                             {isSyncing && (
-                                <span className="text-xs text-yellow-500 flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full">
-                                    <Cloud size={12} /> در حال همگام‌سازی...
+                                <span className="text-xs text-amber-600 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full animate-pulse">
+                                    <Cloud size={11} /> در حال سینک...
                                 </span>
                             )}
                         </div>
 
-                        {/* وسط: نام کاربر و دکمه AI Panel */}
-                        <div className="flex items-center gap-3">
-                            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold">
+                        <div className="flex items-center gap-2">
+                            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold">
                                 <span>{getShamsiDate(new Date().toISOString())}</span>
                             </div>
 
+                            {/* XP chip */}
+                            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold">
+                                <Zap size={12} />
+                                <span>{xp} XP</span>
+                            </div>
+
                             <button
-                                onClick={toggleAiPanel}
+                                onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${isAiPanelOpen
-                                    ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
-                                    : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
+                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/30'
+                                    : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-indigo-300'
                                     }`}
                             >
-                                <Sparkles size={14} />
-                                <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار هوشمند'}</span>
+                                <Sparkles size={13} className={isAiPanelOpen ? 'text-white' : 'text-indigo-500'} />
+                                <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار AI'}</span>
                             </button>
-                        </div>
 
-                        {/* سمت چپ: دکمه‌های عملیات */}
-                        <div className="flex items-center gap-2 justify-end">
                             <button
                                 onClick={() => setShowSearchOverlay(!showSearchOverlay)}
-                                className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition flex items-center justify-center"
-                                title="جستجو"
+                                className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition flex items-center justify-center"
                             >
-                                <Search size={18} />
+                                <Search size={16} />
                             </button>
                             <button
                                 onClick={() => showToast('اعلان جدیدی وجود ندارد', 'info')}
-                                className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition flex items-center justify-center"
-                                title="اعلان‌ها"
+                                className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition flex items-center justify-center"
                             >
-                                <Bell size={18} />
+                                <Bell size={16} />
                             </button>
                         </div>
                     </header>
 
-                    {/* هدر بالا — موبایل */}
+                    {/* Mobile Header */}
                     <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg flex-shrink-0 z-20">
-                        <button onClick={() => setShowMobileSidebar(true)} className="p-2 text-gray-500">
+                        <button onClick={() => setShowMobileSidebar(true)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
                             <Menu size={20} />
                         </button>
-                        <span className="font-bold text-gray-800 dark:text-white">{currentPage.title}</span>
-                        <div className="flex gap-1">
-                            <button onClick={toggleAiPanel} className={`p-2 rounded-lg ${isAiPanelOpen ? 'text-indigo-500 bg-indigo-50' : 'text-gray-400'}`}>
-                                <Sparkles size={18} />
-                            </button>
-                        </div>
+                        <span className="font-bold text-sm text-gray-800 dark:text-white">{currentPage.title}</span>
+                        <button
+                            onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+                            className={`p-2 rounded-xl transition ${isAiPanelOpen ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        >
+                            <Sparkles size={18} />
+                        </button>
                     </header>
 
-                    {/* نوار جستجو */}
+                    {/* Search Overlay */}
                     {showSearchOverlay && (
-                        <div className="flex items-center h-12 px-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 z-20 gap-3 animate-in slide-in-from-top-2">
-                            <Search size={16} className="text-gray-400" />
+                        <div className="flex items-center h-12 px-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 gap-3 animate-fade-in-down">
+                            <Search size={15} className="text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="جستجو..."
-                                className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200"
+                                placeholder="جستجو در تسک‌ها..."
+                                className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder:text-gray-400"
                                 autoFocus
                                 onKeyDown={(e) => { if (e.key === 'Escape') setShowSearchOverlay(false); }}
                             />
-                            <button onClick={() => setShowSearchOverlay(false)}><X size={16} className="text-gray-400" /></button>
+                            <button onClick={() => setShowSearchOverlay(false)}><X size={15} className="text-gray-400" /></button>
                         </div>
                     )}
 
-                    {/* محتوای صفحه */}
-                    <div className="flex-1 overflow-y-auto relative scroll-smooth p-0">
-                        {/* در موبایل اگر پنل AI باز باشد، روی کل صفحه بیاید یا زیر باشد؟ 
-                             معمولاً در موبایل پنل AI تمام صفحه یا مودال است. 
-                             در دسکتاپ کنار صفحه است. */}
+                    {/* Page Content */}
+                    <div className="flex-1 overflow-y-auto relative custom-scrollbar">
                         <div className={`h-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}>
                             <Outlet />
-                            {/* فضای خالی پایین برای موبایل نویگیشن */}
-                            <div className="h-20 md:h-0"></div>
+                            <div className="h-20 md:h-0" />
                         </div>
                     </div>
 
-                    {/* ناوبری پایین — موبایل */}
-                    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-6 py-2 flex justify-between items-center z-30 pb-safe">
+                    {/* Bottom Nav — Mobile Pill */}
+                    <nav className="mobile-bottom-nav md:hidden">
                         {mainNavItems.map((item) => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
-                                className={({ isActive }) => `flex flex-col items-center gap-1 text-[10px] font-medium transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-600'}`}
+                                className={({ isActive }) =>
+                                    `nav-pill-item ${isActive ? 'active' : ''}`
+                                }
                             >
-                                <item.icon size={20} strokeWidth={2} />
-                                <span>{item.label}</span>
+                                {({ isActive }) => (
+                                    <>
+                                        <item.icon
+                                            size={17}
+                                            strokeWidth={isActive ? 2.5 : 1.8}
+                                            className="transition-transform duration-200"
+                                            style={{ transform: isActive ? 'scale(1.1)' : 'scale(1)' }}
+                                        />
+                                        <span className="leading-none">{item.label}</span>
+                                    </>
+                                )}
                             </NavLink>
                         ))}
                     </nav>
                 </main>
 
-                {/* ============================================================
-                    ستون ۳: پنل دستیار AI (Resizable)
-                   ============================================================ */}
+                {/* ====================================================
+                    AI PANEL (Right side on desktop)
+                   ==================================================== */}
                 {isAiPanelOpen && (
                     <>
-                        {/* Resizer Handle (فقط دسکتاپ) */}
+                        {/* Resizer */}
                         <div
                             className="hidden md:flex w-1 bg-gray-100 dark:bg-gray-800 hover:bg-indigo-400 cursor-col-resize z-40 transition-colors items-center justify-center group"
                             onMouseDown={startResizing}
                         >
-                            <div className="h-8 w-1 bg-gray-300 group-hover:bg-white rounded-full"></div>
+                            <div className="h-8 w-0.5 bg-gray-300 group-hover:bg-white rounded-full" />
                         </div>
 
-                        {/* پنل */}
                         <aside
                             ref={sidebarRef}
-                            className={`flex-shrink-0 h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 z-30 flex flex-col transition-all duration-0
-                                ${window.innerWidth < 768 ? 'w-full fixed inset-0 z-50' : ''}
+                            className={`flex-shrink-0 h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 z-30 flex flex-col
+                                ${window.innerWidth < 768 ? 'w-full fixed inset-0 z-50 animate-slide-in-bottom' : 'transition-none'}
                             `}
                             style={{ width: window.innerWidth < 768 ? '100%' : `${aiPanelWidth}px` }}
                         >
-                            {/* دکمه بستن در موبایل */}
-                            <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100">
-                                <h3 className="font-bold">دستیار هوشمند</h3>
-                                <button onClick={() => setIsAiPanelOpen(false)} className="p-2"><X size={20} /></button>
+                            <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles size={16} className="text-indigo-500" />
+                                    <h3 className="font-bold text-sm text-gray-800 dark:text-white">دستیار هوشمند</h3>
+                                </div>
+                                <button onClick={() => setIsAiPanelOpen(false)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
+                                    <X size={18} />
+                                </button>
                             </div>
-
                             <AIChatPanel />
                         </aside>
                     </>
