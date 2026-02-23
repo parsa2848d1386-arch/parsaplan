@@ -53,10 +53,10 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
                 </div>
 
                 <div className="flex items-center gap-1">
-                    <button onClick={(e) => onEdit(e, task)} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-indigo-500 transition">
+                    <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-indigo-500 transition">
                         <Edit2 size={16} />
                     </button>
-                    <button onClick={(e) => onDelete(e, task.id!)} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-rose-500 transition">
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-rose-500 transition">
                         <Trash2 size={16} />
                     </button>
                 </div>

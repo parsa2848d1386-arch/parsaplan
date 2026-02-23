@@ -73,7 +73,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             onToggle(task.id!);
         } else if (offset < -SWIPE_THRESHOLD) {
             haptics.heavy();
-            onDelete({ stopPropagation: () => { }, preventDefault: () => { } } as React.MouseEvent, task.id!);
+            onDelete({ stopPropagation: () => { }, preventDefault: () => { } } as unknown as React.MouseEvent, task.id!);
         }
     }, [onToggle, onDelete, task.id]);
 
@@ -129,7 +129,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                             </span>
                         </div>
                     </div>
-                    <div className="flex gap-1 pl-1">
+                    <div className="flex gap-1 pl-1" onPointerDownCapture={(e) => e.stopPropagation()}>
                         <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="text-gray-400 hover:text-blue-500" aria-label="ویرایش"><Pencil size={14} /></button>
                         <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="text-gray-400 hover:text-rose-500" aria-label="حذف"><Trash2 size={14} /></button>
                     </div>
@@ -210,7 +210,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 </div>
 
                 {/* Bottom Section: Footer Actions (Row Layout) */}
-                <div className="w-full flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1">
+                <div className="w-full flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1" onPointerDownCapture={(e) => e.stopPropagation()}>
                     <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition" aria-label="ویرایش تسک">
                         <Pencil size={14} /> ویرایش
                     </button>
