@@ -78,27 +78,33 @@ const WeekMini = () => {
 
     return (
         <div className="flex items-end gap-2 justify-center">
-            {days.map((d, i) => (
-                <div key={i} className="flex flex-col items-center gap-1">
-                    <button
-                        onClick={() => setCurrentDay(d.dayId)}
-                        className={`relative w-8 flex flex-col items-center justify-end h-14 bg-gray-100 dark:bg-gray-700/50 rounded-xl overflow-hidden hover:opacity-80 transition cursor-pointer ${d.dayId === currentDay ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900' : ''}`}
-                    >
-                        <div
-                            className={`w-full rounded-xl transition-all duration-700 ${d.pct > 0.8 ? 'bg-emerald-500' : d.pct > 0.4 ? 'bg-indigo-400' : d.pct > 0 ? 'bg-indigo-300' : 'bg-transparent'}`}
-                            style={{ height: `${Math.max(d.pct * 100, 0)}%` }}
-                        />
-                        {d.isToday && (
-                            <div className="absolute top-0.5 right-0 left-0 flex justify-center">
-                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-                            </div>
-                        )}
-                    </button>
-                    <span className={`text-[9px] font-bold ${d.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
-                        {weekDays[i]}
-                    </span>
-                </div>
-            ))}
+            {days.map((d, i) => {
+                const dateObj = new Date(d.date);
+                const dayName = new Intl.DateTimeFormat('fa-IR', { weekday: 'long' }).format(dateObj);
+                const shortHand = dayName.replace('شنبه', 'ش').replace('یکشنبه', 'ی').replace('دوشنبه', 'د').replace('سه‌شنبه', 'س').replace('چهارشنبه', 'چ').replace('پنجشنبه', 'پ').replace('جمعه', 'ج').slice(0, 3); // Or keep full word
+
+                return (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                        <button
+                            onClick={() => setCurrentDay(d.dayId)}
+                            className={`relative w-10 flex flex-col items-center justify-end h-14 bg-gray-100 dark:bg-gray-700/50 rounded-xl overflow-hidden hover:opacity-80 transition cursor-pointer ${d.dayId === currentDay ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900 border border-indigo-200 dark:border-indigo-800' : ''}`}
+                        >
+                            <div
+                                className={`w-full rounded-b-xl transition-all duration-700 ${d.pct > 0.8 ? 'bg-emerald-500' : d.pct > 0.4 ? 'bg-indigo-400' : d.pct > 0 ? 'bg-indigo-300' : 'bg-transparent'}`}
+                                style={{ height: `${Math.max(d.pct * 100, 0)}%` }}
+                            />
+                            {d.isToday && (
+                                <div className="absolute top-1 right-0 left-0 flex justify-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                </div>
+                            )}
+                        </button>
+                        <span className={`text-[10px] whitespace-nowrap font-bold ${d.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
+                            {dayName}
+                        </span>
+                    </div>
+                )
+            })}
         </div>
     );
 };
@@ -109,7 +115,7 @@ const Dashboard = () => {
         userName, currentDay, getProgress, getTasksByDate, getDayDate,
         tasks: allTasks, totalDays, setIsTimerOpen, level, xp, progressPercent,
         currentLevelXp, xpForNextLevel,
-        toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote,
+        toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote, showQuotes,
         isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan
     } = useStore();
 
@@ -221,7 +227,7 @@ const Dashboard = () => {
             </div>
 
             {/* ===== QUOTE ===== */}
-            {dailyQuote && (
+            {dailyQuote && showQuotes && (
                 <div className={`transition-all duration-700 ${quoteVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
                     <div className="bg-white dark:bg-gray-800/80 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
                         <Sparkles size={15} className="text-amber-400 mt-0.5 flex-shrink-0 animate-float" />

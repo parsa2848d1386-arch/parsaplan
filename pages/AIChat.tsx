@@ -26,7 +26,12 @@ interface Message {
 // but we might need to map or align if they differ. 
 // For now, we will use the local state structure and cast if needed or ensure compatibility.
 
-const AIChat: React.FC = () => {
+export interface AIChatProps {
+    isWidget?: boolean;
+    onClose?: () => void;
+}
+
+const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const navigate = useNavigate();
     const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes } = useStore();
 
@@ -576,9 +581,15 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                             <SettingsIcon size={20} />
                             {!apiKey && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>}
                         </button>
-                        <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500">
-                            <ChevronLeft size={24} />
-                        </button>
+                        {isWidget ? (
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500">
+                                <X size={24} />
+                            </button>
+                        ) : (
+                            <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500">
+                                <ChevronLeft size={24} />
+                            </button>
+                        )}
                     </div>
                 </header>
 

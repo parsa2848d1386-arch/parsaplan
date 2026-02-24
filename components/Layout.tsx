@@ -9,7 +9,7 @@ import {
     Zap, Star, TrendingUp
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-const AIChatPanel = React.lazy(() => import('./AIChatPanel'));
+const AIChat = React.lazy(() => import('../pages/AIChat'));
 import { useAuth } from '../context/AuthContext';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
@@ -441,7 +441,7 @@ const Layout = () => {
                                 </button>
                             </div>
                             <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">درحال بارگذاری...</div>}>
-                                <AIChatPanel />
+                                <AIChat isWidget={true} onClose={() => setIsAiPanelOpen(false)} />
                             </Suspense>
                         </aside>
                     </>

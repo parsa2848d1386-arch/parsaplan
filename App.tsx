@@ -18,6 +18,8 @@ const Welcome = React.lazy(() => import('./pages/Welcome'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
+import { ToastContainer, ConfirmModal } from './components/Feedback';
+import FocusTimer from './components/FocusTimer';
 
 function App() {
   return (
@@ -43,6 +45,9 @@ function App() {
           </Suspense>
         </HashRouter>
         <PWAUpdatePrompt />
+        <ToastContainer />
+        <ConfirmModal />
+        <FocusTimer />
       </ErrorBoundary>
     </StoreProvider>
   );
