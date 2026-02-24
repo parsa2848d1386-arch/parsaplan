@@ -13,7 +13,6 @@ const Analysis = React.lazy(() => import('./pages/Analysis'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const History = React.lazy(() => import('./pages/History'));
-const AIChat = React.lazy(() => import('./pages/AIChat'));
 const Welcome = React.lazy(() => import('./pages/Welcome'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -38,7 +37,6 @@ function App() {
                 <Route path="leaderboard" element={<Leaderboard />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="history" element={<History />} />
-                <Route path="ai-chat" element={<AIChat />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

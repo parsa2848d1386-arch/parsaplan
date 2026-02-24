@@ -62,11 +62,10 @@ const Layout = () => {
         syncData, isSyncing, cloudStatus, saveStatus,
         totalDays, sidebarCollapsed, setSidebarCollapsed,
         user, login, register, currentLevelXp, xpForNextLevel, progressPercent,
-        userName, showToast
+        userName, showToast, isAiPanelOpen, setIsAiPanelOpen
     } = useStore();
 
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
-    const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
     const [aiPanelWidth, setAiPanelWidth] = useState(360);
     const sidebarRef = useRef<HTMLDivElement>(null);
     const isResizingRef = useRef(false);

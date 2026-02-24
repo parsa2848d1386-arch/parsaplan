@@ -80,6 +80,8 @@ interface StoreContextType {
     setIsTimerOpen: (isOpen: boolean) => void;
     isCommandPaletteOpen: boolean;
     setIsCommandPaletteOpen: (isOpen: boolean) => void;
+    isAiPanelOpen: boolean;
+    setIsAiPanelOpen: (isOpen: boolean) => void;
     saveStatus: 'saved' | 'saving' | 'error';
     sidebarCollapsed: boolean;
     setSidebarCollapsed: (collapsed: boolean) => void;
@@ -184,6 +186,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // UI Overlays (local to Data or Global? Timer/CommandPalette are likely global UI but let's keep here for now)
     const [isTimerOpen, setIsTimerOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
     const [dailyQuote, setDailyQuote] = useState('');
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -212,10 +215,11 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
             try {
                 // Create a safety backup
-                StorageManager.createBackup();
+                const backupUserId = userId || 'parsaplan_local_user';
+                await StorageManager.createBackup(backupUserId);
 
                 // Load Data
-                const data = StorageManager.load(userId || 'parsaplan_local_user');
+                const data = await StorageManager.load(backupUserId);
 
                 if (data) {
                     if (data.tasks) setTasks(data.tasks);
@@ -680,7 +684,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     const resetProgress = () => {
-        askConfirm('ریست کامل', 'همه چیز پاک می‌شود!', () => {
+        askConfirm('ریست کامل', 'همه چیز پاک می‌شود!', async () => {
+            await StorageManager.clearAll(userId || 'parsaplan_local_user');
             localStorage.clear();
             window.location.reload();
         }, 'danger');
@@ -755,6 +760,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         subjects, addSubject, updateSubject, deleteSubject, reorderSubjects,
         auditLog, moods, setMood, studyHoursLog, logStudyHours, getStudyHoursForDate,
         isTimerOpen, setIsTimerOpen, isCommandPaletteOpen, setIsCommandPaletteOpen,
+        isAiPanelOpen, setIsAiPanelOpen,
         saveStatus, sidebarCollapsed, setSidebarCollapsed,
         settings: currentSettings, updateSettings,
         geminiApiKey, setGeminiApiKey,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 // @ts-ignore
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { get, set } from 'idb-keyval';
 import { SubjectTask, SUBJECT_LISTS } from '../types';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
 import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
@@ -33,7 +34,7 @@ export interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes, showToast, geminiApiKey } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -44,11 +45,9 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     // UI State
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
-
     // Settings (Persisted)
-    const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-    const [selectedModel, setSelectedModel] = useState(settings.geminiModel || 'gemini-2.5-flash');
+    const activeApiKey = geminiApiKey || localStorage.getItem('gemini_api_key') || '';
+    const selectedModel = settings.geminiModel || 'gemini-2.5-flash';
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 
@@ -62,28 +61,38 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
 
     // --- INITIALIZATION ---
     useEffect(() => {
-        const savedSessions = localStorage.getItem('gemini_chat_sessions');
-        if (savedSessions) {
+        const loadSessions = async () => {
             try {
-                const parsed: ChatSession[] = JSON.parse(savedSessions);
-                const fixed = parsed.map(s => ({
-                    ...s,
-                    messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
-                }));
-                setSessions(fixed);
-                if (fixed.length > 0) setActiveSessionId(fixed[0].id);
+                let savedSessions = await get('gemini_chat_sessions');
+                if (!savedSessions) {
+                    const localRaw = localStorage.getItem('gemini_chat_sessions');
+                    if (localRaw) {
+                        savedSessions = JSON.parse(localRaw);
+                    }
+                }
+
+                if (savedSessions && Array.isArray(savedSessions)) {
+                    const fixed = savedSessions.map((s: any) => ({
+                        ...s,
+                        messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+                    }));
+                    setSessions(fixed);
+                    if (fixed.length > 0) setActiveSessionId(fixed[0].id);
+                } else {
+                    createNewChat();
+                }
             } catch (e) {
-                console.error("Failed to parse sessions", e);
+                console.error("Failed to load sessions", e);
+                createNewChat();
             }
-        } else {
-            createNewChat();
-        }
+        };
+        loadSessions();
     }, []);
 
     // --- PERSISTENCE ---
     useEffect(() => {
         if (sessions.length > 0) {
-            localStorage.setItem('gemini_chat_sessions', JSON.stringify(sessions));
+            set('gemini_chat_sessions', sessions).catch(e => console.error("Failed saving sessions", e));
         }
     }, [sessions]);
 
@@ -147,11 +156,7 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
         }));
     };
 
-    const saveSettings = () => {
-        localStorage.setItem('gemini_api_key', apiKey);
-        updateSettings({ geminiModel: selectedModel });
-        setShowSettings(false);
-    };
+
 
     // --- HELPERS ---
     const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
@@ -336,8 +341,9 @@ Type B: Recurring Study Series (Daily consecutive repeat)
         // Allow sending if there are attachments even if no text
         if (!textToSend.trim() && (!attachments || attachments.length === 0)) return;
 
-        if (!apiKey) {
-            setShowSettings(true);
+        if (!activeApiKey) {
+            showToast('لطفاً کلید API را در تنظیمات وارد کنید', 'warning');
+            navigate('/settings');
             return;
         }
 
@@ -380,7 +386,7 @@ Type B: Recurring Study Series (Daily consecutive repeat)
         abortControllerRef.current = new AbortController();
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKey);
+            const genAI = new GoogleGenerativeAI(activeApiKey);
             const model = genAI.getGenerativeModel({
                 model: selectedModel,
                 systemInstruction: generateSystemPrompt()
@@ -577,10 +583,6 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                     </div>
 
                     <div className="flex items-center gap-1">
-                        <button onClick={() => setShowSettings(!showSettings)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500 relative">
-                            <SettingsIcon size={20} />
-                            {!apiKey && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>}
-                        </button>
                         {isWidget ? (
                             <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500">
                                 <X size={24} />
@@ -593,41 +595,7 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                     </div>
                 </header>
 
-                {/* Settings Overlay */}
-                {showSettings && (
-                    <div className="absolute top-[70px] right-4 left-4 z-30 animate-in fade-in slide-in-from-top-4 max-w-md mx-auto">
-                        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-gray-800 dark:text-gray-200">تنظیمات هوش مصنوعی</h3>
-                                <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-red-500"><X size={18} /></button>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">API Key (Google Gemini)</label>
-                                    <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr" placeholder="AI Key..." />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 mb-1.5 block">مدل هوش مصنوعی (تایپ یا انتخاب)</label>
-                                    <input
-                                        list="gemini-models"
-                                        value={selectedModel}
-                                        onChange={(e) => setSelectedModel(e.target.value)}
-                                        className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-900 border border-transparent focus:border-indigo-500 outline-none text-sm font-mono dir-ltr"
-                                        placeholder="نام مدل را وارد کنید (مثلاً gemini-1.5-pro)"
-                                    />
-                                    <datalist id="gemini-models">
-                                        <option value="gemini-2.5-flash" />
-                                        <option value="gemini-2.0-flash" />
-                                        <option value="gemini-1.5-flash" />
-                                        <option value="gemini-1.5-pro" />
-                                        <option value="gemini-pro" />
-                                    </datalist>
-                                </div>
-                                <button onClick={saveSettings} className="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700 transition">ذخیره تنظیمات</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth min-h-0 relative">

@@ -684,36 +684,7 @@ const Settings = () => {
                 </div>
             </div>
 
-            {/* --- AI Settings --- */}
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
-                    <Sparkles size={20} />
-                    <h2 className="font-bold">تنظیمات هوش مصنوعی</h2>
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">مدل هوش مصنوعی (تایپ یا انتخاب)</label>
-                        <input
-                            list="gemini-models-settings"
-                            value={settings?.geminiModel || 'gemini-2.5-flash'}
-                            onChange={(e) => updateSettings({ geminiModel: e.target.value })}
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition text-gray-800 dark:text-white"
-                            dir="ltr"
-                            placeholder="نام مدل را وارد کنید (مثلاً gemini-1.5-pro)"
-                        />
-                        <datalist id="gemini-models-settings">
-                            <option value="gemini-2.5-flash" />
-                            <option value="gemini-2.0-flash" />
-                            <option value="gemini-1.5-flash" />
-                            <option value="gemini-1.5-pro" />
-                            <option value="gemini-pro" />
-                        </datalist>
-                        <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">
-                            مدل 2.5 Flash سریع‌ترین و بهینه‌ترین گزینه است. شما می‌توانید مدل‌های دیگر گوگل (مثل gemini-pro) را نیز تایپ کنید.
-                        </p>
-                    </div>
-                </div>
-            </div>
+
 
             {/* Cloud Settings */}
             <FirebaseSettings />

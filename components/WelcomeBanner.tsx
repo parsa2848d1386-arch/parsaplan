@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, MessageSquare, Plus, X, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from '../context/StoreContext';
 
 interface WelcomeBannerProps {
     visible: boolean;
@@ -10,6 +11,7 @@ interface WelcomeBannerProps {
 
 export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss }) => {
     const navigate = useNavigate();
+    const { setIsAiPanelOpen } = useStore();
 
     return (
         <AnimatePresence>
@@ -56,7 +58,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss
                         {/* Action buttons */}
                         <div className="flex flex-col sm:flex-row gap-2">
                             <button
-                                onClick={() => { navigate('/ai-chat'); onDismiss(); }}
+                                onClick={() => { setIsAiPanelOpen(true); onDismiss(); }}
                                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-indigo-700 rounded-xl font-bold text-xs hover:bg-indigo-50 active:scale-95 transition-all shadow-md"
                             >
                                 <MessageSquare size={15} />
