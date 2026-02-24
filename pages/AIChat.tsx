@@ -10,7 +10,7 @@ import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
 import { ChatMessage } from '../components/AIChat/ChatMessage';
 import { ChatInput } from '../components/AIChat/ChatInput';
 import { WelcomeScreen } from '../components/AIChat/WelcomeScreen';
-import { Menu, Settings as SettingsIcon, ChevronLeft, X, Sparkles } from 'lucide-react';
+import { Menu, Settings as SettingsIcon, ChevronLeft, X, Sparkles, History as HistoryIcon } from 'lucide-react';
 
 // --- TYPES (Internal) ---
 interface Message {
@@ -571,8 +571,8 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                 {/* Header */}
                 <header className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between sticky top-0 z-20">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 -mr-2 text-gray-500">
-                            <Menu size={24} />
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-2 text-gray-500 hover:text-indigo-500 transition">
+                            <HistoryIcon size={24} />
                         </button>
                         <div className="flex flex-col">
                             <h1 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 text-sm md:text-lg">

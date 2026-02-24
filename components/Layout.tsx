@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 const AIChat = React.lazy(() => import('../pages/AIChat'));
+import { useProactiveAI } from './AIChat/useProactiveAI';
 import { useAuth } from '../context/AuthContext';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
@@ -53,6 +54,8 @@ const XpRing = ({ percent, size = 36, stroke = 3 }: { percent: number; size?: nu
 };
 
 const Layout = () => {
+    useProactiveAI();
+
     const location = useLocation();
     const navigate = useNavigate();
     const isAIChatPage = location.pathname === '/ai-chat';
@@ -62,7 +65,7 @@ const Layout = () => {
         syncData, isSyncing, cloudStatus, saveStatus,
         totalDays, sidebarCollapsed, setSidebarCollapsed,
         user, login, register, currentLevelXp, xpForNextLevel, progressPercent,
-        userName, showToast, isAiPanelOpen, setIsAiPanelOpen
+        userName, showToast, isAiPanelOpen, setIsAiPanelOpen, settings, updateSettings
     } = useStore();
 
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
@@ -305,12 +308,23 @@ const Layout = () => {
                             </div>
 
                             <button
-                                onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${isAiPanelOpen
+                                onClick={() => {
+                                    setIsAiPanelOpen(!isAiPanelOpen);
+                                    if (!isAiPanelOpen && settings?.hasUnreadAiMessage) {
+                                        updateSettings({ hasUnreadAiMessage: false });
+                                    }
+                                }}
+                                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${isAiPanelOpen
                                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/30'
                                     : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-indigo-300'
                                     }`}
                             >
+                                {settings?.hasUnreadAiMessage && !isAiPanelOpen && (
+                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border border-white dark:border-gray-900"></span>
+                                    </span>
+                                )}
                                 <Sparkles size={13} className={isAiPanelOpen ? 'text-white' : 'text-indigo-500'} />
                                 <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار AI'}</span>
                             </button>
@@ -335,9 +349,20 @@ const Layout = () => {
                         <div className="w-8 h-8"></div>
                         <span className="font-bold text-sm text-gray-800 dark:text-white absolute left-1/2 -translate-x-1/2">{currentPage.title}</span>
                         <button
-                            onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
-                            className={`p-2 rounded-xl transition ${isAiPanelOpen ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                            onClick={() => {
+                                setIsAiPanelOpen(!isAiPanelOpen);
+                                if (!isAiPanelOpen && settings?.hasUnreadAiMessage) {
+                                    updateSettings({ hasUnreadAiMessage: false });
+                                }
+                            }}
+                            className={`p-2 rounded-xl transition relative ${isAiPanelOpen ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                         >
+                            {settings?.hasUnreadAiMessage && !isAiPanelOpen && (
+                                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border border-white dark:border-gray-900"></span>
+                                </span>
+                            )}
                             <Sparkles size={18} />
                         </button>
                     </header>

@@ -231,6 +231,7 @@ export interface AppSettings {
     language: 'fa' | 'en';
     geminiModel: string;
     geminiApiKey?: string;
+    hasUnreadAiMessage?: boolean;
 }
 
 export interface AppState {
