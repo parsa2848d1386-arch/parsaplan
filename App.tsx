@@ -17,7 +17,6 @@ const LeitnerBox = React.lazy(() => import('./pages/LeitnerBox'));
 const Welcome = React.lazy(() => import('./pages/Welcome'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 import { ToastContainer, ConfirmModal } from './components/Feedback';
 import FocusTimer from './components/FocusTimer';
 
@@ -44,7 +43,6 @@ function App() {
             </Routes>
           </Suspense>
         </HashRouter>
-        <PWAUpdatePrompt />
         <ToastContainer />
         <ConfirmModal />
         <FocusTimer />

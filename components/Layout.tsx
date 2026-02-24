@@ -14,6 +14,7 @@ import { useProactiveAI } from './AIChat/useProactiveAI';
 import { useAuth } from '../context/AuthContext';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
+import { NotificationBell } from './NotificationBell';
 import { getShamsiDate } from '../utils';
 
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
@@ -337,18 +338,13 @@ const Layout = () => {
                             >
                                 <Search size={16} />
                             </button>
-                            <button
-                                onClick={() => showToast('اعلان جدیدی وجود ندارد', 'info')}
-                                className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition flex items-center justify-center"
-                            >
-                                <Bell size={16} />
-                            </button>
+                            <NotificationBell />
                         </div>
                     </header>
 
                     {/* Mobile Header */}
                     <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg flex-shrink-0 z-20 relative">
-                        <div className="w-8 h-8"></div>
+                        <NotificationBell />
                         <span className="font-bold text-sm text-gray-800 dark:text-white absolute left-1/2 -translate-x-1/2">{currentPage.title}</span>
                         <button
                             onClick={() => {
