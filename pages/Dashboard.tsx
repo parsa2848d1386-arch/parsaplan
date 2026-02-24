@@ -12,7 +12,6 @@ import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import { SubjectTask } from '../types';
 import { WelcomeBanner } from '../components/WelcomeBanner';
-import { SmartMacroPlanner } from '../components/SmartMacroPlanner';
 
 /* ===== Animated Counter ===== */
 const AnimatedNumber = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
@@ -131,7 +130,6 @@ const Dashboard = () => {
 
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isMacroPlannerOpen, setIsMacroPlannerOpen] = useState(false);
     const [quoteVisible, setQuoteVisible] = useState(false);
 
     const todayIso = toIsoString(new Date());
@@ -318,7 +316,7 @@ const Dashboard = () => {
             {/* ===== QUICK ACTIONS ===== */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <button
-                    onClick={() => setIsMacroPlannerOpen(true)}
+                    onClick={() => navigate('/analysis')}
                     className="col-span-2 lg:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md shadow-violet-200/50 dark:shadow-indigo-900/30 group"
                 >
                     <div className="flex items-center gap-3">
@@ -438,11 +436,6 @@ const Dashboard = () => {
                     defaultDateStr={activeDateIso}
                 />
             )}
-
-            <SmartMacroPlanner
-                isOpen={isMacroPlannerOpen}
-                onClose={() => setIsMacroPlannerOpen(false)}
-            />
         </div>
     );
 };

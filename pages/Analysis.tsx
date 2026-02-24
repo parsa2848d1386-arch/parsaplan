@@ -3,8 +3,9 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Subject } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, CheckCircle, Clock, Award, Target, Zap, Activity, FileText } from 'lucide-react';
+import { TrendingUp, CheckCircle, Clock, Award, Target, Zap, Activity, FileText, BrainCircuit } from 'lucide-react';
 import ActivityHeatmap from '../components/ActivityHeatmap';
+import SmartMacroPlanner from '../components/SmartMacroPlanner';
 
 const Analysis = () => {
     const { tasks, getProgress, subjects } = useStore();
@@ -86,7 +87,7 @@ const Analysis = () => {
         </div>
     );
 
-    const [activeTab, setActiveTab] = React.useState<'general' | 'exam'>('general');
+    const [activeTab, setActiveTab] = React.useState<'general' | 'exam' | 'macro'>('general');
 
     const examTasks = tasks.filter(t => t.studyType === 'exam' && t.isCompleted);
 
@@ -119,18 +120,24 @@ const Analysis = () => {
                     </div>
                 </div>
 
-                <div className="bg-gray-100 dark:bg-gray-700 p-1 rounded-xl flex">
+                <div className="bg-gray-100 dark:bg-gray-700 p-1 rounded-xl flex mb-2 md:mb-0">
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                        className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                     >
                         مطالعه عمومی
                     </button>
                     <button
                         onClick={() => setActiveTab('exam')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'exam' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                        className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${activeTab === 'exam' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                     >
-                        تحلیل آزمون‌ها
+                        تحلیل آزمون
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('macro')}
+                        className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'macro' ? 'bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                    >
+                        <BrainCircuit size={14} /> مشاور هوشمند
                     </button>
                 </div>
             </div>
@@ -263,7 +270,7 @@ const Analysis = () => {
                         </div>
                     </div>
                 </>
-            ) : (
+            ) : activeTab === 'exam' ? (
                 <div className="space-y-6 animate-in slide-in-from-bottom-5">
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard
@@ -307,6 +314,10 @@ const Analysis = () => {
                         </ResponsiveContainer>
                         {examTrendData.length === 0 && <p className="text-center text-gray-400 text-sm mt-4">هیچ داده‌ای برای نمایش وجود ندارد.</p>}
                     </div>
+                </div>
+            ) : (
+                <div className="animate-in slide-in-from-bottom-5">
+                    <SmartMacroPlanner />
                 </div>
             )}
         </div>

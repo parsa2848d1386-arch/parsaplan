@@ -17,7 +17,7 @@ interface TaskCardProps {
     onMoveToToday?: (id: string) => void;
 }
 
-const SWIPE_THRESHOLD = 80;
+const SWIPE_THRESHOLD = 50;
 
 export const TaskCard: React.FC<TaskCardProps> = ({
     task,
@@ -93,46 +93,50 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 <motion.div
                     style={{ x }}
                     drag="x"
-                    dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.5}
+                    dragElastic={0.1}
                     onDragEnd={handleDragEnd}
-                    layout
+                    layout="position"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => onToggle(task.id!)}
-                    className={`group relative z-10 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
+                    transition={{ type: 'tween', duration: 0.15 }}
+                    className="relative z-10 w-full cursor-grab active:cursor-grabbing"
                 >
-                    <div className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
-                        {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={20} strokeWidth={2} />}
-                    </div>
-                    <div className="flex-1 min-w-0 flex items-center justify-between">
-                        <div className={`truncate ${isDone ? 'opacity-50 line-through' : ''}`}>
-                            <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{task.subject}</span>
-                            <span className="mx-2 text-xs text-gray-400 dark:text-gray-500">|</span>
-                            <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{task.topic}</span>
+                    <motion.div
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => onToggle(task.id!)}
+                        className={`group relative z-10 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
+                    >
+                        <div className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
+                            {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={20} strokeWidth={2} />}
                         </div>
-                        <div className="flex gap-1 items-center">
-                            {hasTestStats && (
-                                <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[9px] font-bold">
-                                    <span className="text-emerald-600 dark:text-emerald-400">{task.testStats?.correct}✅</span>
-                                    <span className="text-rose-500">{task.testStats?.wrong}❌</span>
-                                    <span className="text-gray-400">|</span>
-                                    <span className={`${accuracy >= 50 ? 'text-emerald-600' : 'text-amber-500'}`}>{accuracy}%</span>
-                                </div>
-                            )}
-                            {task.tags && task.tags.length > 0 && <span className="text-[9px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1 rounded flex items-center">#{task.tags[0]}</span>}
-                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ml-1 ${subColor}`}>
-                                {task.details}
-                            </span>
+                        <div className="flex-1 min-w-0 flex items-center justify-between">
+                            <div className={`truncate ${isDone ? 'opacity-50 line-through' : ''}`}>
+                                <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{task.subject}</span>
+                                <span className="mx-2 text-xs text-gray-400 dark:text-gray-500">|</span>
+                                <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{task.topic}</span>
+                            </div>
+                            <div className="flex gap-1 items-center">
+                                {hasTestStats && (
+                                    <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[9px] font-bold">
+                                        <span className="text-emerald-600 dark:text-emerald-400">{task.testStats?.correct}✅</span>
+                                        <span className="text-rose-500">{task.testStats?.wrong}❌</span>
+                                        <span className="text-gray-400">|</span>
+                                        <span className={`${accuracy >= 50 ? 'text-emerald-600' : 'text-amber-500'}`}>{accuracy}%</span>
+                                    </div>
+                                )}
+                                {task.tags && task.tags.length > 0 && <span className="text-[9px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1 rounded flex items-center">#{task.tags[0]}</span>}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ml-1 ${subColor}`}>
+                                    {task.details}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex gap-1 pl-1" onPointerDownCapture={(e) => e.stopPropagation()}>
-                        <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="text-gray-400 hover:text-blue-500" aria-label="ویرایش"><Pencil size={14} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="text-gray-400 hover:text-rose-500" aria-label="حذف"><Trash2 size={14} /></button>
-                    </div>
+                        <div className="flex gap-1 pl-1" onPointerDownCapture={(e) => e.stopPropagation()}>
+                            <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="text-gray-400 hover:text-blue-500" aria-label="ویرایش"><Pencil size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="text-gray-400 hover:text-rose-500" aria-label="حذف"><Trash2 size={14} /></button>
+                        </div>
+                    </motion.div>
                 </motion.div>
             </div>
         );
