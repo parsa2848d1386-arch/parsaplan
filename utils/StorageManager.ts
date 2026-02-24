@@ -1,4 +1,4 @@
-import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject, StreamType, AppSettings, ArchivedPlan } from '../types';
+import { SubjectTask, DailyRoutineSlot, LogEntry, MoodType, CustomSubject, StreamType, AppSettings, ArchivedPlan, Flashcard } from '../types';
 import { get, set, del } from 'idb-keyval';
 
 // --- TYPES ---
@@ -16,6 +16,7 @@ export interface AppDataV1 {
     subjects?: CustomSubject[];
     customSubjects?: CustomSubject[];
     archivedPlans?: ArchivedPlan[];
+    flashcards?: Flashcard[];
     settings: AppSettings;
     lastUpdated: number;
     schemaVersion?: number;

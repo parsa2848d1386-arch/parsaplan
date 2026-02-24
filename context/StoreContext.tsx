@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, AppSettings, StreamType, ArchivedPlan, SUBJECT_LISTS, getSubjectStyle } from '../types';
+import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, AppSettings, StreamType, ArchivedPlan, SUBJECT_LISTS, getSubjectStyle, Flashcard } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
@@ -140,6 +140,12 @@ interface StoreContextType {
     // New user onboarding
     isNewUser: boolean;
     setIsNewUser: (v: boolean) => void;
+
+    // Flashcards (Leitner)
+    flashcards: Flashcard[];
+    addFlashcard: (card: Omit<Flashcard, 'id' | 'boxId' | 'nextReviewDate' | 'createdAt'>) => void;
+    reviewFlashcard: (id: string, success: boolean) => void;
+    deleteFlashcard: (id: string) => void;
 }
 
 const DataContext = createContext<Partial<StoreContextType> | undefined>(undefined);
@@ -170,6 +176,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [totalDays, setTotalDaysState] = useState(TOTAL_DAYS);
     const [archivedPlans, setArchivedPlans] = useState<ArchivedPlan[]>([]);
     const [isNewUser, setIsNewUser] = useState(false);
+    const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
 
     const [xp, setXp] = useState(0);
     const [auditLog, setAuditLog] = useState<LogEntry[]>([]);
@@ -232,6 +239,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.moods) setMoods(data.moods);
                     if (data.totalDays) setTotalDaysState(data.totalDays);
                     if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+                    if (data.flashcards) setFlashcards(data.flashcards);
 
                     if (data.subjects && data.subjects.length > 0) {
                         setSubjects(data.subjects);
@@ -292,7 +300,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const buildDataSnapshot = () => ({
         tasks, userName, routine: completedRoutine, routineTemplate,
         notes: dailyNotes, xp, logs: auditLog, moods, studyHoursLog, startDate,
-        totalDays, subjects, archivedPlans,
+        totalDays, subjects, archivedPlans, flashcards,
         settings: {
             darkMode, viewMode, showQuotes, stream,
             notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
@@ -305,7 +313,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     useEffect(() => {
         if (!isInitialized) return;
         StorageManager.save(buildDataSnapshot(), userId || 'parsaplan_local_user');
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, isInitialized, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, archivedPlans, flashcards, isInitialized, userId]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -331,7 +339,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         return () => {
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
         };
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, isInitialized, db, userId, user]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, flashcards, isInitialized, db, userId, user]);
 
     // --- REAL-TIME LISTENER ---
     const listenerSetupRef = useRef(false);
@@ -356,6 +364,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.totalDays) setTotalDaysState(data.totalDays);
                     if (data.subjects) setSubjects(data.subjects);
                     if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+                    if (data.flashcards) setFlashcards(data.flashcards);
                     if (data.startDate) {
                         setStartDateState(data.startDate);
                         recalcToday(data.startDate, data.totalDays || totalDays);
@@ -406,6 +415,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (data.totalDays) setTotalDaysState(data.totalDays);
         if (data.subjects) setSubjects(data.subjects);
         if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+        if (data.flashcards) setFlashcards(data.flashcards);
         if (data.startDate) {
             setStartDateState(data.startDate);
             recalcToday(data.startDate, data.totalDays || totalDays);
@@ -488,6 +498,55 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         showToast('برنامه با موفقیت آرشیو شد', 'success');
     };
     const deleteArchivedPlan = (planId: string) => { setArchivedPlans(prev => prev.filter(p => p.id !== planId)); showToast('حذف شد', 'info'); };
+
+    // --- FLASHCARDS (Leitner System) ---
+    const addFlashcard = (cardData: Omit<Flashcard, 'id' | 'boxId' | 'nextReviewDate' | 'createdAt'>) => {
+        const newCard: Flashcard = {
+            ...cardData,
+            id: crypto.randomUUID(),
+            boxId: 1, // Start in box 1
+            createdAt: toIsoString(new Date()),
+            nextReviewDate: toIsoString(addDays(new Date().toISOString(), 1)) // Review next day
+        };
+        setFlashcards(prev => [...prev, newCard]);
+        showToast('به جعبه لایتنر اضافه شد (جعبه ۱)', 'success');
+        addXp(10); // Reward for adding a mistake to learn
+    };
+
+    const reviewFlashcard = (id: string, success: boolean) => {
+        setFlashcards(prev => prev.map(c => {
+            if (c.id === id) {
+                let newBox = c.boxId;
+                let daysToNext = 1;
+
+                if (success) {
+                    newBox = c.boxId < 5 ? c.boxId + 1 : 5;
+                    // Leitner intervals: Box 1: 1 day, Box 2: 2 days, Box 3: 4 days, Box 4: 8 days, Box 5: 15 days
+                    const intervals = { 1: 1, 2: 2, 3: 4, 4: 8, 5: 15 };
+                    daysToNext = intervals[newBox as keyof typeof intervals] || 1;
+                    addXp(15);
+                    showToast(`کارت به جعبه ${newBox} منتقل شد`, 'success');
+                } else {
+                    newBox = 1; // Back to box 1
+                    daysToNext = 1;
+                    showToast('کارت به جعبه ۱ برگشت', 'warning');
+                }
+
+                return {
+                    ...c,
+                    boxId: newBox,
+                    lastReviewedDate: toIsoString(new Date()),
+                    nextReviewDate: toIsoString(addDays(new Date().toISOString(), daysToNext))
+                };
+            }
+            return c;
+        }));
+    };
+
+    const deleteFlashcard = (id: string) => {
+        setFlashcards(prev => prev.filter(c => c.id !== id));
+        showToast('کارت مرور حذف شد', 'info');
+    };
 
     const addTask = (task: SubjectTask) => {
         let finalDate = task.date;
@@ -765,6 +824,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         settings: currentSettings, updateSettings,
         geminiApiKey, setGeminiApiKey,
         archivedPlans, archiveCurrentPlan, deleteArchivedPlan,
+        flashcards, addFlashcard, reviewFlashcard, deleteFlashcard,
         isNewUser, setIsNewUser: (v: boolean) => setIsNewUser(v)
     };
 

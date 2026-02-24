@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { Subject, SubjectTask, SUBJECT_ICONS, StudyType, SubTask, SUBJECT_LISTS } from '../types';
 import { useStore } from '../context/StoreContext';
 import { useUI } from '../context/UIContext';
@@ -25,6 +26,7 @@ const STUDY_TYPES: { id: StudyType; label: string; icon: any }[] = [
 
 const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDayId, defaultDateStr }) => {
     const { scheduleReview, totalDays, subjects: customSubjects, settings, startDate } = useStore();
+    const navigate = useNavigate();
     const { showToast } = useUI();
     const [formData, setFormData] = useState<Partial<SubjectTask>>({});
     const [tab, setTab] = useState<'info' | 'report'>('info');
@@ -528,6 +530,15 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             />
                                         </div>
                                     </div>
+                                    {(formData.testStats?.wrong || 0) > 0 && (
+                                        <div className="mt-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-500/20 p-3 rounded-2xl flex items-center justify-between shadow-sm animate-in zoom-in-95 duration-300">
+                                            <div className="flex items-center gap-2">
+                                                <div className="bg-orange-100 dark:bg-orange-800 p-1.5 rounded-lg text-orange-600 dark:text-orange-300"><Target size={14} /></div>
+                                                <span className="text-xs text-orange-800 dark:text-orange-200 font-bold max-w-[150px] md:max-w-none">تست‌های غلط را برای مرور به جعبه لایتنر اضافه کن!</span>
+                                            </div>
+                                            <button type="button" onClick={() => { onClose(); navigate('/leitner'); }} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold shadow-sm transition-colors whitespace-nowrap">افزودن فلش‌کارت</button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

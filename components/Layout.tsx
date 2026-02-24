@@ -6,7 +6,7 @@ import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
     Menu, Bell, Search, X, LogOut, Moon, Sun,
     Cloud, CloudOff, AlertTriangle, MessageSquare, Sparkles, ChevronLeft, ChevronRight,
-    Zap, Star, TrendingUp
+    Zap, Star, TrendingUp, BrainCircuit
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 const AIChat = React.lazy(() => import('../pages/AIChat'));
@@ -25,6 +25,7 @@ const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/settings': { title: 'تنظیمات', breadcrumb: 'تنظیمات' },
     '/history': { title: 'تاریخچه', breadcrumb: 'تاریخچه' },
     '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'AI' },
+    '/leitner': { title: 'جعبه لایتنر', breadcrumb: 'لایتنر' },
 };
 
 /* ===== XP Progress Ring ===== */
@@ -104,6 +105,7 @@ const Layout = () => {
         { to: '/routine', icon: CalendarClock, label: 'روتین', color: 'text-blue-500' },
         { to: '/subjects', icon: BookOpen, label: 'دروس', color: 'text-violet-500' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل', color: 'text-cyan-500' },
+        { to: '/leitner', icon: BrainCircuit, label: 'لایتنر', color: 'text-orange-500' },
         { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
     ];
     const secondaryNavItems = [

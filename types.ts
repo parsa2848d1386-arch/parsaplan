@@ -188,6 +188,19 @@ export interface ArchivedPlan {
     stream: StreamType;
 }
 
+// New Feature: Leitner Flashcards (Phase 6)
+export interface Flashcard {
+    id: string;
+    question: string;
+    answer: string;
+    subject: string;
+    topic: string;
+    boxId: number; // 1 to 5
+    nextReviewDate: string; // ISO Date String
+    lastReviewedDate?: string;
+    createdAt: string;
+}
+
 // New Feature: Routine Templates
 export interface RoutineTemplate {
     id: string;
@@ -240,4 +253,5 @@ export interface AppState {
     completedRoutineIds: string[];
     currentDayIndex: number;
     archivedPlans: ArchivedPlan[];
+    flashcards: Flashcard[];
 }

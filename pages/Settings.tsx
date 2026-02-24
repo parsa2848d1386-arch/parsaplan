@@ -340,9 +340,9 @@ const FirebaseSettings = () => {
                     <p className="text-xs text-gray-500 mb-1">Project ID</p>
                     <p className="font-mono text-sm text-gray-800 dark:text-gray-200">{firebaseConfig.projectId}</p>
                 </div>
-                <div className="flex gap-2 mt-4">
-                    <button onClick={() => setIsEditing(true)} className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">ویرایش</button>
-                    <button onClick={removeFirebaseConfig} className="flex-1 py-2 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition">حذف اتصال</button>
+                <div className="flex flex-col md:flex-row gap-2 mt-4">
+                    <button onClick={() => setIsEditing(true)} className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition">ویرایش</button>
+                    <button onClick={removeFirebaseConfig} className="flex-1 py-2 text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition">حذف اتصال</button>
                 </div>
             </div>
         );
@@ -386,8 +386,8 @@ const FirebaseSettings = () => {
                 ))}
             </div>
 
-            <div className="flex gap-2 mt-4">
-                {firebaseConfig && <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition">انصراف</button>}
+            <div className="flex flex-col md:flex-row gap-2 mt-4">
+                {firebaseConfig && <button onClick={() => setIsEditing(false)} className="md:px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">انصراف</button>}
                 <button
                     onClick={handleSave}
                     disabled={!Object.values(form).every(v => v)}
@@ -654,9 +654,9 @@ const Settings = () => {
                                 <h2 className="font-bold">پشتیبان‌گیری</h2>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={exportData} className="flex-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-1"><Download size={14} /> دانلود</button>
-                            <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 py-2 rounded-xl text-xs font-bold hover:bg-sky-100 transition flex items-center justify-center gap-1"><Upload size={14} /> بازگردانی</button>
+                        <div className="flex flex-col md:flex-row gap-2">
+                            <button onClick={exportData} className="flex-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-1"><Download size={14} /> دانلود</button>
+                            <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 py-2 rounded-xl text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900/40 transition flex items-center justify-center gap-1"><Upload size={14} /> بازگردانی</button>
                         </div>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
                     </div>
@@ -698,7 +698,7 @@ const Settings = () => {
                             همگام‌سازی دستی
                         </h2>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col md:flex-row gap-3">
                         <button onClick={syncData} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition">آپلود تغییرات</button>
                         <button onClick={loadFromCloud} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition">دانلود از سرور</button>
                     </div>
