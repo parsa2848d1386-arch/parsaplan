@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, X } from 'lucide-react';
+// @ts-ignore
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 /**
  * PWA Update Prompt:
@@ -8,58 +10,30 @@ import { RefreshCw, X } from 'lucide-react';
  * show a banner prompting the user to update.
  */
 export const PWAUpdatePrompt: React.FC = () => {
-    const [showUpdate, setShowUpdate] = useState(false);
-    const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+    const {
+        offlineReady: [offlineReady, setOfflineReady],
+        needRefresh: [needRefresh, setNeedRefresh],
+        updateServiceWorker,
+    } = useRegisterSW({
+        onRegistered(r: ServiceWorkerRegistration | undefined) {
+            console.log('SW Registered: ' + r);
+        },
+        onRegisterError(error: any) {
+            console.log('SW registration error', error);
+        },
+    });
 
-    useEffect(() => {
-        if (!('serviceWorker' in navigator)) return;
-
-        const checkForUpdates = async () => {
-            try {
-                const reg = await navigator.serviceWorker.getRegistration();
-                if (reg) {
-                    setRegistration(reg);
-
-                    // If a waiting SW already exists, show prompt
-                    if (reg.waiting) {
-                        setShowUpdate(true);
-                    }
-
-                    // Listen for new SW installing
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        if (newWorker) {
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    setShowUpdate(true);
-                                }
-                            });
-                        }
-                    });
-                }
-            } catch (e) {
-                console.warn('SW registration check failed', e);
-            }
-        };
-
-        checkForUpdates();
-
-        // Also listen for controllerchange (new SW activated)
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (!refreshing) {
-                refreshing = true;
-                window.location.reload();
-            }
-        });
-    }, []);
+    const close = () => {
+        setOfflineReady(false);
+        setNeedRefresh(false);
+    };
 
     const handleUpdate = () => {
-        if (registration?.waiting) {
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-        setShowUpdate(false);
+        updateServiceWorker(true);
+        close();
     };
+
+    const showUpdate = needRefresh;
 
     return (
         <AnimatePresence>
@@ -84,7 +58,7 @@ export const PWAUpdatePrompt: React.FC = () => {
                     >
                         آپدیت
                     </button>
-                    <button onClick={() => setShowUpdate(false)} className="p-1 rounded-lg hover:bg-white/10 transition">
+                    <button onClick={close} className="p-1 rounded-lg hover:bg-white/10 transition">
                         <X size={14} />
                     </button>
                 </motion.div>

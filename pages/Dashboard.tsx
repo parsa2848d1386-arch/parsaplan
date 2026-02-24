@@ -4,7 +4,7 @@ import {
     Plus, Target, Clock, CalendarDays,
     Clipboard, Sparkles, Zap, TrendingUp,
     CheckCircle2, Circle, Star, Flame,
-    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare
+    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare, Brain
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getShamsiDate, toIsoString, addDays } from '../utils';
@@ -12,6 +12,7 @@ import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import { SubjectTask } from '../types';
 import { WelcomeBanner } from '../components/WelcomeBanner';
+import { SmartMacroPlanner } from '../components/SmartMacroPlanner';
 
 /* ===== Animated Counter ===== */
 const AnimatedNumber = ({ value, suffix = '' }: { value: number; suffix?: string }) => {
@@ -130,6 +131,7 @@ const Dashboard = () => {
 
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isMacroPlannerOpen, setIsMacroPlannerOpen] = useState(false);
     const [quoteVisible, setQuoteVisible] = useState(false);
 
     const todayIso = toIsoString(new Date());
@@ -314,10 +316,22 @@ const Dashboard = () => {
             </div>
 
             {/* ===== QUICK ACTIONS ===== */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <button
+                    onClick={() => setIsMacroPlannerOpen(true)}
+                    className="col-span-2 lg:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md shadow-violet-200/50 dark:shadow-indigo-900/30 group"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Brain size={18} />
+                        </div>
+                        <span className="text-right">برنامه‌ریزی هوشمند کل دوره<br /><span className="text-[10px] text-violet-200 font-normal">با دستیار هوش مصنوعی</span></span>
+                    </div>
+                    <Sparkles size={18} className="text-amber-300 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </button>
                 <button
                     onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
-                    className="flex items-center gap-3 p-3.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md shadow-indigo-200/60 dark:shadow-indigo-900/30"
+                    className="flex items-center flex-col justify-center gap-2 p-3.5 bg-indigo-50 dark:bg-gray-800 hover:bg-indigo-100 dark:hover:bg-gray-700 active:scale-95 text-indigo-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition-all duration-200"
                 >
                     <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
                         <Plus size={18} />
@@ -424,6 +438,11 @@ const Dashboard = () => {
                     defaultDateStr={activeDateIso}
                 />
             )}
+
+            <SmartMacroPlanner
+                isOpen={isMacroPlannerOpen}
+                onClose={() => setIsMacroPlannerOpen(false)}
+            />
         </div>
     );
 };
