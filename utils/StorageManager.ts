@@ -17,6 +17,7 @@ export interface AppDataV1 {
     customSubjects?: CustomSubject[];
     archivedPlans?: ArchivedPlan[];
     flashcards?: Flashcard[];
+    studyHoursLog?: Record<string, number>;
     settings: AppSettings;
     lastUpdated: number;
     schemaVersion?: number;

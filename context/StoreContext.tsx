@@ -240,6 +240,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.totalDays) setTotalDaysState(data.totalDays);
                     if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
                     if (data.flashcards) setFlashcards(data.flashcards);
+                    if (data.studyHoursLog) setStudyHoursLog(data.studyHoursLog);
 
                     if (data.subjects && data.subjects.length > 0) {
                         setSubjects(data.subjects);
@@ -416,6 +417,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (data.subjects) setSubjects(data.subjects);
         if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
         if (data.flashcards) setFlashcards(data.flashcards);
+        if (data.studyHoursLog) setStudyHoursLog(data.studyHoursLog);
         if (data.startDate) {
             setStartDateState(data.startDate);
             recalcToday(data.startDate, data.totalDays || totalDays);
@@ -426,6 +428,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (data.settings.showQuotes !== undefined && data.settings.showQuotes !== showQuotes) toggleShowQuotes();
             if (data.settings.stream) setStream(data.settings.stream);
             if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
+            if (data.settings.geminiApiKey) setGeminiApiKeyState(data.settings.geminiApiKey);
         }
     };
 
@@ -720,7 +723,9 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 if (data.subjects && data.subjects.length > 0) setSubjects(data.subjects);
                 if (data.totalDays) setTotalDaysState(data.totalDays);
                 if (data.archivedPlans) setArchivedPlans(data.archivedPlans);
+                if (data.flashcards) setFlashcards(data.flashcards);
                 if (data.logs) setAuditLog(data.logs);
+                if (data.studyHoursLog) setStudyHoursLog(data.studyHoursLog);
                 if (data.startDate) {
                     setStartDateState(data.startDate);
                     setTasks(prev => prev.map(t => {
@@ -735,6 +740,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.settings.showQuotes !== undefined && data.settings.showQuotes !== showQuotes) toggleShowQuotes();
                     if (data.settings.stream) setStream(data.settings.stream);
                     if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
+                    if (data.settings.geminiApiKey) setGeminiApiKeyState(data.settings.geminiApiKey);
                 }
                 showToast('اطلاعات بازگردانی شد', 'success');
             }, 'danger');
