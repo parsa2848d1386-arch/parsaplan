@@ -643,6 +643,12 @@ const Settings = () => {
                                     <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${showQuotes ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                 </div>
                             </button>
+                            <button onClick={() => updateSettings({ bioTheme: !settings?.bioTheme })} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Sun size={16} /> حالت هوشمند زمان‌بندی (BioTheme)</span>
+                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.bioTheme ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
+                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.bioTheme ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                </div>
+                            </button>
                         </div>
                     </div>
 

@@ -236,6 +236,7 @@ export interface FirebaseConfig {
 
 export interface AppSettings {
     darkMode: boolean;
+    bioTheme?: boolean;
     viewMode: 'normal' | 'compact';
     showQuotes: boolean;
     stream: StreamType;

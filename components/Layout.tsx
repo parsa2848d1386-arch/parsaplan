@@ -16,6 +16,8 @@ const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { NotificationBell } from './NotificationBell';
 import { getShamsiDate } from '../utils';
+import { VoiceTaskInput } from './VoiceTaskInput';
+import { useBioperformance } from '../hooks/useBioperformance';
 
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/': { title: 'داشبورد', breadcrumb: 'داشبورد' },
@@ -57,6 +59,7 @@ const XpRing = ({ percent, size = 36, stroke = 3 }: { percent: number; size?: nu
 
 const Layout = () => {
     useProactiveAI();
+    useBioperformance();
 
     const location = useLocation();
     const navigate = useNavigate();

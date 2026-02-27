@@ -13,6 +13,26 @@
     font-family: var(--font-vazir);
     @apply bg-slate-50 text-gray-900 overflow-x-hidden;
     -webkit-font-smoothing: antialiased;
+    transition: filter 2s ease;
+  }
+
+  html.bio-morning body {
+    /* Morning: Sharper, higher contrast, slight blue/clean tint */
+    filter: saturate(1.1) brightness(1.02);
+  }
+
+  html.bio-day body {
+    /* Normal day, no filter */
+  }
+
+  html.bio-evening body {
+    /* Evening: reducing blue light, warming up */
+    filter: sepia(0.2) saturate(0.9) brightness(0.95);
+  }
+
+  html.bio-night body {
+    /* Night: Deep dark mode, very warm, lower brightness to protect eyes */
+    filter: sepia(0.35) saturate(0.8) brightness(0.85);
   }
 }
 

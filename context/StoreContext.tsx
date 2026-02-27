@@ -185,6 +185,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [stream, setStream] = useState<StreamType>('general');
     const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
     const [geminiApiKey, setGeminiApiKeyState] = useState<string>('');
+    const [bioTheme, setBioTheme] = useState<boolean>(false);
 
     const [isInitialized, setIsInitialized] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
@@ -271,6 +272,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         if (data.settings.stream) setStream(data.settings.stream);
                         if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
                         if (data.settings.geminiApiKey) setGeminiApiKeyState(data.settings.geminiApiKey);
+                        if (data.settings.bioTheme !== undefined) setBioTheme(data.settings.bioTheme);
                     }
                 } else {
                     loadDefaultPlan();
@@ -305,7 +307,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         settings: {
             darkMode, viewMode, showQuotes, stream,
             notifications: true, soundEnabled: true, language: 'fa' as 'fa' | 'en',
-            geminiModel, geminiApiKey
+            geminiModel, geminiApiKey, bioTheme
         },
         lastUpdated: Date.now()
     });
@@ -314,7 +316,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     useEffect(() => {
         if (!isInitialized) return;
         StorageManager.save(buildDataSnapshot(), userId || 'parsaplan_local_user');
-    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, archivedPlans, flashcards, isInitialized, userId]);
+    }, [tasks, userName, completedRoutine, routineTemplate, dailyNotes, xp, auditLog, moods, studyHoursLog, startDate, darkMode, viewMode, showQuotes, stream, geminiModel, totalDays, subjects, archivedPlans, flashcards, isInitialized, userId, bioTheme]);
 
     // --- AUTO-SYNC TO CLOUD (Debounced) ---
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -429,6 +431,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (data.settings.stream) setStream(data.settings.stream);
             if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
             if (data.settings.geminiApiKey) setGeminiApiKeyState(data.settings.geminiApiKey);
+            if (data.settings.bioTheme !== undefined) setBioTheme(data.settings.bioTheme);
         }
     };
 
@@ -741,6 +744,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.settings.stream) setStream(data.settings.stream);
                     if (data.settings.geminiModel) setGeminiModel(data.settings.geminiModel);
                     if (data.settings.geminiApiKey) setGeminiApiKeyState(data.settings.geminiApiKey);
+                    if (data.settings.bioTheme !== undefined) setBioTheme(data.settings.bioTheme);
                 }
                 showToast('اطلاعات بازگردانی شد', 'success');
             }, 'danger');
@@ -791,6 +795,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         }
 
         if (newSettings.geminiModel) setGeminiModel(newSettings.geminiModel);
+        if (newSettings.bioTheme !== undefined) setBioTheme(newSettings.bioTheme);
 
         showToast('تنظیمات ذخیره شد', 'success');
     };
@@ -803,7 +808,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Construct the settings object for export/sync
     const currentSettings: AppSettings = {
         darkMode, viewMode, showQuotes, stream,
-        notifications: true, soundEnabled: true, language: 'fa', geminiModel, geminiApiKey
+        notifications: true, soundEnabled: true, language: 'fa', geminiModel, geminiApiKey, bioTheme
     };
 
     // Composite Value
