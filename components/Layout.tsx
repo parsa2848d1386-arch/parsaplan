@@ -109,7 +109,6 @@ const Layout = () => {
         { to: '/routine', icon: CalendarClock, label: 'روتین', color: 'text-blue-500' },
         { to: '/subjects', icon: BookOpen, label: 'دروس', color: 'text-violet-500' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل', color: 'text-cyan-500' },
-        { to: '/leitner', icon: BrainCircuit, label: 'لایتنر', color: 'text-orange-500' },
         { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
     ];
     const secondaryNavItems = [
@@ -133,7 +132,8 @@ const Layout = () => {
 
     // Mobile sidebar removed
 
-    const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
+    const getDisplayName = () => userName || user?.displayName || user?.email?.split('@')[0] || 'کاربر مهمان';
+    const userInitial = (userName || user?.displayName || user?.email || 'U').charAt(0).toUpperCase();
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
     return (
@@ -260,7 +260,7 @@ const Layout = () => {
                                         <span className={`absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900 ${cloudStatus === 'connected' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{userName || 'کاربر مهمان'}</p>
+                                        <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{getDisplayName()}</p>
                                         <p className="text-[10px] text-gray-400 truncate flex items-center gap-1">
                                             <Star size={9} className="text-amber-400 fill-amber-400" />
                                             {xp} امتیاز کل

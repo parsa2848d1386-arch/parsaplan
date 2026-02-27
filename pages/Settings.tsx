@@ -491,7 +491,7 @@ const Settings = () => {
         }
     };
 
-    const displayUsername = user?.email ? user.email.split('@')[0] : (userName || 'کاربر مهمان');
+    const displayUsername = user?.email ? user.email.split('@')[0] : (userName || user?.displayName || 'کاربر مهمان');
 
 
 

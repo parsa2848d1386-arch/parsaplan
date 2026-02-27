@@ -85,7 +85,7 @@ export const NotificationBell: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="fixed top-14 left-4 right-4 z-[100] md:absolute md:top-12 md:right-0 md:left-auto md:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-100 dark:border-gray-700 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                <div className="fixed top-14 left-4 right-4 z-[100] md:absolute md:top-12 md:left-0 md:right-auto md:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-100 dark:border-gray-700 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                     <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
                         <h3 className="font-bold text-gray-800 dark:text-white">اعلان‌ها</h3>
                         {unreadCount > 0 && (

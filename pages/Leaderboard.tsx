@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../context/StoreContext';
 import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2, X, BookOpen, Target, Calendar, ChevronLeft, Search } from 'lucide-react';
-import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
 import { getShamsiDate } from '../utils';
 
 // Public profile interface
@@ -26,6 +26,16 @@ interface FullProfile extends PublicProfile {
     subjects?: any[];
 }
 
+// Live Study Room interface
+interface LiveSession {
+    id: string; // user uid
+    userName: string;
+    subject: string;
+    topic: string;
+    startedAt: number;
+    lastPing: number;
+}
+
 const Leaderboard = () => {
     const { user, userName, xp, level, getProgress, tasks, showToast, firebaseConfig } = useStore();
     const [leaderboardData, setLeaderboardData] = useState<PublicProfile[]>([]);
@@ -33,6 +43,13 @@ const Leaderboard = () => {
     const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
     const [isToggling, setIsToggling] = useState(false);
     const [sortBy, setSortBy] = useState<'xp' | 'exam'>('xp'); // Sort state
+
+    // Live Study Room State
+    const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
+    const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+    const [currentStudySubject, setCurrentStudySubject] = useState('');
+    const [currentStudyTopic, setCurrentStudyTopic] = useState('');
+    const [hasNotificationPermission, setHasNotificationPermission] = useState(false);
 
     // Profile viewer state
     const [viewingProfile, setViewingProfile] = useState<FullProfile | null>(null);
@@ -149,6 +166,132 @@ const Leaderboard = () => {
 
         return () => unsubscribe();
     }, [getDb, user]);
+
+    // Request Notification Permission
+    useEffect(() => {
+        if ('Notification' in window) {
+            if (Notification.permission === 'granted') {
+                setHasNotificationPermission(true);
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        setHasNotificationPermission(true);
+                    }
+                });
+            }
+        }
+    }, []);
+
+    // Listen to real-time active study sessions
+    useEffect(() => {
+        const db = getDb();
+        if (!db) return;
+
+        const sessionsRef = collection(db, 'liveSessions');
+
+        let previousSessionIds = new Set<string>();
+
+        const unsubscribe = onSnapshot(sessionsRef, (snapshot) => {
+            const sessions: LiveSession[] = [];
+            const now = Date.now();
+            let newSessionsFound = false;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data() as LiveSession;
+                // Only consider sessions active if pinged in last 10 minutes
+                if (now - data.lastPing < 600000) {
+                    sessions.push(data);
+
+                    if (!previousSessionIds.has(data.id) && data.id !== user?.uid && hasNotificationPermission) {
+                        newSessionsFound = true;
+                        if (document.hidden) {
+                            new Notification('هم‌کلاسی آنلاین شد! 📚', {
+                                body: `${data.userName} شروع به مطالعه ${data.subject} (${data.topic}) کرد. شما هم به اتاق مطالعه بپیوندید!`,
+                                icon: '/icon-192.png'
+                            });
+                        } else {
+                            showToast(`${data.userName} در حال مطالعه ${data.subject} است!`, 'info');
+                        }
+                    }
+                } else {
+                    // Cleanup stale sessions (can be improved with Cloud Functions)
+                    deleteDoc(doc.ref).catch(() => { });
+                }
+            });
+
+            // Update previous IDs
+            previousSessionIds = new Set(sessions.map(s => s.id));
+            setLiveSessions(sessions.sort((a, b) => b.startedAt - a.startedAt));
+
+        }, (error) => {
+            console.error('Sessions listener error:', error);
+        });
+
+        return () => unsubscribe();
+    }, [getDb, user, hasNotificationPermission, showToast]);
+
+    // Live Study Room Actions
+    const joinLiveRoom = async () => {
+        if (!user) {
+            showToast('ابتدا وارد حساب خود شوید', 'warning');
+            return;
+        }
+        if (!currentStudySubject || !currentStudyTopic) {
+            showToast('لطفا نام درس و مبحث را وارد کنید', 'warning');
+            return;
+        }
+
+        setIsJoiningRoom(true);
+        const db = getDb();
+        if (db) {
+            try {
+                const session: LiveSession = {
+                    id: user.uid,
+                    userName: userName || 'کاربر',
+                    subject: currentStudySubject,
+                    topic: currentStudyTopic,
+                    startedAt: Date.now(),
+                    lastPing: Date.now()
+                };
+                await setDoc(doc(db, 'liveSessions', user.uid), session);
+                showToast('شما با موفقیت به اتاق مطالعه پیوستید!', 'success');
+            } catch (e) {
+                showToast('خطا در پیوستن به اتاق', 'error');
+            }
+        }
+        setIsJoiningRoom(false);
+    };
+
+    const leaveLiveRoom = async () => {
+        if (!user) return;
+        const db = getDb();
+        if (db) {
+            try {
+                await deleteDoc(doc(db, 'liveSessions', user.uid));
+                showToast('از اتاق مطالعه خارج شدید', 'info');
+                setCurrentStudySubject('');
+                setCurrentStudyTopic('');
+            } catch (e) {
+                // Ignore error
+            }
+        }
+    };
+
+    // Ping loop to keep session alive
+    useEffect(() => {
+        if (!user || liveSessions.findIndex(s => s.id === user.uid) === -1) return;
+
+        const db = getDb();
+        if (!db) return;
+
+        const pingInterval = setInterval(async () => {
+            try {
+                await setDoc(doc(db, 'liveSessions', user.uid), { lastPing: Date.now() }, { merge: true });
+            } catch (e) { }
+        }, 180000); // Ping every 3 mins
+
+        return () => clearInterval(pingInterval);
+    }, [user, liveSessions, getDb]);
 
     // Toggle public profile
     const toggleMyPublicProfile = async () => {
@@ -454,6 +597,78 @@ const Leaderboard = () => {
                         >
                             <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
                         </button>
+                    </div>
+                </div>
+
+                {/* Live Study Rooms */}
+                <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 mb-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex items-center justify-center p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 rounded-xl">
+                                <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+                                <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full"></span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                            </div>
+                            <h2 className="font-bold text-gray-800 dark:text-white">اتاق‌های مطالعه زنده</h2>
+                        </div>
+                        <span className="text-xs bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400 font-bold px-2 py-1 rounded-lg">
+                            {liveSessions.length} نفر آنلاین
+                        </span>
+                    </div>
+
+                    {!liveSessions.find(s => s.id === user?.uid) ? (
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-4 mb-4 flex flex-col md:flex-row gap-3">
+                            <input
+                                type="text"
+                                placeholder="درس (مثلا ریاضی)"
+                                value={currentStudySubject}
+                                onChange={e => setCurrentStudySubject(e.target.value)}
+                                className="flex-1 bg-white dark:bg-gray-800 border-none rounded-xl px-3 py-2 text-sm outline-none shadow-sm dark:text-white"
+                            />
+                            <input
+                                type="text"
+                                placeholder="مبحث (مثلا مشتق)"
+                                value={currentStudyTopic}
+                                onChange={e => setCurrentStudyTopic(e.target.value)}
+                                className="flex-1 bg-white dark:bg-gray-800 border-none rounded-xl px-3 py-2 text-sm outline-none shadow-sm dark:text-white"
+                            />
+                            <button
+                                onClick={joinLiveRoom}
+                                disabled={isJoiningRoom}
+                                className="bg-indigo-600 text-white rounded-xl px-4 py-2 font-bold text-sm hover:bg-indigo-700 transition"
+                            >
+                                {isJoiningRoom ? <Loader2 size={16} className="animate-spin" /> : 'پیوستن به اتاق'}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4 mb-4 flex justify-between items-center text-emerald-800 dark:text-emerald-300">
+                            <div>
+                                <p className="text-xs">در حال مطالعه: <strong>{currentStudySubject} ({currentStudyTopic})</strong></p>
+                            </div>
+                            <button onClick={leaveLiveRoom} className="bg-rose-500 text-white rounded-xl px-3 py-1.5 text-xs font-bold hover:bg-rose-600 transition">خروج</button>
+                        </div>
+                    )}
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {liveSessions.length === 0 ? (
+                            <p className="text-xs text-gray-400 text-center py-4">در حال حاضر کسی در اتاق مطالعه نیست.</p>
+                        ) : (
+                            liveSessions.map(session => (
+                                <div key={session.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white flex items-center justify-center font-bold text-xs relative">
+                                            {session.userName[0]}
+                                            <span className="absolute bottom-0 left-0 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-gray-700"></span>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-gray-800 dark:text-gray-200">{session.userName}</p>
+                                            <p className="text-[10px] text-gray-500">{session.subject} • {session.topic}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-lg">آنلاین</span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
