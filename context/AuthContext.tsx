@@ -8,13 +8,14 @@ import { useUI } from './UIContext';
 
 // --- TYPES ---
 interface AuthContextType {
-    user: User | null;
+    user: any | null;
     userId: string;
     userName: string;
     setUserName: (name: string) => void;
     login: (u: string, p: string) => Promise<boolean>;
     register: (u: string, p: string, name: string) => Promise<boolean>;
     loginAsGuest: () => Promise<boolean>;
+    loginOffline: () => void;
     logout: () => Promise<void>;
     firebaseConfig: FirebaseConfig | null;
     updateFirebaseConfig: (config: FirebaseConfig) => void;
@@ -147,22 +148,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const loginOffline = () => {
+        const dummyUser = {
+            uid: 'parsaplan_local_user',
+            displayName: userName || 'کاربر محلی',
+            isAnonymous: true,
+            email: 'local@parsaplan.local'
+        };
+        setUser(dummyUser as any);
+        setUserId('parsaplan_local_user');
+        setUserNameState(userName || 'کاربر محلی');
+        showToast('ورود آفلاین موفقیت‌آمیز بود 🔌', 'success');
+    };
+
     const loginAsGuest = async (): Promise<boolean> => {
-        if (!auth) { showToast('اتصال فایربیس برقرار نیست', 'error'); return false; }
+        if (!auth) {
+            console.log("Firebase auth unavailable, logging in locally offline");
+            loginOffline();
+            return true;
+        }
         try {
             await signInAnonymously(auth);
             setUserNameState('مهمان');
             showToast('به عنوان مهمان وارد شدید 👋', 'info');
             return true;
         } catch (e: any) {
-            console.error(e);
-            showToast('خطا در ورود به عنوان مهمان', 'error');
-            return false;
+            console.error("Anonymous auth failed, falling back to local login:", e);
+            loginOffline();
+            return true;
         }
     };
 
     const logout = async () => {
-        if (!auth) return;
+        if (userId === 'parsaplan_local_user') {
+            setUser(null);
+            showToast('از حساب آفلاین خارج شدید', 'info');
+            return;
+        }
+        if (!auth) {
+            setUser(null);
+            showToast('خارج شدید', 'info');
+            return;
+        }
         askConfirm('خروج از حساب', 'آیا مطمئن هستید؟ دیتای لوکال باقی می‌ماند.', async () => {
             await signOut(auth);
             showToast('خارج شدید', 'info');
@@ -171,7 +198,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return (
         <AuthContext.Provider value={{
-            user, userId, userName, setUserName, login, register, loginAsGuest, logout,
+            user, userId, userName, setUserName, login, register, loginAsGuest, loginOffline, logout,
             firebaseConfig, updateFirebaseConfig, removeFirebaseConfig,
             cloudStatus, db, auth
         }}>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, LogIn, UserPlus, Sparkles, Ghost } from 'lucide-react';
+import { Eye, EyeOff, LogIn, UserPlus, Sparkles, Ghost, CloudOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -122,7 +122,7 @@ const FloatingInput = ({
    MAIN COMPONENT
    ================================================================ */
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, onRegister, isLoading }) => {
-    const { loginAsGuest } = useAuth();
+    const { loginAsGuest, loginOffline } = useAuth();
     const [mode, setMode] = useState<'login' | 'register'>('login');
     const [showPass, setShowPass] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -305,7 +305,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                     <button
                         onClick={handleGuest}
                         disabled={isBusy}
-                        className="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold text-sm hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60"
+                        className="w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold text-sm hover:border-indigo-300 hover:text-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
                     >
                         {loadingAction === 'guest' ? (
                             <LoadingDots />
@@ -315,6 +315,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
                                 ورود به عنوان مهمان
                             </>
                         )}
+                    </button>
+
+                    {/* ── Offline Button ── */}
+                    <button
+                        onClick={() => {
+                            loginOffline();
+                            onClose();
+                        }}
+                        disabled={isBusy}
+                        className="w-full py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                    >
+                        <CloudOff size={16} className="text-amber-500" />
+                        ورود آفلاین (ذخیره روی دستگاه)
                     </button>
 
                     {/* Footer */}

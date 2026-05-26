@@ -70,7 +70,7 @@ const Layout = () => {
         syncData, isSyncing, cloudStatus, saveStatus,
         totalDays, sidebarCollapsed, setSidebarCollapsed,
         user, login, register, currentLevelXp, xpForNextLevel, progressPercent,
-        userName, showToast, isAiPanelOpen, setIsAiPanelOpen, settings, updateSettings
+        userName, showToast, isAiPanelOpen, setIsAiPanelOpen, settings, updateSettings, userId
     } = useStore();
 
     const [showSearchOverlay, setShowSearchOverlay] = useState(false);
@@ -299,6 +299,11 @@ const Layout = () => {
                             {isSyncing && (
                                 <span className="text-xs text-amber-600 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full animate-pulse">
                                     <Cloud size={11} /> در حال سینک...
+                                </span>
+                            )}
+                            {userId === 'parsaplan_local_user' && (
+                                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200/50 dark:border-amber-800/30 shadow-sm animate-pulse">
+                                    <CloudOff size={11} className="text-amber-500" /> حالت آفلاین (ذخیره روی دستگاه)
                                 </span>
                             )}
                         </div>

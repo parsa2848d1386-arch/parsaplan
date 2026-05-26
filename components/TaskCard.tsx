@@ -108,9 +108,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                         onClick={() => onToggle(task.id!)}
                         className={`group relative z-10 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
                     >
-                        <div className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}>
-                            {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={20} strokeWidth={2} />}
-                        </div>
+                        <motion.div 
+                            animate={{ scale: isDone ? [1, 1.25, 1] : 1 }}
+                            transition={{ duration: 0.3, type: "spring", stiffness: 350, damping: 12 }}
+                            className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}
+                        >
+                            {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800 animate-in zoom-in-50" /> : <Circle size={20} strokeWidth={2} />}
+                        </motion.div>
                         <div className="flex-1 min-w-0 flex items-center justify-between">
                             <div className={`truncate ${isDone ? 'opacity-50 line-through' : ''}`}>
                                 <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{task.subject}</span>
@@ -171,9 +175,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             >
                 {/* Top Section: Icon + Content (Row Layout) */}
                 <div className="flex items-start gap-3 w-full">
-                    <div className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}>
-                        {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800" /> : <Circle size={24} strokeWidth={2} />}
-                    </div>
+                    <motion.div 
+                        animate={{ scale: isDone ? [1, 1.3, 1] : 1 }}
+                        transition={{ duration: 0.3, type: "spring", stiffness: 350, damping: 12 }}
+                        className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}
+                    >
+                        {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800 animate-in zoom-in-50" /> : <Circle size={24} strokeWidth={2} />}
+                    </motion.div>
                     <div className={`flex-1 transition-all duration-500 ${isDone ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
                         <div className="flex justify-between items-start">
                             <h3 className={`font-bold text-gray-800 dark:text-gray-200 transition-all ${isDone ? 'line-through decoration-2 decoration-gray-300 dark:decoration-gray-600' : ''}`}>{task.subject}</h3>

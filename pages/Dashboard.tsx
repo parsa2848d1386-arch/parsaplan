@@ -175,51 +175,68 @@ const Dashboard = () => {
             />
 
             {/* ===== HERO GREETING ===== */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-indigo-600 via-indigo-500 to-violet-600 p-5 shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30">
-                {/* Decorative circles */}
-                <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full -translate-x-16 -translate-y-16" />
-                <div className="absolute bottom-0 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-10 translate-y-10" />
+            <div className="relative overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-700 dark:from-gray-900 dark:via-indigo-950/40 dark:to-gray-900 p-6 shadow-xl border border-white/20 dark:border-white/5">
+                {/* Floating Animated Embers & Stars in the background */}
+                <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/35 rounded-full blur-[80px] pointer-events-none animate-pulse-glow" />
+                <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-pink-500/25 rounded-full blur-[70px] pointer-events-none" />
 
-                <div className="relative flex items-center justify-between">
-                    <div>
-                        <p className="text-indigo-200 text-xs font-semibold mb-0.5">{getShamsiDate(todayIso)}</p>
-                        <h1 className="text-xl font-black text-white leading-tight">
+                <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                    <div className="space-y-1">
+                        <p className="text-indigo-200 dark:text-indigo-400 text-[10px] font-extrabold tracking-wider uppercase bg-white/10 dark:bg-indigo-900/35 px-3 py-1 rounded-full inline-block mb-1">
+                            {getShamsiDate(todayIso)}
+                        </p>
+                        <h1 className="text-2xl font-black text-white leading-tight tracking-tight">
                             {getGreeting()}، {userName || 'کاربر'} 👋
                         </h1>
-                        <div className="text-indigo-200 text-xs mt-2 flex items-center gap-2">
-                            <button onClick={() => setCurrentDay(Math.max(1, currentDay - 1))} className="p-1 bg-white/10 rounded-lg hover:bg-white/20 active:scale-95 transition">
+                        <p className="text-xs text-indigo-100/70 dark:text-gray-400 font-medium">امروز زمان ساختن رویاهاته. بیا قوی شروع کنیم!</p>
+                        
+                        {/* Day Selector */}
+                        <div className="text-indigo-100 dark:text-gray-300 text-xs mt-4 flex items-center gap-2.5 bg-white/10 dark:bg-gray-800/60 p-1.5 rounded-2xl w-fit border border-white/5">
+                            <button
+                                onClick={() => setCurrentDay(Math.max(1, currentDay - 1))}
+                                className="p-1.5 bg-white/10 dark:bg-gray-700/80 rounded-xl hover:bg-white/20 hover:scale-105 active:scale-95 transition cursor-pointer text-white"
+                                title="روز قبل"
+                            >
                                 <ChevronRight size={14} />
                             </button>
-                            <span>
-                                روز <span className="font-bold text-white text-sm">{currentDay}</span> از <span className="font-bold text-white text-sm">{totalDays}</span>
+                            <span className="font-bold text-xs">
+                                روز <span className="text-white font-extrabold text-sm">{currentDay}</span> از <span className="text-white font-extrabold text-sm">{totalDays}</span>
                             </span>
-                            <button onClick={() => setCurrentDay(Math.min(totalDays, currentDay + 1))} className="p-1 bg-white/10 rounded-lg hover:bg-white/20 active:scale-95 transition">
+                            <button
+                                onClick={() => setCurrentDay(Math.min(totalDays, currentDay + 1))}
+                                className="p-1.5 bg-white/10 dark:bg-gray-700/80 rounded-xl hover:bg-white/20 hover:scale-105 active:scale-95 transition cursor-pointer text-white"
+                                title="روز بعد"
+                            >
                                 <ChevronLeft size={14} />
                             </button>
-                            <span className="opacity-60 hidden sm:inline">— {daysLeft} روز مانده</span>
+                            <span className="opacity-50 text-[10px] sm:inline pl-1 border-r border-white/15 pr-2.5">— {daysLeft} روز تا پایان دوره</span>
                         </div>
                     </div>
 
-                    {/* XP Ring */}
-                    <div className="relative flex-shrink-0">
-                        <ProgressRing percent={progressPercent} size={72} stroke={7} color="#ffffff" bg="rgba(255,255,255,0.2)" />
+                    {/* XP Ring Visualizer */}
+                    <div className="relative flex-shrink-0 self-center">
+                        <div className="absolute inset-0 bg-white/10 rounded-full blur-md" />
+                        <ProgressRing percent={progressPercent} size={84} stroke={8} color="#f59e0b" bg="rgba(255,255,255,0.15)" />
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <Zap size={13} className="text-amber-300 fill-amber-300 mb-0.5" />
-                            <span className="text-white font-black text-sm leading-none">{level}</span>
-                            <span className="text-indigo-200 text-[9px]">سطح</span>
+                            <Zap size={15} className="text-amber-400 fill-amber-400 mb-0.5 animate-bounce" style={{ animationDuration: '3s' }} />
+                            <span className="text-white font-black text-base leading-none">{level}</span>
+                            <span className="text-indigo-200 dark:text-gray-400 text-[9px] font-bold">سطح</span>
                         </div>
                     </div>
                 </div>
 
-                {/* XP bar */}
-                <div className="relative mt-4">
-                    <div className="flex justify-between text-[10px] text-indigo-200 mb-1">
+                {/* Level Up progress bar */}
+                <div className="relative mt-6 bg-white/5 dark:bg-gray-800/40 p-3 rounded-2xl border border-white/5">
+                    <div className="flex justify-between text-[10px] text-indigo-200 dark:text-gray-400 mb-1.5 font-bold font-mono">
                         <span>{currentLevelXp} XP</span>
+                        <span className="text-amber-400 flex items-center gap-1">
+                            سطح بعدی {level + 1}
+                        </span>
                         <span>{xpForNextLevel} XP</span>
                     </div>
-                    <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-white/15 dark:bg-gray-800 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-white rounded-full transition-all duration-1000"
+                            className="h-full bg-gradient-to-l from-amber-400 via-orange-400 to-yellow-400 rounded-full transition-all duration-1000"
                             style={{ width: `${progressPercent}%` }}
                         />
                     </div>
