@@ -108,6 +108,7 @@ const Layout = () => {
         { to: '/', icon: Home, label: 'داشبورد', color: 'text-indigo-500' },
         { to: '/routine', icon: CalendarClock, label: 'روتین', color: 'text-blue-500' },
         { to: '/subjects', icon: BookOpen, label: 'دروس', color: 'text-violet-500' },
+        { to: '/leitner', icon: BrainCircuit, label: 'لایتنر', color: 'text-orange-500' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل', color: 'text-cyan-500' },
         { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
     ];

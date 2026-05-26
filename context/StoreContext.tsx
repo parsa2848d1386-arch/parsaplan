@@ -153,7 +153,7 @@ const DataContext = createContext<Partial<StoreContextType> | undefined>(undefin
 const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // --- CONTEXT CONSUMPTION ---
     const { user, userId, db, firebaseConfig, cloudStatus, login, register, logout, updateFirebaseConfig, removeFirebaseConfig } = useAuth();
-    const { darkMode, viewMode, showQuotes, toggleDarkMode, setViewMode, toggleShowQuotes } = useTheme();
+    const { darkMode, viewMode, showQuotes, toggleDarkMode, setDarkMode, setViewMode, toggleShowQuotes } = useTheme();
     const { toasts, showToast, removeToast, confirmState, askConfirm, closeConfirm } = useUI();
 
     // --- STORAGE KEYS ---
@@ -777,7 +777,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     // Settings Update Helper
     const updateSettings = (newSettings: Partial<AppSettings>) => {
-        if (newSettings.darkMode !== undefined) toggleDarkMode();
+        if (newSettings.darkMode !== undefined) setDarkMode(newSettings.darkMode);
 
         if (newSettings.stream && newSettings.stream !== stream) {
             setStream(newSettings.stream);
@@ -796,8 +796,12 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
         if (newSettings.geminiModel) setGeminiModel(newSettings.geminiModel);
         if (newSettings.bioTheme !== undefined) setBioTheme(newSettings.bioTheme);
+        if (newSettings.hasUnreadAiMessage !== undefined) { /* handled in contextValue directly */ }
 
-        showToast('تنظیمات ذخیره شد', 'success');
+        // فقط برای تنظیماتی که نیاز به toast دارند
+        if (!newSettings.hasUnreadAiMessage) {
+            showToast('تنظیمات ذخیره شد', 'success');
+        }
     };
 
     const setGeminiApiKey = (key: string) => {

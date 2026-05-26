@@ -4,21 +4,22 @@ import { AppSettings } from '../types';
 interface ThemeContextType {
     darkMode: boolean;
     toggleDarkMode: () => void;
+    setDarkMode: (value: boolean) => void;
     viewMode: 'normal' | 'compact';
     setViewMode: (mode: 'normal' | 'compact') => void;
     showQuotes: boolean;
     toggleShowQuotes: () => void;
-    // Add other UI states if needed
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [darkMode, setDarkMode] = useState(false);
+    const [darkMode, setDarkModeState] = useState(false);
     const [viewMode, setViewModeState] = useState<'normal' | 'compact'>('normal');
     const [showQuotes, setShowQuotes] = useState(true);
 
-    const toggleDarkMode = () => setDarkMode(prev => !prev);
+    const toggleDarkMode = () => setDarkModeState(prev => !prev);
+    const setDarkMode = (value: boolean) => setDarkModeState(value);
     const setViewMode = (mode: 'normal' | 'compact') => setViewModeState(mode);
     const toggleShowQuotes = () => setShowQuotes(prev => !prev);
 
@@ -33,7 +34,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return (
         <ThemeContext.Provider value={{
-            darkMode, toggleDarkMode,
+            darkMode, toggleDarkMode, setDarkMode,
             viewMode, setViewMode,
             showQuotes, toggleShowQuotes
         }}>

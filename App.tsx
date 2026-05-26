@@ -14,6 +14,8 @@ const Settings = React.lazy(() => import('./pages/Settings'));
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const History = React.lazy(() => import('./pages/History'));
 const Welcome = React.lazy(() => import('./pages/Welcome'));
+const AIChat = React.lazy(() => import('./pages/AIChat'));
+const LeitnerBox = React.lazy(() => import('./pages/LeitnerBox'));
 
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastContainer, ConfirmModal } from './components/Feedback';
@@ -36,6 +38,8 @@ function App() {
                 <Route path="leaderboard" element={<Leaderboard />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="history" element={<History />} />
+                <Route path="ai-chat" element={<AIChat />} />
+                <Route path="leitner" element={<LeitnerBox />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
