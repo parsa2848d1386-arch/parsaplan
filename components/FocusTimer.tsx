@@ -511,6 +511,8 @@ const FocusTimer = () => {
         }, isFailed ? 2500 : 500);
     };
 
+    if (!isTimerOpen) return null;
+
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/98 dark:bg-gray-950/99 backdrop-blur-3xl select-none text-right font-sans" dir="rtl">
             {/* Top-Right Close Icon */}
