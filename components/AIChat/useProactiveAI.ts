@@ -16,7 +16,7 @@ export const useProactiveAI = () => {
             if (lastCheck === todayIso) return; // Already checked today
 
             const activeApiKey = settings.geminiApiKey || localStorage.getItem('gemini_api_key') || '';
-            const activeModel = settings.geminiModel || 'gemini-2.5-flash';
+            const activeModel = settings.geminiModel || 'gemini-2.0-flash';
 
             if (!activeApiKey) return;
 

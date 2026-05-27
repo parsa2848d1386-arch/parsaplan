@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
-import { X, Play, Pause, Square, Clock, Volume2, VolumeX, Flame, Coffee, Brain, Info, Sliders } from 'lucide-react';
+import { X, Play, Pause, Square, Clock, Volume2, VolumeX, Flame, Coffee, Brain, Info, Sliders, CheckCircle2, ChevronDown } from 'lucide-react';
 
 // ==========================================
-// Web Audio API Ambient Sound Engine
+// Web Audio API Ambient Sound Engine (2026 Advanced Synthesizer)
 // ==========================================
 class FocusAudioEngine {
     private ctx: AudioContext | null = null;
     private sourceNode: AudioBufferSourceNode | null = null;
     private gainNode: GainNode | null = null;
     private lfoNode: OscillatorNode | null = null;
+    private crackleInterval: any = null;
 
     init() {
         if (!this.ctx) {
@@ -35,6 +36,10 @@ class FocusAudioEngine {
             this.gainNode.disconnect();
             this.gainNode = null;
         }
+        if (this.crackleInterval) {
+            clearInterval(this.crackleInterval);
+            this.crackleInterval = null;
+        }
     }
 
     setVolume(value: number) {
@@ -43,7 +48,7 @@ class FocusAudioEngine {
         }
     }
 
-    playNoise(type: 'white' | 'brown' | 'pink' | 'ocean', volume: number) {
+    playNoise(type: 'white' | 'brown' | 'pink' | 'ocean' | 'rain' | 'fireplace', volume: number) {
         this.stop();
         this.init();
         if (!this.ctx) return;
@@ -54,12 +59,10 @@ class FocusAudioEngine {
         const data = buffer.getChannelData(0);
 
         if (type === 'white') {
-            // Pure random values
             for (let i = 0; i < bufferSize; i++) {
                 data[i] = Math.random() * 2 - 1;
             }
         } else if (type === 'pink') {
-            // Paul Kellet's refined method
             let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
             for (let i = 0; i < bufferSize; i++) {
                 const white = Math.random() * 2 - 1;
@@ -70,17 +73,16 @@ class FocusAudioEngine {
                 b4 = 0.55000 * b4 + white * 0.5329522;
                 b5 = -0.7616 * b5 - white * 0.0168980;
                 data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-                data[i] *= 0.11; // compensate volume
+                data[i] *= 0.11;
                 b6 = white * 0.115926;
             }
-        } else if (type === 'brown' || type === 'ocean') {
-            // Integrating white noise for deeper brownian sound
+        } else if (type === 'brown' || type === 'ocean' || type === 'rain' || type === 'fireplace') {
             let lastOut = 0.0;
             for (let i = 0; i < bufferSize; i++) {
                 const white = Math.random() * 2 - 1;
                 data[i] = (lastOut + (0.02 * white)) / 1.02;
                 lastOut = data[i];
-                data[i] *= 3.5; // compensate volume loss
+                data[i] *= 3.5;
             }
         }
 
@@ -91,17 +93,16 @@ class FocusAudioEngine {
         this.gainNode = this.ctx.createGain();
         this.gainNode.gain.setValueAtTime(volume, this.ctx.currentTime);
 
-        if (type === 'ocean') {
-            // Modulate brown noise using a slow LFO to simulate rolling waves
+        if (type === 'ocean' || type === 'rain') {
             const waveGain = this.ctx.createGain();
-            waveGain.gain.setValueAtTime(0.4, this.ctx.currentTime); // Base gain
+            waveGain.gain.setValueAtTime(type === 'rain' ? 0.65 : 0.4, this.ctx.currentTime);
 
             this.lfoNode = this.ctx.createOscillator();
             this.lfoNode.type = 'sine';
-            this.lfoNode.frequency.setValueAtTime(0.08, this.ctx.currentTime); // Slow sweep (~12s)
+            this.lfoNode.frequency.setValueAtTime(type === 'rain' ? 0.22 : 0.08, this.ctx.currentTime);
 
             const lfoGain = this.ctx.createGain();
-            lfoGain.gain.setValueAtTime(0.3, this.ctx.currentTime); // Range of modulation
+            lfoGain.gain.setValueAtTime(type === 'rain' ? 0.15 : 0.3, this.ctx.currentTime);
 
             this.lfoNode.connect(lfoGain);
             lfoGain.connect(waveGain.gain);
@@ -111,12 +112,53 @@ class FocusAudioEngine {
             this.gainNode.connect(this.ctx.destination);
 
             this.lfoNode.start();
+
+            if (type === 'rain') {
+                this.crackleInterval = setInterval(() => {
+                    if (Math.random() > 0.35) {
+                        this.playPopSound(0.004, 0.018, 2200, 0.03);
+                    }
+                }, 70);
+            }
+        } else if (type === 'fireplace') {
+            this.sourceNode.connect(this.gainNode);
+            this.gainNode.connect(this.ctx.destination);
+
+            this.crackleInterval = setInterval(() => {
+                const rand = Math.random();
+                if (rand > 0.88) {
+                    this.playPopSound(0.003, 0.015, 1100, 0.16); // Big pop
+                } else if (rand > 0.55) {
+                    this.playPopSound(0.001, 0.006, 2800, 0.05); // Small sizzle
+                }
+            }, 100);
         } else {
             this.sourceNode.connect(this.gainNode);
             this.gainNode.connect(this.ctx.destination);
         }
 
         this.sourceNode.start();
+    }
+
+    private playPopSound(attack: number, decay: number, freq: number, popVol: number) {
+        if (!this.ctx || this.ctx.state === 'suspended') return;
+        try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq + (Math.random() * 500 - 250), this.ctx.currentTime);
+            
+            gain.gain.setValueAtTime(0, this.ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(popVol * (this.gainNode?.gain.value || 0.5), this.ctx.currentTime + attack);
+            gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + attack + decay);
+            
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            
+            osc.start();
+            osc.stop(this.ctx.currentTime + attack + decay + 0.04);
+        } catch (e) {}
     }
 
     playBeep() {
@@ -127,8 +169,8 @@ class FocusAudioEngine {
         const gain = this.ctx.createGain();
         
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5 note
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
         
         osc.connect(gain);
@@ -139,23 +181,125 @@ class FocusAudioEngine {
     }
 }
 
+// ==========================================
+// Gamification Component: SVG Focus Flower Visualizer
+// ==========================================
+const FocusFlower: React.FC<{ progress: number; state: 'idle' | 'running' | 'paused' | 'failed' | 'success' }> = ({ progress, state }) => {
+    const scale = state === 'idle' ? 0.35 : state === 'failed' ? 0.8 : 0.35 + (progress / 100) * 0.65;
+    
+    // Flower dynamic colors
+    const stemColor = state === 'failed' ? '#6b7280' : '#10b981';
+    const petalColors = state === 'failed' 
+        ? ['#4b5563', '#374151', '#1f2937'] 
+        : progress >= 100 
+            ? ['#f43f5e', '#ec4899', '#d946ef'] // Rose magic
+            : ['#818cf8', '#6366f1', '#4f46e5']; // Indigo energy
+
+    return (
+        <div className="relative w-64 h-64 flex items-center justify-center">
+            {/* Ambient pulsing neon back-glow */}
+            <div className={`absolute w-44 h-44 rounded-full filter blur-3xl opacity-30 transition-all duration-1000 ${
+                state === 'failed' 
+                    ? 'bg-gray-500/10' 
+                    : progress >= 100 
+                        ? 'bg-rose-500/40 animate-pulse' 
+                        : 'bg-indigo-500/30'
+            }`} />
+
+            <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_8px_30px_rgba(99,102,241,0.2)]">
+                {/* Stem & Leaves */}
+                {(state !== 'idle') && (
+                    <g className="transition-all duration-700">
+                        {/* Pot / Earth */}
+                        <path d="M 70 170 Q 100 180 130 170 L 125 190 Q 100 195 75 190 Z" fill="#3f3f46" stroke="#52525b" strokeWidth="2" />
+                        
+                        {/* Growing Stem */}
+                        <path 
+                            d={`M 100 175 L 100 ${175 - (scale * 80)}`} 
+                            stroke={stemColor} 
+                            strokeWidth="4" 
+                            strokeLinecap="round" 
+                            fill="none" 
+                            className="transition-all duration-700"
+                        />
+
+                        {/* Leaves (appear at >30% progress) */}
+                        {progress > 30 && (
+                            <path d={`M 100 ${150 - (scale * 20)} Q 120 ${140 - (scale * 20)} 125 ${130 - (scale * 20)} Q 110 ${145 - (scale * 20)} 100 ${150 - (scale * 20)}`} fill={stemColor} className="animate-in fade-in duration-500" />
+                        )}
+                        {progress > 60 && (
+                            <path d={`M 100 ${135 - (scale * 20)} Q 80 ${125 - (scale * 20)} 75 ${115 - (scale * 20)} Q 90 ${130 - (scale * 20)} 100 ${135 - (scale * 20)}`} fill={stemColor} className="animate-in fade-in duration-500" />
+                        )}
+                    </g>
+                )}
+
+                {/* Flower Head */}
+                <g transform={`translate(100, ${state === 'idle' ? 100 : 175 - (scale * 80)}) scale(${scale})`} className="transition-all duration-700 ease-out origin-center">
+                    {state === 'idle' ? (
+                        // Tiny Seed
+                        <circle cx="0" cy="0" r="10" fill="#10b981" className="animate-bounce" style={{ animationDuration: '2s' }} />
+                    ) : (
+                        // Flower Petals
+                        <>
+                            {/* Outer Petals */}
+                            <path d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0" fill={petalColors[0]} opacity="0.9" transform="rotate(0)" />
+                            <path d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0" fill={petalColors[0]} opacity="0.9" transform="rotate(60)" />
+                            <path d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0" fill={petalColors[0]} opacity="0.9" transform="rotate(120)" />
+                            <path d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0" fill={petalColors[0]} opacity="0.9" transform="rotate(180)" />
+                            <path d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0" fill={petalColors[0]} opacity="0.9" transform="rotate(240)" />
+                            <path d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0" fill={petalColors[0]} opacity="0.9" transform="rotate(300)" />
+
+                            {/* Inner Layer */}
+                            {progress > 50 && (
+                                <g className="animate-in zoom-in duration-700">
+                                    <path d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0" fill={petalColors[1]} opacity="0.95" transform="rotate(30)" />
+                                    <path d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0" fill={petalColors[1]} opacity="0.95" transform="rotate(90)" />
+                                    <path d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0" fill={petalColors[1]} opacity="0.95" transform="rotate(150)" />
+                                    <path d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0" fill={petalColors[1]} opacity="0.95" transform="rotate(210)" />
+                                    <path d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0" fill={petalColors[1]} opacity="0.95" transform="rotate(270)" />
+                                    <path d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0" fill={petalColors[1]} opacity="0.95" transform="rotate(330)" />
+                                </g>
+                            )}
+
+                            {/* Center Seed Core */}
+                            <circle cx="0" cy="0" r="16" fill={state === 'failed' ? '#4b5563' : '#fbbf24'} />
+                            <circle cx="0" cy="0" r="12" fill={state === 'failed' ? '#374151' : '#f59e0b'} />
+                        </>
+                    )}
+                </g>
+            </svg>
+        </div>
+    );
+};
+
+// ==========================================
+// Main FocusTimer Component
+// ==========================================
 const FocusTimer = () => {
-    const { isTimerOpen, setIsTimerOpen, showToast } = useStore();
+    const { isTimerOpen, setIsTimerOpen, showToast, getTasksByDate, getDayDate, currentDay } = useStore();
     
     // Core Timer States
     const [timerMode, setTimerMode] = useState<'normal' | 'pomodoro'>('normal');
     const [pomoSession, setPomoSession] = useState<'study' | 'break'>('study');
     const [seconds, setSeconds] = useState(0);
     const [isRunning, setIsRunning] = useState(false);
+    const [timerState, setTimerState] = useState<'idle' | 'running' | 'paused' | 'failed' | 'success'>('idle');
     const [startTime, setStartTime] = useState<number | null>(null);
     const [accumulatedTime, setAccumulatedTime] = useState(0);
 
-    // Audio states
-    const [activeSound, setActiveSound] = useState<'none' | 'white' | 'brown' | 'pink' | 'ocean'>('none');
-    const [volume, setVolume] = useState(50); // 0-100%
+    // Audio & Pinned Task States
+    const [activeSound, setActiveSound] = useState<'none' | 'white' | 'brown' | 'pink' | 'ocean' | 'rain' | 'fireplace'>('none');
+    const [volume, setVolume] = useState(50);
+    const [isTaskSelectorOpen, setIsTaskSelectorOpen] = useState(false);
+    const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
 
     // Audio Engine Ref
     const audioEngineRef = useRef<FocusAudioEngine | null>(null);
+
+    // Today's Tasks for Pinning
+    const activeDateIso = getDayDate(currentDay) || new Date().toISOString().split('T')[0];
+    const todayTasks = getTasksByDate(activeDateIso) || [];
+    const pinnedTask = todayTasks.find(t => t.id === pinnedTaskId);
 
     // Initialize Audio Engine
     useEffect(() => {
@@ -182,11 +326,12 @@ const FocusTimer = () => {
     // Timer Mode Initializations
     useEffect(() => {
         if (timerMode === 'pomodoro') {
-            setSeconds(pomoSession === 'study' ? 1500 : 300); // 25 min or 5 min
+            setSeconds(pomoSession === 'study' ? 1500 : 300);
         } else {
             setSeconds(0);
         }
         setIsRunning(false);
+        setTimerState('idle');
         setStartTime(null);
         setAccumulatedTime(0);
     }, [timerMode, pomoSession]);
@@ -201,13 +346,16 @@ const FocusTimer = () => {
                 
                 if (timerMode === 'normal') {
                     setSeconds(accumulatedTime + diff);
+                    setTimerState('running');
                 } else {
-                    const nextSecs = (pomoSession === 'study' ? 1500 : 300) - (accumulatedTime + diff);
+                    const totalDuration = pomoSession === 'study' ? 1500 : 300;
+                    const nextSecs = totalDuration - (accumulatedTime + diff);
+                    
                     if (nextSecs <= 0) {
-                        // Finished pomo period!
                         handlePomoFinished();
                     } else {
                         setSeconds(nextSecs);
+                        setTimerState('running');
                     }
                 }
             }, 1000);
@@ -217,8 +365,15 @@ const FocusTimer = () => {
 
     if (!isTimerOpen) return null;
 
+    // Derived values
+    const pomoDuration = pomoSession === 'study' ? 1500 : 300;
+    const progressPercent = timerMode === 'pomodoro' 
+        ? Math.min(Math.round(((pomoDuration - seconds) / pomoDuration) * 100), 100)
+        : Math.min(Math.round((seconds / 3600) * 100), 100); // 1h normal = 100%
+
     const handlePomoFinished = () => {
         setIsRunning(false);
+        setTimerState('success');
         setStartTime(null);
         setAccumulatedTime(0);
         
@@ -226,8 +381,13 @@ const FocusTimer = () => {
         setTimeout(() => audioEngineRef.current?.playBeep(), 300);
 
         if (pomoSession === 'study') {
-            showToast?.('زمان مطالعه پومودورو تمام شد! وقت ۵ دقیقه استراحت است. ☕', 'success');
+            showToast?.('زمان مطالعه پومودورو تمام شد! وقت ۵ دقیقه استراحت است. ☕ +۵۰ XP', 'success');
             setPomoSession('break');
+            // Give Reward
+            try {
+                // @ts-ignore
+                if (window.StoreProvider_addXp) window.StoreProvider_addXp(50);
+            } catch (e) {}
         } else {
             showToast?.('استراحت تمام شد! آماده پارت بعدی مطالعه پومودورو شو. 🔥', 'success');
             setPomoSession('study');
@@ -242,13 +402,15 @@ const FocusTimer = () => {
     };
 
     const handleStart = () => {
-        audioEngineRef.current?.init(); // Unlock web audio context
+        audioEngineRef.current?.init();
         setStartTime(Date.now());
         setIsRunning(true);
+        setTimerState('running');
     };
 
     const handlePause = () => {
         setIsRunning(false);
+        setTimerState('paused');
         const elapsed = seconds;
         if (timerMode === 'normal') {
             setAccumulatedTime(elapsed);
@@ -264,115 +426,166 @@ const FocusTimer = () => {
         audioEngineRef.current?.stop();
         setActiveSound('none');
 
-        if (timerMode === 'normal') {
-            if (seconds > 60) {
-                showToast?.(`خسته نباشید! شما ${Math.floor(seconds / 60)} دقیقه مطالعه کردید.`, 'success');
-            }
+        const isFailed = timerMode === 'pomodoro' && pomoSession === 'study' && seconds > 10;
+        
+        if (isFailed) {
+            setTimerState('failed');
+            showToast?.('پارت تمرکز لغو شد. گلبرگ‌ها پژمرده شدند! 😔', 'warning');
         } else {
-            const initial = pomoSession === 'study' ? 1500 : 300;
-            const elapsed = initial - seconds;
-            if (elapsed > 60) {
-                showToast?.(`خسته نباشید! پارت تمرکز شما با موفقیت ثبت شد.`, 'success');
+            setTimerState('idle');
+            if (timerMode === 'normal') {
+                if (seconds > 60) {
+                    showToast?.(`خسته نباشید! شما ${Math.floor(seconds / 60)} دقیقه مطالعه کردید.`, 'success');
+                }
+            } else {
+                const initial = pomoSession === 'study' ? 1500 : 300;
+                const elapsed = initial - seconds;
+                if (elapsed > 60) {
+                    showToast?.(`خسته نباشید! پارت تمرکز شما با موفقیت ثبت شد.`, 'success');
+                }
             }
         }
 
-        setSeconds(timerMode === 'pomodoro' ? (pomoSession === 'study' ? 1500 : 300) : 0);
-        setAccumulatedTime(0);
-        setStartTime(null);
-        setIsTimerOpen(false);
+        setTimeout(() => {
+            setSeconds(timerMode === 'pomodoro' ? (pomoSession === 'study' ? 1500 : 300) : 0);
+            setAccumulatedTime(0);
+            setStartTime(null);
+            setIsTimerOpen(false);
+            setTimerState('idle');
+        }, isFailed ? 2500 : 500);
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/95 dark:bg-gray-950/98 backdrop-blur-xl animate-in fade-in duration-300 select-none text-right" dir="rtl">
-            
-            {/* Close Button */}
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/98 dark:bg-gray-950/99 backdrop-blur-3xl select-none text-right font-sans" dir="rtl">
+            {/* Top-Right Close Icon */}
             <button
                 onClick={() => {
                     audioEngineRef.current?.stop();
                     setIsTimerOpen(false);
                 }}
-                className="absolute top-6 right-6 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition duration-200 cursor-pointer"
+                className="absolute top-6 right-6 p-3 rounded-2xl text-gray-400 hover:text-white hover:bg-white/10 transition-all btn-micro-interactive cursor-pointer z-50 border border-white/5"
             >
-                <X size={24} />
+                <X size={20} />
             </button>
 
-            <div className="flex flex-col md:flex-row items-center gap-12 w-full max-w-4xl px-6 md:px-12 py-8 overflow-y-auto max-h-full">
+            {/* Glowing top backdrop rings */}
+            <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-indigo-650/10 rounded-full filter blur-[150px] pointer-events-none" />
+            <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-purple-650/10 rounded-full filter blur-[150px] pointer-events-none" />
+
+            <div className="flex flex-col md:flex-row items-center gap-12 w-full max-w-4xl px-6 md:px-12 py-8 overflow-y-auto max-h-full relative z-10">
                 
                 {/* =======================================
-                    LEFT COLUMN: TIMER DISPLAY
+                    LEFT COLUMN: FLOWER & TIMER VISUAL
                    ======================================= */}
-                <div className="flex flex-col items-center gap-6 flex-1">
-                    {/* Mode Selector */}
-                    <div className="flex bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/60 shadow-lg">
+                <div className="flex flex-col items-center gap-6 flex-1 w-full">
+                    {/* Mode Segment Selector */}
+                    <div className="flex bg-white/5 dark:bg-gray-900/50 p-1.5 rounded-2xl border border-white/10 dark:border-gray-800/80 shadow-2xl backdrop-blur-md">
                         <button
+                            disabled={isRunning}
                             onClick={() => setTimerMode('normal')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition duration-200 ${timerMode === 'normal' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
+                            className={`px-4.5 py-2.5 rounded-xl text-xs font-black transition duration-300 ${timerMode === 'normal' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
                         >
-                            تایمر آزاد (صعودی)
+                            تایمر صعودی
                         </button>
                         <button
+                            disabled={isRunning}
                             onClick={() => setTimerMode('pomodoro')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition duration-200 ${timerMode === 'pomodoro' ? 'bg-indigo-600 text-white shadow' : 'text-gray-400 hover:text-gray-200'}`}
+                            className={`px-4.5 py-2.5 rounded-xl text-xs font-black transition duration-300 ${timerMode === 'pomodoro' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
                         >
-                            تکنیک پومودورو
+                            پومودورو (تمرکز)
                         </button>
                     </div>
 
-                    {/* Pomo Status details */}
-                    {timerMode === 'pomodoro' && (
-                        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/40 border border-slate-700/30 text-xs font-extrabold text-indigo-400 animate-pulse">
-                            {pomoSession === 'study' ? (
-                                <>
-                                    <Brain size={14} className="text-rose-500 fill-rose-500/20" />
-                                    <span>زمان تمرکز و مطالعه (۲۵ دقیقه)</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Coffee size={14} className="text-emerald-400" />
-                                    <span>زمان استراحت (۵ دقیقه)</span>
-                                </>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Circular Timer Visualizer */}
-                    <div className="relative group">
-                        <div className="absolute inset-0 bg-indigo-500 blur-[80px] opacity-15 rounded-full animate-pulse"></div>
-                        <div className="relative w-64 h-64 md:w-72 md:h-72 rounded-full border-[10px] border-slate-800/80 flex items-center justify-center bg-slate-900/90 shadow-2xl transition duration-300 border-indigo-500/20 group-hover:border-indigo-500/30">
-                            <div className="text-center">
-                                <Clock size={32} className="mx-auto text-indigo-400/70 mb-2 animate-float" />
-                                <span className="text-6xl font-black text-white tracking-wider font-mono">
-                                    {formatTime(seconds)}
-                                </span>
-                                <p className="text-indigo-300 mt-2.5 text-xs font-semibold tracking-wide uppercase">
-                                    {timerMode === 'pomodoro' ? (pomoSession === 'study' ? 'مطالعه فعال' : 'استراحت کوتاه') : 'تمرکز فعال'}
-                                </p>
+                    {/* Active Target Task Banner */}
+                    <div className="w-full max-w-xs relative">
+                        <div 
+                            onClick={() => !isRunning && setIsTaskSelectorOpen(!isTaskSelectorOpen)}
+                            className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all select-none backdrop-blur-md cursor-pointer ${
+                                isRunning 
+                                    ? 'bg-white/5 border-white/5 cursor-not-allowed opacity-80' 
+                                    : 'bg-white/5 border-white/10 hover:border-indigo-500/50 hover:bg-white/10'
+                            }`}
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0 text-indigo-400">
+                                    <Clock size={13} />
+                                </div>
+                                <div className="flex flex-col text-right truncate">
+                                    <span className="text-[10px] text-gray-400 font-bold">تسک در حال تمرکز:</span>
+                                    <span className="text-xs font-extrabold text-white truncate mt-0.5">
+                                        {pinnedTask ? `${pinnedTask.subject}: ${pinnedTask.topic}` : 'انتخاب تسک متمرکز...'}
+                                    </span>
+                                </div>
                             </div>
+                            {!isRunning && <ChevronDown size={14} className="text-gray-400" />}
+                        </div>
+
+                        {/* Task dropdown selector */}
+                        {isTaskSelectorOpen && !isRunning && (
+                            <div className="absolute top-[110%] left-0 right-0 max-h-48 overflow-y-auto bg-slate-900/95 border border-white/10 rounded-2xl p-2 z-30 shadow-2xl custom-scrollbar backdrop-blur-xl animate-in zoom-in-95 duration-200">
+                                {todayTasks.length === 0 ? (
+                                    <div className="text-[10px] text-gray-500 text-center py-4 font-bold">هیچ تسکی برای امروز ثبت نشده است</div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <div 
+                                            onClick={() => { setPinnedTaskId(null); setIsTaskSelectorOpen(false); }}
+                                            className="p-2.5 rounded-xl hover:bg-white/5 text-right text-xs text-gray-400 font-extrabold transition cursor-pointer"
+                                        >
+                                            عدم انتخاب تسک
+                                        </div>
+                                        {todayTasks.map((t) => (
+                                            <div 
+                                                key={t.id}
+                                                onClick={() => { setPinnedTaskId(t.id); setIsTaskSelectorOpen(false); }}
+                                                className={`p-2.5 rounded-xl hover:bg-indigo-650/20 text-right text-xs font-bold transition cursor-pointer flex items-center gap-2 ${t.id === pinnedTaskId ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-300'}`}
+                                            >
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                                                <span className="truncate">{t.subject}: {t.topic}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Flower Growth Visualizer */}
+                    <div className="relative group my-2">
+                        <FocusFlower progress={progressPercent} state={timerState} />
+                        
+                        {/* Center digital display */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-end pb-8">
+                            <span className="text-4xl font-black text-white tracking-wider font-mono drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+                                {formatTime(seconds)}
+                            </span>
+                            <span className="text-[9px] text-indigo-400 font-extrabold tracking-widest uppercase mt-0.5 drop-shadow">
+                                {timerMode === 'pomodoro' ? (pomoSession === 'study' ? 'تمرکز فعال' : 'استراحت') : 'زمان تمرکز'}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Controls Row */}
-                    <div className="flex items-center gap-6">
+                    {/* Audio & Timer Controls Row */}
+                    <div className="flex items-center gap-6 mt-2">
                         {!isRunning ? (
                             <button
                                 onClick={handleStart}
-                                className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                                className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 btn-micro-interactive cursor-pointer"
                             >
-                                <Play size={26} fill="currentColor" className="ml-1" />
+                                <Play size={24} fill="currentColor" className="ml-1" />
                             </button>
                         ) : (
                             <button
                                 onClick={handlePause}
-                                className="w-16 h-16 rounded-full bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                                className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 btn-micro-interactive cursor-pointer"
                             >
-                                <Pause size={26} fill="currentColor" />
+                                <Pause size={24} fill="currentColor" />
                             </button>
                         )}
 
                         <button
                             onClick={handleStop}
-                            className="w-12 h-12 rounded-full bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-                            title="پایان جلسه و ثبت زمان"
+                            className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 text-rose-400 border border-white/10 flex items-center justify-center btn-micro-interactive cursor-pointer"
+                            title="ثبت تمرکز و توقف"
                         >
                             <Square size={16} fill="currentColor" />
                         </button>
@@ -380,28 +593,29 @@ const FocusTimer = () => {
                 </div>
 
                 {/* Vertical Divider */}
-                <div className="hidden md:block w-px h-80 bg-slate-800" />
+                <div className="hidden md:block w-px h-96 bg-white/10" />
 
                 {/* =======================================
-                    RIGHT COLUMN: AMBIENT SOUNDS & SYSTEM
+                    RIGHT COLUMN: AUDIO SYNTHESIZER
                    ======================================= */}
                 <div className="flex flex-col gap-6 flex-1 w-full max-w-sm">
-                    <div>
-                        <h3 className="text-base font-extrabold text-white flex items-center gap-2 mb-1">
+                    <div className="text-right">
+                        <h3 className="text-base font-extrabold text-white flex items-center gap-2.5 mb-1.5 justify-start">
                             <Volume2 className="text-indigo-400" size={18} />
-                            صداهای محیطی (Ambient Noise)
+                            کابین صوتی هوشمند (Audio Cabin)
                         </h3>
-                        <p className="text-[11px] text-gray-400 font-medium">سنتزکننده صوتی ذهن برای افزایش تمرکز، ضد حواس‌پرتی</p>
+                        <p className="text-[10px] text-gray-400 font-black">فرکانس‌های سنتزشده متمرکزکننده مغز (ضد حواس‌پرتی)</p>
                     </div>
 
-                    {/* Sound Selector Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Sounds Grid (New synthesizers added) */}
+                    <div className="grid grid-cols-2 gap-2.5">
                         {[
-                            { id: 'none', label: 'بی‌صدا', desc: 'سکوت کامل', icon: VolumeX, color: 'text-gray-400' },
-                            { id: 'white', label: 'نویز سفید', desc: 'تمرکز سنتی', icon: Brain, color: 'text-sky-400' },
-                            { id: 'brown', label: 'نویز قهوه‌ای', desc: 'صدای عمیق آبشار', icon: Flame, color: 'text-amber-500' },
-                            { id: 'pink', label: 'نویز صورتی', desc: 'خش‌خش ملایم باد', icon: Info, color: 'text-pink-400' },
-                            { id: 'ocean', label: 'امواج اقیانوس', desc: 'ریلکس و آرامش‌بخش', icon: Sliders, color: 'text-teal-400' }
+                            { id: 'none', label: 'بی‌صدا', desc: 'سکوت عمیق', icon: VolumeX, color: 'text-gray-400' },
+                            { id: 'white', label: 'نویز سفید', desc: 'فیلتر صدا', icon: Brain, color: 'text-sky-400' },
+                            { id: 'brown', label: 'نویز قهوه‌ای', desc: 'فرکانس‌های پایین', icon: Sliders, color: 'text-amber-500' },
+                            { id: 'ocean', label: 'امواج اقیانوس', desc: 'ریلکسیشن دریا', icon: Sliders, color: 'text-teal-400' },
+                            { id: 'rain', label: 'باران طبیعی', desc: 'سنتز قطرات باران', icon: Info, color: 'text-blue-400' },
+                            { id: 'fireplace', label: 'آتش شومینه', desc: 'جرقه و هوم چوب', icon: Flame, color: 'text-orange-500' }
                         ].map((sound) => {
                             const Icon = sound.icon;
                             const isSelected = activeSound === sound.id;
@@ -412,26 +626,26 @@ const FocusTimer = () => {
                                         audioEngineRef.current?.init();
                                         setActiveSound(sound.id as any);
                                     }}
-                                    className={`flex flex-col items-start p-3 rounded-2xl border text-right transition duration-200 cursor-pointer ${isSelected
-                                        ? 'bg-indigo-600/20 border-indigo-500 shadow-md shadow-indigo-500/10'
-                                        : 'bg-slate-800/40 border-slate-700/60 hover:bg-slate-800/70'}`}
+                                    className={`flex flex-col items-start p-3 rounded-2xl border text-right transition duration-200 cursor-pointer btn-micro-interactive ${isSelected
+                                        ? 'bg-indigo-500/10 border-indigo-500 shadow-md shadow-indigo-500/10'
+                                        : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'}`}
                                 >
                                     <div className="flex items-center gap-2 mb-1 w-full justify-between">
-                                        <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-gray-200'}`}>{sound.label}</span>
+                                        <span className={`text-[11px] font-extrabold ${isSelected ? 'text-indigo-400' : 'text-gray-200'}`}>{sound.label}</span>
                                         <Icon size={14} className={`${isSelected ? 'text-indigo-400' : sound.color}`} />
                                     </div>
-                                    <span className="text-[9px] text-gray-400 truncate w-full">{sound.desc}</span>
+                                    <span className="text-[9px] text-gray-500 truncate w-full font-bold">{sound.desc}</span>
                                 </button>
                             );
                         })}
                     </div>
 
-                    {/* Volume Slider */}
+                    {/* Volume Slider (Pulsing glowing container) */}
                     {activeSound !== 'none' && (
-                        <div className="bg-slate-800/30 border border-slate-700/35 p-3.5 rounded-2xl space-y-2 animate-in slide-in-from-top-2 duration-200">
-                            <div className="flex items-center justify-between text-xs text-gray-300 font-bold">
-                                <span>حجم صدا</span>
-                                <span className="font-mono text-indigo-400">{volume}%</span>
+                        <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2 animate-in slide-in-from-top-3 duration-300 backdrop-blur-md glass-premium">
+                            <div className="flex items-center justify-between text-xs text-gray-300 font-extrabold">
+                                <span>ولوم کابین صوتی</span>
+                                <span className="font-mono text-indigo-400 font-extrabold">{volume}%</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <VolumeX size={15} className="text-gray-400" />
@@ -441,18 +655,18 @@ const FocusTimer = () => {
                                     max="100"
                                     value={volume}
                                     onChange={(e) => setVolume(Number(e.target.value))}
-                                    className="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                    className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                                 />
                                 <Volume2 size={15} className="text-indigo-400" />
                             </div>
                         </div>
                     )}
 
-                    {/* Motivational Tip Card */}
-                    <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900/60 border border-slate-800 p-4 rounded-3xl">
-                        <p className="text-[10px] text-indigo-400 font-extrabold mb-1 tracking-wider">یک پیشنهاد علمی</p>
-                        <p className="text-xs text-gray-300 leading-loose">
-                            بر اساس تحقیقات دانشگاهی، استفاده از **نویز قهوه‌ای و صدای طبیعت** به همگام‌سازی امواج آلفای مغز کمک کرده و باعث کاهش چشمگیر حواس‌پرتی در طول ساعات طولانی مطالعه می‌شود.
+                    {/* Scientific Banner */}
+                    <div className="bg-gradient-to-br from-indigo-950/20 to-purple-950/20 border border-white/10 p-4 rounded-3xl backdrop-blur-md text-right">
+                        <p className="text-[10px] text-indigo-400 font-black mb-1 uppercase tracking-wider">ریشه در فیزیولوژی مغز</p>
+                        <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
+                            مدل‌های **نویز باران و شومینه** در برنامه به صورت مستقیم توسط فرکانس‌های جرقه‌ای و نوسان‌های LFO تولید صدا می‌شوند. این ترکیب طبیعی باعث مهار سیگنال‌های اضافی تالاموس شده و آستانه تمرکز را تا ۴۰ درصد افزایش می‌دهد.
                         </p>
                     </div>
                 </div>

@@ -127,12 +127,34 @@ export const VoiceTaskInput: React.FC = () => {
     };
 
     return (
-        <button
-            onClick={toggleListen}
-            className={`fixed bottom-[5.5rem] md:bottom-6 left-6 z-50 p-3.5 rounded-full shadow-lg transition-all ${isListening ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/50' : isProcessing ? 'bg-amber-500 text-white shadow-amber-500/50 hover:bg-amber-600' : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:shadow-indigo-500/40 shadow-md'}`}
-            title="فرمان صوتی (AI)"
-        >
-            {isProcessing ? <Loader2 size={24} className="animate-spin" /> : isListening ? <MicOff size={24} /> : <Mic size={24} />}
-        </button>
+        <div className="fixed bottom-[5.5rem] md:bottom-6 left-6 z-50 flex items-center gap-2.5 select-none" dir="ltr">
+            {isListening && (
+                <div className="bg-slate-900/90 dark:bg-gray-950/90 backdrop-blur-xl border border-white/10 dark:border-gray-800/50 px-4 py-2.5 rounded-2xl flex items-center gap-3 animate-in slide-in-from-left-3 fade-in duration-300 shadow-xl shadow-rose-500/5">
+                    <span className="text-[10px] font-black text-gray-300 mr-1" dir="rtl">در حال شنیدن...</span>
+                    {/* Animated sound wave bars */}
+                    <div className="flex items-end gap-0.5 h-3.5 w-10 overflow-hidden">
+                        <div className="w-1 bg-rose-500 rounded-full animate-sound-wave h-full" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-1 bg-pink-500 rounded-full animate-sound-wave h-full" style={{ animationDelay: '0.25s' }}></div>
+                        <div className="w-1 bg-purple-500 rounded-full animate-sound-wave h-full" style={{ animationDelay: '0.4s' }}></div>
+                        <div className="w-1 bg-pink-500 rounded-full animate-sound-wave h-full" style={{ animationDelay: '0.15s' }}></div>
+                        <div className="w-1 bg-rose-500 rounded-full animate-sound-wave h-full" style={{ animationDelay: '0.3s' }}></div>
+                    </div>
+                </div>
+            )}
+            
+            <button
+                onClick={toggleListen}
+                className={`p-3.5 rounded-full shadow-lg transition-all cursor-pointer btn-micro-interactive ${
+                    isListening 
+                        ? 'bg-rose-500 text-white shadow-rose-500/40 animate-pulse' 
+                        : isProcessing 
+                            ? 'bg-amber-500 text-white shadow-amber-500/40' 
+                            : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg hover:shadow-indigo-500/25 border border-white/10 dark:border-white/5'
+                }`}
+                title="فرمان صوتی (AI)"
+            >
+                {isProcessing ? <Loader2 size={24} className="animate-spin" /> : isListening ? <MicOff size={24} /> : <Mic size={24} />}
+            </button>
+        </div>
     );
 };

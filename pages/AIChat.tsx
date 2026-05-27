@@ -47,7 +47,7 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const [isTyping, setIsTyping] = useState(false);
     // Settings (Persisted)
     const activeApiKey = geminiApiKey || localStorage.getItem('gemini_api_key') || '';
-    const selectedModel = settings.geminiModel || 'gemini-2.5-flash';
+    const selectedModel = settings.geminiModel || 'gemini-2.0-flash';
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 

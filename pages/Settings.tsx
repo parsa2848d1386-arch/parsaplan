@@ -11,6 +11,7 @@ import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils
 import { FirebaseConfig } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { ArchivedPlan } from '../types';
+import { useTheme } from '../context/ThemeContext';
 
 // --- Components ---
 
@@ -264,20 +265,19 @@ const GeminiApiKeySettings = () => {
                     <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-2">مدل Gemini</label>
                     <input
                         list="gemini-models-settings"
-                        value={settings?.geminiModel || 'gemini-2.5-flash'}
+                        value={settings?.geminiModel || 'gemini-2.0-flash'}
                         onChange={(e) => updateSettings({ geminiModel: e.target.value })}
                         className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 transition text-gray-800 dark:text-white"
                         dir="ltr"
-                        placeholder="gemini-2.5-flash"
+                        placeholder="gemini-2.0-flash"
                     />
                     <datalist id="gemini-models-settings">
-                        <option value="gemini-2.5-flash" />
                         <option value="gemini-2.0-flash" />
                         <option value="gemini-1.5-flash" />
                         <option value="gemini-1.5-pro" />
                         <option value="gemini-pro" />
                     </datalist>
-                    <p className="text-[10px] text-gray-400 mt-1.5">مدل 2.5 Flash سریع‌ترین گزینه است</p>
+                    <p className="text-[10px] text-gray-400 mt-1.5">مدل 2.0 Flash جدیدترین، دقیق‌ترین و سریع‌ترین گزینه است</p>
                 </div>
             </div>
         </div>
@@ -466,6 +466,8 @@ const Settings = () => {
         settings, updateSettings, archivedPlans, archiveCurrentPlan
     } = useStore();
 
+    const { themePalette, setThemePalette } = useTheme();
+
     const navigate = useNavigate();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -649,6 +651,36 @@ const Settings = () => {
                                     <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.bioTheme ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                 </div>
                             </button>
+                            
+                            {/* انتخاب تم رنگی (Theme Palette Picker) */}
+                            <div className="p-3 bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-gray-150/10 dark:border-gray-800/20 mt-1">
+                                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3">
+                                    <Palette size={16} className="text-purple-500" />
+                                    پالت رنگی برنامه (تم ۲۰۲۶)
+                                </span>
+                                <div className="grid grid-cols-3 gap-2.5">
+                                    {[
+                                        { id: 'indigo', name: 'نیلی نئونی', color: 'from-indigo-500 to-indigo-650', border: 'border-indigo-500/20' },
+                                        { id: 'forest', name: 'جنگل آرام', color: 'from-emerald-500 to-green-600', border: 'border-emerald-500/20' },
+                                        { id: 'rosegold', name: 'رز گلد لوکس', color: 'from-rose-400 to-rose-600', border: 'border-rose-500/20' }
+                                    ].map(theme => (
+                                        <button
+                                            key={theme.id}
+                                            onClick={() => setThemePalette(theme.id as any)}
+                                            className={`relative p-3.5 rounded-2xl border text-center transition-all duration-300 flex flex-col items-center gap-2 cursor-pointer btn-micro-interactive ${
+                                                themePalette === theme.id 
+                                                    ? 'bg-white dark:bg-gray-800 border-indigo-600 shadow-md ring-2 ring-indigo-500/20' 
+                                                    : 'bg-transparent border-gray-200 dark:border-gray-700 hover:bg-white/5 hover:border-gray-300 dark:hover:border-gray-600'
+                                            }`}
+                                        >
+                                            <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${theme.color} shadow-inner flex items-center justify-center`}>
+                                                {themePalette === theme.id && <Check size={14} className="text-white drop-shadow" />}
+                                            </div>
+                                            <span className="text-[10px] font-black text-gray-800 dark:text-gray-200">{theme.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

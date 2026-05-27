@@ -15,10 +15,10 @@ const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const History = React.lazy(() => import('./pages/History'));
 const Welcome = React.lazy(() => import('./pages/Welcome'));
 const AIChat = React.lazy(() => import('./pages/AIChat'));
-const LeitnerBox = React.lazy(() => import('./pages/LeitnerBox'));
+
 
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ToastContainer, ConfirmModal } from './components/Feedback';
+import { ToastContainer, ConfirmModal, LevelUpShowcase, ConfettiContainer } from './components/Feedback';
 import FocusTimer from './components/FocusTimer';
 
 function App() {
@@ -39,7 +39,7 @@ function App() {
                 <Route path="settings" element={<Settings />} />
                 <Route path="history" element={<History />} />
                 <Route path="ai-chat" element={<AIChat />} />
-                <Route path="leitner" element={<LeitnerBox />} />
+
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
@@ -47,6 +47,8 @@ function App() {
         </HashRouter>
         <ToastContainer />
         <ConfirmModal />
+        <LevelUpShowcase />
+        <ConfettiContainer />
         <FocusTimer />
       </ErrorBoundary>
     </StoreProvider>

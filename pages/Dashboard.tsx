@@ -37,6 +37,143 @@ const AnimatedNumber = ({ value, suffix = '' }: { value: number; suffix?: string
     return <span>{display}{suffix}</span>;
 };
 
+/* ===== 2026 Circadian Bio-Readiness Rhythm Panel ===== */
+const CircadianRhythmPanel = () => {
+    const currentHour = new Date().getHours();
+    
+    // Calculate current energy level and advice based on hour
+    let energy = 50;
+    let title = '';
+    let advice = '';
+    let orbColor = 'bg-blue-500';
+    let pathColor = '#6366f1';
+
+    if (currentHour >= 6 && currentHour < 12) {
+        energy = 90;
+        title = 'پیک اول انرژی (تمرکز تحلیلی)';
+        advice = 'ذهن شما در بالاترین هوشیاری است. بهترین زمان برای فیزیک، ریاضی، هندسه و مباحث پیچیده محاسباتی!';
+        orbColor = 'bg-amber-400 shadow-amber-450/40';
+        pathColor = '#fbbf24';
+    } else if (currentHour >= 12 && currentHour < 16) {
+        energy = 55;
+        title = 'شیب ملایم ظهرگاهی (مرور و فعالیت‌های سبک)';
+        advice = 'کاهش موقت تمرکز طبیعی است. بهترین زمان برای خلاصه‌نویسی، تست آموزشی سبک یا استراحت پومودورو!';
+        orbColor = 'bg-teal-400 shadow-teal-450/40';
+        pathColor = '#2dd4bf';
+    } else if (currentHour >= 16 && currentHour < 22) {
+        energy = 80;
+        title = 'پیک دوم انرژی (حفظیات و درک مطلب)';
+        advice = 'هوشیاری کلامی و حافظه کوتاه‌مدت بالا است. بهترین زمان برای زیست‌شناسی، شیمی، ادبیات و دروس حفظی!';
+        orbColor = 'bg-indigo-50 shadow-indigo-500/40';
+        pathColor = '#6366f1';
+    } else {
+        energy = 20;
+        title = 'فاز بازیابی و تثبیت مغزی (خواب و بازسازی)';
+        advice = 'سیگنال‌های خواب ترشح شده‌اند. برای یادگیری پایدار، مغز نیاز به استراحت و تثبیت یافته‌ها در حافظه بلندمدت دارد!';
+        orbColor = 'bg-purple-600 shadow-purple-500/40';
+        pathColor = '#a855f7';
+    }
+
+    // Circadian SVG path coordinates (24 points, standard circadian cycle)
+    const points = [
+        { h: 0, y: 80 }, { h: 2, y: 90 }, { h: 4, y: 95 }, { h: 6, y: 70 },
+        { h: 8, y: 25 }, { h: 10, y: 15 }, { h: 12, y: 35 }, { h: 14, y: 55 },
+        { h: 16, y: 45 }, { h: 18, y: 20 }, { h: 20, y: 25 }, { h: 22, y: 50 }, { h: 24, y: 80 }
+    ];
+
+    // Build SVG path
+    const svgPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${(p.h / 24) * 100}% ${p.y}%`).join(' ');
+
+    // Calculate current pointer X position (percentage)
+    const pointerX = (currentHour / 24) * 100;
+    
+    // Find approximate Y value for the current hour
+    const activePoint = points.find(p => p.h === Math.floor(currentHour / 2) * 2) || { y: 50 };
+    const pointerY = activePoint.y;
+
+    return (
+        <div className="bg-white dark:bg-gray-800/80 rounded-[2.25rem] p-5 border border-gray-100/80 dark:border-gray-700/50 shadow-lg relative overflow-hidden animate-card-enter">
+            {/* Ambient decoration orb */}
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-transparent blur-2xl pointer-events-none" />
+
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500">
+                        <Brain size={16} />
+                    </div>
+                    <div>
+                        <h3 className="text-xs font-black text-gray-800 dark:text-white">ریتم آمادگی زیستی هوشمند</h3>
+                        <p className="text-[9px] text-gray-400 font-bold mt-0.5">منحنی پویای هوشیاری ذهنی شما</p>
+                    </div>
+                </div>
+                <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-extrabold px-2.5 py-1 rounded-full">
+                     آمادگی: {energy}%
+                </span>
+            </div>
+
+            {/* SVG Interactive Line Chart */}
+            <div className="relative h-20 w-full bg-gray-50/50 dark:bg-slate-900/30 rounded-2xl border border-gray-100/30 dark:border-gray-800/30 p-2 overflow-visible">
+                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                    {/* Grid Lines */}
+                    <line x1="0" y1="25%" x2="100%" y2="25%" stroke="rgba(156,163,175,0.08)" strokeDasharray="3" />
+                    <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(156,163,175,0.08)" strokeDasharray="3" />
+                    <line x1="0" y1="75%" x2="100%" y2="75%" stroke="rgba(156,163,175,0.08)" strokeDasharray="3" />
+
+                    {/* Circadian Curve */}
+                    <path
+                        d={svgPath}
+                        fill="none"
+                        stroke={pathColor}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        className="transition-all duration-1000"
+                    />
+
+                    {/* Current Time Indicator Vertical Bar */}
+                    <line
+                        x1={`${pointerX}%`}
+                        y1="0"
+                        x2={`${pointerX}%`}
+                        y2="100%"
+                        stroke="rgba(156,163,175,0.3)"
+                        strokeWidth="1"
+                        strokeDasharray="4"
+                    />
+                </svg>
+
+                {/* Glowing Active Dot */}
+                <div
+                    className={`absolute w-3.5 h-3.5 rounded-full border-2 border-white dark:border-gray-800 ${orbColor} animate-pulse shadow-md transition-all duration-1000`}
+                    style={{
+                        left: `calc(${pointerX}% - 7px)`,
+                        top: `calc(${pointerY}% - 7px)`,
+                    }}
+                />
+
+                {/* Timeline labels */}
+                <div className="absolute bottom-1.5 left-2 right-2 flex justify-between text-[8px] text-gray-400 font-bold font-mono" dir="ltr">
+                    <span>0:00</span>
+                    <span>6:00</span>
+                    <span>12:00</span>
+                    <span>18:00</span>
+                    <span>24:00</span>
+                </div>
+            </div>
+
+            {/* Current Phase description */}
+            <div className="mt-4 p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-150/10 dark:border-gray-700/30">
+                <span className="text-[10px] font-black text-gray-800 dark:text-white flex items-center gap-1.5 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${orbColor}`}></span>
+                    {title}
+                </span>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-semibold">
+                    {advice}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 /* ===== SVG Progress Ring ===== */
 const ProgressRing = ({
     percent, size = 80, stroke = 8, color = '#6366f1', bg = '#e0e7ff'
@@ -47,8 +184,24 @@ const ProgressRing = ({
     const circ = 2 * Math.PI * r;
     const offset = circ - (Math.min(percent, 100) / 100) * circ;
     return (
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={bg} strokeWidth={stroke} />
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90 overflow-visible">
+            <defs>
+                <filter id="glow-progress" x="-30%" y="-30%" width="160%" height="160%">
+                    <feGaussianBlur stdDeviation="2.5" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+            </defs>
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={bg} strokeWidth={stroke} className="opacity-90" />
+            
+            {/* Glowing neon shadow circle */}
+            <circle
+                cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke + 1.5}
+                strokeLinecap="round" strokeDasharray={circ}
+                strokeDashoffset={offset}
+                className="transition-all duration-1000 ease-out opacity-30"
+                filter="url(#glow-progress)"
+            />
+
             <circle
                 cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
                 strokeLinecap="round" strokeDasharray={circ}
@@ -116,7 +269,8 @@ const Dashboard = () => {
         tasks: allTasks, totalDays, setIsTimerOpen, level, xp, progressPercent,
         currentLevelXp, xpForNextLevel,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote, showQuotes,
-        isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan
+        isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan,
+        showConfetti, setShowConfetti
     } = useStore();
 
     const navigate = useNavigate();
@@ -134,6 +288,18 @@ const Dashboard = () => {
 
     const todayIso = toIsoString(new Date());
     const overdueTasks = allTasks.filter(t => t.date < todayIso && !t.isCompleted && t.date !== activeDateIso);
+
+    const [celebratedToday, setCelebratedToday] = useState(false);
+    useEffect(() => {
+        if (dailyPct === 100 && dailyTasks.length > 0) {
+            if (!celebratedToday) {
+                setCelebratedToday(true);
+                setShowConfetti(true);
+            }
+        } else {
+            setCelebratedToday(false);
+        }
+    }, [dailyPct, dailyTasks.length, celebratedToday]);
 
     useEffect(() => {
         const t = setTimeout(() => setQuoteVisible(true), 600);
@@ -329,6 +495,9 @@ const Dashboard = () => {
                 </div>
                 <WeekMini />
             </div>
+
+            {/* ===== BIOLOGICAL CIRCADIAN READINESS ===== */}
+            <CircadianRhythmPanel />
 
             {/* ===== QUICK ACTIONS ===== */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 select-none">

@@ -9,6 +9,87 @@
     --transition-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .theme-indigo {
+    --color-primary: 99 102 241;
+    --color-indigo-50: #eef2ff;
+    --color-indigo-100: #e0e7ff;
+    --color-indigo-200: #c7d2fe;
+    --color-indigo-300: #a5b4fc;
+    --color-indigo-400: #818cf8;
+    --color-indigo-500: #6366f1;
+    --color-indigo-600: #4f46e5;
+    --color-indigo-700: #4338ca;
+    --color-indigo-800: #3730a3;
+    --color-indigo-900: #312e81;
+    --color-indigo-950: #1e1b4b;
+    
+    --color-violet-50: #f5f3ff;
+    --color-violet-100: #ede9fe;
+    --color-violet-200: #ddd6fe;
+    --color-violet-300: #c4b5fd;
+    --color-violet-400: #a78bfa;
+    --color-violet-500: #8b5cf6;
+    --color-violet-600: #7c3aed;
+    --color-violet-700: #6d28d9;
+    --color-violet-800: #5b21b6;
+    --color-violet-900: #4c1d95;
+    --color-violet-950: #2e1065;
+  }
+
+  .theme-forest {
+    --color-primary: 34 197 94;
+    --color-indigo-50: #f0fdf4;
+    --color-indigo-100: #dcfce7;
+    --color-indigo-200: #bbf7d0;
+    --color-indigo-300: #86efac;
+    --color-indigo-400: #4ade80;
+    --color-indigo-500: #22c55e;
+    --color-indigo-600: #16a34a;
+    --color-indigo-700: #15803d;
+    --color-indigo-800: #166534;
+    --color-indigo-900: #14532d;
+    --color-indigo-950: #052e16;
+
+    --color-violet-50: #ecfdf5;
+    --color-violet-100: #d1fae5;
+    --color-violet-200: #a7f3d0;
+    --color-violet-300: #6ee7b7;
+    --color-violet-400: #34d399;
+    --color-violet-500: #10b981;
+    --color-violet-600: #059669;
+    --color-violet-700: #047857;
+    --color-violet-800: #065f46;
+    --color-violet-900: #064e3b;
+    --color-violet-950: #022c22;
+  }
+
+  .theme-rosegold {
+    --color-primary: 244 63 94;
+    --color-indigo-50: #fff1f2;
+    --color-indigo-100: #ffe4e6;
+    --color-indigo-200: #fecdd3;
+    --color-indigo-300: #fda4af;
+    --color-indigo-400: #fb7185;
+    --color-indigo-500: #f43f5e;
+    --color-indigo-600: #e11d48;
+    --color-indigo-700: #be123c;
+    --color-indigo-800: #9f1239;
+    --color-indigo-900: #881337;
+    --color-indigo-950: #4c0519;
+
+    --color-violet-50: #fff7ed;
+    --color-violet-100: #ffedd5;
+    --color-violet-200: #fed7aa;
+    --color-violet-300: #fdbbf2;
+    --color-violet-400: #fb923c;
+    --color-violet-500: #f97316;
+    --color-violet-600: #ea580c;
+    --color-violet-750: #c2410c;
+    --color-violet-800: #9a3412;
+    --color-violet-900: #7c2d12;
+    --color-violet-950: #431407;
+  }
+
   body {
     font-family: var(--font-vazir);
     @apply bg-slate-50 text-gray-900 overflow-x-hidden;
@@ -713,4 +794,18 @@
   border-color: rgba(99, 102, 241, 0.4);
   box-shadow: 0 12px 45px -12px rgba(99, 102, 241, 0.3),
               0 0 0 4px rgba(99, 102, 241, 0.15);
+}
+
+@keyframes soundWaveBar {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-sound-wave {
+  animation: soundWaveBar 0.8s ease-in-out infinite;
+  transform-origin: bottom;
 }

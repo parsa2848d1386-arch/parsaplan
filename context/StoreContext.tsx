@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { SubjectTask, LogEntry, MoodType, RoutineTemplate, DailyRoutineSlot, ToastMessage, ToastType, ConfirmDialogState, FirebaseConfig, CustomSubject, AppSettings, StreamType, ArchivedPlan, SUBJECT_LISTS, getSubjectStyle, Flashcard } from '../types';
 import { PLAN_DATA, TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
-import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate } from '../utils';
+import { addDays, toIsoString, getDiffDays, findBahman11, getFullShamsiDate, soundFX } from '../utils';
 import { StorageManager } from '../utils/StorageManager';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { calculateLevelInfo, getXpReward, XP_REWARDS } from '../utils/xpSystem';
@@ -78,6 +78,8 @@ interface StoreContextType {
     toggleShowQuotes: () => void;
     isTimerOpen: boolean;
     setIsTimerOpen: (isOpen: boolean) => void;
+    showConfetti: boolean;
+    setShowConfetti: (show: boolean) => void;
     isCommandPaletteOpen: boolean;
     setIsCommandPaletteOpen: (isOpen: boolean) => void;
     isAiPanelOpen: boolean;
@@ -183,7 +185,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [moods, setMoods] = useState<Record<string, MoodType>>({});
     const [studyHoursLog, setStudyHoursLog] = useState<Record<string, number>>({});
     const [stream, setStream] = useState<StreamType>('general');
-    const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
+    const [geminiModel, setGeminiModel] = useState<string>('gemini-2.0-flash');
     const [geminiApiKey, setGeminiApiKeyState] = useState<string>('');
     const [bioTheme, setBioTheme] = useState<boolean>(false);
 
@@ -193,6 +195,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     // UI Overlays (local to Data or Global? Timer/CommandPalette are likely global UI but let's keep here for now)
     const [isTimerOpen, setIsTimerOpen] = useState(false);
+    const [showConfetti, setShowConfetti] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
     const [dailyQuote, setDailyQuote] = useState('');
@@ -593,7 +596,12 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 else if (t.studyType === 'analysis' || t.studyType === 'review') rewardType = 'COMPLETE_ANALYSIS';
                 const reward = getXpReward(rewardType, 0);
                 newState ? addXp(reward) : addXp(-reward);
-                if (newState) showToast(`+${reward} XP`, 'success');
+                if (newState) {
+                    showToast(`+${reward} XP`, 'success');
+                    soundFX.playSuccess();
+                } else {
+                    soundFX.playClick();
+                }
                 return { ...t, isCompleted: newState };
             }
             return t;
@@ -833,7 +841,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         xp, level, currentLevelXp, xpForNextLevel, progressPercent, dailyQuote,
         subjects, addSubject, updateSubject, deleteSubject, reorderSubjects,
         auditLog, moods, setMood, studyHoursLog, logStudyHours, getStudyHoursForDate,
-        isTimerOpen, setIsTimerOpen, isCommandPaletteOpen, setIsCommandPaletteOpen,
+        isTimerOpen, setIsTimerOpen, showConfetti, setShowConfetti, isCommandPaletteOpen, setIsCommandPaletteOpen,
         isAiPanelOpen, setIsAiPanelOpen,
         saveStatus, sidebarCollapsed, setSidebarCollapsed,
         settings: currentSettings, updateSettings,

@@ -67,3 +67,163 @@ export const ConfirmModal = () => {
         </div>
     );
 };
+
+// ==========================================
+// 2026 LUXURIOUS LEVEL-UP & CONFETTI CELEBRATIONS
+// ==========================================
+import { Sparkles, Palette } from 'lucide-react';
+import { soundFX } from '../utils';
+
+export const LevelUpShowcase = () => {
+    const { level } = useStore();
+    const [show, setShow] = React.useState(false);
+    const prevLevelRef = React.useRef(level);
+
+    useEffect(() => {
+        if (level > prevLevelRef.current && prevLevelRef.current > 0) {
+            setShow(true);
+            soundFX.playLevelUp();
+        }
+        prevLevelRef.current = level;
+    }, [level]);
+
+    if (!show) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300 p-4" dir="rtl">
+            {/* Glowing backdrop effect */}
+            <div className="absolute w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl animate-pulse" />
+            <div className="absolute w-72 h-72 rounded-full bg-purple-500/20 blur-3xl animate-pulse [animation-delay:1s]" />
+
+            <div className="relative bg-white/90 dark:bg-gray-900/90 border border-white/20 dark:border-white/5 backdrop-blur-2xl rounded-[2.5rem] p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+                
+                {/* Floating particle effect in SVG */}
+                <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
+                    <div className="absolute top-10 left-10 w-2 h-2 rounded-full bg-indigo-400 opacity-60 animate-float" />
+                    <div className="absolute bottom-12 right-12 w-3 h-3 rounded-full bg-rose-400 opacity-40 animate-float-slow" />
+                </div>
+
+                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30 border border-white/20 relative animate-bounce" style={{ animationDuration: '3s' }}>
+                    <Sparkles className="text-white animate-spin-slow" size={42} />
+                    {/* Level Number Emblem */}
+                    <div className="absolute -bottom-2 right-[-10px] bg-yellow-450 text-slate-950 font-black text-sm px-2.5 py-1 rounded-full border-2 border-white shadow">
+                        سطح {level}
+                    </div>
+                </div>
+
+                <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2 leading-tight">صعود به سطح جدید! 🚀</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-300 mb-6 leading-relaxed">
+                    تلاش و استمرار تو نتیجه داد! تو اکنون به سطح <span className="font-extrabold text-indigo-500 dark:text-indigo-400">{level}</span> رسیدی. پر قدرت به مسیرت ادامه بده!
+                </p>
+
+                <button
+                    onClick={() => setShow(false)}
+                    className="w-full py-4 bg-gradient-to-l from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl font-bold text-xs transition duration-200 shadow-xl shadow-indigo-500/20 active:scale-98 cursor-pointer"
+                >
+                    دمت گرم، ادامه میدم! 🔥
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export const ConfettiCelebration = ({ active, onComplete }: { active: boolean; onComplete?: () => void }) => {
+    const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+    useEffect(() => {
+        if (!active || !canvasRef.current) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let animationFrameId: number;
+        
+        // Resize canvas to cover window
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+        
+        interface Particle {
+            x: number;
+            y: number;
+            size: number;
+            color: string;
+            speedX: number;
+            speedY: number;
+            rotation: number;
+            rotationSpeed: number;
+        }
+
+        const particles: Particle[] = [];
+        for (let i = 0; i < 150; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: -10 - Math.random() * 150,
+                size: Math.random() * 8 + 6,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                speedX: Math.random() * 4 - 2,
+                speedY: Math.random() * 5 + 4,
+                rotation: Math.random() * 360,
+                rotationSpeed: Math.random() * 4 - 2
+            });
+        }
+
+        const draw = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let activeParticles = 0;
+
+            particles.forEach(p => {
+                p.y += p.speedY;
+                p.x += p.speedX;
+                p.rotation += p.rotationSpeed;
+
+                if (p.y < canvas.height) {
+                    activeParticles++;
+                }
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                ctx.restore();
+            });
+
+            if (activeParticles > 0) {
+                animationFrameId = requestAnimationFrame(draw);
+            } else {
+                onComplete?.();
+            }
+        };
+
+        draw();
+
+        const handleResize = () => {
+            if (canvas) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        };
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+            window.removeEventListener('resize', handleResize);
+        };
+    }, [active]);
+
+    if (!active) return null;
+
+    return (
+        <canvas
+            ref={canvasRef}
+            className="fixed inset-0 pointer-events-none z-[99] w-full h-full"
+        />
+    );
+};
+
+export const ConfettiContainer = () => {
+    const { showConfetti, setShowConfetti } = useStore();
+    return <ConfettiCelebration active={showConfetti} onComplete={() => setShowConfetti(false)} />;
+};
