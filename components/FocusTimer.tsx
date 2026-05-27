@@ -277,6 +277,12 @@ const FocusFlower: React.FC<{ progress: number; state: 'idle' | 'running' | 'pau
 const FocusTimer = () => {
     const { isTimerOpen, setIsTimerOpen, showToast, getTasksByDate, getDayDate, currentDay, userName } = useStore();
     
+    const [isLocallyOpen, setIsLocallyOpen] = useState(isTimerOpen);
+
+    useEffect(() => {
+        setIsLocallyOpen(isTimerOpen);
+    }, [isTimerOpen]);
+
     // Core Timer States
     const [timerMode, setTimerMode] = useState<'normal' | 'pomodoro'>('normal');
     const [pomoSession, setPomoSession] = useState<'study' | 'break'>('study');
@@ -506,12 +512,13 @@ const FocusTimer = () => {
             setSeconds(timerMode === 'pomodoro' ? (pomoSession === 'study' ? 1500 : 300) : 0);
             setAccumulatedTime(0);
             setStartTime(null);
+            setIsLocallyOpen(false);
             setIsTimerOpen(false);
             setTimerState('idle');
         }, isFailed ? 2500 : 500);
     };
 
-    if (!isTimerOpen) return null;
+    if (!isTimerOpen || !isLocallyOpen) return null;
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/98 dark:bg-gray-950/99 backdrop-blur-3xl select-none text-right font-sans" dir="rtl">
@@ -519,6 +526,7 @@ const FocusTimer = () => {
             <button
                 onClick={() => {
                     audioEngineRef.current?.stop();
+                    setIsLocallyOpen(false);
                     setIsTimerOpen(false);
                 }}
                 className="absolute top-6 right-6 p-3 rounded-2xl text-gray-400 hover:text-white hover:bg-white/10 transition-all btn-micro-interactive cursor-pointer z-50 border border-white/5"

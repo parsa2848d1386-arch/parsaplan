@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
 
         // --- Phase 2: Enhanced Workbox for Offline-First ---
@@ -77,8 +77,7 @@ export default defineConfig(({ mode }) => {
           ],
           // Clean old caches on update
           cleanupOutdatedCaches: true,
-          // Remove skipWaiting so we can manually prompt
-          skipWaiting: false,
+          skipWaiting: true,
           clientsClaim: true,
         },
 
