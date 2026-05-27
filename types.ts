@@ -256,3 +256,16 @@ export interface AppState {
     archivedPlans: ArchivedPlan[];
     flashcards: Flashcard[];
 }
+
+export const SPECIALIZED_SUBJECTS: Record<StreamType, string[]> = {
+    riazi: ['ریاضیات', 'هندسه', 'آمار و احتمال', 'ریاضیات گسسته', 'فیزیک', 'شیمی'],
+    tajrobi: ['زیست‌شناسی', 'ریاضیات', 'فیزیک', 'شیمی', 'زمین‌شناسی', 'آزمایشگاه علوم تجربی'],
+    ensani: ['ریاضی و آمار', 'علوم و فنون ادبی', 'عربی اختصاصی', 'تاریخ', 'جغرافیا', 'جامعه‌شناسی', 'فلسفه', 'منطق', 'اقتصاد', 'روان‌شناسی'],
+    general: []
+};
+
+export const isSpecializedSubject = (stream: StreamType, subjectName: string): boolean => {
+    const list = SPECIALIZED_SUBJECTS[stream] || [];
+    return list.includes(subjectName);
+};
+

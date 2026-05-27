@@ -222,7 +222,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // --- APP DATA INITIALIZATION ---
     useEffect(() => {
         const initApp = async () => {
-            console.log("App Initializing...");
+            console.log("App Initializing for user:", userId);
+            setIsInitialized(false); // SUSPEND AUTO-SAVE IMMEDIATELY TO PREVENT RACING OVERWRITES
 
             try {
                 // Create a safety backup
@@ -230,7 +231,18 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 await StorageManager.createBackup(backupUserId);
 
                 // Load Data
-                const data = await StorageManager.load(backupUserId);
+                let data = await StorageManager.load(backupUserId);
+
+                // Auto-migration: If logging in, and account has no data, migrate offline data!
+                if (!data && backupUserId !== 'parsaplan_local_user') {
+                    const guestData = await StorageManager.load('parsaplan_local_user');
+                    if (guestData && ((guestData.tasks && guestData.tasks.length > 0) || guestData.xp > 0)) {
+                        console.log("Auto-migrating offline guest data to account:", backupUserId);
+                        data = guestData;
+                        await StorageManager.save(guestData, backupUserId);
+                        showToast('اطلاعات محلی شما با موفقیت به حساب کاربری منتقل شد', 'success');
+                    }
+                }
 
                 if (data) {
                     if (data.tasks) setTasks(data.tasks);

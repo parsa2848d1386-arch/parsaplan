@@ -1,8 +1,7 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../context/StoreContext';
-import { Subject, SubjectTask, getSubjectStyle, SUBJECT_ICONS, CustomSubject, SUBJECT_LISTS } from '../types';
+import { Subject, SubjectTask, getSubjectStyle, SUBJECT_ICONS, CustomSubject, SUBJECT_LISTS, isSpecializedSubject } from '../types';
 import { ChevronDown, ChevronUp, Circle, CheckCircle2, Pencil, Trash2, Plus, X, Check, LayoutGrid, List, Calendar, GripVertical } from 'lucide-react';
 import TaskModal from '../components/TaskModal';
 import { getShamsiDate, toIsoString } from '../utils';
@@ -81,7 +80,7 @@ const SubjectModal: React.FC<{
                         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 custom-scrollbar">
                             {suggestedSubjects.map(([subjectName, style]) => (
                                 <button key={subjectName} onClick={() => handleSelectSuggested(subjectName)}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${name === subjectName ? 'bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}>
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${name === subjectName ? 'bg-indigo-100 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'}`}>
                                     <span>{style.icon}</span><span>{subjectName}</span>
                                 </button>
                             ))}
@@ -136,12 +135,20 @@ const Subjects = () => {
 
     const currentStream = settings?.stream || 'general';
     const streamSubjects = SUBJECT_LISTS[currentStream] || [];
+    const [onlySpecialized, setOnlySpecialized] = useState(true);
 
     const displayedSubjects = subjects.filter(s => {
         if (s.name === 'شخصی') return true;
         const isDefault = Object.keys(SUBJECT_ICONS).includes(s.name);
         if (isDefault) {
-            return streamSubjects.includes(s.name) || SUBJECT_LISTS['general'].includes(s.name);
+            const inStream = streamSubjects.includes(s.name) || SUBJECT_LISTS['general'].includes(s.name);
+            if (!inStream) return false;
+
+            if (onlySpecialized && currentStream !== 'general') {
+                const isSpecial = isSpecializedSubject(currentStream, s.name);
+                if (!isSpecial) return false;
+            }
+            return true;
         }
         return true;
     });
@@ -369,7 +376,7 @@ const Subjects = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* تب‌های نمایش */}
                     <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
                         <button
@@ -394,9 +401,21 @@ const Subjects = () => {
                             ماهانه
                         </button>
                     </div>
+                    {currentStream !== 'general' && activeView === 'subjects' && (
+                        <button
+                            onClick={() => setOnlySpecialized(!onlySpecialized)}
+                            className={`text-[11px] px-3.5 py-2.5 rounded-2xl font-black transition-all border shrink-0 ${
+                                onlySpecialized
+                                    ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100/30 dark:border-indigo-900/30'
+                                    : 'bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200/30 dark:border-gray-700/30'
+                            }`}
+                        >
+                            {onlySpecialized ? 'فقط دروس تخصصی 🎯' : 'همه دروس 📚'}
+                        </button>
+                    )}
                     <button
                         onClick={openAddSubject}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl font-black text-[11px] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 hover:translate-y-[-2px] transition-all active:scale-95"
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl font-black text-[11px] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 hover:translate-y-[-2px] transition-all active:scale-95 shrink-0"
                     >
                         <Plus size={18} />
                         درس جدید

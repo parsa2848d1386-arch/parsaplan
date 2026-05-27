@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Subject } from '../types';
@@ -135,7 +134,7 @@ const Analysis = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('macro')}
-                        className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'macro' ? 'bg-white dark:bg-gray-600 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                        className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'macro' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                     >
                         <BrainCircuit size={14} /> مشاور هوشمند
                     </button>
@@ -235,7 +234,7 @@ const Analysis = () => {
                                     <div key={idx} className="group">
                                         <div className="flex justify-between items-end mb-2">
                                             <div className="flex items-center gap-2">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300`}>
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100/20`}>
                                                     {sub.subject[0]}
                                                 </div>
                                                 <div>
@@ -261,8 +260,16 @@ const Analysis = () => {
                                             </div>
                                         </div>
 
-                                        <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
-                                            <div className="h-full bg-indigo-500" style={{ width: `${sub.progress}%` }} title="پیشرفت حجمی"></div>
+                                        <div className="flex items-center justify-between mb-1 mt-1 text-[10px] font-bold text-gray-400">
+                                            <span>پیشرفت حجمی درس:</span>
+                                            <span className="text-indigo-600 dark:text-indigo-400">{sub.progress}%</span>
+                                        </div>
+                                        <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative border border-gray-200/25 dark:border-gray-700/25">
+                                            <div 
+                                                className="h-full rounded-full bg-gradient-to-l from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                                style={{ width: `${sub.progress}%` }} 
+                                                title="پیشرفت حجمی"
+                                            />
                                         </div>
                                     </div>
                                 ))}

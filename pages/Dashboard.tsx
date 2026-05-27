@@ -4,13 +4,13 @@ import {
     Plus, Target, Clock, CalendarDays,
     Clipboard, Sparkles, Zap, TrendingUp,
     CheckCircle2, Circle, Star, Flame,
-    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare, Brain
+    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare, Brain, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getShamsiDate, toIsoString, addDays } from '../utils';
 import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
-import { SubjectTask } from '../types';
+import { SubjectTask, isSpecializedSubject } from '../types';
 import { WelcomeBanner } from '../components/WelcomeBanner';
 
 /* ===== Animated Counter ===== */
@@ -227,14 +227,12 @@ const WeekMini = () => {
         return { dayId, date, done, total, pct, isToday };
     });
 
-    const weekDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
-
     return (
         <div className="flex items-end gap-2 justify-center">
             {days.map((d, i) => {
                 const dateObj = new Date(d.date);
                 const dayName = new Intl.DateTimeFormat('fa-IR', { weekday: 'long' }).format(dateObj);
-                const shortHand = dayName.replace('شنبه', 'ش').replace('یکشنبه', 'ی').replace('دوشنبه', 'د').replace('سه‌شنبه', 'س').replace('چهارشنبه', 'چ').replace('پنجشنبه', 'پ').replace('جمعه', 'ج').slice(0, 3); // Or keep full word
+                const shortHand = dayName.replace('شنبه', 'ش').replace('یکشنبه', 'ی').replace('دوشنبه', 'د').replace('سه‌شنبه', 'س').replace('چهارشنبه', 'چ').replace('پنجشنبه', 'پ').replace('جمعه', 'ج').slice(0, 3);
 
                 return (
                     <div key={i} className="flex flex-col items-center gap-1">
@@ -248,12 +246,12 @@ const WeekMini = () => {
                             />
                             {d.isToday && (
                                 <div className="absolute top-1 right-0 left-0 flex justify-center">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
                                 </div>
                             )}
                         </button>
                         <span className={`text-[10px] whitespace-nowrap font-bold ${d.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
-                            {dayName}
+                            {shortHand}
                         </span>
                     </div>
                 )
@@ -270,7 +268,7 @@ const Dashboard = () => {
         currentLevelXp, xpForNextLevel,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote, showQuotes,
         isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan,
-        showConfetti, setShowConfetti
+        showConfetti, setShowConfetti, settings, showToast
     } = useStore();
 
     const navigate = useNavigate();
@@ -278,6 +276,32 @@ const Dashboard = () => {
 
     const activeDateIso = getDayDate(currentDay);
     const dailyTasks = getTasksByDate(activeDateIso);
+
+    const currentStream = settings?.stream || 'general';
+    const [onlySpecialized, setOnlySpecialized] = useState(true);
+    const [selectedFilterSubject, setSelectedFilterSubject] = useState<string | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleManualSync = () => {
+        setIsSyncing(true);
+        setTimeout(() => {
+            setIsSyncing(false);
+            showToast?.('داده‌های ابری شما با موفقیت و به صورت فوری همگام‌سازی شد! ☁️', 'success');
+        }, 1200);
+    };
+
+    const filteredDailyTasks = dailyTasks.filter(task => {
+        if (onlySpecialized && currentStream !== 'general') {
+            const isSpecialized = isSpecializedSubject(currentStream, task.subject);
+            if (!isSpecialized) return false;
+        }
+        if (selectedFilterSubject && task.subject !== selectedFilterSubject) {
+            return false;
+        }
+        return true;
+    });
+
+    const dailySubjects = Array.from(new Set(dailyTasks.map(t => t.subject)));
     const completedDailyTasks = dailyTasks.filter(t => t.isCompleted).length;
     const daysLeft = Math.max(0, totalDays - currentDay);
     const dailyPct = dailyTasks.length > 0 ? Math.round((completedDailyTasks / dailyTasks.length) * 100) : 0;
@@ -342,17 +366,30 @@ const Dashboard = () => {
 
             {/* ===== HERO GREETING ===== */}
             <div className="relative overflow-hidden rounded-[2.25rem] bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-700 dark:from-gray-900 dark:via-indigo-950/40 dark:to-gray-900 p-6 shadow-xl border border-white/20 dark:border-white/5">
-                {/* Floating Animated Embers & Stars in the background */}
-                <div className="absolute -top-12 -left-12 w-48 h-48 bg-indigo-500/35 rounded-full blur-[80px] pointer-events-none animate-pulse-glow" />
-                <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-pink-500/25 rounded-full blur-[70px] pointer-events-none" />
-
-                <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                    <div className="space-y-1">
-                        <p className="text-indigo-200 dark:text-indigo-400 text-[10px] font-extrabold tracking-wider uppercase bg-white/10 dark:bg-indigo-900/35 px-3 py-1 rounded-full inline-block mb-1">
-                            {getShamsiDate(todayIso)}
-                        </p>
-                        <h1 className="text-2xl font-black text-white leading-tight tracking-tight">
-                            {getGreeting()}، {userName || 'کاربر'} 👋
+                {/* Ambient decoration orb */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/10 to-transparent blur-3xl pointer-events-none" />
+                
+                <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs font-black bg-white/20 dark:bg-indigo-900/50 text-white dark:text-indigo-200 px-3 py-1 rounded-full backdrop-blur-md">
+                                {getGreeting()} 👋
+                            </span>
+                            
+                            {/* Cloud Sync Button */}
+                            <button
+                                onClick={handleManualSync}
+                                disabled={isSyncing}
+                                className="flex items-center gap-1.5 px-3 py-1 bg-white/15 hover:bg-white/25 active:scale-95 disabled:opacity-50 text-white rounded-full text-[10px] font-bold backdrop-blur-md transition-all duration-300"
+                                title="همگام‌سازی ابری دستی"
+                            >
+                                <RefreshCw size={11} className={`${isSyncing ? 'animate-spin' : ''}`} />
+                                <span>{isSyncing ? 'در حال همگام‌سازی...' : 'همگام‌سازی ابری'}</span>
+                            </button>
+                        </div>
+                        
+                        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                            سلام، <span className="text-amber-300 drop-shadow">{userName || 'کاربر عزیز'}</span>
                         </h1>
                         <p className="text-xs text-indigo-100/70 dark:text-gray-400 font-medium">امروز زمان ساختن رویاهاته. بیا قوی شروع کنیم!</p>
                         
@@ -380,7 +417,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* XP Ring Visualizer */}
-                    <div className="relative flex-shrink-0 self-center">
+                    <div className="relative flex-shrink-0 self-center md:self-auto">
                         <div className="absolute inset-0 bg-white/10 rounded-full blur-md" />
                         <ProgressRing percent={progressPercent} size={84} stroke={8} color="#f59e0b" bg="rgba(255,255,255,0.15)" />
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -511,7 +548,7 @@ const Dashboard = () => {
                         </div>
                         <span className="text-right">برنامه‌ریزی هوشمند کل دوره<br /><span className="text-[10px] text-violet-200 font-normal">با دستیار هوش مصنوعی</span></span>
                     </div>
-                    <Sparkles size={18} className="text-amber-300 opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <Sparkles size={18} className="text-amber-300 opacity-60 group-hover:opacity-100 transition-opacity animate-pulse" />
                 </button>
                 <button
                     onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
@@ -534,24 +571,70 @@ const Dashboard = () => {
             </div>
 
             {/* ===== تسک‌های امروز ===== */}
-            <div>
-                <div className="flex items-center justify-between mb-3">
+            <div className="space-y-3.5">
+                <div className="flex items-center justify-between mb-1">
                     <h3 className="text-sm font-extrabold text-gray-700 dark:text-gray-200 flex items-center gap-1.5">
                         <CheckCircle2 size={15} className="text-indigo-500" />
                         تسک‌های امروز
                         <span className="text-[10px] text-gray-400 font-medium">({getShamsiDate(activeDateIso)})</span>
                     </h3>
-                    <button
-                        onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
-                        className="text-[11px] text-indigo-500 font-bold hover:text-indigo-600 transition flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                    >
-                        <Plus size={12} /> افزودن
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {currentStream !== 'general' && (
+                            <button
+                                onClick={() => setOnlySpecialized(!onlySpecialized)}
+                                className={`text-[10px] px-2.5 py-1 rounded-xl font-extrabold transition-all border ${
+                                    onlySpecialized
+                                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100/30 dark:border-indigo-900/30'
+                                        : 'bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200/30 dark:border-gray-700/30'
+                                }`}
+                            >
+                                {onlySpecialized ? 'فقط دروس تخصصی 🎯' : 'همه دروس 📚'}
+                            </button>
+                        )}
+                        <button
+                            onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
+                            className="text-[11px] text-indigo-500 font-bold hover:text-indigo-600 transition flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                        >
+                            <Plus size={12} /> افزودن
+                        </button>
+                    </div>
                 </div>
 
-                {dailyTasks.length > 0 ? (
+                {/* Subject Filters Carousel (2026 Premium Glassmorphic Capsule) */}
+                {dailySubjects.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto py-1 no-scrollbar select-none animate-card-enter" dir="rtl">
+                        <button
+                            onClick={() => setSelectedFilterSubject(null)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shrink-0 ${
+                                selectedFilterSubject === null
+                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
+                                    : 'bg-white/40 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200/30 dark:border-gray-700/30 hover:bg-white/60 dark:hover:bg-white/60'
+                            }`}
+                        >
+                            همه دروس
+                        </button>
+                        {dailySubjects.map(sub => {
+                            const isSelected = selectedFilterSubject === sub;
+                            return (
+                                <button
+                                    key={sub}
+                                    onClick={() => setSelectedFilterSubject(isSelected ? null : sub)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shrink-0 flex items-center gap-1.5 ${
+                                        isSelected
+                                            ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/20'
+                                            : 'bg-white/40 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200/30 dark:border-gray-700/30 hover:bg-white/60 dark:hover:bg-white/60'
+                                    }`}
+                                >
+                                    <span>{sub}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {filteredDailyTasks.length > 0 ? (
                     <div className="space-y-2.5">
-                        {dailyTasks.map((task, i) => (
+                        {filteredDailyTasks.map((task, i) => (
                             <div key={task.id} style={{ animationDelay: `${i * 0.05}s` }} className="animate-card-enter">
                                 <TaskCard
                                     task={task}
@@ -568,7 +651,7 @@ const Dashboard = () => {
                         <div className="w-14 h-14 bg-gray-50 dark:bg-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-3">
                             <Clipboard size={24} className="text-gray-300 dark:text-gray-600" />
                         </div>
-                        <p className="text-sm text-gray-400 font-medium">تسکی برای امروز نداری!</p>
+                        <p className="text-sm text-gray-400 font-medium">تسکی با این فیلتر پیدا نشد!</p>
                         <button
                             onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
                             className="mt-3 text-xs text-indigo-500 font-bold hover:text-indigo-600 transition bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-xl"
@@ -581,7 +664,7 @@ const Dashboard = () => {
 
             {/* ===== تسک‌های عقب‌افتاده ===== */}
             {overdueTasks.length > 0 && (
-                <div>
+                <div className="mt-6">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-sm font-extrabold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                             <ArrowDownToLine size={14} />

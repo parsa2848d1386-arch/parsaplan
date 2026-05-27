@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { X, Play, Pause, Square, Clock, Volume2, VolumeX, Flame, Coffee, Brain, Info, Sliders, CheckCircle2, ChevronDown } from 'lucide-react';
 
@@ -198,24 +198,23 @@ const FocusFlower: React.FC<{ progress: number; state: 'idle' | 'running' | 'pau
     return (
         <div className="relative w-64 h-64 flex items-center justify-center">
             {/* Ambient pulsing neon back-glow */}
-            <div className={`absolute w-44 h-44 rounded-full filter blur-3xl opacity-30 transition-all duration-1000 ${
-                state === 'failed' 
-                    ? 'bg-gray-500/10' 
-                    : progress >= 100 
-                        ? 'bg-rose-500/40 animate-pulse' 
-                        : 'bg-indigo-500/30'
+            <div className={`absolute w-40 h-40 rounded-full filter blur-[40px] opacity-40 transition-all duration-1000 ${
+                state === 'idle' 
+                    ? 'bg-transparent' 
+                    : state === 'failed' 
+                        ? 'bg-gray-800' 
+                        : progress >= 100 
+                            ? 'bg-pink-500 animate-pulse' 
+                            : 'bg-indigo-500 animate-pulse'
             }`} />
 
-            <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_8px_30px_rgba(99,102,241,0.2)]">
+            <svg width="100%" height="100%" viewBox="0 0 200 200" className="overflow-visible relative z-10">
                 {/* Stem & Leaves */}
-                {(state !== 'idle') && (
+                {state !== 'idle' && (
                     <g className="transition-all duration-700">
-                        {/* Pot / Earth */}
-                        <path d="M 70 170 Q 100 180 130 170 L 125 190 Q 100 195 75 190 Z" fill="#3f3f46" stroke="#52525b" strokeWidth="2" />
-                        
-                        {/* Growing Stem */}
+                        {/* Curved organic stem */}
                         <path 
-                            d={`M 100 175 L 100 ${175 - (scale * 80)}`} 
+                            d={`M 100 200 Q ${95 - (scale * 10)} ${180 - (scale * 20)} 100 ${150 - (scale * 20)}`} 
                             stroke={stemColor} 
                             strokeWidth="4" 
                             strokeLinecap="round" 
@@ -276,7 +275,7 @@ const FocusFlower: React.FC<{ progress: number; state: 'idle' | 'running' | 'pau
 // Main FocusTimer Component
 // ==========================================
 const FocusTimer = () => {
-    const { isTimerOpen, setIsTimerOpen, showToast, getTasksByDate, getDayDate, currentDay } = useStore();
+    const { isTimerOpen, setIsTimerOpen, showToast, getTasksByDate, getDayDate, currentDay, userName } = useStore();
     
     // Core Timer States
     const [timerMode, setTimerMode] = useState<'normal' | 'pomodoro'>('normal');
@@ -293,6 +292,13 @@ const FocusTimer = () => {
     const [isTaskSelectorOpen, setIsTaskSelectorOpen] = useState(false);
     const [pinnedTaskId, setPinnedTaskId] = useState<string | null>(null);
 
+    // Live Multiplayer Room States (2026 YPT Style)
+    const [rightPanelTab, setRightPanelTab] = useState<'audio' | 'room'>('audio');
+    const [isInRoom, setIsInRoom] = useState(false);
+    const [roomCode, setRoomCode] = useState<string | null>(null);
+    const [tempCodeInput, setTempCodeInput] = useState('');
+    const [roomMembers, setRoomMembers] = useState<any[]>([]);
+
     // Audio Engine Ref
     const audioEngineRef = useRef<FocusAudioEngine | null>(null);
 
@@ -308,6 +314,72 @@ const FocusTimer = () => {
             audioEngineRef.current?.stop();
         };
     }, []);
+
+    // Simulated multiplayer members focus logic
+    useEffect(() => {
+        if (!isInRoom) return;
+
+        const interval = setInterval(() => {
+            setRoomMembers(prev => prev.map(m => {
+                if (m.status === 'studying') {
+                    return {
+                        ...m,
+                        todayStudyTime: m.todayStudyTime + 1,
+                        activeSessionSeconds: m.activeSessionSeconds + 1
+                    };
+                }
+                return m;
+            }));
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [isInRoom]);
+
+    const handleCreateRoom = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setRoomCode(code);
+        setIsInRoom(true);
+        setRoomMembers([
+            { id: '1', name: 'نیما', avatar: '👨‍🎓', status: 'studying', currentSubject: 'فیزیک ⚛️', todayStudyTime: 16200, activeSessionSeconds: 1200 },
+            { id: '2', name: 'سارا', avatar: '👩‍🎓', status: 'studying', currentSubject: 'زیست‌شناسی 🧬', todayStudyTime: 11520, activeSessionSeconds: 540 },
+            { id: '3', name: 'علی', avatar: '👨‍💻', status: 'resting', currentSubject: 'استراحت ☕', todayStudyTime: 18360, activeSessionSeconds: 0 }
+        ]);
+        showToast?.(`اتاق جدید با کد ${code} با موفقیت ساخته شد! 👥`, 'success');
+    };
+
+    const handleJoinRoom = (codeStr: string) => {
+        const clean = codeStr.trim().toUpperCase();
+        if (clean.length !== 6) {
+            showToast?.('کد اتاق باید ۶ کاراکتر باشد', 'warning');
+            return;
+        }
+        setRoomCode(clean);
+        setIsInRoom(true);
+        setRoomMembers([
+            { id: '1', name: 'نیما', avatar: '👨‍🎓', status: 'studying', currentSubject: 'فیزیک ⚛️', todayStudyTime: 16200, activeSessionSeconds: 1200 },
+            { id: '2', name: 'سارا', avatar: '👩‍🎓', status: 'studying', currentSubject: 'زیست‌شناسی 🧬', todayStudyTime: 11520, activeSessionSeconds: 540 },
+            { id: '3', name: 'علی', avatar: '👨‍💻', status: 'resting', currentSubject: 'استراحت ☕', todayStudyTime: 18360, activeSessionSeconds: 0 }
+        ]);
+        showToast?.(`با موفقیت به اتاق ${clean} متصل شدید! 👥`, 'success');
+    };
+
+    const handleLeaveRoom = () => {
+        setIsInRoom(false);
+        setRoomCode(null);
+        setRoomMembers([]);
+        showToast?.('از اتاق مطالعه خارج شدید', 'info');
+    };
+
+    const handleCopyRoomCode = () => {
+        if (roomCode) {
+            navigator.clipboard.writeText(roomCode);
+            showToast?.('کد دعوت با موفقیت کپی شد! 📋', 'success');
+        }
+    };
 
     // Sync sound engine to states
     useEffect(() => {
@@ -348,51 +420,35 @@ const FocusTimer = () => {
                     setSeconds(accumulatedTime + diff);
                     setTimerState('running');
                 } else {
-                    const totalDuration = pomoSession === 'study' ? 1500 : 300;
-                    const nextSecs = totalDuration - (accumulatedTime + diff);
-                    
-                    if (nextSecs <= 0) {
-                        handlePomoFinished();
+                    const initial = pomoSession === 'study' ? 1500 : 300;
+                    const remaining = initial - (accumulatedTime + diff);
+                    if (remaining <= 0) {
+                        setSeconds(0);
+                        setIsRunning(false);
+                        setTimerState('success');
+                        audioEngineRef.current?.playBeep();
+                        showToast?.(pomoSession === 'study' ? 'پارت تمرکز با موفقیت به پایان رسید! 🎉' : 'زمان استراحت تمام شد. بازگشت به کار!', 'success');
                     } else {
-                        setSeconds(nextSecs);
+                        setSeconds(remaining);
                         setTimerState('running');
                     }
                 }
             }, 1000);
         }
         return () => clearInterval(interval);
-    }, [isRunning, startTime, accumulatedTime, timerMode, pomoSession]);
+    }, [isRunning, startTime, timerMode, pomoSession, accumulatedTime]);
 
-    if (!isTimerOpen) return null;
-
-    // Derived values
-    const pomoDuration = pomoSession === 'study' ? 1500 : 300;
-    const progressPercent = timerMode === 'pomodoro' 
-        ? Math.min(Math.round(((pomoDuration - seconds) / pomoDuration) * 100), 100)
-        : Math.min(Math.round((seconds / 3600) * 100), 100); // 1h normal = 100%
-
-    const handlePomoFinished = () => {
-        setIsRunning(false);
-        setTimerState('success');
-        setStartTime(null);
-        setAccumulatedTime(0);
-        
-        audioEngineRef.current?.playBeep();
-        setTimeout(() => audioEngineRef.current?.playBeep(), 300);
-
-        if (pomoSession === 'study') {
-            showToast?.('زمان مطالعه پومودورو تمام شد! وقت ۵ دقیقه استراحت است. ☕ +۵۰ XP', 'success');
-            setPomoSession('break');
-            // Give Reward
-            try {
-                // @ts-ignore
-                if (window.StoreProvider_addXp) window.StoreProvider_addXp(50);
-            } catch (e) {}
+    // Dynamically calculate progress percent for the flower
+    const progressPercent = useMemo(() => {
+        if (timerMode === 'normal') {
+            // Normal timer grows forever, 1 hour (3600s) as 100% standard
+            return Math.min((seconds / 3600) * 100, 100);
         } else {
-            showToast?.('استراحت تمام شد! آماده پارت بعدی مطالعه پومودورو شو. 🔥', 'success');
-            setPomoSession('study');
+            const initial = pomoSession === 'study' ? 1500 : 300;
+            const elapsed = initial - seconds;
+            return Math.min((elapsed / initial) * 100, 100);
         }
-    };
+    }, [seconds, timerMode, pomoSession]);
 
     const formatTime = (totalSeconds: number) => {
         const h = Math.floor(totalSeconds / 3600);
@@ -596,79 +652,230 @@ const FocusTimer = () => {
                 <div className="hidden md:block w-px h-96 bg-white/10" />
 
                 {/* =======================================
-                    RIGHT COLUMN: AUDIO SYNTHESIZER
+                    RIGHT COLUMN: AUDIO SYNTHESIZER & MULTIPLAYER
                    ======================================= */}
                 <div className="flex flex-col gap-6 flex-1 w-full max-w-sm">
-                    <div className="text-right">
-                        <h3 className="text-base font-extrabold text-white flex items-center gap-2.5 mb-1.5 justify-start">
-                            <Volume2 className="text-indigo-400" size={18} />
-                            کابین صوتی هوشمند (Audio Cabin)
-                        </h3>
-                        <p className="text-[10px] text-gray-400 font-black">فرکانس‌های سنتزشده متمرکزکننده مغز (ضد حواس‌پرتی)</p>
+                    {/* 2026 Tab switcher for Audio Cabin vs Focus Room */}
+                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 select-none">
+                        <button
+                            onClick={() => setRightPanelTab('audio')}
+                            className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition duration-300 ${rightPanelTab === 'audio' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                            کابین صوتی 🎵
+                        </button>
+                        <button
+                            onClick={() => setRightPanelTab('room')}
+                            className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition duration-300 ${rightPanelTab === 'room' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                            اتاق گروهی 👥
+                        </button>
                     </div>
 
-                    {/* Sounds Grid (New synthesizers added) */}
-                    <div className="grid grid-cols-2 gap-2.5">
-                        {[
-                            { id: 'none', label: 'بی‌صدا', desc: 'سکوت عمیق', icon: VolumeX, color: 'text-gray-400' },
-                            { id: 'white', label: 'نویز سفید', desc: 'فیلتر صدا', icon: Brain, color: 'text-sky-400' },
-                            { id: 'brown', label: 'نویز قهوه‌ای', desc: 'فرکانس‌های پایین', icon: Sliders, color: 'text-amber-500' },
-                            { id: 'ocean', label: 'امواج اقیانوس', desc: 'ریلکسیشن دریا', icon: Sliders, color: 'text-teal-400' },
-                            { id: 'rain', label: 'باران طبیعی', desc: 'سنتز قطرات باران', icon: Info, color: 'text-blue-400' },
-                            { id: 'fireplace', label: 'آتش شومینه', desc: 'جرقه و هوم چوب', icon: Flame, color: 'text-orange-500' }
-                        ].map((sound) => {
-                            const Icon = sound.icon;
-                            const isSelected = activeSound === sound.id;
-                            return (
-                                <button
-                                    key={sound.id}
-                                    onClick={() => {
-                                        audioEngineRef.current?.init();
-                                        setActiveSound(sound.id as any);
-                                    }}
-                                    className={`flex flex-col items-start p-3 rounded-2xl border text-right transition duration-200 cursor-pointer btn-micro-interactive ${isSelected
-                                        ? 'bg-indigo-500/10 border-indigo-500 shadow-md shadow-indigo-500/10'
-                                        : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'}`}
-                                >
-                                    <div className="flex items-center gap-2 mb-1 w-full justify-between">
-                                        <span className={`text-[11px] font-extrabold ${isSelected ? 'text-indigo-400' : 'text-gray-200'}`}>{sound.label}</span>
-                                        <Icon size={14} className={`${isSelected ? 'text-indigo-400' : sound.color}`} />
+                    {rightPanelTab === 'audio' ? (
+                        <>
+                            <div className="text-right">
+                                <h3 className="text-base font-extrabold text-white flex items-center gap-2.5 mb-1.5 justify-start">
+                                    <Volume2 className="text-indigo-400" size={18} />
+                                    کابین صوتی هوشمند (Audio Cabin)
+                                </h3>
+                                <p className="text-[10px] text-gray-400 font-black">فرکانس‌های سنتزشده متمرکزکننده مغز (ضد حواس‌پرتی)</p>
+                            </div>
+
+                            {/* Sounds Grid (New synthesizers added) */}
+                            <div className="grid grid-cols-2 gap-2.5">
+                                {[
+                                    { id: 'none', label: 'بی‌صدا', desc: 'سکوت عمیق', icon: VolumeX, color: 'text-gray-400' },
+                                    { id: 'white', label: 'نویز سفید', desc: 'فیلتر صدا', icon: Brain, color: 'text-sky-400' },
+                                    { id: 'brown', label: 'نویز قهوه‌ای', desc: 'فرکانس‌های پایین', icon: Sliders, color: 'text-amber-500' },
+                                    { id: 'ocean', label: 'امواج اقیانوس', desc: 'ریلکسیشن دریا', icon: Sliders, color: 'text-teal-400' },
+                                    { id: 'rain', label: 'باران طبیعی', desc: 'سنتز قطرات باران', icon: Info, color: 'text-blue-400' },
+                                    { id: 'fireplace', label: 'آتش شومینه', desc: 'جرقه و هوم چوب', icon: Flame, color: 'text-orange-500' }
+                                ].map((sound) => {
+                                    const Icon = sound.icon;
+                                    const isSelected = activeSound === sound.id;
+                                    return (
+                                        <button
+                                            key={sound.id}
+                                            onClick={() => {
+                                                audioEngineRef.current?.init();
+                                                setActiveSound(sound.id as any);
+                                            }}
+                                            className={`flex flex-col items-start p-3 rounded-2xl border text-right transition duration-200 cursor-pointer btn-micro-interactive ${isSelected
+                                                ? 'bg-indigo-500/10 border-indigo-500 shadow-md shadow-indigo-500/10'
+                                                : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'}`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1 w-full justify-between">
+                                                <span className={`text-[11px] font-extrabold ${isSelected ? 'text-indigo-400' : 'text-gray-200'}`}>{sound.label}</span>
+                                                <Icon size={14} className={`${isSelected ? 'text-indigo-400' : sound.color}`} />
+                                            </div>
+                                            <span className="text-[9px] text-gray-500 truncate w-full font-bold">{sound.desc}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Volume Slider (Pulsing glowing container) */}
+                            {activeSound !== 'none' && (
+                                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2 animate-in slide-in-from-top-3 duration-300 backdrop-blur-md glass-premium">
+                                    <div className="flex items-center justify-between text-xs text-gray-300 font-extrabold">
+                                        <span>ولوم کابین صوتی</span>
+                                        <span className="font-mono text-indigo-400 font-extrabold">{volume}%</span>
                                     </div>
-                                    <span className="text-[9px] text-gray-500 truncate w-full font-bold">{sound.desc}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <VolumeX size={15} className="text-gray-400" />
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={volume}
+                                            onChange={(e) => setVolume(Number(e.target.value))}
+                                            className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                        />
+                                        <Volume2 size={15} className="text-indigo-400" />
+                                    </div>
+                                </div>
+                            )}
 
-                    {/* Volume Slider (Pulsing glowing container) */}
-                    {activeSound !== 'none' && (
-                        <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-2 animate-in slide-in-from-top-3 duration-300 backdrop-blur-md glass-premium">
-                            <div className="flex items-center justify-between text-xs text-gray-300 font-extrabold">
-                                <span>ولوم کابین صوتی</span>
-                                <span className="font-mono text-indigo-400 font-extrabold">{volume}%</span>
+                            {/* Scientific Banner */}
+                            <div className="bg-gradient-to-br from-indigo-950/20 to-purple-950/20 border border-white/10 p-4 rounded-3xl backdrop-blur-md text-right">
+                                <p className="text-[10px] text-indigo-400 font-black mb-1 uppercase tracking-wider">ریشه در فیزیولوژی مغز</p>
+                                <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
+                                    مدل‌های **نویز باران و شومینه** در برنامه به صورت مستقیم توسط فرکانس‌های جرقه‌ای و نوسان‌های LFO تولید صدا می‌شوند. این ترکیب طبیعی باعث مهار سیگنال‌های اضافی تالاموس شده و آستانه تمرکز را تا ۴۰ درصد افزایش می‌دهد.
+                                </p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <VolumeX size={15} className="text-gray-400" />
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={volume}
-                                    onChange={(e) => setVolume(Number(e.target.value))}
-                                    className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                />
-                                <Volume2 size={15} className="text-indigo-400" />
-                            </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col gap-4 animate-in fade-in duration-300 text-right">
+                            {!isInRoom ? (
+                                <div className="bg-white/5 border border-white/10 p-5 rounded-3xl backdrop-blur-md text-right space-y-4">
+                                    <div>
+                                        <h4 className="text-sm font-extrabold text-white">ساخت یا ورود به اتاق مطالعه 👥</h4>
+                                        <p className="text-[10px] text-gray-400 font-bold mt-1">با دوستان خود همزمان مطالعه کنید و پیشرفت هم را ببینید!</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <input
+                                            type="text"
+                                            value={tempCodeInput}
+                                            onChange={(e) => setTempCodeInput(e.target.value)}
+                                            placeholder="کد ۶ رقمی اتاق (مثال: P9A27S)"
+                                            maxLength={6}
+                                            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 outline-none text-xs focus:border-indigo-500 text-center font-mono font-extrabold uppercase text-white"
+                                        />
+                                        <button
+                                            onClick={() => handleJoinRoom(tempCodeInput)}
+                                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition-all active:scale-[0.98] cursor-pointer"
+                                        >
+                                            ورود به اتاق مطالعه
+                                        </button>
+                                    </div>
+                                    <div className="relative flex py-2 items-center">
+                                        <div className="flex-grow border-t border-white/10"></div>
+                                        <span className="flex-shrink mx-3 text-gray-500 text-[10px] font-bold">یا</span>
+                                        <div className="flex-grow border-t border-white/10"></div>
+                                    </div>
+                                    <button
+                                        onClick={handleCreateRoom}
+                                        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-black transition-all active:scale-[0.98] cursor-pointer"
+                                    >
+                                        ساخت اتاق جدید مطالعاتی ✨
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Active Room Code info */}
+                                    <div className="bg-white/5 border border-white/10 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+                                        <div className="text-right">
+                                            <span className="text-[9px] text-indigo-400 font-extrabold uppercase tracking-widest block">کد اتاق فعال:</span>
+                                            <span className="text-lg font-black text-white font-mono tracking-wider">{roomCode}</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleCopyRoomCode}
+                                                className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 text-[10px] font-extrabold rounded-xl transition cursor-pointer"
+                                            >
+                                                کپی کد 📋
+                                            </button>
+                                            <button
+                                                onClick={handleLeaveRoom}
+                                                className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 text-[10px] font-extrabold rounded-xl transition cursor-pointer"
+                                            >
+                                                خروج 🚪
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Live Activity Feed */}
+                                    <div className="text-right">
+                                        <h4 className="text-xs font-black text-gray-400 flex items-center gap-1.5 mb-2.5 justify-start">
+                                            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
+                                            اعضای فعال در اتاق ({roomMembers.filter(m => m.status === 'studying').length + (isRunning ? 1 : 0)})
+                                        </h4>
+                                        <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                                            {/* Render User himself first */}
+                                            {(() => {
+                                                const u = {
+                                                    id: 'user',
+                                                    name: userName || 'شما',
+                                                    avatar: '👑',
+                                                    status: isRunning ? 'studying' as const : 'offline' as const,
+                                                    currentSubject: pinnedTask ? `${pinnedTask.subject} 📚` : 'آزاد 🎯',
+                                                    todayStudyTime: seconds,
+                                                    activeSessionSeconds: seconds
+                                                };
+                                                return (
+                                                    <div className={`p-3 rounded-2xl border flex items-center justify-between transition-all duration-300 backdrop-blur-md ${
+                                                        u.status === 'studying'
+                                                            ? 'bg-indigo-500/10 border-indigo-500/30'
+                                                            : 'bg-white/5 border-white/5 opacity-60'
+                                                    }`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-white/10 flex items-center justify-center text-lg">{u.avatar}</div>
+                                                            <div className="text-right">
+                                                                <div className="font-extrabold text-xs text-white">{u.name} (شما)</div>
+                                                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{u.currentSubject}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-left font-mono">
+                                                            <div className={`text-xs font-black ${u.status === 'studying' ? 'text-indigo-400 animate-pulse' : 'text-gray-500'}`}>
+                                                                {formatTime(u.todayStudyTime)}
+                                                            </div>
+                                                            <div className="text-[8px] text-gray-500 font-bold mt-0.5">امروز</div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {/* Render other room members */}
+                                            {roomMembers.map((m) => {
+                                                const isStudying = m.status === 'studying';
+                                                return (
+                                                    <div key={m.id} className={`p-3 rounded-2xl border flex items-center justify-between transition-all duration-300 backdrop-blur-md ${
+                                                        isStudying
+                                                            ? 'bg-emerald-500/10 border-emerald-500/20'
+                                                            : 'bg-white/5 border-white/5 opacity-60'
+                                                    }`}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-white/10 flex items-center justify-center text-lg">{m.avatar}</div>
+                                                            <div className="text-right">
+                                                                <div className="font-extrabold text-xs text-white">{m.name}</div>
+                                                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">{m.currentSubject}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-left font-mono">
+                                                            <div className={`text-xs font-black ${isStudying ? 'text-emerald-400' : 'text-gray-500'}`}>
+                                                                {formatTime(m.todayStudyTime)}
+                                                            </div>
+                                                            <div className="text-[8px] text-gray-500 font-bold mt-0.5">امروز</div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
-
-                    {/* Scientific Banner */}
-                    <div className="bg-gradient-to-br from-indigo-950/20 to-purple-950/20 border border-white/10 p-4 rounded-3xl backdrop-blur-md text-right">
-                        <p className="text-[10px] text-indigo-400 font-black mb-1 uppercase tracking-wider">ریشه در فیزیولوژی مغز</p>
-                        <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
-                            مدل‌های **نویز باران و شومینه** در برنامه به صورت مستقیم توسط فرکانس‌های جرقه‌ای و نوسان‌های LFO تولید صدا می‌شوند. این ترکیب طبیعی باعث مهار سیگنال‌های اضافی تالاموس شده و آستانه تمرکز را تا ۴۰ درصد افزایش می‌دهد.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>

@@ -15,10 +15,11 @@ export interface MessageProps {
         attachments?: { type: 'image' | 'video' | 'file'; url: string; name: string }[];
     };
     onRetry?: (text: string) => void;
+    onRegenerate?: (messageId: string) => void;
     onReviewTasks?: (tasks: ParsedTask[]) => void;
 }
 
-export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReviewTasks }) => {
+export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onRegenerate, onReviewTasks }) => {
     const isUser = message.sender === 'user';
     const [copied, setCopied] = useState(false);
     const [speaking, setSpeaking] = useState(false);
@@ -149,21 +150,29 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
                         </div>
                     </div>
 
-                    {/* AI Actions */}
-                    {!isUser && !message.isError && (
-                        <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-1">
-                            <button onClick={handleCopy} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition" title="کپی متن">
-                                {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                    {/* Actions */}
+                    {isUser ? (
+                        <div className="flex items-center gap-2 mt-1.5 opacity-60 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-1 select-none">
+                            <button onClick={handleCopy} className="p-1 text-indigo-150 hover:text-white rounded-lg transition hover:bg-white/10" title="کپی پیام">
+                                {copied ? <Check size={12} className="text-emerald-300" /> : <Copy size={12} />}
                             </button>
-                            <button onClick={handleSpeak} className={`p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition ${speaking ? 'text-indigo-600 bg-indigo-50 animate-pulse' : ''}`} title="خواندن متن">
-                                <Volume2 size={14} />
-                            </button>
-                            {onRetry && (
-                                <button onClick={() => onRetry(message.text)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition" title="پاسخ مجدد">
-                                    <RotateCcw size={14} />
-                                </button>
-                            )}
                         </div>
+                    ) : (
+                        !message.isError && (
+                            <div className="flex items-center gap-2 mt-1.5 opacity-60 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200 px-1 select-none">
+                                <button onClick={handleCopy} className="p-1.5 text-gray-400 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition" title="کپی پیام">
+                                    {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                </button>
+                                <button onClick={handleSpeak} className={`p-1.5 text-gray-400 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition ${speaking ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 animate-pulse' : ''}`} title="خواندن صوتی">
+                                    <Volume2 size={13} />
+                                </button>
+                                {onRegenerate && (
+                                    <button onClick={() => onRegenerate(message.id)} className="p-1.5 text-gray-400 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition" title="بازتولید پاسخ (Regenerate)">
+                                        <RotateCcw size={13} />
+                                    </button>
+                                )}
+                            </div>
+                        )
                     )}
                 </div>
             </div>

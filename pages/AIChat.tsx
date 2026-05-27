@@ -10,7 +10,7 @@ import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
 import { ChatMessage } from '../components/AIChat/ChatMessage';
 import { ChatInput } from '../components/AIChat/ChatInput';
 import { WelcomeScreen } from '../components/AIChat/WelcomeScreen';
-import { Menu, Settings as SettingsIcon, ChevronLeft, X, Sparkles, History as HistoryIcon } from 'lucide-react';
+import { Menu, Settings as SettingsIcon, ChevronLeft, X, Sparkles, History as HistoryIcon, Trash2 } from 'lucide-react';
 
 // --- TYPES (Internal) ---
 interface Message {
@@ -23,10 +23,6 @@ interface Message {
     attachments?: { type: 'image' | 'video' | 'file'; url: string; name: string }[];
 }
 
-// NOTE: ChatSession is imported from ChatSidebar to ensure consistency, 
-// but we might need to map or align if they differ. 
-// For now, we will use the local state structure and cast if needed or ensure compatibility.
-
 export interface AIChatProps {
     isWidget?: boolean;
     onClose?: () => void;
@@ -34,13 +30,14 @@ export interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes, showToast, geminiApiKey } = useStore();
+    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes, showToast, geminiApiKey, userId } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // UI State
     const [input, setInput] = useState('');
@@ -58,13 +55,18 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     // Derived State
     const activeSession = sessions.find(s => s.id === activeSessionId);
     const messages = activeSession?.messages || [];
+    const filteredMessages = messages.filter(m => 
+        m.text.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     // --- INITIALIZATION ---
     useEffect(() => {
         const loadSessions = async () => {
+            const storageKey = `gemini_chat_sessions_${userId || 'parsaplan_local_user'}`;
             try {
-                let savedSessions = await get('gemini_chat_sessions');
-                if (!savedSessions) {
+                let savedSessions = await get(storageKey);
+                if (!savedSessions && (userId === 'parsaplan_local_user' || !userId)) {
+                    // Fallback to legacy un-scoped local storage if offline
                     const localRaw = localStorage.getItem('gemini_chat_sessions');
                     if (localRaw) {
                         savedSessions = JSON.parse(localRaw);
@@ -86,15 +88,18 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
                 createNewChat();
             }
         };
-        loadSessions();
-    }, []);
+        if (userId !== undefined) {
+            loadSessions();
+        }
+    }, [userId]);
 
     // --- PERSISTENCE ---
     useEffect(() => {
-        if (sessions.length > 0) {
-            set('gemini_chat_sessions', sessions).catch(e => console.error("Failed saving sessions", e));
+        if (sessions.length > 0 && userId !== undefined) {
+            const storageKey = `gemini_chat_sessions_${userId || 'parsaplan_local_user'}`;
+            set(storageKey, sessions).catch(e => console.error("Failed saving sessions", e));
         }
-    }, [sessions]);
+    }, [sessions, userId]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -155,8 +160,6 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
             return s;
         }));
     };
-
-
 
     // --- HELPERS ---
     const fileToGenerativePart = async (file: File): Promise<{ inlineData: { data: string; mimeType: string } }> => {
@@ -511,6 +514,34 @@ Type B: Recurring Study Series (Daily consecutive repeat)
         }
     };
 
+    const handleRegenerate = async (aiMessageId: string) => {
+        if (!activeSessionId) return;
+        const currentSession = sessions.find(s => s.id === activeSessionId);
+        if (!currentSession) return;
+
+        const msgs = currentSession.messages;
+        const aiMsgIndex = msgs.findIndex(m => m.id === aiMessageId);
+        if (aiMsgIndex === -1) return;
+
+        // پیدا کردن پیام قبلی کاربر
+        const userMsg = msgs.slice(0, aiMsgIndex).reverse().find(m => m.sender === 'user');
+        if (!userMsg) return;
+
+        // حذف پیام هوش مصنوعی فعلی و تمام پیام‌های بعد از آن برای ریجنریت تمیز
+        const cleanMsgs = msgs.slice(0, aiMsgIndex);
+        updateActiveSessionMessages(cleanMsgs);
+
+        // فراخوانی ارسال مجدد
+        await handleSend(userMsg.text);
+    };
+
+    const handleClearSession = () => {
+        if (!activeSessionId) return;
+        if (!window.confirm('آیا تاریخچه گفتگوهای این چت پاک شود؟')) return;
+        updateActiveSessionMessages([]);
+        showToast('تاریخچه این گفتگو پاک شد', 'info');
+    };
+
     const handleConfirmTasks = () => {
         if (reviewTasks) {
             reviewTasks.forEach(t => {
@@ -585,13 +616,27 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                             <h1 className="font-extrabold text-gray-800 dark:text-white flex items-center gap-2 text-sm md:text-base tracking-tight">
                                 {activeSession?.title || 'دستیار هوشمند'}
                             </h1>
-                            <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-extrabold tracking-wider bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-md mt-0.5 w-max font-mono truncate max-w-[150px]">
-                                {selectedModel}
-                            </span>
+                            <select 
+                                value={selectedModel}
+                                onChange={(e) => updateSettings({ geminiModel: e.target.value })}
+                                className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-150/20 rounded-md px-1.5 py-0.5 mt-0.5 outline-none cursor-pointer hover:bg-indigo-100 transition-colors w-max"
+                            >
+                                <option value="gemini-2.0-flash" className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200">Gemini 2.0 Flash</option>
+                                <option value="gemini-1.5-pro" className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200">Gemini 1.5 Pro</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
+                        {activeSession && activeSession.messages.length > 0 && (
+                            <button 
+                                onClick={handleClearSession} 
+                                className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 rounded-xl transition text-gray-500 btn-micro-interactive"
+                                title="حذف تاریخچه این گفتگو"
+                            >
+                                <Trash2 size={20} />
+                            </button>
+                        )}
                         {isWidget ? (
                             <button onClick={onClose} className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 rounded-xl transition text-gray-500 btn-micro-interactive">
                                 <X size={20} />
@@ -604,22 +649,39 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                     </div>
                 </header>
 
-
-
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth min-h-0 relative">
                     {messages.length === 0 ? (
                         <WelcomeScreen onPromptSelect={(text) => handleSend(text)} userName="کاربر" />
                     ) : (
                         <div className="max-w-4xl mx-auto pb-4">
-                            {messages.map((msg) => (
-                                <ChatMessage
-                                    key={msg.id}
-                                    message={msg}
-                                    onRetry={(text) => handleSend(text)}
-                                    onReviewTasks={setReviewTasks}
+                            {/* 2026 Premium Chat Search Bar */}
+                            <div className="mb-5 select-none animate-in fade-in slide-in-from-top-2 duration-300">
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="🔍 جستجو در پیام‌های این گفتگو..."
+                                    className="w-full bg-white/45 dark:bg-gray-900/45 backdrop-blur-xl border border-gray-200/40 dark:border-gray-800/40 rounded-2xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all text-gray-750 dark:text-gray-200 shadow-sm"
+                                    dir="rtl"
                                 />
-                            ))}
+                            </div>
+
+                            {filteredMessages.length === 0 && searchQuery !== '' ? (
+                                <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-xs font-bold">
+                                    پیامی متناسب با جستجوی شما پیدا نشد 🧐
+                                </div>
+                            ) : (
+                                filteredMessages.map((msg) => (
+                                    <ChatMessage
+                                        key={msg.id}
+                                        message={msg}
+                                        onRetry={(text) => handleSend(text)}
+                                        onRegenerate={handleRegenerate}
+                                        onReviewTasks={setReviewTasks}
+                                    />
+                                ))
+                            )}
                             {isTyping && (
                                 <div className="flex flex-row-reverse items-end gap-3.5 mb-6 opacity-90 animate-fade-in-up">
                                     <div className="w-8.5 h-8.5 rounded-xl bg-white/80 dark:bg-gray-800/80 text-indigo-500 border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md flex items-center justify-center flex-shrink-0 shadow-md">
