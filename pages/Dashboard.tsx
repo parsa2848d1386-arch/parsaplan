@@ -331,10 +331,10 @@ const Dashboard = () => {
             </div>
 
             {/* ===== QUICK ACTIONS ===== */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 select-none">
                 <button
                     onClick={() => navigate('/analysis')}
-                    className="col-span-2 lg:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md shadow-violet-200/50 dark:shadow-indigo-900/30 group"
+                    className="col-span-2 lg:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md shadow-violet-200/50 dark:shadow-indigo-900/30 group btn-micro-interactive"
                 >
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -346,18 +346,18 @@ const Dashboard = () => {
                 </button>
                 <button
                     onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
-                    className="flex items-center flex-col justify-center gap-2 p-3.5 bg-indigo-50 dark:bg-gray-800 hover:bg-indigo-100 dark:hover:bg-gray-700 active:scale-95 text-indigo-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition-all duration-200"
+                    className="flex items-center flex-col justify-center gap-2 p-3.5 bg-indigo-50 dark:bg-gray-800/80 border border-indigo-100/20 dark:border-gray-700/20 hover:bg-indigo-100 dark:hover:bg-gray-700 active:scale-95 text-indigo-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition-all duration-200 btn-micro-interactive shadow-sm"
                 >
-                    <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 bg-indigo-100/40 dark:bg-gray-700/40 rounded-xl flex items-center justify-center flex-shrink-0">
                         <Plus size={18} />
                     </div>
                     <span>تسک جدید</span>
                 </button>
                 <button
                     onClick={() => setIsTimerOpen(true)}
-                    className="flex items-center gap-3 p-3.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 text-gray-700 dark:text-gray-200 rounded-2xl font-bold text-sm transition-all duration-200 border border-gray-100 dark:border-gray-700 shadow-sm"
+                    className="flex items-center gap-3 p-3.5 bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-bold text-sm transition-all duration-200 border border-gray-150 dark:border-gray-750 shadow-sm btn-micro-interactive"
                 >
-                    <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl flex items-center justify-center flex-shrink-0">
                         <Play size={16} className="text-emerald-500" />
                     </div>
                     <span>تایمر فوکوس</span>

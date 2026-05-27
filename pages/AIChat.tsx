@@ -550,7 +550,10 @@ Type B: Recurring Study Series (Daily consecutive repeat)
     };
 
     return (
-        <div className="flex h-full bg-slate-50 dark:bg-gray-950 overflow-hidden relative">
+        <div className="flex h-full bg-slate-50 dark:bg-gray-950 overflow-hidden relative font-sans">
+            {/* Ambient Background Glowing Orbs (2026 Premium Aesthetic) */}
+            <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full filter blur-[130px] pointer-events-none animate-float-slow" />
+            <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-purple-500/5 dark:bg-purple-500/10 rounded-full filter blur-[130px] pointer-events-none animate-float-slow" style={{ animationDelay: '-3s' }} />
 
             <ChatSidebar
                 isOpen={isSidebarOpen}
@@ -566,30 +569,36 @@ Type B: Recurring Study Series (Daily consecutive repeat)
             />
 
             {/* Main Area */}
-            <main className="flex-1 flex flex-col h-full relative w-full transition-all duration-300">
+            <main className="flex-1 flex flex-col h-full relative w-full transition-all duration-300 z-10">
 
-                {/* Header */}
-                <header className="p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between sticky top-0 z-20">
+                {/* Header (Glassmorphic) */}
+                <header className="p-4 bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50 flex items-center justify-between sticky top-0 z-20 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.02)]">
                     <div className="flex items-center gap-3">
-                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-2 text-gray-500 hover:text-indigo-500 transition">
-                            <HistoryIcon size={24} />
+                        <button 
+                            onClick={() => setIsSidebarOpen(true)} 
+                            className="p-2.5 -mr-2 text-gray-500 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition btn-micro-interactive"
+                            title="تاریخچه گفتگوها"
+                        >
+                            <HistoryIcon size={20} />
                         </button>
                         <div className="flex flex-col">
-                            <h1 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 text-sm md:text-lg">
+                            <h1 className="font-extrabold text-gray-800 dark:text-white flex items-center gap-2 text-sm md:text-base tracking-tight">
                                 {activeSession?.title || 'دستیار هوشمند'}
                             </h1>
-                            <span className="text-[10px] text-indigo-500 font-mono opacity-80 mt-0.5 truncate max-w-[150px]">{selectedModel}</span>
+                            <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-extrabold tracking-wider bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-md mt-0.5 w-max font-mono truncate max-w-[150px]">
+                                {selectedModel}
+                            </span>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-1">
                         {isWidget ? (
-                            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500">
-                                <X size={24} />
+                            <button onClick={onClose} className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 rounded-xl transition text-gray-500 btn-micro-interactive">
+                                <X size={20} />
                             </button>
                         ) : (
-                            <button onClick={() => navigate('/')} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500">
-                                <ChevronLeft size={24} />
+                            <button onClick={() => navigate('/')} className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition text-gray-500 btn-micro-interactive">
+                                <ChevronLeft size={20} />
                             </button>
                         )}
                     </div>
@@ -612,15 +621,15 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                                 />
                             ))}
                             {isTyping && (
-                                <div className="flex flex-row-reverse items-end gap-3 mb-6 animate-pulse opacity-70">
-                                    <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center border border-indigo-200 dark:border-indigo-800/50 flex-shrink-0">
-                                        <Sparkles size={18} className="text-indigo-600 animate-spin-slow" />
+                                <div className="flex flex-row-reverse items-end gap-3.5 mb-6 opacity-90 animate-fade-in-up">
+                                    <div className="w-8.5 h-8.5 rounded-xl bg-white/80 dark:bg-gray-800/80 text-indigo-500 border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md flex items-center justify-center flex-shrink-0 shadow-md">
+                                        <Sparkles size={16} className="text-indigo-500 animate-spin-slow" strokeWidth={2.5} />
                                     </div>
-                                    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm px-5 py-3.5 rounded-[1.25rem] rounded-tl-sm border border-gray-100 dark:border-gray-800 text-sm font-medium text-gray-500 shadow-sm">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                            <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                            <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce"></span>
+                                    <div className="bubble-ai-premium backdrop-blur-md px-5 py-3 rounded-[1.3rem] rounded-tl-sm border border-gray-200/40 dark:border-gray-800/40 text-sm text-gray-500 shadow-sm glass-premium">
+                                        <div className="flex items-center gap-1.5 py-1">
+                                            <span className="w-2.5 h-2.5 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                            <span className="w-2.5 h-2.5 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                            <span className="w-2.5 h-2.5 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full animate-bounce"></span>
                                         </div>
                                     </div>
                                 </div>

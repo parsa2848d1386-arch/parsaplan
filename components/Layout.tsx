@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
     Menu, Bell, Search, X, LogOut, Moon, Sun,
@@ -326,18 +326,19 @@ const Layout = () => {
                                         updateSettings({ hasUnreadAiMessage: false });
                                     }
                                 }}
-                                className={`relative flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${isAiPanelOpen
-                                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/30'
-                                    : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-indigo-300'
-                                    }`}
+                                className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold transition-all duration-300 btn-micro-interactive shadow-sm border ${
+                                    isAiPanelOpen
+                                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/20'
+                                        : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-md text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700/80 hover:border-indigo-400/50 hover:text-indigo-600 dark:hover:text-indigo-400'
+                                }`}
                             >
                                 {settings?.hasUnreadAiMessage && !isAiPanelOpen && (
-                                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border border-white dark:border-gray-900"></span>
+                                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-white dark:border-gray-900"></span>
                                     </span>
                                 )}
-                                <Sparkles size={13} className={isAiPanelOpen ? 'text-white' : 'text-indigo-500'} />
+                                <Sparkles size={14} className={isAiPanelOpen ? 'text-white animate-pulse' : 'text-indigo-500'} />
                                 <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار AI'}</span>
                             </button>
 
@@ -445,38 +446,42 @@ const Layout = () => {
                 {/* ====================================================
                     AI PANEL (Right side on desktop)
                    ==================================================== */}
-                {isAiPanelOpen && (
-                    <>
-                        {/* Resizer */}
-                        <div
-                            className="hidden md:flex w-1 bg-gray-100 dark:bg-gray-800 hover:bg-indigo-400 cursor-col-resize z-40 transition-colors items-center justify-center group"
-                            onMouseDown={startResizing}
-                        >
-                            <div className="h-8 w-0.5 bg-gray-300 group-hover:bg-white rounded-full" />
-                        </div>
-
-                        <aside
-                            ref={sidebarRef}
-                            className={`flex-shrink-0 h-full bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 z-30 flex flex-col
-                                ${window.innerWidth < 768 ? 'w-full fixed inset-0 z-50 animate-slide-in-bottom' : 'transition-none'}
-                            `}
-                            style={{ width: window.innerWidth < 768 ? '100%' : `${aiPanelWidth}px` }}
-                        >
-                            <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-                                <div className="flex items-center gap-2">
-                                    <Sparkles size={16} className="text-indigo-500" />
-                                    <h3 className="font-bold text-sm text-gray-800 dark:text-white">دستیار هوشمند</h3>
-                                </div>
-                                <button onClick={() => setIsAiPanelOpen(false)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
-                                    <X size={18} />
-                                </button>
+                <AnimatePresence>
+                    {isAiPanelOpen && (
+                        <>
+                            {/* Resizer */}
+                            <div
+                                className="hidden md:flex w-1 bg-gray-100 dark:bg-gray-800 hover:bg-indigo-400/50 cursor-col-resize z-40 transition-colors items-center justify-center group"
+                                onMouseDown={startResizing}
+                            >
+                                <div className="h-8 w-0.5 bg-gray-300 dark:bg-gray-700 group-hover:bg-indigo-500 rounded-full" />
                             </div>
-                            <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">درحال بارگذاری...</div>}>
-                                <AIChat isWidget={true} onClose={() => setIsAiPanelOpen(false)} />
-                            </Suspense>
-                        </aside>
-                    </>
-                )}
+
+                            <motion.aside
+                                ref={sidebarRef}
+                                initial={{ opacity: 0, x: 50, scale: 0.99 }}
+                                animate={{ opacity: 1, x: 0, scale: 1 }}
+                                exit={{ opacity: 0, x: 50, scale: 0.99 }}
+                                transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                                className="flex-shrink-0 h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 z-30 flex flex-col glass-premium shadow-[-10px_0_30px_rgba(0,0,0,0.02)] dark:shadow-[-10px_0_40px_rgba(0,0,0,0.3)]"
+                                style={{ width: window.innerWidth < 768 ? '100%' : `${aiPanelWidth}px`, position: window.innerWidth < 768 ? 'fixed' : 'relative', inset: window.innerWidth < 768 ? '0' : 'auto' }}
+                            >
+                                <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles size={16} className="text-indigo-500" />
+                                        <h3 className="font-bold text-sm text-gray-800 dark:text-white">دستیار هوشمند</h3>
+                                    </div>
+                                    <button onClick={() => setIsAiPanelOpen(false)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                                <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm font-bold">درحال بارگذاری...</div>}>
+                                    <AIChat isWidget={true} onClose={() => setIsAiPanelOpen(false)} />
+                                </Suspense>
+                            </motion.aside>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

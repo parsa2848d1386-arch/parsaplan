@@ -81,52 +81,52 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
         <div className="p-4 w-full z-20 shrink-0">
             <div className="max-w-3xl mx-auto w-full">
                 <div className={`
-                    relative transition-all duration-300 ease-out bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 
-                    shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-black/50
-                    rounded-[26px] p-2
-                    ${isTyping ? 'opacity-90 grayscale-[0.5]' : ''}
+                    relative transition-all duration-300 ease-out bg-white/70 dark:bg-gray-900/70 border border-gray-200/50 dark:border-gray-800/50 
+                    rounded-[24px] p-2 flex flex-col glass-premium floating-input-container shadow-lg
+                    ${isTyping ? 'opacity-90' : ''}
                     group
-                    focus-within:ring-4 focus-within:ring-indigo-100 dark:focus-within:ring-indigo-900/20
-                    focus-within:border-indigo-300 dark:focus-within:border-indigo-800
-                    flex flex-col
                 `}>
 
                     {previews.length > 0 && (
-                        <div className="flex gap-2 overflow-x-auto pb-3 pt-1 px-1 custom-scrollbar mb-1 border-b border-gray-100 dark:border-gray-800/50">
+                        <div className="flex gap-2.5 overflow-x-auto pb-3.5 pt-1.5 px-1.5 custom-scrollbar mb-2 border-b border-gray-200/30 dark:border-gray-800/30">
                             {previews.map((preview, idx) => (
                                 <div key={idx} className="relative group/preview shrink-0 animate-in zoom-in-50 duration-300">
-                                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-center relative shadow-sm">
+                                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-gray-200/40 dark:border-gray-700/40 bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm flex items-center justify-center relative shadow-inner">
                                         {preview.type === 'image' ? (
-                                            <img src={preview.url} alt={preview.name} className={`w-full h-full object-cover transition-opacity duration-300 ${preview.uploading ? 'opacity-50' : 'opacity-100'}`} />
+                                            <img src={preview.url} alt={preview.name} className={`w-full h-full object-cover transition-opacity duration-300 ${preview.uploading ? 'opacity-40' : 'opacity-100'}`} />
                                         ) : (
-                                            <FileText className={`text-gray-400 ${preview.uploading ? 'opacity-50' : ''}`} />
+                                            <FileText className={`text-indigo-400 dark:text-indigo-500 ${preview.uploading ? 'opacity-40' : ''}`} size={24} />
                                         )}
 
                                         {/* Uploading Overlay */}
                                         {preview.uploading && (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
-                                                <Loader2 size={16} className="text-indigo-600 animate-spin" />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[1px]">
+                                                <Loader2 size={16} className="text-indigo-600 dark:text-indigo-400 animate-spin" />
                                             </div>
                                         )}
 
                                         {/* Success Indicator */}
                                         {!preview.uploading && (
-                                            <div className="absolute bottom-0.5 right-0.5 bg-green-500 rounded-full p-[1px] border border-white animate-in zoom-in">
+                                            <div className="absolute bottom-0.5 right-0.5 bg-emerald-500 rounded-full p-[1px] border border-white dark:border-gray-900 animate-in zoom-in">
                                                 <CheckCircle2 size={10} className="text-white" />
                                             </div>
                                         )}
                                     </div>
-                                    <button onClick={() => removeAttachment(idx)} className="absolute -top-2 -right-2 bg-gray-500 text-white rounded-full p-0.5 hover:bg-rose-500 transition shadow-sm z-10 scale-0 group-hover/preview:scale-100">
-                                        <X size={12} />
+                                    <button onClick={() => removeAttachment(idx)} className="absolute -top-2 -right-2 bg-gray-500 hover:bg-rose-500 text-white rounded-full p-1 transition shadow-md z-10 scale-0 group-hover/preview:scale-100">
+                                        <X size={10} />
                                     </button>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    <div className="flex items-end gap-2 pr-1 pl-1">
-                        <button onClick={() => fileInputRef.current?.click()} className="p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-full transition-colors mb-0.5" title="افزودن فایل">
-                            <Paperclip size={20} />
+                    <div className="flex items-end gap-2 pr-1.5 pl-1.5">
+                        <button 
+                            onClick={() => fileInputRef.current?.click()} 
+                            className="p-3 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 rounded-full transition-colors mb-0.5 btn-micro-interactive" 
+                            title="افزودن فایل"
+                        >
+                            <Paperclip size={18} />
                         </button>
                         <input type="file" multiple ref={fileInputRef} className="hidden" onChange={handleFileSelect} accept="image/*,video/*,.pdf,.txt,.doc,.docx" />
 
@@ -136,7 +136,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={isUploading ? "در حال آپلود فایل..." : "پیام خود را بنویسید..."}
-                            className="flex-1 bg-transparent border-none focus:ring-0 py-3 min-h-[44px] max-h-[150px] resize-none text-[14px] md:text-[15px] custom-scrollbar dark:text-white placeholder-gray-400 leading-relaxed font-normal"
+                            className="flex-1 bg-transparent border-none focus:ring-0 py-3 min-h-[44px] max-h-[150px] resize-none text-[13px] md:text-[14px] custom-scrollbar dark:text-white placeholder-gray-400 leading-relaxed font-semibold outline-none border-0"
                             rows={1}
                             dir="rtl"
                             disabled={isTyping}
@@ -146,7 +146,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                             {isTyping && onStop ? (
                                 <button
                                     onClick={onStop}
-                                    className="w-10 h-10 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-all shadow-md shadow-rose-500/20 hover:scale-110 active:scale-95"
+                                    className="w-10 h-10 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-all shadow-md shadow-rose-500/20 btn-micro-interactive"
                                     title="توقف"
                                 >
                                     <StopCircle size={18} className="animate-pulse" strokeWidth={2.5} />
@@ -155,12 +155,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                                 <button
                                     onClick={handleSendClick}
                                     disabled={(!input.trim() && attachments.length === 0) || isTyping || isUploading}
-                                    className="w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale text-white rounded-full transition-all shadow-md shadow-indigo-500/20 hover:scale-110 active:scale-95 group"
+                                    className="w-10 h-10 flex items-center justify-center bg-gradient-to-tr from-indigo-600 to-purple-650 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-gray-800 dark:disabled:to-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-full transition-all shadow-md shadow-indigo-500/25 btn-micro-interactive group"
                                 >
                                     {isTyping || isUploading ? (
                                         <Loader2 size={18} className="animate-spin" />
                                     ) : (
-                                        <Send size={18} className={(input.trim() || attachments.length > 0) ? "translate-x-0.5 translate-y-0.5" : ""} strokeWidth={2.5} />
+                                        <Send size={16} className={(input.trim() || attachments.length > 0) ? "translate-x-[-1px] translate-y-[1px]" : ""} strokeWidth={2.5} />
                                     )}
                                 </button>
                             )}

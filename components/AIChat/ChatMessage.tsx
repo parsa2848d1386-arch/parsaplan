@@ -46,28 +46,32 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
     };
 
     return (
-        <div className={`flex flex-col space-y-2 ${isUser ? 'items-start' : 'items-end'} group mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+        <div className={`flex flex-col space-y-2.5 ${isUser ? 'items-start' : 'items-end'} group mb-6 animate-in fade-in slide-in-from-bottom-3 duration-400`}>
             {/* Note: In RTL, items-start is Right, items-end is Left. 
                We want User on Right, AI on Left.
                So User -> items-start. AI -> items-end. 
             */}
 
-            <div className={`flex gap-2.5 max-w-[88%] md:max-w-[75%] lg:max-w-[60%] ${isUser ? 'flex-row' : 'flex-row-reverse'}`}>
+            <div className={`flex gap-3 max-w-[88%] md:max-w-[78%] lg:max-w-[65%] ${isUser ? 'flex-row' : 'flex-row-reverse'}`}>
 
                 {/* Avatar */}
-                <div className={`w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm transform transition-transform hover:scale-105 ${isUser ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-200 dark:shadow-none' : 'bg-white dark:bg-gray-800 text-indigo-500 border border-gray-100 dark:border-gray-700'}`}>
-                    {isUser ? <User size={16} /> : <Bot size={18} />}
+                <div className={`w-8.5 h-8.5 rounded-xl flex-shrink-0 flex items-center justify-center shadow-md transform transition-transform hover:scale-110 btn-micro-interactive ${
+                    isUser 
+                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-indigo-200 dark:shadow-indigo-950/50' 
+                        : 'bg-white/80 dark:bg-gray-800/80 text-indigo-500 border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md'
+                }`}>
+                    {isUser ? <User size={15} strokeWidth={2.5} /> : <Bot size={17} strokeWidth={2.5} />}
                 </div>
 
                 {/* Bubble */}
                 <div className={`relative flex flex-col min-w-[100px] ${isUser ? 'items-start' : 'items-end'}`}>
                     <div className={`
-                        px-3.5 py-2.5 md:px-5 md:py-3.5 rounded-[1.25rem] text-[13px] md:text-[14.5px] leading-6 shadow-sm transition-all relative
+                        px-4 py-3 md:px-5 md:py-3.5 rounded-[1.3rem] text-[13px] md:text-[14px] leading-6 shadow-sm transition-all duration-300 relative
                         ${isUser
-                            ? 'bg-indigo-600 dark:bg-indigo-600 text-white rounded-tr-sm shadow-indigo-100 dark:shadow-none'
-                            : 'bg-white dark:bg-gray-800/80 text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-700/50 rounded-tl-sm hover:shadow-md'
+                            ? 'bubble-user-premium rounded-tr-sm'
+                            : 'bubble-ai-premium rounded-tl-sm hover:shadow-md border border-gray-200/40 dark:border-gray-800/40'
                         }
-                        ${message.isError ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50' : ''}
+                        ${message.isError ? 'bg-rose-50/80 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/50' : ''}
                     `}>
 
                         {/* Attachments */}
@@ -166,49 +170,49 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
 
             {/* Pending Tasks Review Card - Animated Inline Preview */}
             {!isUser && message.pendingTasks && message.pendingTasks.length > 0 && onReviewTasks && (
-                <div className="w-full max-w-[85%] lg:max-w-[75%] lg:mr-auto lg:ml-0 mr-auto pr-10 animate-in fade-in slide-in-from-top-4 duration-500 ease-out fill-mode-backwards" style={{ animationDelay: '200ms' }}>
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700/50 rounded-2xl shadow-lg overflow-hidden transition-all hover:shadow-xl hover:border-indigo-200 dark:hover:border-indigo-800">
+                <div className="w-full max-w-[85%] lg:max-w-[75%] lg:mr-auto lg:ml-0 mr-auto pr-11 animate-in fade-in slide-in-from-top-4 duration-500 ease-out fill-mode-backwards" style={{ animationDelay: '200ms' }}>
+                    <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-md border border-gray-200/50 dark:border-gray-800/50 rounded-2xl shadow-lg overflow-hidden transition-all hover:shadow-xl hover:border-indigo-300/40 dark:hover:border-indigo-800/40 glass-premium">
                         {/* Header */}
                         <div
                             onClick={() => setShowTasks(!showTasks)}
-                            className="bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900 p-3 flex items-center justify-between cursor-pointer border-b border-gray-100 dark:border-gray-800"
+                            className="bg-gradient-to-r from-indigo-500/5 to-transparent dark:from-indigo-500/10 p-3.5 flex items-center justify-between cursor-pointer border-b border-gray-100/50 dark:border-gray-800/50 select-none"
                         >
                             <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center">
-                                    <ListChecks size={18} />
+                                <div className="w-8.5 h-8.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/30 dark:border-indigo-900/30 text-indigo-500 dark:text-indigo-400 flex items-center justify-center shadow-inner">
+                                    <ListChecks size={18} strokeWidth={2.5} />
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                <div className="flex flex-col text-right">
+                                    <span className="text-xs md:text-sm font-extrabold text-gray-800 dark:text-gray-200">
                                         پیشنهاد {message.pendingTasks.length} تسک جدید
                                     </span>
                                     {showTasks ? (
-                                        <span className="text-[10px] text-indigo-500 font-medium">برای بستن کلیک کنید</span>
+                                        <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-extrabold">برای بستن کلیک کنید</span>
                                     ) : (
-                                        <span className="text-[10px] text-gray-400">برای مشاهده کلیک کنید</span>
+                                        <span className="text-[9px] text-gray-400 dark:text-gray-500 font-bold">برای مشاهده کلیک کنید</span>
                                     )}
                                 </div>
                             </div>
-                            <ChevronDown size={18} className={`text-gray-400 transition-transform duration-300 ${showTasks ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${showTasks ? 'rotate-180' : ''}`} />
                         </div>
 
                         {/* Inline Content */}
                         <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showTasks ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                            <div className="p-3 bg-gray-50/50 dark:bg-black/20">
-                                <div className="space-y-2 mb-3">
+                            <div className="p-4 bg-gray-50/20 dark:bg-black/10">
+                                <div className="space-y-2 mb-4">
                                     {message.pendingTasks.slice(0, 3).map((task, i) => (
-                                        <div key={i} className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700/50 shadow-sm text-xs">
-                                            <div className={`w-1.5 h-8 rounded-full ${i % 2 === 0 ? 'bg-indigo-400' : 'bg-purple-400'}`}></div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-bold text-gray-700 dark:text-gray-300 truncate">{task.subject}</div>
-                                                <div className="text-gray-500 dark:text-gray-500 truncate text-[10px]">{task.topic}</div>
+                                        <div key={i} className="flex items-center gap-2.5 p-2.5 bg-white/85 dark:bg-gray-800/85 backdrop-blur-sm rounded-xl border border-gray-200/40 dark:border-gray-700/40 shadow-sm text-xs transition-all hover:translate-x-[-2px]">
+                                            <div className={`w-1.5 h-8 rounded-full ${i % 2 === 0 ? 'bg-indigo-500' : 'bg-purple-500'} shadow-sm`}></div>
+                                            <div className="flex-1 min-w-0 text-right">
+                                                <div className="font-extrabold text-gray-700 dark:text-gray-300 truncate">{task.subject}</div>
+                                                <div className="text-gray-400 dark:text-gray-500 truncate text-[10px] font-bold mt-0.5">{task.topic}</div>
                                             </div>
-                                            <div className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-[10px] text-gray-500 font-mono dir-rtl">
+                                            <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100/20 dark:border-indigo-900/20 px-2 py-1 rounded-lg text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold font-mono dir-rtl">
                                                 {new Date(task.date).toLocaleDateString('fa-IR-u-ca-persian', { month: 'long', day: 'numeric' })}
                                             </div>
                                         </div>
                                     ))}
                                     {message.pendingTasks.length > 3 && (
-                                        <div className="text-center text-[10px] text-gray-400 pt-1">
+                                        <div className="text-center text-[10px] text-gray-400 dark:text-gray-500 font-extrabold pt-1">
                                             و {message.pendingTasks.length - 3} مورد دیگر...
                                         </div>
                                     )}
@@ -216,9 +220,9 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onReview
 
                                 <button
                                     onClick={() => onReviewTasks(message.pendingTasks!)}
-                                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2"
+                                    className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 btn-micro-interactive"
                                 >
-                                    <Eye size={14} />
+                                    <Eye size={14} strokeWidth={2.5} />
                                     بررسی کامل و افزودن
                                 </button>
                             </div>

@@ -599,3 +599,118 @@
     print-color-adjust: exact !important;
   }
 }
+
+/* ================================================================
+   2026 ULTRA-PREMIUM GLASS & LIGHT EFFECTS
+   ================================================================ */
+
+.glass-premium {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.04),
+              0 1px 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.dark .glass-premium {
+  background: rgba(10, 15, 30, 0.5);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.3),
+              0 1px 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+
+.glass-premium-thick {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(30px) saturate(210%);
+  -webkit-backdrop-filter: blur(30px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 50px -12px rgba(99, 102, 241, 0.08),
+              0 1px 2px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.dark .glass-premium-thick {
+  background: rgba(13, 18, 38, 0.8);
+  backdrop-filter: blur(30px) saturate(210%);
+  -webkit-backdrop-filter: blur(30px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 50px -12px rgba(0, 0, 0, 0.5),
+              0 1px 2px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+/* Glowing backgrounds */
+.bg-glowing-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: plus-lighter;
+}
+
+.dark .bg-glowing-orb {
+  opacity: 0.22;
+}
+
+/* 2026 Sleek Message Bubbles */
+.bubble-user-premium {
+  background: linear-gradient(135deg, hsl(243, 85%, 60%), hsl(262, 80%, 55%));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px -6px rgba(99, 102, 241, 0.25),
+              0 1px 1px 0 rgba(255, 255, 255, 0.2) inset;
+  color: white;
+}
+
+.bubble-ai-premium {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 30px -10px rgba(0, 0, 0, 0.05),
+              0 1px 1px 0 rgba(255, 255, 255, 0.3) inset;
+  color: #1f2937;
+}
+
+.dark .bubble-ai-premium {
+  background: rgba(17, 24, 39, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 8px 30px -10px rgba(0, 0, 0, 0.4),
+              0 1px 1px 0 rgba(255, 255, 255, 0.02) inset;
+  color: #f3f4f6;
+}
+
+/* Micro-interaction Button Styles */
+.btn-micro-interactive {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-micro-interactive:hover {
+  transform: translateY(-1.5px) scale(1.02);
+  box-shadow: 0 6px 20px -4px rgba(99, 102, 241, 0.25);
+}
+
+.btn-micro-interactive:active {
+  transform: translateY(0.5px) scale(0.97);
+}
+
+/* Floating Input Ring Effect */
+.floating-input-container {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-input-container:focus-within {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 12px 45px -12px rgba(99, 102, 241, 0.15),
+              0 0 0 4px rgba(99, 102, 241, 0.08);
+  transform: translateY(-1px);
+}
+
+.dark .floating-input-container:focus-within {
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 45px -12px rgba(99, 102, 241, 0.3),
+              0 0 0 4px rgba(99, 102, 241, 0.15);
+}

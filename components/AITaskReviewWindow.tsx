@@ -123,28 +123,28 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
             ></div>
 
             {/* Modal Container */}
-            <div className="relative pointer-events-auto w-full max-w-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden flex flex-col 
-                h-[100dvh] rounded-none 
+            <div className="relative pointer-events-auto w-full max-w-2xl bg-white/95 dark:bg-gray-900/95 shadow-2xl overflow-hidden flex flex-col 
+                h-[100dvh] rounded-none glass-premium-thick border-l border-gray-200/50 dark:border-gray-800/50
                 sm:h-auto sm:max-h-[85vh] sm:rounded-3xl sm:m-4 sm:border sm:border-white/20 sm:dark:border-gray-700/50 
-                animate-in zoom-in-95 fade-in duration-200">
+                animate-in zoom-in-95 fade-in duration-300">
 
                 {/* Header */}
-                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-md z-10 sticky top-0">
-                    <h3 className="text-lg font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                        <Sparkles size={20} />
+                <div className="p-4 border-b border-gray-150/40 dark:border-gray-800/40 flex justify-between items-center bg-white/40 dark:bg-gray-900/40 backdrop-blur-xl z-10 sticky top-0 select-none">
+                    <h3 className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 flex items-center gap-2.5 tracking-tight">
+                        <Sparkles size={18} className="animate-pulse" />
                         بررسی و ویرایش هوشمند
                     </h3>
                     <button
                         onClick={onClose}
-                        className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-rose-100 hover:text-rose-500 rounded-full transition text-gray-500 dark:text-gray-400"
+                        className="p-2 bg-gray-100/50 dark:bg-gray-800/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 rounded-full transition text-gray-500 dark:text-gray-400 btn-micro-interactive"
                     >
-                        <X size={20} />
+                        <X size={16} />
                     </button>
                 </div>
 
                 {/* List Content */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/50 dark:bg-gray-950/50">
-                    <div className="text-xs text-center font-medium text-gray-500 mb-2 bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/20 dark:bg-gray-950/20">
+                    <div className="text-xs text-center font-extrabold mb-2 bg-indigo-50/60 dark:bg-indigo-950/30 p-3.5 rounded-2xl border border-indigo-100/20 dark:border-indigo-900/20 text-indigo-650 dark:text-indigo-400 shadow-inner">
                         {tasks.length} تسک برای روز {currentDayId} و روزهای آینده پیشنهاد شده است.
                     </div>
 
@@ -163,25 +163,25 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
 
                     <button
                         onClick={handleAddNew}
-                        className="w-full py-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-white dark:hover:bg-gray-800 transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
+                        className="w-full py-4 border-2 border-dashed border-gray-300 dark:border-gray-700/80 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-400/50 hover:bg-white dark:hover:bg-gray-850/60 transition-all flex items-center justify-center gap-2 text-xs font-extrabold shadow-sm btn-micro-interactive"
                     >
-                        <Plus size={20} /> افزودن تسک جدید
+                        <Plus size={16} /> افزودن تسک جدید
                     </button>
                 </div>
 
                 {/* Footer Action */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex gap-3 z-10 pb-8 sm:pb-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none">
+                <div className="p-4 border-t border-gray-150/40 dark:border-gray-800/40 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md flex gap-3 z-10 pb-8 sm:pb-4 shadow-[0_-4px_25px_rgba(0,0,0,0.03)] dark:shadow-none">
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-3.5 rounded-2xl text-sm font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition active:scale-95"
+                        className="flex-1 bg-gray-150/50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-350 py-3 rounded-2xl text-xs font-extrabold hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition btn-micro-interactive border border-gray-250/20 dark:border-gray-700/20"
                     >
                         انصراف
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-2xl text-sm font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 transition active:scale-95 flex items-center justify-center gap-2"
+                        className="flex-[2] bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white py-3 rounded-2xl text-xs font-extrabold shadow-lg shadow-indigo-500/25 transition btn-micro-interactive flex items-center justify-center gap-2"
                     >
-                        <Check size={20} />
+                        <Check size={16} strokeWidth={2.5} />
                         تایید و ثبت نهایی
                     </button>
                 </div>
