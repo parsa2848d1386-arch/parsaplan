@@ -10,12 +10,19 @@ const PrintableSchedule = () => {
     const days = Array.from({ length: totalDays }, (_, i) => i + 1);
 
     const getSubjectColor = (subject: string) => {
-        if (subject.includes('زیست')) return '#10b981';
-        if (subject.includes('ریاضی')) return '#3b82f6';
-        if (subject.includes('فیزیک')) return '#8b5cf6';
-        if (subject.includes('شیمی')) return '#f97316';
+        if (subject.includes('زیست') || subject.includes('سلامت') || subject.includes('ورزش')) return '#10b981';
+        if (subject.includes('ریاضی') || subject.includes('کار') || subject.includes('پروژه')) return '#3b82f6';
+        if (subject.includes('فیزیک') || subject.includes('توسعه') || subject.includes('مهارت')) return '#8b5cf6';
+        if (subject.includes('شیمی') || subject.includes('مالی') || subject.includes('اداری')) return '#f97316';
+        if (subject.includes('خانواده') || subject.includes('شخصی')) return '#ec4899';
         return '#6b7280';
     };
+
+    const usedSubjects = Array.from(
+        new Set(
+            days.flatMap((d) => getTasksForDay(d).map((t) => t.subject).filter(Boolean))
+        )
+    ).slice(0, 6);
 
     return (
         <div className="print-only bg-white text-black font-[Vazirmatn]">
@@ -25,21 +32,21 @@ const PrintableSchedule = () => {
                     <div className="w-24 h-24 mx-auto mb-6 bg-indigo-600 rounded-2xl flex items-center justify-center">
                         <span className="text-white text-4xl font-black">PP</span>
                     </div>
-                    <h1 className="text-4xl font-black mb-4">برنامه مطالعاتی ۱۲ روزه</h1>
+                    <h1 className="text-4xl font-black mb-4">برنامه‌ریزی شخصی و کارها</h1>
                     <h2 className="text-2xl font-bold text-gray-600 mb-8">پارسا پلن</h2>
 
                     <div className="border-t-2 border-b-2 border-gray-300 py-6 my-8">
                         <div className="grid grid-cols-2 gap-8 text-right max-w-md mx-auto">
                             <div>
-                                <p className="text-sm text-gray-500">نام دانش‌آموز</p>
-                                <p className="text-xl font-bold">{userName}</p>
+                                <p className="text-sm text-gray-500">نام</p>
+                                <p className="text-xl font-bold">{userName || 'کاربر پارسا پلن'}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">تاریخ شروع</p>
                                 <p className="text-xl font-bold">{getShamsiDate(startDate)}</p>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500">تعداد روزها</p>
+                                <p className="text-sm text-gray-500">افق برنامه‌ریزی</p>
                                 <p className="text-xl font-bold">{totalDays} روز</p>
                             </div>
                             <div>
@@ -49,24 +56,19 @@ const PrintableSchedule = () => {
                         </div>
                     </div>
 
-                    <div className="mt-12 flex justify-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#10b981' }}></div>
-                            <span className="text-sm">زیست‌شناسی</span>
+                    {usedSubjects.length > 0 && (
+                        <div className="mt-12 flex flex-wrap justify-center gap-4">
+                            {usedSubjects.map((subj) => (
+                                <div key={subj} className="flex items-center gap-2">
+                                    <div
+                                        className="w-4 h-4 rounded-full"
+                                        style={{ backgroundColor: getSubjectColor(subj) }}
+                                    ></div>
+                                    <span className="text-sm">{subj}</span>
+                                </div>
+                            ))}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
-                            <span className="text-sm">ریاضیات</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
-                            <span className="text-sm">فیزیک</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#f97316' }}></div>
-                            <span className="text-sm">شیمی</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -102,9 +104,9 @@ const PrintableSchedule = () => {
                             <thead>
                                 <tr>
                                     <th className="border-2 border-gray-800 bg-gray-100 p-3 text-right w-12">#</th>
-                                    <th className="border-2 border-gray-800 bg-gray-100 p-3 text-right w-28">درس</th>
-                                    <th className="border-2 border-gray-800 bg-gray-100 p-3 text-right">مبحث و بازه تست</th>
-                                    <th className="border-2 border-gray-800 bg-gray-100 p-3 text-center w-20">جزئیات</th>
+                                    <th className="border-2 border-gray-800 bg-gray-100 p-3 text-right w-28">حوزه</th>
+                                    <th className="border-2 border-gray-800 bg-gray-100 p-3 text-right">عنوان و جزئیات</th>
+                                    <th className="border-2 border-gray-800 bg-gray-100 p-3 text-center w-24">زمان / توضیح</th>
                                     <th className="border-2 border-gray-800 bg-gray-100 p-3 text-center w-16">✓</th>
                                 </tr>
                             </thead>

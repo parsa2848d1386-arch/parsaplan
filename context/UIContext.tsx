@@ -8,6 +8,12 @@ interface UIContextType {
     confirmState: ConfirmDialogState;
     askConfirm: (title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info') => void;
     closeConfirm: () => void;
+    isMorningModalOpen: boolean;
+    setMorningModalOpen: (open: boolean) => void;
+    isEveningModalOpen: boolean;
+    setEveningModalOpen: (open: boolean) => void;
+    isBrainDumpOpen: boolean;
+    setBrainDumpOpen: (open: boolean) => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -45,10 +51,17 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const closeConfirm = () => setConfirmState(prev => ({ ...prev, isOpen: false }));
 
+    const [isMorningModalOpen, setMorningModalOpen] = useState(false);
+    const [isEveningModalOpen, setEveningModalOpen] = useState(false);
+    const [isBrainDumpOpen, setBrainDumpOpen] = useState(false);
+
     return (
         <UIContext.Provider value={{
             toasts, showToast, removeToast,
-            confirmState, askConfirm, closeConfirm
+            confirmState, askConfirm, closeConfirm,
+            isMorningModalOpen, setMorningModalOpen,
+            isEveningModalOpen, setEveningModalOpen,
+            isBrainDumpOpen, setBrainDumpOpen,
         }}>
             {children}
         </UIContext.Provider>

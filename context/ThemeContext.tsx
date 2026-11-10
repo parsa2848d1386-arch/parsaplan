@@ -61,13 +61,14 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setThemePaletteState(value);
     };
 
-    // Apply dark mode class to body/html
+    // Apply dark mode class and native color-scheme to documentElement
     useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
+        document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
     }, [darkMode]);
 
     // Apply theme palette class to html tag (2026 Theme Palettes)

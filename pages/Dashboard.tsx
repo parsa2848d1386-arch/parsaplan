@@ -4,10 +4,15 @@ import {
     Plus, Target, Clock, CalendarDays,
     Clipboard, Sparkles, Zap, TrendingUp,
     CheckCircle2, Circle, Star, Flame,
-    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare, Brain, RefreshCw
+    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare, Brain, RefreshCw,
+    Sunrise, MoonStar, PenTool
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { getShamsiDate, toIsoString, addDays } from '../utils';
+import { getShamsiDate, toIsoString, addDays, getDiffDays, formatToPersianDigits } from '../utils';
+import { getLogicalDateKey } from '../utils/streakEngine';
+import { useFocus } from '../context/FocusContext';
+import { useUI } from '../context/UIContext';
+import MoodTracker from '../components/MoodTracker';
 import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import { SubjectTask, isSpecializedSubject } from '../types';
@@ -50,26 +55,26 @@ const CircadianRhythmPanel = () => {
 
     if (currentHour >= 6 && currentHour < 12) {
         energy = 90;
-        title = 'پیک اول انرژی (تمرکز تحلیلی)';
-        advice = 'ذهن شما در بالاترین هوشیاری است. بهترین زمان برای فیزیک، ریاضی، هندسه و مباحث پیچیده محاسباتی!';
+        title = 'پیک اول انرژی (تمرکز تحلیلی و کار عمیق)';
+        advice = 'ذهن در بالاترین سطح هوشیاری است. بهترین زمان برای حل مسائل پیچیده، برنامه‌ریزی پروژه، کدنویسی یا یادگیری مفاهیم جدید!';
         orbColor = 'bg-amber-400 shadow-amber-450/40';
         pathColor = '#fbbf24';
     } else if (currentHour >= 12 && currentHour < 16) {
         energy = 55;
-        title = 'شیب ملایم ظهرگاهی (مرور و فعالیت‌های سبک)';
-        advice = 'کاهش موقت تمرکز طبیعی است. بهترین زمان برای خلاصه‌نویسی، تست آموزشی سبک یا استراحت پومودورو!';
+        title = 'شیب ملایم ظهرگاهی (هماهنگی و کارهای سبک)';
+        advice = 'افت موقت انرژی طبیعی است. بهترین زمان برای کارهای اجرایی، پاسخ به پیام‌ها، مرور نکات یا استراحت پومودورو!';
         orbColor = 'bg-teal-400 shadow-teal-450/40';
         pathColor = '#2dd4bf';
     } else if (currentHour >= 16 && currentHour < 22) {
         energy = 80;
-        title = 'پیک دوم انرژی (حفظیات و درک مطلب)';
-        advice = 'هوشیاری کلامی و حافظه کوتاه‌مدت بالا است. بهترین زمان برای زیست‌شناسی، شیمی، ادبیات و دروس حفظی!';
+        title = 'پیک دوم انرژی (خلاقیت، ورزش و تثبیت)';
+        advice = 'زمان عالی برای کارهای خلاقانه، مطالعه کتاب، تمرین ورزشی و جمع‌بندی پروژه‌های روز!';
         orbColor = 'bg-indigo-50 shadow-indigo-500/40';
         pathColor = '#6366f1';
     } else {
         energy = 20;
-        title = 'فاز بازیابی و تثبیت مغزی (خواب و بازسازی)';
-        advice = 'سیگنال‌های خواب ترشح شده‌اند. برای یادگیری پایدار، مغز نیاز به استراحت و تثبیت یافته‌ها در حافظه بلندمدت دارد!';
+        title = 'فاز بازیابی و آرامش شبانه';
+        advice = 'بدن آماده استراحت است. برای عملکرد پایدار فردا، زمان ریکاوری، جمع‌بندی روز و خواب باکیفیت است.';
         orbColor = 'bg-purple-600 shadow-purple-500/40';
         pathColor = '#a855f7';
     }
@@ -268,8 +273,11 @@ const Dashboard = () => {
         currentLevelXp, xpForNextLevel,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote, showQuotes,
         isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan,
-        showConfetti, setShowConfetti, settings, showToast
+        showConfetti, setShowConfetti, settings, showToast,
+        syncData, syncQueueCount, streakStats, studyMinutesByDate
     } = useStore();
+    const { startFocusForTask } = useFocus();
+    const { setMorningModalOpen, setEveningModalOpen, setBrainDumpOpen } = useUI();
 
     const navigate = useNavigate();
     const overallProgress = getProgress();
@@ -277,21 +285,38 @@ const Dashboard = () => {
     const activeDateIso = getDayDate(currentDay);
     const dailyTasks = getTasksByDate(activeDateIso);
 
-    const currentStream = settings?.stream || 'general';
+    const currentStream = settings?.stream || 'life';
+    const isAcademicStream = currentStream === 'riazi' || currentStream === 'tajrobi' || currentStream === 'ensani';
     const [onlySpecialized, setOnlySpecialized] = useState(true);
     const [selectedFilterSubject, setSelectedFilterSubject] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    const handleManualSync = () => {
+    const handleManualSync = async () => {
         setIsSyncing(true);
-        setTimeout(() => {
+        try {
+            await syncData();
+        } finally {
             setIsSyncing(false);
-            showToast?.('داده‌های ابری شما با موفقیت و به صورت فوری همگام‌سازی شد! ☁️', 'success');
-        }, 1200);
+        }
     };
 
+    const cutoffHour = settings?.dayCutoffHour ?? 5;
+    const todayLogicalKey = getLogicalDateKey(new Date(), cutoffHour);
+    const dDayTitle = settings?.targetExamTitle?.trim() || '';
+    const dDayDate = settings?.targetExamDate?.trim() || '';
+    const hasCustomDDay = Boolean(dDayTitle && dDayDate);
+    const dDayRemaining = hasCustomDDay ? getDiffDays(toIsoString(new Date()), dDayDate) : 0;
+
+    const last7Days = Array.from({ length: 7 }, (_, idx) => {
+        const dKey = toIsoString(addDays(todayLogicalKey, idx - 6));
+        const mins = studyMinutesByDate?.[dKey] || 0;
+        return { dKey, mins };
+    });
+
+    const todayMitTasks = dailyTasks.filter(t => t.isMIT && !t.isCompleted).slice(0, 3);
+
     const filteredDailyTasks = dailyTasks.filter(task => {
-        if (onlySpecialized && currentStream !== 'general') {
+        if (onlySpecialized && isAcademicStream) {
             const isSpecialized = isSpecializedSubject(currentStream, task.subject);
             if (!isSpecialized) return false;
         }
@@ -381,10 +406,16 @@ const Dashboard = () => {
                                 onClick={handleManualSync}
                                 disabled={isSyncing}
                                 className="flex items-center gap-1.5 px-3 py-1 bg-white/15 hover:bg-white/25 active:scale-95 disabled:opacity-50 text-white rounded-full text-[10px] font-bold backdrop-blur-md transition-all duration-300"
-                                title="همگام‌سازی ابری دستی"
+                                title="همگام‌سازی واقعی با سرور ابری"
                             >
                                 <RefreshCw size={11} className={`${isSyncing ? 'animate-spin' : ''}`} />
-                                <span>{isSyncing ? 'در حال همگام‌سازی...' : 'همگام‌سازی ابری'}</span>
+                                <span>
+                                    {isSyncing
+                                        ? 'در حال همگام‌سازی...'
+                                        : syncQueueCount > 0
+                                          ? `سینک ابری (${syncQueueCount} در صف)`
+                                          : 'همگام‌سازی ابری'}
+                                </span>
                             </button>
                         </div>
                         
@@ -533,39 +564,191 @@ const Dashboard = () => {
                 <WeekMini />
             </div>
 
+            {/* ===== D-DAY & STREAK CARDS ===== */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 animate-card-enter">
+                {/* D-Day Target Countdown (Authentic user-defined goal, zero fake dates) */}
+                <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100/80 dark:border-gray-700/50 shadow-sm flex flex-col justify-between gap-3">
+                    {hasCustomDDay ? (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center">
+                                        <Target size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-gray-400">شمارش معکوس هدف اصلی</p>
+                                        <h3 className="text-sm font-black text-gray-800 dark:text-white">{dDayTitle}</h3>
+                                    </div>
+                                </div>
+                                <div className="text-left">
+                                    <span className="text-xl font-black text-rose-600 dark:text-rose-400">
+                                        {dDayRemaining >= 0 ? `D-${formatToPersianDigits(dDayRemaining)}` : 'موعد هدف'}
+                                    </span>
+                                    <p className="text-[10px] text-gray-400">{getShamsiDate(dDayDate)}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
+                                    <span>پیشرفت کل تا هدف</span>
+                                    <span>{formatToPersianDigits(overallProgress)}٪</span>
+                                </div>
+                                <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-l from-rose-500 to-indigo-500 transition-all duration-700"
+                                        style={{ width: `${overallProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3 h-full">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center shrink-0">
+                                    <Target size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-black text-gray-800 dark:text-white">شمارش معکوس هدف (D-Day)</h3>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">پروژه، سفر، رویداد یا آزمون مهم بعدی خود را تنظیم کنید</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/settings')}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 text-[11px] font-black shrink-0 hover:bg-indigo-100 transition"
+                            >
+                                تعیین هدف
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Streak Card + 7-day cadence */}
+                <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100/80 dark:border-gray-700/50 shadow-sm flex flex-col justify-between gap-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center">
+                                <Flame size={18} />
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-bold text-gray-400">زنجیره پیوستگی (شروع ۵ صبح)</p>
+                                <h3 className="text-sm font-black text-gray-800 dark:text-white">
+                                    {formatToPersianDigits(streakStats?.currentStreak || 0)} روز متوالی
+                                </h3>
+                            </div>
+                        </div>
+                        <span className="text-[11px] font-black px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300">
+                            رکورد: {formatToPersianDigits(streakStats?.longestStreak || 0)} روز
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-1.5 pt-1">
+                        {last7Days.map((d) => (
+                            <div key={d.dKey} className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                    title={`${getShamsiDate(d.dKey)}: ${d.mins} دقیقه`}
+                                    className={`w-full h-2.5 rounded-full transition ${
+                                        d.mins >= 180
+                                            ? 'bg-emerald-500'
+                                            : d.mins >= 60
+                                              ? 'bg-emerald-400'
+                                              : d.mins > 0
+                                                ? 'bg-emerald-200 dark:bg-emerald-800'
+                                                : 'bg-gray-100 dark:bg-gray-700'
+                                    }`}
+                                />
+                                <span className="text-[9px] text-gray-400">
+                                    {d.mins > 0 ? `${formatToPersianDigits(Math.round((d.mins / 60) * 10) / 10)}h` : '•'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ===== MIT SPOTLIGHT + MOOD & RITUALS ===== */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+                <div className="lg:col-span-2 bg-gradient-to-l from-amber-50/80 to-indigo-50/70 dark:from-amber-950/20 dark:to-indigo-950/20 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/30">
+                    <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-2">
+                            <Star size={16} className="text-amber-500 fill-amber-400" />
+                            <h3 className="text-xs font-black text-gray-800 dark:text-white">۳ اولویت طلایی امروز (MIT Spotlight)</h3>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setMorningModalOpen(true)}
+                            className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                        >
+                            <Sunrise size={13} /> تنظیم در آیین صبح
+                        </button>
+                    </div>
+                    {todayMitTasks.length === 0 ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            هنوز اولویت طلایی برای امروز انتخاب نکرده‌اید. از «تنظیم در آیین صبح» حداکثر ۳ کار کلیدی امروز را مشخص کنید.
+                        </p>
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            {todayMitTasks.map((t) => (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => startFocusForTask(t)}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-amber-200/70 dark:border-gray-700 shadow-sm hover:border-indigo-400 transition text-xs"
+                                >
+                                    <Play size={12} fill="currentColor" className="text-indigo-500" />
+                                    <span className="font-black text-gray-800 dark:text-white">{t.topic}</span>
+                                    <span className="text-[10px] text-gray-400">({t.subject})</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-3 border border-gray-100/80 dark:border-gray-700/50">
+                    <MoodTracker />
+                </div>
+            </div>
+
             {/* ===== BIOLOGICAL CIRCADIAN READINESS ===== */}
             <CircadianRhythmPanel />
 
             {/* ===== QUICK ACTIONS ===== */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 select-none">
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 select-none">
                 <button
-                    onClick={() => navigate('/analysis')}
-                    className="col-span-2 lg:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md shadow-violet-200/50 dark:shadow-indigo-900/30 group btn-micro-interactive"
+                    onClick={() => setBrainDumpOpen(true)}
+                    className="col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-amber-500 to-orange-600 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md group btn-micro-interactive"
                 >
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Brain size={18} />
+                            <Sparkles size={18} />
                         </div>
-                        <span className="text-right">برنامه‌ریزی هوشمند کل دوره<br /><span className="text-[10px] text-violet-200 font-normal">با دستیار هوش مصنوعی</span></span>
+                        <span className="text-right">تخلیه ذهن سریع (Brain Dump)<br /><span className="text-[10px] text-amber-100 font-normal">تبدیل متن/صوت به تسک زمان‌بندی‌شده</span></span>
                     </div>
-                    <Sparkles size={18} className="text-amber-300 opacity-60 group-hover:opacity-100 transition-opacity animate-pulse" />
                 </button>
                 <button
-                    onClick={() => { setEditingTask(null); setIsModalOpen(true); }}
-                    className="flex items-center flex-col justify-center gap-2 p-3.5 bg-indigo-50 dark:bg-gray-800/80 border border-indigo-100/20 dark:border-gray-700/20 hover:bg-indigo-100 dark:hover:bg-gray-700 active:scale-95 text-indigo-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition-all duration-200 btn-micro-interactive shadow-sm"
+                    onClick={() => navigate('/planner')}
+                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-indigo-50 dark:bg-gray-800/80 border border-indigo-100/40 dark:border-gray-700/40 hover:bg-indigo-100 dark:hover:bg-gray-700 text-indigo-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition"
                 >
-                    <div className="w-8 h-8 bg-indigo-100/40 dark:bg-gray-700/40 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Plus size={18} />
-                    </div>
-                    <span>تسک جدید</span>
+                    <CalendarDays size={18} />
+                    <span>تایم‌لاین ۱۰ دقیقه‌ای</span>
+                </button>
+                <button
+                    onClick={() => navigate('/notes')}
+                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-emerald-50 dark:bg-gray-800/80 border border-emerald-100/40 dark:border-gray-700/40 hover:bg-emerald-100 dark:hover:bg-gray-700 text-emerald-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition"
+                >
+                    <PenTool size={18} />
+                    <span>دفترچه و تخته قلم</span>
+                </button>
+                <button
+                    onClick={() => setEveningModalOpen(true)}
+                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-purple-50 dark:bg-gray-800/80 border border-purple-100/40 dark:border-gray-700/40 hover:bg-purple-100 dark:hover:bg-gray-700 text-purple-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition"
+                >
+                    <MoonStar size={18} />
+                    <span>جمع‌بندی شبانه</span>
                 </button>
                 <button
                     onClick={() => setIsTimerOpen(true)}
-                    className="flex items-center gap-3 p-3.5 bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-bold text-sm transition-all duration-200 border border-gray-150 dark:border-gray-750 shadow-sm btn-micro-interactive"
+                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-bold text-xs border border-gray-200 dark:border-gray-700 shadow-sm transition"
                 >
-                    <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <Play size={16} className="text-emerald-500" />
-                    </div>
+                    <Play size={18} className="text-emerald-500" />
                     <span>تایمر فوکوس</span>
                 </button>
             </div>
@@ -579,7 +762,7 @@ const Dashboard = () => {
                         <span className="text-[10px] text-gray-400 font-medium">({getShamsiDate(activeDateIso)})</span>
                     </h3>
                     <div className="flex items-center gap-2">
-                        {currentStream !== 'general' && (
+                        {isAcademicStream && (
                             <button
                                 onClick={() => setOnlySpecialized(!onlySpecialized)}
                                 className={`text-[10px] px-2.5 py-1 rounded-xl font-extrabold transition-all border ${
@@ -588,7 +771,7 @@ const Dashboard = () => {
                                         : 'bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200/30 dark:border-gray-700/30'
                                 }`}
                             >
-                                {onlySpecialized ? 'فقط دروس تخصصی 🎯' : 'همه دروس 📚'}
+                                {onlySpecialized ? 'فقط دروس تخصصی 🎯' : 'همه دسته‌ها 📚'}
                             </button>
                         )}
                         <button
@@ -611,7 +794,7 @@ const Dashboard = () => {
                                     : 'bg-white/40 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 border-gray-200/30 dark:border-gray-700/30 hover:bg-white/60 dark:hover:bg-white/60'
                             }`}
                         >
-                            همه دروس
+                            همه دسته‌ها
                         </button>
                         {dailySubjects.map(sub => {
                             const isSelected = selectedFilterSubject === sub;

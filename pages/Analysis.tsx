@@ -114,8 +114,8 @@ const Analysis = () => {
                         <Activity className="text-white" size={22} />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">تحلیل عملکرد</h1>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">عملکرد و استمرار مطالعه شما</p>
+                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">تحلیل عملکرد و عادت‌ها</h1>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">ساعت تمرکز، پیوستگی کارها و آمار حوزه‌ها</p>
                     </div>
                 </div>
 
@@ -124,19 +124,19 @@ const Analysis = () => {
                         onClick={() => setActiveTab('general')}
                         className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                     >
-                        مطالعه عمومی
+                        عملکرد کلی و هیت‌مپ
                     </button>
                     <button
                         onClick={() => setActiveTab('exam')}
                         className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${activeTab === 'exam' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                     >
-                        تحلیل آزمون
+                        روند آزمون‌ها
                     </button>
                     <button
                         onClick={() => setActiveTab('macro')}
                         className={`px-3 py-2 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'macro' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                     >
-                        <BrainCircuit size={14} /> مشاور هوشمند
+                        <BrainCircuit size={14} /> تحلیلگر هوشمند
                     </button>
                 </div>
             </div>
@@ -147,23 +147,23 @@ const Analysis = () => {
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard
-                            title="ساعت مطالعه کل"
+                            title="زمان تمرکز کل"
                             value={totalDurationHours}
-                            subtitle="ساعت مفید"
+                            subtitle="ساعت ثبت‌شده"
                             icon={Clock}
                             colorName="indigo"
                         />
                         <StatCard
-                            title="میانگین تمرکز"
+                            title="میانگین کیفیت انجام"
                             value={averageQuality || '-'}
                             subtitle="از ۵ ستاره"
                             icon={Zap}
                             colorName="amber"
                         />
                         <StatCard
-                            title="دقت تست‌زنی"
-                            value={accuracy + '%'}
-                            subtitle={`${totalTests} تست زده شده`}
+                            title="دقت ارزیابی / تست"
+                            value={totalTests > 0 ? accuracy + '%' : '-'}
+                            subtitle={totalTests > 0 ? `${totalTests} سوال ثبت‌شده` : 'در صورت ثبت آزمون'}
                             icon={Target}
                             colorName="emerald"
                         />

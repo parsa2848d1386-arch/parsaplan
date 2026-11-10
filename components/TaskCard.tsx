@@ -2,9 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { SubjectTask, getSubjectStyle } from '../types';
 import { getShamsiDate } from '../utils';
-import { CheckCircle2, Circle, Trash2, Pencil, Calendar, ArrowDownToLine, Target } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2, Pencil, Calendar, ArrowDownToLine, Target, Play, Clock, Star, FileText } from 'lucide-react';
 import { ExamTaskCard } from './ExamTaskCard';
-import { useStore } from '../context/StoreContext';
+import { useFocus } from '../context/FocusContext';
 import { haptics } from '../utils/haptics';
 
 interface TaskCardProps {
@@ -61,6 +61,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     const accuracy = hasTestStats ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100) : 0;
 
     // Swipe state
+    const { startFocusForTask } = useFocus();
     const [swiped, setSwiped] = useState<'none' | 'left' | 'right'>('none');
     const x = useMotionValue(0);
     const bgRight = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
@@ -136,7 +137,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                                 </span>
                             </div>
                         </div>
-                        <div className="flex gap-1 pl-1" onPointerDownCapture={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1.5 pl-1 items-center" onPointerDownCapture={(e) => e.stopPropagation()}>
+                            <button onClick={(e) => { e.stopPropagation(); startFocusForTask(task); }} className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition" aria-label="شروع تمرکز" title="شروع تمرکز"><Play size={12} fill="currentColor" /></button>
                             <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="text-gray-400 hover:text-blue-500" aria-label="ویرایش"><Pencil size={14} /></button>
                             <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="text-gray-400 hover:text-rose-500" aria-label="حذف"><Trash2 size={14} /></button>
                         </div>
@@ -200,6 +202,26 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                         </p>
 
                         <div className="flex flex-wrap items-center gap-2 mt-3">
+                            {task.isMIT && (
+                                <span className="flex items-center gap-0.5 text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded font-bold">
+                                    <Star size={10} fill="currentColor" /> MIT
+                                </span>
+                            )}
+                            {task.startTime && (
+                                <span className="flex items-center gap-1 text-[10px] bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded font-mono font-bold">
+                                    <Clock size={10} /> {task.startTime}
+                                </span>
+                            )}
+                            {(task.actualDuration ?? 0) > 0 && (
+                                <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold">
+                                    ⏱ {task.actualDuration} دقیقه مطالعه
+                                </span>
+                            )}
+                            {task.blocks && task.blocks.length > 0 && (
+                                <span className="flex items-center gap-1 text-[10px] bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded font-bold">
+                                    <FileText size={10} /> {task.blocks.length} بلوک
+                                </span>
+                            )}
                             {hasTestStats && (
                                 <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg px-2 py-1 text-[10px] font-bold">
                                     <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400" title="تعداد درست"><Target size={10} /> {task.testStats?.correct}</span>
@@ -222,18 +244,27 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 </div>
 
                 {/* Bottom Section: Footer Actions (Row Layout) */}
-                <div className="w-full flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1" onPointerDownCapture={(e) => e.stopPropagation()}>
-                    <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition" aria-label="ویرایش تسک">
-                        <Pencil size={14} /> ویرایش
+                <div className="w-full flex justify-between items-center gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1" onPointerDownCapture={(e) => e.stopPropagation()}>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); startFocusForTask(task); }}
+                        className="flex items-center gap-1.5 text-[10px] font-black px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/60 dark:border-emerald-800/40 transition"
+                        aria-label="شروع تمرکز"
+                    >
+                        <Play size={13} fill="currentColor" /> شروع تمرکز
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition" aria-label="حذف تسک">
-                        <Trash2 size={14} /> حذف
-                    </button>
-                    {isOverdue && onMoveToToday && (
-                        <button onClick={(e) => { e.stopPropagation(); onMoveToToday(task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition" aria-label="انتقال به امروز">
-                            <ArrowDownToLine size={14} /> انتقال به امروز
+                    <div className="flex gap-2">
+                        <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition" aria-label="ویرایش تسک">
+                            <Pencil size={14} /> ویرایش
                         </button>
-                    )}
+                        <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition" aria-label="حذف تسک">
+                            <Trash2 size={14} /> حذف
+                        </button>
+                        {isOverdue && onMoveToToday && (
+                            <button onClick={(e) => { e.stopPropagation(); onMoveToToday(task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition" aria-label="انتقال به امروز">
+                                <ArrowDownToLine size={14} /> انتقال به امروز
+                            </button>
+                        )}
+                    </div>
                 </div>
             </motion.div>
         </div>

@@ -3,9 +3,10 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
   <title>ParsaPlan</title>
-  <meta name="description" content="برنامه‌ریزی ۱۲ روزه برای موفقیت" />
+  <meta name="description" content="پلتفرم جامع برنامه‌ریزی زندگی، مدیریت کار و زمان با دستیار هوشمند" />
 
   <!-- Icons -->
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
@@ -15,18 +16,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap"
     rel="stylesheet">
   <style>
-    * {
-      transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-      transition-duration: 150ms;
-    }
-
     body {
       font-family: 'Vazirmatn', sans-serif;
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
       -webkit-tap-highlight-color: transparent;
       min-height: 100vh;
       overflow-x: hidden;
+      transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .dark body {
@@ -190,34 +186,6 @@
       .shadow-lg {
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04) !important;
       }
-    }
-
-    /* Custom Scrollbar */
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background-color: #d1d5db;
-      border-radius: 20px;
-    }
-
-    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-      background-color: #4b5563;
-    }
-
-    .custom-scrollbar {
-      scrollbar-width: thin;
-      scrollbar-color: #d1d5db transparent;
-    }
-
-    .dark .custom-scrollbar {
-      scrollbar-color: #4b5563 transparent;
     }
 
     /* Hide scrollbar for Chrome, Safari and Opera */

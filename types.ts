@@ -1,6 +1,45 @@
 
-export type StreamType = 'riazi' | 'tajrobi' | 'ensani' | 'general';
-export type StudyType = 'exam' | 'analysis' | 'test_educational' | 'test_speed' | 'review' | 'study';
+export type StreamType = 'life' | 'work' | 'general' | 'riazi' | 'tajrobi' | 'ensani';
+export type StudyType =
+    | 'task'
+    | 'project'
+    | 'habit'
+    | 'health'
+    | 'meeting'
+    | 'creative'
+    | 'exam'
+    | 'analysis'
+    | 'test_educational'
+    | 'test_speed'
+    | 'review'
+    | 'study';
+export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
+export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'cancelled';
+export type EnergyLevel = 'high' | 'medium' | 'low';
+
+export type BlockType =
+    | 'text'
+    | 'heading1'
+    | 'heading2'
+    | 'heading3'
+    | 'checklist'
+    | 'toggle'
+    | 'callout'
+    | 'code'
+    | 'math'
+    | 'quote'
+    | 'divider';
+
+export interface BlockNote {
+    id: string;
+    type: BlockType;
+    content: string;
+    checked?: boolean;
+    collapsed?: boolean;
+    children?: BlockNote[];
+    language?: string;
+    color?: string;
+}
 
 export interface SubTask {
     id: string;
@@ -9,8 +48,29 @@ export interface SubTask {
     testStats?: TestStats;
 }
 
-// Updated Subjects based on User Request
+// Categories by Workspace Mode (Life, Work, General Learning & Academic)
 export const SUBJECT_LISTS: Record<StreamType, string[]> = {
+    life: [
+        'کار و پروژه',
+        'توسعه فردی',
+        'ورزش و سلامت',
+        'مالی و بودجه',
+        'خانواده و روابط',
+        'مطالعه و کتاب',
+        'خرید و کارهای منزل',
+        'تفریح و استراحت',
+        'شخصی',
+    ],
+    work: [
+        'کار و پروژه',
+        'مهارت و کدنویسی',
+        'جلسات و هماهنگی',
+        'مالی و بودجه',
+        'بازاریابی و محتوا',
+        'مطالعه و کتاب',
+        'توسعه فردی',
+        'شخصی',
+    ],
     riazi: [
         'ریاضیات', 'هندسه', 'آمار و احتمال', 'ریاضیات گسسته', 'فیزیک', 'شیمی',
         'ادبیات فارسی', 'نگارش', 'دین و زندگی', 'عربی', 'زبان انگلیسی', 'سلامت و بهداشت', 'مدیریت خانواده', 'آمادگی دفاعی', 'هویت اجتماعی', 'تفکر و سواد رسانه‌ای',
@@ -26,7 +86,7 @@ export const SUBJECT_LISTS: Record<StreamType, string[]> = {
         'ادبیات فارسی', 'نگارش', 'دین و زندگی', 'عربی', 'زبان انگلیسی', 'سلامت و بهداشت', 'مدیریت خانواده', 'آمادگی دفاعی', 'هویت اجتماعی', 'تفکر و سواد رسانه‌ای'
     ],
     general: [
-        'ادبیات فارسی', 'نگارش', 'دین و زندگی', 'عربی', 'زبان انگلیسی', 'سلامت و بهداشت', 'مدیریت خانواده', 'آمادگی دفاعی', 'هویت اجتماعی', 'تفکر و سواد رسانه‌ای'
+        'مطالعه و کتاب', 'زبان انگلیسی', 'مهارت و کدنویسی', 'ادبیات فارسی', 'توسعه فردی', 'کار و پروژه', 'شخصی'
     ]
 };
 
@@ -65,6 +125,19 @@ const COLORS = ['rose', 'lime', 'green', 'red', 'emerald', 'orange', 'stone', 's
 // bg-gray-50 bg-gray-100 bg-gray-500 text-gray-500 text-gray-600 text-gray-800 dark:bg-gray-500/20 dark:text-gray-300 dark:text-gray-400 border-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-900/30
 
 export const SUBJECT_ICONS: Record<string, { icon: string; color: string; bgColor: string }> = {
+    // Universal Life & Work Categories
+    'کار و پروژه': { icon: '💼', color: 'indigo', bgColor: 'bg-indigo-50 dark:bg-indigo-500/20' },
+    'توسعه فردی': { icon: '🌱', color: 'emerald', bgColor: 'bg-emerald-50 dark:bg-emerald-500/20' },
+    'ورزش و سلامت': { icon: '🏋️', color: 'rose', bgColor: 'bg-rose-50 dark:bg-rose-500/20' },
+    'مالی و بودجه': { icon: '💳', color: 'amber', bgColor: 'bg-amber-50 dark:bg-amber-500/20' },
+    'خانواده و روابط': { icon: '🏡', color: 'pink', bgColor: 'bg-pink-50 dark:bg-pink-500/20' },
+    'مطالعه و کتاب': { icon: '📖', color: 'blue', bgColor: 'bg-blue-50 dark:bg-blue-500/20' },
+    'مهارت و کدنویسی': { icon: '💻', color: 'cyan', bgColor: 'bg-cyan-50 dark:bg-cyan-500/20' },
+    'جلسات و هماهنگی': { icon: '🤝', color: 'violet', bgColor: 'bg-violet-50 dark:bg-violet-500/20' },
+    'بازاریابی و محتوا': { icon: '🎨', color: 'purple', bgColor: 'bg-purple-50 dark:bg-purple-500/20' },
+    'خرید و کارهای منزل': { icon: '🛒', color: 'orange', bgColor: 'bg-orange-50 dark:bg-orange-500/20' },
+    'تفریح و استراحت': { icon: '☕', color: 'teal', bgColor: 'bg-teal-50 dark:bg-teal-500/20' },
+
     // Common (عمومی)
     'ادبیات فارسی': { icon: '📜', color: 'rose', bgColor: 'bg-rose-50 dark:bg-rose-500/20' },
     'نگارش': { icon: '✍️', color: 'rose', bgColor: 'bg-rose-50 dark:bg-rose-500/20' },
@@ -158,6 +231,113 @@ export interface SubjectTask {
 
     // New Feature: Tags
     tags?: string[];
+
+    // Phase 2+ Upgrade: Timeblocking, Notion Blocks & Synergy Bridge
+    startTime?: string; // "HH:mm"
+    durationMinutes?: number;
+    priority?: TaskPriority;
+    status?: TaskStatus;
+    isMIT?: boolean;
+    energyLevel?: EnergyLevel;
+    blocks?: BlockNote[];
+    sessionsCount?: number;
+    lastStudiedAt?: string;
+}
+
+export type TimerMode = 'stopwatch' | 'pomodoro' | 'exam' | 'countdown';
+export type AmbientSoundType = 'none' | 'white' | 'pink' | 'brown' | 'ocean' | 'rain' | 'fireplace' | 'binaural';
+
+export interface StudySession {
+    id: string;
+    subjectId: string;
+    subjectName: string;
+    taskId?: string;
+    taskTitle?: string;
+    durationSeconds: number;
+    startedAt: string; // ISO datetime
+    endedAt: string; // ISO datetime
+    logicalDate: string; // YYYY-MM-DD using dayCutoffHour (default 05:00 AM)
+    mode: TimerMode;
+    laps?: number[];
+    interruptionCount?: number;
+    interruptionSeconds?: number;
+    notes?: string;
+}
+
+export interface DDayTarget {
+    title: string;
+    targetDate: string; // YYYY-MM-DD
+}
+
+export interface StreakResult {
+    currentStreak: number;
+    longestStreak: number;
+    lastStudyDate?: string;
+}
+
+export interface HeatmapDayEntry {
+    date: string; // YYYY-MM-DD
+    totalMinutes: number;
+    intensityLevel: 0 | 1 | 2 | 3 | 4;
+}
+
+export interface StylusPoint {
+    x: number;
+    y: number;
+}
+
+export interface StylusStroke {
+    id: string;
+    tool: 'pen' | 'highlighter' | 'eraser';
+    color: string;
+    width: number;
+    points: StylusPoint[];
+}
+
+export interface NotebookPage {
+    id: string;
+    parentId: string | null;
+    title: string;
+    icon: string;
+    sortOrder: number;
+    blocks: BlockNote[];
+    stylusStrokes?: StylusStroke[];
+    isArchived?: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type LiveRoomPresenceStatus = 'STUDYING' | 'RESTING' | 'OFFLINE';
+
+export interface LiveRoomPeer {
+    uid: string;
+    displayName: string;
+    avatar: string;
+    status: LiveRoomPresenceStatus;
+    activeSubject?: string;
+    activeTopic?: string;
+    elapsedSeconds: number;
+    dailyStudySeconds: number;
+    cheersReceived: number;
+    lastPing: number;
+}
+
+export interface LiveRoomMessage {
+    id: string;
+    senderId: string;
+    senderName: string;
+    text: string;
+    createdAt: number;
+}
+
+export interface LiveRoomInfo {
+    id: string;
+    code: string;
+    name: string;
+    creatorId: string;
+    chatEnabled: boolean;
+    dailyMessageQuota: number;
+    createdAt: number;
 }
 
 // New Feature: Audit Log
@@ -246,6 +426,14 @@ export interface AppSettings {
     geminiModel: string;
     geminiApiKey?: string;
     hasUnreadAiMessage?: boolean;
+    dayCutoffHour?: number; // Default 5 (05:00 AM YPT cycle)
+    pomodoroWorkMinutes?: number; // Default 25
+    pomodoroBreakMinutes?: number; // Default 5
+    dailyCapacityMinutes?: number; // Default 360 (6 hours)
+    strictLockEnabled?: boolean;
+    anonymizedLeaderboard?: boolean;
+    targetExamTitle?: string;
+    targetExamDate?: string; // YYYY-MM-DD
 }
 
 export interface AppState {
@@ -255,9 +443,13 @@ export interface AppState {
     currentDayIndex: number;
     archivedPlans: ArchivedPlan[];
     flashcards: Flashcard[];
+    sessions?: StudySession[];
+    notebookPages?: NotebookPage[];
 }
 
 export const SPECIALIZED_SUBJECTS: Record<StreamType, string[]> = {
+    life: [],
+    work: [],
     riazi: ['ریاضیات', 'هندسه', 'آمار و احتمال', 'ریاضیات گسسته', 'فیزیک', 'شیمی'],
     tajrobi: ['زیست‌شناسی', 'ریاضیات', 'فیزیک', 'شیمی', 'زمین‌شناسی', 'آزمایشگاه علوم تجربی'],
     ensani: ['ریاضی و آمار', 'علوم و فنون ادبی', 'عربی اختصاصی', 'تاریخ', 'جغرافیا', 'جامعه‌شناسی', 'فلسفه', 'منطق', 'اقتصاد', 'روان‌شناسی'],
@@ -265,6 +457,7 @@ export const SPECIALIZED_SUBJECTS: Record<StreamType, string[]> = {
 };
 
 export const isSpecializedSubject = (stream: StreamType, subjectName: string): boolean => {
+    if (stream === 'life' || stream === 'work' || stream === 'general') return true;
     const list = SPECIALIZED_SUBJECTS[stream] || [];
     return list.includes(subjectName);
 };

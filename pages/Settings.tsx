@@ -529,7 +529,7 @@ const Settings = () => {
                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">تاریخ شروع برنامه (شمسی)</label>
                         <div className="flex items-center gap-2">
                             <ShamsiDatePicker date={startDate} onChange={setStartDate} />
-                            <button onClick={autoFixDate} className="bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 p-2 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-100 dark:border-teal-800" title="یافتن 11 بهمن">
+                            <button onClick={autoFixDate} className="bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 p-2 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-100 dark:border-teal-800" title="تنظیم تاریخ شروع از امروز">
                                 <Wand2 size={18} />
                             </button>
                         </div>
@@ -555,13 +555,97 @@ const Settings = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Target Goal D-Day */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">عنوان هدف یا رویداد مهم (شمارش معکوس D-Day)</label>
+                        <input
+                            type="text"
+                            value={settings?.targetExamTitle ?? ''}
+                            onChange={(e) => updateSettings({ targetExamTitle: e.target.value })}
+                            placeholder="مثلاً: اتمام پروژه، دوی ۱۰ کیلومتر، سفر یا آزمون..."
+                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">تاریخ هدف</label>
+                        <ShamsiDatePicker
+                            date={settings?.targetExamDate || startDate}
+                            onChange={(val) => updateSettings({ targetExamDate: val })}
+                        />
+                    </div>
+                </div>
+
+                {/* Focus & Study Day Cycle Preferences */}
+                <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                            ساعت شروع روز مطالعاتی ({settings?.dayCutoffHour ?? 5}:۰۰ بامداد)
+                        </label>
+                        <input
+                            type="range"
+                            min={0}
+                            max={8}
+                            value={settings?.dayCutoffHour ?? 5}
+                            onChange={(e) => updateSettings({ dayCutoffHour: Number(e.target.value) })}
+                            className="w-full accent-indigo-600"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">پیش‌فرض ۵ صبح (مشابه YPT برای شب‌زنده‌داری)</p>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                            مدت پومودورو تمرکز ({settings?.pomodoroWorkMinutes ?? 25} دقیقه)
+                        </label>
+                        <input
+                            type="range"
+                            min={15}
+                            max={90}
+                            step={5}
+                            value={settings?.pomodoroWorkMinutes ?? 25}
+                            onChange={(e) => updateSettings({ pomodoroWorkMinutes: Number(e.target.value) })}
+                            className="w-full accent-indigo-600"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                            مدت استراحت پومودورو ({settings?.pomodoroBreakMinutes ?? 5} دقیقه)
+                        </label>
+                        <input
+                            type="range"
+                            min={5}
+                            max={30}
+                            step={5}
+                            value={settings?.pomodoroBreakMinutes ?? 5}
+                            onChange={(e) => updateSettings({ pomodoroBreakMinutes: Number(e.target.value) })}
+                            className="w-full accent-emerald-500"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                            ظرفیت مطالعه روزانه ({Math.round((settings?.dailyCapacityMinutes ?? 360) / 60 * 10) / 10} ساعت)
+                        </label>
+                        <input
+                            type="range"
+                            min={120}
+                            max={720}
+                            step={30}
+                            value={settings?.dailyCapacityMinutes ?? 360}
+                            onChange={(e) => updateSettings({ dailyCapacityMinutes: Number(e.target.value) })}
+                            className="w-full accent-purple-600"
+                        />
+                    </div>
                 </div>
             </div>
 
-
-
             {/* --- 2. Gemini AI API Key --- */}
             <GeminiApiKeySettings />
+            <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-2xl px-4 py-2.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                🔒 امنیت کلید هوش مصنوعی: کلید Gemini API صرفاً به صورت محلی در مرورگر شما ذخیره می‌شود و هرگز در سرور ابری یا Firestore همگام‌سازی نمی‌شود.
+            </div>
 
             {/* --- 3. Account & Data --- */}
             <div className="grid md:grid-cols-2 gap-6">
@@ -586,19 +670,24 @@ const Settings = () => {
                         </button>
                     </div>
 
-                    {/* Stream Selection */}
-                    <div className="mb-4 relative">
-                        <GraduationCap size={18} className="absolute right-4 top-3.5 text-gray-400" />
-                        <select
-                            value={settings?.stream || 'general'}
-                            onChange={(e) => updateSettings({ stream: e.target.value as any })}
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl pr-12 pl-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition appearance-none cursor-pointer text-gray-800 dark:text-white"
-                        >
-                            <option value="riazi">ریاضی و فیزیک</option>
-                            <option value="tajrobi">علوم تجربی</option>
-                            <option value="ensani">علوم انسانی</option>
-                            <option value="general">عمومی</option>
-                        </select>
+                    {/* Workspace Profile / Mode Selection */}
+                    <div className="mb-4">
+                        <label className="text-[11px] font-bold text-gray-400 block mb-1.5">سبک کاری و دسته‌بندی پیش‌فرض</label>
+                        <div className="relative">
+                            <GraduationCap size={18} className="absolute right-4 top-3 text-gray-400" />
+                            <select
+                                value={settings?.stream || 'life'}
+                                onChange={(e) => updateSettings({ stream: e.target.value as any })}
+                                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl pr-12 pl-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition appearance-none cursor-pointer text-gray-800 dark:text-white"
+                            >
+                                <option value="life">زندگی، عادت‌ها و بهره‌وری کل (پیشنهادی)</option>
+                                <option value="work">کار، پروژه و فریلنسینگ</option>
+                                <option value="general">مطالعه و یادگیری آزاد</option>
+                                <option value="riazi">تحصیلی: ریاضی و فیزیک</option>
+                                <option value="tajrobi">تحصیلی: علوم تجربی</option>
+                                <option value="ensani">تحصیلی: علوم انسانی</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Auth Status */}
@@ -649,6 +738,18 @@ const Settings = () => {
                                 <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Sun size={16} /> حالت هوشمند زمان‌بندی (BioTheme)</span>
                                 <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.bioTheme ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
                                     <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.bioTheme ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                </div>
+                            </button>
+                            <button onClick={() => updateSettings({ strictLockEnabled: !settings?.strictLockEnabled })} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">🔒 قفل سخت تمرکز (Fullscreen + تشخیص خروج)</span>
+                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.strictLockEnabled ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
+                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.strictLockEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                </div>
+                            </button>
+                            <button onClick={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">🕵️ نمایش ناشناس در جدول لیگ (حفظ حریم خصوصی)</span>
+                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.anonymizedLeaderboard ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
+                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.anonymizedLeaderboard ? 'translate-x-4' : 'translate-x-0'}`}></div>
                                 </div>
                             </button>
                             

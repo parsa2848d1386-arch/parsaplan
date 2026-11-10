@@ -52,7 +52,8 @@ export const XP_REWARDS = {
     COMPLETE_ANALYSIS: 150,  // Analysis/Review is rewarded well
     COMPLETE_ROUTINE: 30,
     PERFECT_DAY_BONUS: 500,  // Major reward for 100% completion
-    STREAK_BONUS_BASE: 20,    // Extra XP per day of streak
+    STREAK_BONUS_BASE: 20,   // Extra XP per day of streak (capped at 10 days = +200)
+    FOCUS_MINUTE_XP: 2,      // 2 XP per focused minute logged via timer
 };
 
 /**
@@ -61,11 +62,20 @@ export const XP_REWARDS = {
 export const getXpReward = (type: keyof typeof XP_REWARDS, streakDays: number = 0): number => {
     const base = XP_REWARDS[type];
 
-    // Add streak bonus for task completion
-    if (type.startsWith('COMPLETE_TASK') || type === 'COMPLETE_EXAM') {
-        const streakBonus = streakDays * XP_REWARDS.STREAK_BONUS_BASE;
+    // Add streak bonus for task/exam/analysis completion
+    if (type.startsWith('COMPLETE_TASK') || type === 'COMPLETE_EXAM' || type === 'COMPLETE_ANALYSIS') {
+        const cappedStreak = Math.min(10, Math.max(0, streakDays));
+        const streakBonus = cappedStreak * XP_REWARDS.STREAK_BONUS_BASE;
         return base + streakBonus;
     }
 
     return base;
+};
+
+export const calculateSessionXp = (durationSeconds: number, streakDays: number = 0): number => {
+    const mins = Math.floor(durationSeconds / 60);
+    if (mins < 1) return 0;
+    const base = mins * XP_REWARDS.FOCUS_MINUTE_XP;
+    const streakMultiplier = 1 + Math.min(0.5, Math.max(0, streakDays) * 0.05);
+    return Math.round(base * streakMultiplier);
 };

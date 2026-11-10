@@ -189,6 +189,19 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
         }).format(date);
     };
 
+    const {
+        sessions: focusSessions,
+        streakStats,
+        studyMinutesByDate,
+        updateSettings: updateStoreSettings,
+    } = useStore();
+
+    useEffect(() => {
+        if (settings?.hasUnreadAiMessage) {
+            updateStoreSettings({ hasUnreadAiMessage: false });
+        }
+    }, [settings?.hasUnreadAiMessage, updateStoreSettings]);
+
     // --- GEMINI LOGIC ---
     const generateSystemPrompt = () => {
         const today = new Date();
@@ -200,8 +213,8 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
         const tomorrowIso = tomorrow.toISOString().split('T')[0];
         const tomorrowShamsi = toShamsi(tomorrow);
 
-        const currentStream = settings?.stream || 'general';
-        const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
+        const currentStream = settings?.stream || 'life';
+        const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['life'];
         const allSubjects = [...new Set([...streamSubjects, ...(subjects?.map(s => s.name) || [])])].join(', ');
 
         const routineSummary = routineTemplate.map(r => `- ${r.time}: ${r.title} (${r.type})`).join('\n');
@@ -211,10 +224,19 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
         const taskCompletion = getProgress();
         const overdueTasksCount = tasks.filter(t => t.date < todayIso && !t.isCompleted).length;
 
-        // Deep Performance Metrics
+        // Deep Performance Metrics (tasks + live Pomodoro/Stopwatch sessions)
         const completedTasks = tasks.filter(t => t.isCompleted);
-        const totalMinutes = completedTasks.reduce((acc, t) => acc + (t.actualDuration || 0), 0);
-        const studyHours = Math.round(totalMinutes / 60 * 10) / 10;
+        const totalTaskMinutes = completedTasks.reduce((acc, t) => acc + (t.actualDuration || 0), 0);
+        const totalFocusSessionMinutes = Math.round(
+            (focusSessions || []).reduce((acc, s) => acc + (s.durationSeconds || 0), 0) / 60
+        );
+        const todayFocusedMins = studyMinutesByDate?.[todayIso] || 0;
+        const dailyCapacityMins = settings?.dailyCapacityMinutes ?? 360;
+        const plannedTodayMins = tasks
+            .filter(t => t.date === todayIso && !t.isCompleted)
+            .reduce((acc, t) => acc + (t.durationMinutes ?? 60), 0);
+        const remainingFreeHours = Math.max(0, Math.round(((dailyCapacityMins - plannedTodayMins) / 60) * 10) / 10);
+        const studyHours = Math.round((Math.max(totalTaskMinutes, totalFocusSessionMinutes) / 60) * 10) / 10;
 
         const ratedTasks = completedTasks.filter(t => t.qualityRating);
         const avgFocus = ratedTasks.length > 0
@@ -257,32 +279,26 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
         const recentLogs = (auditLog || []).slice(-10).map(l => `- ${l.action}: ${l.details}`).join('\n');
 
         return `
-You are the **ParsasPlan Ultra Intelligence**, an advanced study assistant with FULL ACCESS to the user's account, history, and preferences.
-Identity: You are built to manage, optimize, and oversee ${userName}'s entire educational journey.
+You are the **ParsaPlan AI Coach**, a smart personal productivity, life-planning, project, habit, and learning assistant with FULL ACCESS to the user's account context.
+Identity: You help ${userName || 'the user'} organize work, personal goals, health/fitness, habits, finances, and learning/studies cleanly without pressure.
 
-**Comprehensive Context for ${userName}:**
+**Comprehensive Context for ${userName || 'User'}:**
 - Today: ${todayIso} (Shamsi: ${todayShamsi})
 - Tomorrow (Shamsi): ${tomorrowShamsi}
-- Study Stream: ${currentStream}
-- All Subjects: ${allSubjects}
+- Workspace Profile Mode: ${currentStream}
+- Active Categories / Life Areas: ${allSubjects}
 - Current Level: ${level} (XP: ${xp}, Progress: ${Math.round(progressPercent || 0)}%)
 - Plan Progress: ${planCompletion}% (Day ${currentDay} of ${totalDays})
 - Overdue Tasks: ${overdueTasksCount}
 
 **Performance Analytical Data:**
-- Overall Mastery: ${taskCompletion}%
-- Total Study Time: ${studyHours} hours
-- Average Focus Quality: ${avgFocus}/5
-- Global Test Accuracy: ${accuracy}%
-- Subject Completion: ${subPerformance}
-- Recent Exam Scores: ${tasks.filter(t => t.studyType === 'exam' && t.isCompleted && t.testStats && t.testStats.total > 0)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .slice(0, 5)
-                .map(t => {
-                    const score = Math.round(((t.testStats!.correct * 3 - t.testStats!.wrong) / (t.testStats!.total * 3)) * 100);
-                    return `${t.subject} (${t.date}): ${score}%`;
-                }).join(', ') || 'None yet'
-            }
+- Overall Completion: ${taskCompletion}%
+- Total Logged Focus Time: ${studyHours} hours (Focus sessions logged: ${(focusSessions || []).length}, Today focused: ${todayFocusedMins} mins)
+- Consistency Streak: ${streakStats?.currentStreak || 0} days (Longest: ${streakStats?.longestStreak || 0} days)
+- Remaining Free Capacity Today: ~${remainingFreeHours} hours (out of ${Math.round(dailyCapacityMins / 60)}h target)
+- Average Task Quality: ${avgFocus}/5
+${tTotal > 0 ? `- Exam/Quiz Accuracy: ${accuracy}%` : ''}
+- Category Completion: ${subPerformance}
 
 **User's Daily Routine (Schedule):**
 ${routineSummary}
@@ -301,22 +317,20 @@ ${recentLogs}
 
 **YOUR OPERATIONAL PROTOCOL:**
 1. Speak **PERSIAN (Farsi)** exclusively.
-2. You have 'eyes' on every part of the app. Use the above context to provide deeply personalized advice.
+2. Adapt to the user's workspace mode (${currentStream}) and support ANY topic (work projects, fitness, habits, personal errands, finances, creative writing, OR academics).
 3. **If asked to plan, add, or schedule tasks, YOU MUST output a JSON block** within your response.
-4. **DISTINGUISH TESTS VS EXAMS**: 
-   - Requests for "tests" or "practice questions" → studyType = "study", details = "Practice X tests".
-   - Requests for "Azmoon" or "Exam" → studyType = "exam".
+4. Choose appropriate \`studyType\`: \`"task"\`, \`"project"\`, \`"habit"\`, \`"health"\`, \`"meeting"\`, \`"creative"\`, \`"study"\`, \`"review"\`, or \`"exam"\`/\`"analysis"\` only if academic.
 
 **JSON SCHEMAS (MANDATORY FORMAT):**
 
-Type A: Specific Tasks or Macro Planner (For one or multiple tasks across multiple days)
+Type A: Specific Tasks or Multi-day Schedule
 \`\`\`json
 { 
   "type": "preview_tasks", 
   "message": "یک پیام کوتاه...", 
   "tasks": [
-    { "subject": "Math", "topic": "Functions", "details": "Read chapter 1", "date": "YYYY-MM-DD", "studyType": "study" },
-    { "subject": "Physics", "topic": "Dynamics", "details": "50 tests", "date": "YYYY-MM-DD", "studyType": "test_educational" }
+    { "subject": "کار و پروژه", "topic": "تکمیل ارائه پروژه", "details": "آماده‌سازی اسلایدها", "date": "YYYY-MM-DD", "studyType": "project" },
+    { "subject": "ورزش و سلامت", "topic": "دویدن یا باشگاه", "details": "۴۵ دقیقه تمرین", "date": "YYYY-MM-DD", "studyType": "health" }
   ] 
 }
 \`\`\`
@@ -410,7 +424,9 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                 currentParts.push(...generativeParts);
             }
 
-            const result = await chat.sendMessage(currentParts as any);
+            const currentSignal = abortControllerRef.current.signal;
+            const result = await chat.sendMessage(currentParts as any, { signal: currentSignal });
+            if (currentSignal.aborted) return;
             const response = result.response;
             const text = response.text();
 

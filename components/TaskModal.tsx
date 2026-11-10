@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Subject, SubjectTask, SUBJECT_ICONS, StudyType, SubTask, SUBJECT_LISTS } from '../types';
+import { Subject, SubjectTask, SUBJECT_ICONS, StudyType, SubTask, SUBJECT_LISTS, TaskPriority, BlockNote, getSubjectStyle } from '../types';
 import { useStore } from '../context/StoreContext';
 import { useUI } from '../context/UIContext';
-import { X, Clock, Star, Target, Calendar, CheckCircle2, Tag, CalendarClock, ChevronRight, ChevronLeft, LayoutGrid, List, Beaker, BookOpen, Search, GraduationCap } from 'lucide-react';
+import { BlockNoteEditor } from './editor/BlockNoteEditor';
+import { X, Clock, Star, Target, Calendar, CheckCircle2, Tag, CalendarClock, LayoutGrid, List, Beaker, BookOpen, Search, GraduationCap, FileText, Flag, Briefcase, HeartPulse, Users, Sparkles, CheckSquare, Repeat } from 'lucide-react';
 
 interface Props {
     isOpen: boolean;
@@ -15,21 +16,32 @@ interface Props {
     defaultDateStr?: string;
 }
 
-const STUDY_TYPES: { id: StudyType; label: string; icon: any }[] = [
-    { id: 'study', label: 'مطالعه', icon: BookOpen },
+const UNIVERSAL_TYPES: { id: StudyType; label: string; icon: any }[] = [
+    { id: 'task', label: 'کار / تسک', icon: CheckSquare },
+    { id: 'project', label: 'پروژه', icon: Briefcase },
+    { id: 'habit', label: 'عادت / روتین', icon: Repeat },
+    { id: 'health', label: 'ورزش / سلامت', icon: HeartPulse },
+    { id: 'meeting', label: 'جلسه / قرار', icon: Users },
+    { id: 'creative', label: 'ایده / محتوا', icon: Sparkles },
+    { id: 'study', label: 'مطالعه / یادگیری', icon: BookOpen },
+    { id: 'review', label: 'مرور و جمع‌بندی', icon: CalendarClock },
+];
+
+const ACADEMIC_TYPES: { id: StudyType; label: string; icon: any }[] = [
     { id: 'test_educational', label: 'تست آموزشی', icon: Beaker },
     { id: 'test_speed', label: 'تست سرعتی', icon: Clock },
-    { id: 'review', label: 'مرور', icon: CalendarClock },
     { id: 'exam', label: 'آزمون', icon: GraduationCap },
     { id: 'analysis', label: 'تحلیل آزمون', icon: Search },
 ];
 
+const ALL_ACTIVITY_TYPES = [...UNIVERSAL_TYPES, ...ACADEMIC_TYPES];
+
 const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDayId, defaultDateStr }) => {
-    const { scheduleReview, totalDays, subjects: customSubjects, settings, startDate } = useStore();
+    const { scheduleReview, totalDays, subjects: customSubjects, settings, addFlashcard } = useStore();
     const navigate = useNavigate();
     const { showToast } = useUI();
     const [formData, setFormData] = useState<Partial<SubjectTask>>({});
-    const [tab, setTab] = useState<'info' | 'report'>('info');
+    const [tab, setTab] = useState<'info' | 'notes' | 'report'>('info');
     const [tagInput, setTagInput] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -54,10 +66,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     setSubTaskInputs(inputs);
                 }
             } else {
+                const isAcademicStream = settings?.stream === 'riazi' || settings?.stream === 'tajrobi' || settings?.stream === 'ensani';
+                const fallbackCategory = customSubjects?.[0]?.name || 'شخصی';
                 setFormData({
                     dayId: currentDayId,
                     date: defaultDateStr,
-                    subject: Subject.Custom,
+                    subject: fallbackCategory,
                     topic: '',
                     details: '',
                     testRange: '',
@@ -65,9 +79,13 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     isCustom: true,
                     qualityRating: 3,
                     actualDuration: 0,
+                    durationMinutes: 60,
+                    priority: 'medium',
+                    isMIT: false,
+                    blocks: [],
                     testStats: { correct: 0, wrong: 0, total: 0 },
                     tags: [],
-                    studyType: 'study'
+                    studyType: isAcademicStream ? 'study' : 'task'
                 });
                 setSelectedExamSubjects([]);
                 setSubTaskInputs({});
@@ -78,6 +96,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     if (!isOpen) return null;
 
     const isExamMode = formData.studyType === 'exam' || formData.studyType === 'analysis';
+    const isAcademicTestMode = formData.studyType === 'test_educational' || formData.studyType === 'test_speed' || isExamMode;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -85,20 +104,16 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
         // Validation & Error Categorization
         if (isExamMode) {
             if (selectedExamSubjects.length === 0) {
-                showToast('لطفاً حداقل یک درس برای آزمون انتخاب کنید!', 'error');
+                showToast('لطفاً حداقل یک بخش یا درس برای آزمون انتخاب کنید!', 'error');
                 return;
             }
         } else {
             if (!formData.topic || formData.topic.trim() === '') {
-                showToast('لطفاً مبحث (Topic) را وارد کنید!', 'error');
-                return;
-            }
-            if (!formData.details || formData.details.trim() === '') {
-                showToast('لطفاً جزئیات (مثلاً تعداد تست) را وارد کنید!', 'warning');
+                showToast('لطفاً عنوان کار یا موضوع را وارد کنید!', 'error');
                 return;
             }
             if (!formData.subject) {
-                showToast('لطفاً یک درس انتخاب کنید!', 'error');
+                showToast('لطفاً یک دسته‌بندی انتخاب کنید!', 'error');
                 return;
             }
         }
@@ -123,7 +138,11 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 subTasks: subTasks
             });
         } else {
-            onSave(formData);
+            const matchedType = ALL_ACTIVITY_TYPES.find((t) => t.id === formData.studyType);
+            onSave({
+                ...formData,
+                details: formData.details?.trim() || matchedType?.label || 'برنامه‌ریزی شده',
+            });
         }
         onClose();
     };
@@ -133,6 +152,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     }
 
     const addTag = (e: React.KeyboardEvent) => {
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === 'Enter' && tagInput.trim()) {
             e.preventDefault();
             const currentTags = formData.tags || [];
@@ -210,14 +230,23 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">
                     <div className="flex bg-gray-100/80 dark:bg-gray-800/80 p-1 rounded-xl shadow-inner">
                         <button
+                            type="button"
                             onClick={() => setTab('info')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${tab === 'info' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${tab === 'info' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                         >
-                            اطلاعات پایه
+                            اطلاعات و زمان
                         </button>
                         <button
+                            type="button"
+                            onClick={() => setTab('notes')}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-1 ${tab === 'notes' ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                        >
+                            <FileText size={12} /> یادداشت بلوکی {(formData.blocks?.length || 0) > 0 ? `(${formData.blocks?.length})` : ''}
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setTab('report')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${tab === 'report' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${tab === 'report' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
                         >
                             ثبت عملکرد
                         </button>
@@ -234,58 +263,153 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                         <div className="p-5 space-y-5 animate-in slide-in-from-left-2 duration-300">
 
                             {/* Type Selection */}
-                            <div className="grid grid-cols-3 gap-2">
-                                {STUDY_TYPES.map(type => (
-                                    <button
-                                        key={type.id}
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, studyType: type.id })}
-                                        className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200 ${formData.studyType === type.id
-                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                                            : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                                            }`}
-                                    >
-                                        <type.icon size={18} className="mb-1" />
-                                        <span className="text-[10px] font-bold">{type.label}</span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Date Selection */}
-                            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-2xl border border-blue-100 dark:border-blue-800/30">
-                                <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-1">
-                                    <Calendar size={13} />
-                                    زمان‌بندی
-                                </label>
-                                <select
-                                    value={formData.dayId || 1}
-                                    onChange={(e) => setFormData({ ...formData, dayId: parseInt(e.target.value) })}
-                                    className="w-full bg-transparent border-none py-1 text-sm font-bold text-gray-800 dark:text-white outline-none focus:ring-0 cursor-pointer"
-                                    style={{ backgroundImage: 'none' }}
-                                >
-                                    {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => (
-                                        <option key={day} value={day} className="dark:bg-gray-900">روز {day}</option>
+                            <div className="space-y-2">
+                                <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block">نوع فعالیت</label>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {UNIVERSAL_TYPES.map(type => (
+                                        <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, studyType: type.id })}
+                                            className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200 ${formData.studyType === type.id
+                                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                                                : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                                                }`}
+                                        >
+                                            <type.icon size={16} className="mb-1" />
+                                            <span className="text-[10px] font-bold truncate max-w-full">{type.label}</span>
+                                        </button>
                                     ))}
-                                </select>
+                                </div>
+                                <div className="grid grid-cols-4 gap-1.5 pt-1">
+                                    {ACADEMIC_TYPES.map(type => (
+                                        <button
+                                            key={type.id}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, studyType: type.id })}
+                                            className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border transition-all text-[10px] font-bold ${formData.studyType === type.id
+                                                ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 shadow-sm'
+                                                : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-400 hover:text-gray-600'
+                                                }`}
+                                        >
+                                            <type.icon size={12} />
+                                            <span className="truncate">{type.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
-                            {/* --- Subject Filter Logic --- */}
+                            {/* Date & Timeblocking Selection */}
+                            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3.5 rounded-2xl border border-blue-100 dark:border-blue-800/30 space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-1">
+                                            <Calendar size={12} /> روز دوره
+                                        </label>
+                                        <select
+                                            value={formData.dayId || 1}
+                                            onChange={(e) => setFormData({ ...formData, dayId: parseInt(e.target.value) })}
+                                            className="w-full bg-white dark:bg-gray-800 rounded-xl px-2.5 py-1.5 text-xs font-bold text-gray-800 dark:text-white outline-none border border-blue-100 dark:border-gray-700 cursor-pointer"
+                                        >
+                                            {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => (
+                                                <option key={day} value={day} className="dark:bg-gray-900">روز {day}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-1">
+                                            <Clock size={12} /> ساعت شروع (اختیاری)
+                                        </label>
+                                        <input
+                                            type="time"
+                                            value={formData.startTime || ''}
+                                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                            className="w-full bg-white dark:bg-gray-800 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-gray-800 dark:text-white outline-none border border-blue-100 dark:border-gray-700"
+                                            dir="ltr"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-blue-800 dark:text-blue-300 mb-1">مدت هدف (دقیقه)</label>
+                                        <input
+                                            type="number"
+                                            min="10"
+                                            max="480"
+                                            step="10"
+                                            value={formData.durationMinutes ?? 60}
+                                            onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 60 })}
+                                            className="w-full bg-white dark:bg-gray-800 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-gray-800 dark:text-white outline-none border border-blue-100 dark:border-gray-700"
+                                            dir="ltr"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-blue-100/70 dark:border-blue-800/30">
+                                    <div className="flex items-center gap-1.5">
+                                        <Flag size={12} className="text-blue-600 dark:text-blue-300" />
+                                        <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">اولویت:</span>
+                                        {(['urgent', 'high', 'medium', 'low'] as TaskPriority[]).map((p) => (
+                                            <button
+                                                key={p}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, priority: p })}
+                                                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${
+                                                    (formData.priority || 'medium') === p
+                                                        ? p === 'urgent'
+                                                            ? 'bg-rose-500 text-white'
+                                                            : p === 'high'
+                                                              ? 'bg-amber-500 text-white'
+                                                              : p === 'medium'
+                                                                ? 'bg-indigo-500 text-white'
+                                                                : 'bg-gray-500 text-white'
+                                                        : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700'
+                                                }`}
+                                            >
+                                                {p === 'urgent' ? 'فوری' : p === 'high' ? 'بالا' : p === 'medium' ? 'متوسط' : 'پایین'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, isMIT: !formData.isMIT })}
+                                        className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold flex items-center gap-1 border transition ${
+                                            formData.isMIT
+                                                ? 'bg-amber-500 text-white border-amber-500'
+                                                : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700'
+                                        }`}
+                                    >
+                                        <Star size={11} fill={formData.isMIT ? 'currentColor' : 'none'} />
+                                        اولویت کلیدی (MIT)
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* --- Category / Subject Filter Logic (Default + Custom) --- */}
                             {(() => {
-                                const currentStream = settings?.stream || 'general';
-                                const allowedSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['general'];
-                                const filteredIcons = Object.entries(SUBJECT_ICONS)
-                                    .filter(([name]) => allowedSubjects.includes(name) || name === 'شخصی')
+                                const currentStream = settings?.stream || 'life';
+                                const allowedSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['life'];
+                                const subjectMap = new Map<string, { icon: string; color: string; bgColor: string }>();
+
+                                Object.entries(SUBJECT_ICONS).forEach(([name, style]) => {
+                                    if (allowedSubjects.includes(name) || name === 'شخصی') {
+                                        subjectMap.set(name, style);
+                                    }
+                                });
+
+                                (customSubjects || []).forEach((cs) => {
+                                    if (!subjectMap.has(cs.name)) {
+                                        const fallback = getSubjectStyle(cs.name);
+                                        subjectMap.set(cs.name, { icon: cs.icon || fallback.icon, color: cs.color || fallback.color, bgColor: fallback.bgColor });
+                                    }
+                                });
+
+                                const filteredIcons = Array.from(subjectMap.entries())
                                     .sort(([nameA], [nameB]) => {
                                         const indexA = allowedSubjects.indexOf(nameA);
                                         const indexB = allowedSubjects.indexOf(nameB);
-
-                                        // If both are in the list, sort by their index
                                         if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                                        // If only A is in the list, it comes first
                                         if (indexA !== -1) return -1;
-                                        // If only B is in the list, it comes first
                                         if (indexB !== -1) return 1;
-                                        // Otherwise keep order
                                         return 0;
                                     });
 
@@ -293,7 +417,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
                                             <label className="text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                {isExamMode ? 'انتخاب دروس آزمون' : 'انتخاب درس'}
+                                                {isExamMode ? 'انتخاب بخش‌ها / دروس آزمون' : 'انتخاب دسته‌بندی / حوزه'}
                                             </label>
                                             {!isExamMode && (
                                                 <div className="flex bg-gray-100 dark:bg-gray-800/80 rounded-lg p-0.5">
@@ -360,39 +484,40 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                             ) : (
                                 <div className="space-y-4">
                                     <div className="group">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 pointer-events-none group-focus-within:text-indigo-500 transition-colors">مبحث (Topic)</label>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 pointer-events-none group-focus-within:text-indigo-500 transition-colors">عنوان کار یا فعالیت</label>
                                         <input
                                             required
                                             type="text"
                                             value={formData.topic || ''}
                                             onChange={e => setFormData({ ...formData, topic: e.target.value })}
                                             className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition text-gray-900 dark:text-white shadow-sm"
-                                            placeholder="مثلا: نوسان و موج"
+                                            placeholder="مثلاً: تمرین ورزشی، جلسه هفتگی، نوشتن گزارش یا فصل ۳ کتاب..."
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className={`grid ${isAcademicTestMode ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                                         <div className="group">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">جزئیات</label>
+                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">توضیح کوتاه / هدف (اختیاری)</label>
                                             <input
-                                                required
                                                 type="text"
                                                 value={formData.details || ''}
                                                 onChange={e => setFormData({ ...formData, details: e.target.value })}
                                                 className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
-                                                placeholder="۴۵ تست"
+                                                placeholder={isAcademicTestMode ? 'مثلاً: ۴۵ تست' : 'مثلاً: تمرکز کامل روی خروجی نهایی'}
                                             />
                                         </div>
-                                        <div className="group">
-                                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">بازه تست</label>
-                                            <input
-                                                type="text"
-                                                value={formData.testRange || ''}
-                                                onChange={e => setFormData({ ...formData, testRange: e.target.value })}
-                                                className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
-                                                placeholder="اختیاری"
-                                            />
-                                        </div>
+                                        {isAcademicTestMode && (
+                                            <div className="group">
+                                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1 group-focus-within:text-indigo-500 transition-colors">بازه تست</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.testRange || ''}
+                                                    onChange={e => setFormData({ ...formData, testRange: e.target.value })}
+                                                    className="w-full bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition shadow-sm"
+                                                    placeholder="اختیاری"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -420,6 +545,23 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     />
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {tab === 'notes' && (
+                        <div className="p-5 space-y-4 animate-in fade-in duration-200">
+                            <BlockNoteEditor
+                                blocks={(formData.blocks as BlockNote[]) || []}
+                                onChange={(blocks) => setFormData({ ...formData, blocks })}
+                                onCreateFlashcard={(front, back) =>
+                                    addFlashcard({
+                                        question: front,
+                                        answer: back,
+                                        subject: formData.subject || 'عمومی',
+                                        topic: formData.topic || '',
+                                    })
+                                }
+                            />
                         </div>
                     )}
 
@@ -485,12 +627,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                /* Standard Scoring */
+                            ) : isAcademicTestMode ? (
+                                /* Optional Academic Test Scoring */
                                 <div className="p-1">
                                     <div className="flex items-center gap-2 mb-3 text-emerald-600 dark:text-emerald-400">
                                         <Target size={18} />
-                                        <label className="text-sm font-bold">نتیجه تست‌زنی</label>
+                                        <label className="text-sm font-bold">نتیجه تست / ارزیابی</label>
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl text-center border border-emerald-100 dark:border-emerald-500/20 shadow-sm">
@@ -534,19 +676,19 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                         <div className="mt-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-500/20 p-3 rounded-2xl flex items-center justify-between shadow-sm animate-in zoom-in-95 duration-300">
                                             <div className="flex items-center gap-2">
                                                 <div className="bg-orange-100 dark:bg-orange-800 p-1.5 rounded-lg text-orange-600 dark:text-orange-300"><Target size={14} /></div>
-                                                <span className="text-xs text-orange-800 dark:text-orange-200 font-bold max-w-[150px] md:max-w-none">تست‌های غلط را برای مرور به جعبه لایتنر اضافه کن!</span>
+                                                <span className="text-xs text-orange-800 dark:text-orange-200 font-bold max-w-[150px] md:max-w-none">نکات غلط را برای مرور به جعبه لایتنر اضافه کن!</span>
                                             </div>
                                             <button type="button" onClick={() => { onClose(); navigate('/leitner'); }} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold shadow-sm transition-colors whitespace-nowrap">افزودن فلش‌کارت</button>
                                         </div>
                                     )}
                                 </div>
-                            )}
+                            ) : null}
 
                             {/* Quality Rating */}
                             <div>
                                 <div className="flex items-center gap-2 mb-3 text-amber-500">
                                     <Star size={18} fill="currentColor" />
-                                    <label className="text-sm font-bold">کیفیت مطالعه</label>
+                                    <label className="text-sm font-bold">رضایت و تمرکز انجام کار</label>
                                 </div>
                                 <div className="flex justify-between bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-inner">
                                     {[1, 2, 3, 4, 5].map(star => (

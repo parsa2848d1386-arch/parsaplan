@@ -8,18 +8,18 @@ interface WelcomeScreenProps {
 }
 
 const QUICK_TAGS = [
-    { text: "امتحانات", icon: "📝", bg: "bg-rose-50/50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-900/30 hover:bg-rose-100/50" },
-    { text: "تکالیف", icon: "📋", bg: "bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/30 hover:bg-blue-100/50" },
-    { text: "رویدادها", icon: "🎯", bg: "bg-amber-50/50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 border-amber-100/50 dark:border-amber-900/30 hover:bg-amber-100/50" },
-    { text: "برنامه", icon: "📅", bg: "bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30 hover:bg-emerald-100/50" },
-    { text: "کلاس‌ها", icon: "🏫", bg: "bg-purple-50/50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 border-purple-100/50 dark:border-purple-900/30 hover:bg-purple-100/50" },
+    { text: "کار و پروژه", icon: "💼", bg: "bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-900/30 hover:bg-indigo-100/50" },
+    { text: "عادت‌ها و روتین", icon: "🌱", bg: "bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30 hover:bg-emerald-100/50" },
+    { text: "ورزش و سلامت", icon: "🏋️", bg: "bg-rose-50/50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-900/30 hover:bg-rose-100/50" },
+    { text: "برنامه‌ریزی هفته", icon: "📅", bg: "bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/30 hover:bg-blue-100/50" },
+    { text: "مطالعه و مهارت", icon: "📖", bg: "bg-purple-50/50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 border-purple-100/50 dark:border-purple-900/30 hover:bg-purple-100/50" },
 ];
 
 const QUICK_PROMPTS = [
-    { text: "۱۰ سوال ریاضی بساز", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-50/50 dark:bg-blue-900/20" },
-    { text: "یک برنامه فشرده ۱۲ روزه بساز", icon: ClipboardList, color: "text-emerald-500", bg: "bg-emerald-50/50 dark:bg-emerald-900/20" },
-    { text: "تحلیل عملکرد درسی من", icon: Brain, color: "text-purple-500", bg: "bg-purple-50/50 dark:bg-purple-900/20" },
-    { text: "یک جمله انگیزشی بگو", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-50/50 dark:bg-amber-900/20" },
+    { text: "برای این هفته یک برنامه متعادل کار، ورزش و استراحت بچین", icon: ClipboardList, color: "text-emerald-500", bg: "bg-emerald-50/50 dark:bg-emerald-900/20" },
+    { text: "برنامه امروز من رو زمان‌بندی و اولویت‌بندی کن", icon: Brain, color: "text-purple-500", bg: "bg-purple-50/50 dark:bg-purple-900/20" },
+    { text: "عملکرد و زمان تمرکز اخیرم رو تحلیل کن", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-50/50 dark:bg-blue-900/20" },
+    { text: "پیشنهاد ۳ عادت کلیدی برای افزایش انرژی و بهره‌وری", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-50/50 dark:bg-amber-900/20" },
 ];
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptSelect, userName }) => {

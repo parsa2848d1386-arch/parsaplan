@@ -44,29 +44,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // --- FIREBASE INITIALIZATION ---
     useEffect(() => {
+        let unsubscribeAuth: (() => void) | undefined;
+
         const initFirebase = async () => {
             const storedConfig = localStorage.getItem(KEY_FB_CONFIG);
             if (storedConfig) {
                 try {
                     const config = JSON.parse(storedConfig);
                     setFirebaseConfig(config);
-                    await initializeFirebaseApp(config);
+                    unsubscribeAuth = await initializeFirebaseApp(config);
                 } catch (e) {
                     console.error("Error loading firebase config", e);
                 }
             } else if (IS_DEFAULT_FIREBASE_ENABLED) {
                 try {
                     setFirebaseConfig(DEFAULT_FIREBASE_CONFIG);
-                    await initializeFirebaseApp(DEFAULT_FIREBASE_CONFIG);
+                    unsubscribeAuth = await initializeFirebaseApp(DEFAULT_FIREBASE_CONFIG);
                 } catch (e) {
                     console.error("Error loading default firebase config", e);
                 }
             }
         };
         initFirebase();
+
+        return () => {
+            unsubscribeAuth?.();
+        };
     }, []);
 
-    const initializeFirebaseApp = async (config: FirebaseConfig) => {
+    const initializeFirebaseApp = async (config: FirebaseConfig): Promise<(() => void) | undefined> => {
         try {
             const apps = getApps();
             let app: FirebaseApp;
@@ -82,9 +88,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setDb(firestore);
             setAuth(firebaseAuth);
             setCloudStatus('connected');
-            // console.log("Firebase initialized dynamically");
 
-            onAuthStateChanged(firebaseAuth, (currentUser) => {
+            const unsub = onAuthStateChanged(firebaseAuth, (currentUser) => {
                 setUser(currentUser);
                 if (currentUser) {
                     setUserId(currentUser.uid);
@@ -92,11 +97,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     setUserId('parsaplan_local_user');
                 }
             });
+            return unsub;
 
         } catch (error) {
             console.error("Firebase init failed:", error);
             setCloudStatus('error');
             showToast('خطا در اتصال به فایربیس. تنظیمات را چک کنید.', 'error');
+            return undefined;
         }
     };
 

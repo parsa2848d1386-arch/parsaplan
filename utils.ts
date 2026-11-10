@@ -56,9 +56,45 @@ export const addDays = (dateOrString: Date | string, days: number): Date => {
     return result;
 };
 
-// Helper to convert Persian numbers to English
-const normalizeFarsiNums = (str: string): string => {
-    return str.replace(/[۰-۹]/g, d => String.fromCharCode(d.charCodeAt(0) - 1728));
+// Helper to convert Persian and Arabic-Indic numbers to English
+export const normalizeFarsiNums = (str: string): string => {
+    return str
+        .replace(/[۰-۹]/g, d => String.fromCharCode(d.charCodeAt(0) - 1728))
+        .replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 1632));
+};
+
+export const formatToPersianDigits = (val: number | string): string => {
+    const pDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return val.toString().replace(/\d/g, d => pDigits[Number(d)]);
+};
+
+export const timeToMinutes = (timeStr: string): number => {
+    const normalized = normalizeFarsiNums(timeStr || '00:00');
+    const [h, m] = normalized.split(':').map(n => parseInt(n, 10) || 0);
+    return Math.max(0, Math.min(23, h)) * 60 + Math.max(0, Math.min(59, m));
+};
+
+export const minutesToTime = (totalMinutes: number): string => {
+    const norm = ((Math.floor(totalMinutes) % 1440) + 1440) % 1440;
+    const h = Math.floor(norm / 60);
+    const m = norm % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+export const formatClockTime = (totalSeconds: number): string => {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const h = Math.floor(safe / 3600);
+    const m = Math.floor((safe % 3600) / 60);
+    const s = safe % 60;
+    if (h > 0) {
+        return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
+export const calculateExamPercentage = (correct: number, wrong: number, total: number): number => {
+    if (!total || total <= 0) return 0;
+    return Math.round(((correct * 3 - wrong) / (total * 3)) * 100);
 };
 
 // Finds the Gregorian Date corresponding to "11 Bahman" closest to the given date (usually 'now')

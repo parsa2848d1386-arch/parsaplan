@@ -15,8 +15,8 @@ const SubjectModal: React.FC<{
     existingSubjectNames: string[];
 }> = ({ isOpen, onClose, onSave, editingSubject, existingSubjectNames }) => {
     const [name, setName] = useState(editingSubject?.name || '');
-    const [selectedIcon, setSelectedIcon] = useState(editingSubject?.icon || '📚');
-    const [selectedColor, setSelectedColor] = useState(editingSubject?.color || 'gray');
+    const [selectedIcon, setSelectedIcon] = useState(editingSubject?.icon || '📌');
+    const [selectedColor, setSelectedColor] = useState(editingSubject?.color || 'indigo');
 
     React.useEffect(() => {
         if (editingSubject) {
@@ -25,14 +25,16 @@ const SubjectModal: React.FC<{
             setSelectedColor(editingSubject.color);
         } else {
             setName('');
-            setSelectedIcon('📚');
-            setSelectedColor('gray');
+            setSelectedIcon('📌');
+            setSelectedColor('indigo');
         }
     }, [editingSubject, isOpen]);
 
     const suggestedSubjects = Object.entries(SUBJECT_ICONS).filter(
         ([key]) => !existingSubjectNames.includes(key) && key !== 'شخصی'
     );
+
+    const LIFE_ICONS = ['💼', '🌱', '🏋️', '💳', '🏡', '💻', '🤝', '🎨', '🛒', '☕', '📖', '🎯', '⚡', '🎵', '✈️', '📌'];
 
     const colors = ['emerald', 'violet', 'orange', 'blue', 'amber', 'cyan', 'indigo', 'purple', 'pink', 'teal', 'red', 'rose', 'green', 'sky'];
 
@@ -62,7 +64,7 @@ const SubjectModal: React.FC<{
             <div className="relative pointer-events-auto w-full max-w-md m-4 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 fade-in duration-300 border border-white/20 dark:border-gray-700/50">
                 <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-                        {editingSubject ? 'ویرایش درس' : 'افزودن درس جدید'}
+                        {editingSubject ? 'ویرایش دسته‌بندی / حوزه' : 'افزودن دسته‌بندی جدید'}
                     </h2>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition">
                         <X size={20} className="text-gray-500" />
@@ -70,13 +72,32 @@ const SubjectModal: React.FC<{
                 </div>
                 <div className="p-6 space-y-5 overflow-y-auto max-h-[60vh] custom-scrollbar">
                     <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">نام درس</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">نام دسته‌بندی یا هدف</label>
                         <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                            placeholder="مثال: زبان انگلیسی"
+                            placeholder="مثال: پروژه‌های کاری، ورزش، زبان انگلیسی، مالی..."
                             className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 outline-none focus:border-indigo-500 transition text-gray-800 dark:text-white" dir="rtl" />
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">دروس پیشنهادی</label>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">آیکون</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {LIFE_ICONS.map((ic) => (
+                                <button
+                                    key={ic}
+                                    type="button"
+                                    onClick={() => setSelectedIcon(ic)}
+                                    className={`w-9 h-9 rounded-xl text-lg flex items-center justify-center border transition ${
+                                        selectedIcon === ic
+                                            ? 'bg-indigo-100 dark:bg-indigo-500/30 border-indigo-400 scale-105'
+                                            : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                                    }`}
+                                >
+                                    {ic}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">حوزه‌های پیشنهادی</label>
                         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 custom-scrollbar">
                             {suggestedSubjects.map(([subjectName, style]) => (
                                 <button key={subjectName} onClick={() => handleSelectSuggested(subjectName)}
@@ -117,14 +138,30 @@ const SubjectModal: React.FC<{
     );
 };
 
+import {
+    Table2 as TableIcon,
+    Columns3 as KanbanIcon,
+    Grid2X2 as MatrixIcon,
+    Play as FocusPlayIcon,
+} from 'lucide-react';
+import { TableView } from '../components/views/TableView';
+import { KanbanView } from '../components/views/KanbanView';
+import { EisenhowerMatrixView } from '../components/views/EisenhowerMatrixView';
+import { MonthlyCalendarView } from '../components/views/MonthlyCalendarView';
+import { useFocus } from '../context/FocusContext';
+import { TaskStatus as SubjectTaskStatus } from '../types';
+
 // === نمای تب‌ها ===
-type ViewMode = 'subjects' | 'daily' | 'monthly';
+type ViewMode = 'subjects' | 'daily' | 'table' | 'kanban' | 'eisenhower' | 'monthly';
 
 const Subjects = () => {
-    const { toggleTask, tasks, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, reorderSubjects, settings, todayDayId, currentDay, totalDays, startDate } = useStore();
+    const { toggleTask, tasks, addTask, updateTask, deleteTask, getDayDate, subjects, addSubject, updateSubject, deleteSubject, reorderSubjects, settings, todayDayId, currentDay, totalDays, startDate } = useStore();
+    const { startFocusForTask } = useFocus();
     const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
+    const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
+    const [modalDefaultStatus, setModalDefaultStatus] = useState<SubjectTaskStatus>('todo');
     const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<CustomSubject | null>(null);
     const [activeView, setActiveView] = useState<ViewMode>('subjects');
@@ -133,18 +170,20 @@ const Subjects = () => {
     const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
     const [draggedSubjectId, setDraggedSubjectId] = useState<string | null>(null);
 
-    const currentStream = settings?.stream || 'general';
+    const currentStream = settings?.stream || 'life';
+    const isAcademicStream = currentStream === 'riazi' || currentStream === 'tajrobi' || currentStream === 'ensani';
     const streamSubjects = SUBJECT_LISTS[currentStream] || [];
     const [onlySpecialized, setOnlySpecialized] = useState(true);
 
     const displayedSubjects = subjects.filter(s => {
+        if (!isAcademicStream) return true;
         if (s.name === 'شخصی') return true;
         const isDefault = Object.keys(SUBJECT_ICONS).includes(s.name);
         if (isDefault) {
             const inStream = streamSubjects.includes(s.name) || SUBJECT_LISTS['general'].includes(s.name);
             if (!inStream) return false;
 
-            if (onlySpecialized && currentStream !== 'general') {
+            if (onlySpecialized) {
                 const isSpecial = isSpecializedSubject(currentStream, s.name);
                 if (!isSpecial) return false;
             }
@@ -160,12 +199,46 @@ const Subjects = () => {
     const handleSaveTask = (taskData: Partial<SubjectTask>) => {
         if (editingTask) {
             updateTask({ ...editingTask, ...taskData } as SubjectTask);
+        } else {
+            const newTask: SubjectTask = {
+                id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                dayId: taskData.dayId || currentDay || 1,
+                date: taskData.date || modalDefaultDate || new Date().toISOString().split('T')[0],
+                subject: taskData.subject || subjects[0]?.name || 'عمومی',
+                topic: taskData.topic || 'مطالعه جدید',
+                details: taskData.details || 'مطالعه',
+                isCompleted: modalDefaultStatus === 'completed' || !!taskData.isCompleted,
+                status: taskData.status || modalDefaultStatus || 'todo',
+                studyType: taskData.studyType || 'study',
+                priority: taskData.priority || 'medium',
+                durationMinutes: taskData.durationMinutes ?? 60,
+                startTime: taskData.startTime,
+                isMIT: taskData.isMIT,
+                blocks: taskData.blocks,
+                testRange: taskData.testRange,
+                subTasks: taskData.subTasks,
+                tags: taskData.tags,
+                qualityRating: taskData.qualityRating,
+                actualDuration: taskData.actualDuration,
+                isCustom: true,
+            };
+            addTask(newTask);
         }
+        setModalDefaultDate(undefined);
+        setModalDefaultStatus('todo');
     };
 
     const openEdit = (e: React.MouseEvent, task: SubjectTask) => {
         e.stopPropagation();
+        setModalDefaultDate(undefined);
         setEditingTask(task);
+        setIsModalOpen(true);
+    };
+
+    const openQuickAdd = (status: SubjectTaskStatus = 'todo', isoDate?: string) => {
+        setEditingTask(null);
+        setModalDefaultStatus(status);
+        setModalDefaultDate(isoDate);
         setIsModalOpen(true);
     };
 
@@ -277,27 +350,6 @@ const Subjects = () => {
             });
     }, [tasks]);
 
-    // === نمای ماهانه: تقویم شمسی ===
-    const monthlyView = useMemo(() => {
-        const today = new Date();
-        const days: { date: string; dayNum: number; tasks: SubjectTask[]; isToday: boolean }[] = [];
-
-        // ۳۰ روز آینده
-        for (let i = -3; i <= 30; i++) {
-            const d = new Date(today);
-            d.setDate(today.getDate() + i);
-            const iso = d.toISOString().split('T')[0];
-            const dayTasks = tasks.filter(t => t.date === iso);
-            days.push({
-                date: iso,
-                dayNum: d.getDate(),
-                tasks: dayTasks,
-                isToday: i === 0
-            });
-        }
-        return days;
-    }, [tasks]);
-
     // ===== رندر تسک با قابلیت drag =====
     const renderTask = (task: SubjectTask, subjectStyle: { color: string; icon: string }) => {
         const isDone = task.isCompleted;
@@ -339,7 +391,19 @@ const Subjects = () => {
                     <div className="absolute right-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-l-full shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-pulse" />
                 )}
 
-                <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity pl-1 absolute left-2 top-4">
+                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pl-1 absolute left-2 top-3.5">
+                    {!isDone && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                startFocusForTask(task);
+                            }}
+                            title="شروع تمرکز"
+                            className="text-indigo-500 hover:text-indigo-700 bg-white dark:bg-gray-700 p-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-600"
+                        >
+                            <FocusPlayIcon size={14} fill="currentColor" />
+                        </button>
+                    )}
                     <button onClick={(e) => openEdit(e, task)} className="text-blue-500 hover:text-blue-700 bg-white dark:bg-gray-700 p-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-600"><Pencil size={14} /></button>
                     <button onClick={(e) => handleDelete(e, task.id)} className="text-rose-500 hover:text-rose-700 bg-white dark:bg-gray-700 p-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-600"><Trash2 size={14} /></button>
                 </div>
@@ -354,7 +418,8 @@ const Subjects = () => {
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSaveTask}
                 initialData={editingTask}
-                currentDayId={1}
+                currentDayId={currentDay || 1}
+                defaultDateStr={modalDefaultDate}
             />
             <SubjectModal
                 isOpen={isSubjectModalOpen}
@@ -371,20 +436,24 @@ const Subjects = () => {
                         <LayoutGrid className="text-white" size={22} />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">مدیریت دروس</h1>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">وضعیت مطالعه و تست‌ها به تفکیک درس</p>
+                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">
+                            {isAcademicStream ? 'مدیریت دروس و برنامه‌ها' : 'حوزه‌های زندگی، کار و پروژه‌ها'}
+                        </h1>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                            {isAcademicStream ? 'وضعیت مطالعه و تست‌ها به تفکیک درس' : 'سازمان‌دهی همه اهداف، کارها و پروژه‌ها در ۶ نمای یکپارچه'}
+                        </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
                     {/* تب‌های نمایش */}
-                    <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1">
+                    <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1 flex-wrap">
                         <button
                             onClick={() => setActiveView('subjects')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'subjects' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
                             <LayoutGrid size={13} />
-                            دروس
+                            {isAcademicStream ? 'دروس' : 'حوزه‌ها'}
                         </button>
                         <button
                             onClick={() => setActiveView('daily')}
@@ -394,14 +463,35 @@ const Subjects = () => {
                             روزانه
                         </button>
                         <button
+                            onClick={() => setActiveView('table')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'table' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                        >
+                            <TableIcon size={13} />
+                            جدول
+                        </button>
+                        <button
+                            onClick={() => setActiveView('kanban')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'kanban' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                        >
+                            <KanbanIcon size={13} />
+                            کانبان
+                        </button>
+                        <button
+                            onClick={() => setActiveView('eisenhower')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'eisenhower' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                        >
+                            <MatrixIcon size={13} />
+                            آیزنهاور
+                        </button>
+                        <button
                             onClick={() => setActiveView('monthly')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'monthly' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
                             <Calendar size={13} />
-                            ماهانه
+                            تقویم
                         </button>
                     </div>
-                    {currentStream !== 'general' && activeView === 'subjects' && (
+                    {isAcademicStream && activeView === 'subjects' && (
                         <button
                             onClick={() => setOnlySpecialized(!onlySpecialized)}
                             className={`text-[11px] px-3.5 py-2.5 rounded-2xl font-black transition-all border shrink-0 ${
@@ -410,7 +500,7 @@ const Subjects = () => {
                                     : 'bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200/30 dark:border-gray-700/30'
                             }`}
                         >
-                            {onlySpecialized ? 'فقط دروس تخصصی 🎯' : 'همه دروس 📚'}
+                            {onlySpecialized ? 'فقط دروس تخصصی 🎯' : 'همه دسته‌ها 📚'}
                         </button>
                     )}
                     <button
@@ -418,7 +508,7 @@ const Subjects = () => {
                         className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl font-black text-[11px] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 hover:translate-y-[-2px] transition-all active:scale-95 shrink-0"
                     >
                         <Plus size={18} />
-                        درس جدید
+                        {isAcademicStream ? 'درس جدید' : 'دسته جدید'}
                     </button>
                 </div>
             </div>
@@ -524,56 +614,32 @@ const Subjects = () => {
                 </div>
             )}
 
-            {/* ===== نمای ۳: ماهانه (تقویم) ===== */}
+            {/* ===== نمای ۳: جدول جامع (Notion-style) ===== */}
+            {activeView === 'table' && (
+                <TableView tasks={tasks} onEdit={openEdit} onDelete={handleDelete} />
+            )}
+
+            {/* ===== نمای ۴: تخته کانبان ===== */}
+            {activeView === 'kanban' && (
+                <KanbanView
+                    tasks={tasks}
+                    onEdit={openEdit}
+                    onAddQuick={(status) => openQuickAdd(status)}
+                />
+            )}
+
+            {/* ===== نمای ۵: ماتریس اولویت آیزنهاور ===== */}
+            {activeView === 'eisenhower' && (
+                <EisenhowerMatrixView tasks={tasks} onEdit={openEdit} />
+            )}
+
+            {/* ===== نمای ۶: تقویم هفتگی و ماهانه شمسی ===== */}
             {activeView === 'monthly' && (
-                <div>
-                    {/* هدر هفته */}
-                    <div className="grid grid-cols-7 gap-2 mb-3">
-                        {['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(d => (
-                            <div key={d} className="text-center text-[11px] font-bold text-gray-400 dark:text-gray-500 py-1">{d}</div>
-                        ))}
-                    </div>
-
-                    {/* گرید روزها */}
-                    <div className="grid grid-cols-7 gap-2">
-                        {monthlyView.map(day => {
-                            const hasTasks = day.tasks.length > 0;
-                            const allDone = hasTasks && day.tasks.every(t => t.isCompleted);
-                            const someDone = hasTasks && day.tasks.some(t => t.isCompleted) && !allDone;
-
-                            return (
-                                <div
-                                    key={day.date}
-                                    className={`relative min-h-[72px] rounded-xl p-2 border transition-all cursor-pointer hover:shadow-md ${day.isToday
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800 shadow-sm'
-                                        : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
-                                        }`}
-                                    title={`${getShamsiDate(day.date)} — ${day.tasks.length} تسک`}
-                                >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className={`text-[11px] font-bold ${day.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                                            {day.dayNum}
-                                        </span>
-                                        {hasTasks && (
-                                            <span className={`w-2 h-2 rounded-full ${allDone ? 'bg-emerald-400' : someDone ? 'bg-amber-400' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                        )}
-                                    </div>
-                                    {day.tasks.slice(0, 2).map(t => {
-                                        const st = getSubjectStyle(t.subject);
-                                        return (
-                                            <div key={t.id} className={`text-[8px] font-bold px-1 py-0.5 rounded mb-0.5 truncate bg-${st.color}-100 dark:bg-${st.color}-500/20 text-${st.color}-700 dark:text-${st.color}-300`}>
-                                                {st.icon} {t.subject}
-                                            </div>
-                                        );
-                                    })}
-                                    {day.tasks.length > 2 && (
-                                        <div className="text-[8px] text-gray-400 font-bold">+{day.tasks.length - 2} دیگر</div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
+                <MonthlyCalendarView
+                    tasks={tasks}
+                    onEdit={openEdit}
+                    onAddOnDate={(iso) => openQuickAdd('todo', iso)}
+                />
             )}
         </div>
     );

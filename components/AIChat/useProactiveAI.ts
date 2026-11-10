@@ -6,7 +6,7 @@ import { get, set } from 'idb-keyval';
 import { toIsoString, getShamsiDate } from '../../utils';
 
 export const useProactiveAI = () => {
-    const { settings, tasks, updateSettings, userName, currentDay, getProgress } = useStore();
+    const { settings, tasks, updateSettings, userName, currentDay, getProgress, userId, geminiApiKey } = useStore();
 
     useEffect(() => {
         const checkProactive = async () => {
@@ -15,7 +15,7 @@ export const useProactiveAI = () => {
 
             if (lastCheck === todayIso) return; // Already checked today
 
-            const activeApiKey = settings.geminiApiKey || localStorage.getItem('gemini_api_key') || '';
+            const activeApiKey = geminiApiKey || settings.geminiApiKey || localStorage.getItem('gemini_api_key') || '';
             const activeModel = settings.geminiModel || 'gemini-2.0-flash';
 
             if (!activeApiKey) return;
@@ -67,7 +67,7 @@ export const useProactiveAI = () => {
                 const responseText = result.response.text().trim();
 
                 if (responseText !== 'IGNORE' && responseText.length > 5) {
-                    await sendProactiveMessage(responseText);
+                    await sendProactiveMessage(responseText, userId);
                     updateSettings({ hasUnreadAiMessage: true });
                 }
 
@@ -79,16 +79,22 @@ export const useProactiveAI = () => {
 
         const t = setTimeout(checkProactive, 5000); // Wait 5s before running so we don't block initial load
         return () => clearTimeout(t);
-    }, [settings.geminiApiKey, tasks]);
+    }, [geminiApiKey, settings.geminiApiKey, tasks, userId]);
 };
 
-async function sendProactiveMessage(text: string) {
+async function sendProactiveMessage(text: string, userId?: string) {
     try {
-        let savedSessions: any = await get('gemini_chat_sessions');
+        const storageKey = `gemini_chat_sessions_${userId || 'parsaplan_local_user'}`;
+        let savedSessions: any = await get(storageKey);
         if (!savedSessions) {
-            const localRaw = localStorage.getItem('gemini_chat_sessions');
-            if (localRaw) savedSessions = JSON.parse(localRaw);
-            else savedSessions = [];
+            const legacy = await get('gemini_chat_sessions');
+            if (legacy) {
+                savedSessions = legacy;
+            } else {
+                const localRaw = localStorage.getItem(storageKey) || localStorage.getItem('gemini_chat_sessions');
+                if (localRaw) savedSessions = JSON.parse(localRaw);
+                else savedSessions = [];
+            }
         }
 
         let session;
@@ -114,7 +120,7 @@ async function sendProactiveMessage(text: string) {
         session.messages.push(newMsg);
         session.timestamp = Date.now();
 
-        await set('gemini_chat_sessions', savedSessions);
+        await set(storageKey, savedSessions);
     } catch (e) {
         console.error("Failed to inject proactive message", e);
     }

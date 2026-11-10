@@ -53,7 +53,6 @@ export default {
             },
             screens: {
                 'xs': '375px',
-                'print': { 'raw': 'print' },
             },
             animation: {
                 'fade-in': 'fadeIn 0.3s ease-out',

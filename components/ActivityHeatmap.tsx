@@ -173,8 +173,14 @@ const ActivityHeatmap = () => {
                     <span>10h+</span>
                 </div>
             </div>
+
+            <div className="deferred-section mt-4">
+                <AnnualStudyHeatmap />
+            </div>
         </div>
     );
 };
+
+import { AnnualStudyHeatmap } from './AnnualStudyHeatmap';
 
 export default ActivityHeatmap;

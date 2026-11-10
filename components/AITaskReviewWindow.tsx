@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { SubjectTask, Subject } from '../types';
+import { SubjectTask, Subject, StudyType } from '../types';
 import { TaskCard } from './TaskCard';
 import { Sparkles, X, Check, Plus } from 'lucide-react';
 import TaskModal from './TaskModal';
@@ -13,7 +13,7 @@ export interface ParsedTask {
     details: string;
     testRange?: string;
     date: string;
-    studyType?: 'exam' | 'analysis' | 'test_educational' | 'test_speed' | 'review' | 'study';
+    studyType?: StudyType;
     subTasks?: { subject: string; topic: string; }[];
     id?: string;
     isCompleted?: boolean;

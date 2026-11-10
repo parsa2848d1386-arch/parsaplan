@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { DAILY_ROUTINE } from '../constants';
+import { ROUTINE_TEMPLATES } from '../constants';
 import { Clock, Check, LayoutTemplate, Coffee, BookOpen, Calculator, FlaskConical, Tv, Zap, Dumbbell, Brain, Bed, Music, MonitorPlay, Pencil, Plus, Settings, GripVertical } from 'lucide-react';
 import { DailyRoutineSlot } from '../types';
 import { RoutineSlotEditor } from '../components/RoutineSlotEditor';
@@ -50,18 +50,14 @@ const DailyRoutinePage = () => {
         }
     }
 
-    const applyTemplate = (templateName: string) => {
-        if (templateName === 'exam') {
-            const examTemplate: DailyRoutineSlot[] = DAILY_ROUTINE.map(s => ({ ...s, time: '08:00 - 12:00', title: 'آزمون جامع', type: 'test' as const, icon: 'test' })).slice(0, 3);
-            setRoutineTemplate(examTemplate);
-        } else if (templateName === 'holiday') {
-            const holidayTemplate: DailyRoutineSlot[] = DAILY_ROUTINE.map(s => ({ ...s, time: '10:00 - 12:00', icon: 'rest' }));
-            setRoutineTemplate(holidayTemplate);
-        } else {
+    const applyTemplate = (templateName: 'balanced_life' | 'deep_work' | 'study_exam' | 'clear') => {
+        if (templateName === 'clear') {
             resetRoutineToDefault();
+        } else {
+            setRoutineTemplate(ROUTINE_TEMPLATES[templateName]);
         }
         setIsDropdownOpen(false);
-    }
+    };
 
     const handleIconSelect = (iconName: string) => {
         if (pickingIconFor !== null) {
@@ -152,10 +148,11 @@ const DailyRoutinePage = () => {
                             {isDropdownOpen && (
                                 <>
                                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
-                                    <div className="absolute left-0 top-full mt-2 w-32 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-20 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                        <button onClick={() => applyTemplate('default')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">پیش‌فرض</button>
-                                        <button onClick={() => applyTemplate('exam')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">روز آزمون</button>
-                                        <button onClick={() => applyTemplate('holiday')} className="w-full text-right px-4 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">روز تعطیل</button>
+                                    <div className="absolute left-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-20 overflow-hidden animate-in fade-in zoom-in duration-200">
+                                        <button onClick={() => applyTemplate('balanced_life')} className="w-full text-right px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">🌱 تعادل زندگی و سلامت</button>
+                                        <button onClick={() => applyTemplate('deep_work')} className="w-full text-right px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">💼 کار عمیق و پروژه</button>
+                                        <button onClick={() => applyTemplate('study_exam')} className="w-full text-right px-4 py-2.5 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-200">📘 مطالعه و آزمون</button>
+                                        <button onClick={() => applyTemplate('clear')} className="w-full text-right px-4 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 border-t border-gray-100 dark:border-gray-700">🗑️ خالی کردن روتین</button>
                                     </div>
                                 </>
                             )}
@@ -165,8 +162,46 @@ const DailyRoutinePage = () => {
                 </div>
 
                 <div className="space-y-6 relative isolate">
-                    {/* Vertical Line */}
-                    <div className="absolute top-4 bottom-4 right-[23px] w-0.5 bg-gray-200 dark:bg-gray-700 -z-10"></div>
+                    {/* Empty State when user hasn't created/chosen a routine yet */}
+                    {routineTemplate.length === 0 && !isEditMode ? (
+                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700 p-8 text-center space-y-4">
+                            <p className="text-sm font-black text-gray-700 dark:text-gray-200">
+                                هنوز الگوی روتین روزانه‌ای ثبت نکرده‌اید
+                            </p>
+                            <p className="text-xs text-gray-400 max-w-md mx-auto">
+                                می‌توانید خودتان اسلات‌های دلخواه بسازید یا یکی از الگوهای آماده زندگی، کار یا مطالعه را بارگذاری و شخصی‌سازی کنید:
+                            </p>
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <button
+                                    onClick={() => applyTemplate('balanced_life')}
+                                    className="px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 text-xs font-black"
+                                >
+                                    🌱 الگوی تعادل زندگی و ورزش
+                                </button>
+                                <button
+                                    onClick={() => applyTemplate('deep_work')}
+                                    className="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 text-xs font-black"
+                                >
+                                    💼 الگوی کار عمیق و پروژه
+                                </button>
+                                <button
+                                    onClick={() => applyTemplate('study_exam')}
+                                    className="px-4 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 text-xs font-black"
+                                >
+                                    📘 الگوی مطالعه
+                                </button>
+                                <button
+                                    onClick={() => { setIsEditMode(true); openAddSlot(); }}
+                                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black"
+                                >
+                                    + ساخت اسلات شخصی
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Vertical Line */
+                        <div className="absolute top-4 bottom-4 right-[23px] w-0.5 bg-gray-200 dark:bg-gray-700 -z-10"></div>
+                    )}
 
                     {routineTemplate.map((slot, index) => {
                         const isCompleted = isRoutineSlotCompleted(currentDay, slot.id);

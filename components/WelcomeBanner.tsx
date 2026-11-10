@@ -51,8 +51,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss
 
                         {/* Description */}
                         <p className="text-xs text-indigo-100 leading-relaxed mb-4">
-                            اینجا می‌تونید با کمک هوش مصنوعی برنامه مطالعاتی بسازید، تسک‌هاتون رو مدیریت کنید و پیشرفتتون رو رصد کنید.
-                            برای شروع از دکمه‌های زیر استفاده کنید!
+                            اینجا می‌توانید برنامه‌های کاری، پروژه‌ها، ورزش و سلامت، کارهای شخصی و مطالعه خود را مدیریت کنید، زمان خود را در تایم‌لاین بچینید و پیوستگی روزانه‌تان را رصد کنید.
                         </p>
 
                         {/* Action buttons */}
@@ -65,11 +64,11 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss
                                 ساخت برنامه با هوش مصنوعی
                             </button>
                             <button
-                                onClick={() => { navigate('/subjects'); onDismiss(); }}
+                                onClick={() => { navigate('/planner'); onDismiss(); }}
                                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/15 text-white rounded-xl font-bold text-xs hover:bg-white/25 active:scale-95 transition-all border border-white/20"
                             >
                                 <Plus size={15} />
-                                افزودن تسک دستی
+                                برنامه‌ریزی در تایم‌لاین
                             </button>
                         </div>
 
@@ -77,7 +76,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss
                         <div className="mt-4 flex items-start gap-2 bg-white/10 rounded-xl p-3">
                             <BookOpen size={14} className="text-amber-300 mt-0.5 flex-shrink-0" />
                             <p className="text-[10px] text-indigo-200 leading-relaxed">
-                                <span className="font-bold text-white">راهنمایی:</span> می‌تونید به دستیار AI بگید «یک برنامه ۱۲ روزه مطالعاتی برای کنکور بساز» تا خودش همه چیز رو آماده کنه!
+                                <span className="font-bold text-white">راهنمایی:</span> از دکمه <strong className="text-white">تخلیه ذهن (B)</strong> یا پالت فرمان <strong className="text-white">Ctrl+K</strong> استفاده کنید؛ مثلاً بنویسید «ورزش ساعت ۱۸ تا ۱۹» یا «جلسه پروژه فردا ساعت ۱۰» تا خودش زمان‌بندی شود!
                             </p>
                         </div>
                     </div>

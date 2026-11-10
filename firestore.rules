@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// ===============================================================
+// ParsaPlan 2.0 - Cloud Firestore Security Rules
+// Local-First Architecture + Subcollections + Live Study Rooms
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Root Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ---------------------------------------------------------------
+    // Private User Profile & Subcollections (Never allow geminiApiKey)
+    // ---------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
+        (!('settings' in request.resource.data) || !('geminiApiKey' in request.resource.data.settings));
+      allow delete: if isOwner(userId);
+
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /sessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /flashcards/{cardId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /pages/{pageId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Public Leaderboard Profiles
+    // ---------------------------------------------------------------
+    match /publicProfiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isOwner(profileId);
+    }
+
+    // ---------------------------------------------------------------
+    // Public Live Study Cabins
+    // ---------------------------------------------------------------
+    match /liveSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isOwner(sessionId);
+    }
+
+    // ---------------------------------------------------------------
+    // Group Study Rooms (Private 6-Char Code Rooms)
+    // ---------------------------------------------------------------
+    match /study_rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() &&
+        request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() &&
+        resource.data.creatorId == request.auth.uid;
+
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow create, update, delete: if isOwner(memberId);
+      }
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() &&
+          request.resource.data.senderId == request.auth.uid &&
+          request.resource.data.text is string &&
+          request.resource.data.text.size() >= 1 &&
+          request.resource.data.text.size() <= 300;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

@@ -90,6 +90,28 @@
     --color-violet-950: #431407;
   }
 
+  :root {
+    color-scheme: light dark;
+    accent-color: rgb(var(--color-primary));
+    --scrollbar-track: #e2e8f0;
+    --scrollbar-thumb: #475569;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --scrollbar-track: #1e293b;
+    --scrollbar-thumb: #94a3b8;
+  }
+
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  :where(a:any-link, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid rgb(var(--color-primary));
+    outline-offset: 2px;
+  }
+
   body {
     font-family: var(--font-vazir);
     @apply bg-slate-50 text-gray-900 overflow-x-hidden;
@@ -518,17 +540,25 @@
    CUSTOM SCROLLBAR
    ================================================================ */
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+.custom-scrollbar {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
+@supports not (scrollbar-color: auto) {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-gray-200 dark:bg-gray-700 rounded-full;
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -808,4 +838,47 @@
 .animate-sound-wave {
   animation: soundWaveBar 0.8s ease-in-out infinite;
   transform-origin: bottom;
+}
+
+/* Native Top-Layer Dialog Scroll Containment */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+/* Accessibility & Focus Utilities */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.pretty-text {
+  text-wrap: pretty;
+}
+
+.deferred-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-sound-wave,
+  .animate-float,
+  .animate-bounce {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }

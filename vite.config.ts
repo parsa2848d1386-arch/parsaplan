@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        includeAssets: ['icons/icon.svg', 'apple-touch-icon.png', 'masked-icon.svg'],
 
         // --- Phase 2: Enhanced Workbox for Offline-First ---
         workbox: {
@@ -84,7 +84,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'ParsaPlan - برنامه ریزی هوشمند',
           short_name: 'ParsaPlan',
-          description: 'برنامه ریزی جامع، هوشمند و آفلاین برای موفقیت در کنکور',
+          description: 'دستیار جامع، هوشمند و آفلاین برای برنامه‌ریزی زندگی، کار، پروژه‌ها، عادت‌ها و یادگیری',
           theme_color: '#4f46e5',
           background_color: '#0f172a',
           display: 'standalone',
@@ -151,7 +151,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             // Vendor chunks — each loaded on demand
-            'vendor-react': ['react', 'react-dom'],
             'vendor-router': ['react-router-dom'],
             'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
             'vendor-charts': ['recharts'],

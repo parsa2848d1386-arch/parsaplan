@@ -36,7 +36,7 @@ interface LiveSession {
 }
 
 const Leaderboard = () => {
-    const { user, userName, xp, level, getProgress, tasks, showToast, firebaseConfig } = useStore();
+    const { user, userName, xp, level, getProgress, tasks, showToast, firebaseConfig, settings, updateSettings } = useStore();
     const [leaderboardData, setLeaderboardData] = useState<PublicProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
@@ -733,7 +733,24 @@ const Leaderboard = () => {
                     </div>
                 )}
 
-                {/* Leaderboard Controls */}
+                {/* Live Focus Room Quick Banner + Leaderboard Controls */}
+                <div className="bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-800/40 rounded-2xl p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="text-xs font-bold text-indigo-800 dark:text-indigo-200">
+                        🎧 می‌خواهید با دوستانتان همزمان مطالعه کنید؟ اتاق مطالعه گروهی (کد دعوت + تشویق زنده) در تایمر تمرکز فعال است.
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })}
+                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black shrink-0 border transition ${
+                            settings?.anonymizedLeaderboard
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-200 border-gray-200 dark:border-gray-700'
+                        }`}
+                    >
+                        {settings?.anonymizedLeaderboard ? '🕵️ حالت ناشناس فعال است' : '👁️ نمایش نام واقعی رقبا'}
+                    </button>
+                </div>
+
                 <div className="flex gap-2 mb-4 overflow-x-auto pb-2 select-none">
                     <button
                         onClick={() => setSortBy('xp')}
@@ -804,6 +821,8 @@ const Leaderboard = () => {
                         return filteredData.map((profile, index) => {
                             const rank = index + 1;
                             const isCurrentUser = profile.id === user?.uid;
+                            const isMasked = !!settings?.anonymizedLeaderboard && !isCurrentUser;
+                            const displayProfileName = isMasked ? `داوطلب #${profile.id.slice(-4).toUpperCase()}` : profile.userName;
 
                             return (
                                 <div
@@ -816,12 +835,12 @@ const Leaderboard = () => {
                                         </div>
 
                                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-base shadow-sm">
-                                            {profile.userName?.[0] || '?'}
+                                            {displayProfileName?.[0] || '?'}
                                         </div>
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-extrabold text-xs text-gray-800 dark:text-white truncate">{profile.userName}</p>
+                                                <p className="font-extrabold text-xs text-gray-800 dark:text-white truncate">{displayProfileName}</p>
                                                 {isCurrentUser && <span className="text-[8px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black">شما</span>}
                                             </div>
                                             <p className="text-[10px] text-gray-400 font-bold mt-0.5">سطح {profile.level} • {getTimeAgo(profile.lastActive)}</p>

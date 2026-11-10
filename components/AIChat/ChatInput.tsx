@@ -23,6 +23,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
     }, [input]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             const isUploading = previews.some(p => p.uploading);
@@ -112,7 +113,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                                             </div>
                                         )}
                                     </div>
-                                    <button onClick={() => removeAttachment(idx)} className="absolute -top-2 -right-2 bg-gray-500 hover:bg-rose-500 text-white rounded-full p-1 transition shadow-md z-10 scale-0 group-hover/preview:scale-100">
+                                    <button type="button" onClick={() => removeAttachment(idx)} aria-label="حذف فایل پیوست" className="absolute -top-2 -right-2 bg-gray-500 hover:bg-rose-500 text-white rounded-full p-1 transition shadow-md z-10 scale-0 group-hover/preview:scale-100">
                                         <X size={10} />
                                     </button>
                                 </div>
@@ -122,9 +123,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
 
                     <div className="flex items-end gap-2 pr-1.5 pl-1.5">
                         <button 
+                            type="button"
                             onClick={() => fileInputRef.current?.click()} 
                             className="p-3 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 rounded-full transition-colors mb-0.5 btn-micro-interactive" 
                             title="افزودن فایل"
+                            aria-label="افزودن فایل"
                         >
                             <Paperclip size={18} />
                         </button>
@@ -136,6 +139,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={isUploading ? "در حال آپلود فایل..." : "پیام خود را بنویسید..."}
+                            aria-label="متن پیام برای دستیار هوشمند"
                             className="flex-1 bg-transparent border-none focus:ring-0 py-3 min-h-[44px] max-h-[150px] resize-none text-[13px] md:text-[14px] custom-scrollbar dark:text-white placeholder-gray-400 leading-relaxed font-semibold outline-none border-0"
                             rows={1}
                             dir="rtl"
@@ -145,16 +149,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                         <div className="pb-0.5 pl-0.5">
                             {isTyping && onStop ? (
                                 <button
+                                    type="button"
                                     onClick={onStop}
                                     className="w-10 h-10 flex items-center justify-center bg-rose-500 hover:bg-rose-600 text-white rounded-full transition-all shadow-md shadow-rose-500/20 btn-micro-interactive"
                                     title="توقف"
+                                    aria-label="توقف پاسخ‌دهی"
                                 >
                                     <StopCircle size={18} className="animate-pulse" strokeWidth={2.5} />
                                 </button>
                             ) : (
                                 <button
+                                    type="button"
                                     onClick={handleSendClick}
                                     disabled={(!input.trim() && attachments.length === 0) || isTyping || isUploading}
+                                    aria-label="ارسال پیام"
                                     className="w-10 h-10 flex items-center justify-center bg-gradient-to-tr from-indigo-600 to-purple-650 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-gray-800 dark:disabled:to-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-full transition-all shadow-md shadow-indigo-500/25 btn-micro-interactive group"
                                 >
                                     {isTyping || isUploading ? (
