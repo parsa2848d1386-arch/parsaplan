@@ -6,7 +6,7 @@ import {
     CheckCircle2, Flame,
     ArrowDownToLine, Play, ChevronRight, ChevronLeft, GitCompare, RefreshCw
 } from 'lucide-react';
-import { getShamsiDate, toIsoString, addDays, formatToPersianDigits } from '../utils';
+import { getShamsiDate, toIsoString, addDays, parseDate, getDiffDays, formatToPersianDigits } from '../utils';
 import { getLogicalDateKey } from '../utils/streakEngine';
 import { useFocus } from '../context/FocusContext';
 import MoodTracker from '../components/MoodTracker';
@@ -77,61 +77,158 @@ const ProgressRing = ({
     );
 };
 
-const PERSIAN_SHORT_DAYS: Record<number, string> = {
-    6: 'ش',
-    0: '۱ش',
-    1: '۲ش',
-    2: '۳ش',
-    3: '۴ش',
-    4: '۵ش',
-    5: 'ج',
-};
+const PERSIAN_WEEKDAYS_SAT_START = ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'] as const;
+const PERSIAN_WEEKDAYS_FULL = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'] as const;
 
-/* ===== Quick Week Mini-View ===== */
-const WeekMini = () => {
-    const { getTasksByDate, getDayDate, currentDay, totalDays, setCurrentDay } = useStore();
-    const today = toIsoString(new Date());
-    const windowStart = Math.max(1, Math.min(currentDay - 3, Math.max(1, totalDays - 6)));
-    const days = Array.from({ length: Math.min(7, totalDays) }, (_, i) => {
-        const dayId = windowStart + i;
-        const date = getDayDate(dayId);
-        const tasks = getTasksByDate(date);
-        const done = tasks.filter(t => t.isCompleted).length;
+/* ===== Quick Week Mini-View (True Persian Saturday→Friday Week) ===== */
+const WeekMini: React.FC<{
+    selectedIso: string;
+    onSelectDate: (iso: string, mappedDayId?: number) => void;
+}> = ({ selectedIso, onSelectDate }) => {
+    const { getTasksByDate, startDate, totalDays } = useStore();
+    const todayIso = toIsoString(new Date());
+    const [weekOffset, setWeekOffset] = useState(0);
+
+    // Anchor week around selectedIso (unless browsing weeks via arrows)
+    const baseDate = parseDate(selectedIso || todayIso);
+    const shiftedAnchor = addDays(baseDate, weekOffset * 7);
+    // Saturday index in Sat..Fri cycle: JS getDay() Sat=6 -> 0, Sun=0 -> 1, ..., Fri=5 -> 6
+    const daysSinceSaturday = (shiftedAnchor.getDay() + 1) % 7;
+    const weekSaturday = addDays(shiftedAnchor, -daysSinceSaturday);
+
+    useEffect(() => {
+        setWeekOffset(0);
+    }, [selectedIso]);
+
+    const days = Array.from({ length: 7 }, (_, i) => {
+        const dObj = addDays(weekSaturday, i);
+        const iso = toIsoString(dObj);
+        const tasks = getTasksByDate(iso);
+        const done = tasks.filter((t) => t.isCompleted).length;
         const total = tasks.length;
         const pct = total > 0 ? done / total : 0;
-        const isToday = date === today;
-        return { dayId, date, done, total, pct, isToday };
+        const isToday = iso === todayIso;
+        const isSelected = iso === selectedIso;
+        const shamsiStr = getShamsiDate(iso);
+        const shamsiDayNum = shamsiStr.split(' ')[0] || '';
+        const diffFromStart = startDate ? getDiffDays(startDate, iso) + 1 : 0;
+        const mappedDayId = diffFromStart >= 1 && diffFromStart <= totalDays ? diffFromStart : undefined;
+
+        return {
+            index: i,
+            iso,
+            weekdayShort: PERSIAN_WEEKDAYS_SAT_START[i],
+            weekdayFull: PERSIAN_WEEKDAYS_FULL[i],
+            shamsiStr,
+            shamsiDayNum,
+            done,
+            total,
+            pct,
+            isToday,
+            isSelected,
+            mappedDayId,
+        };
     });
 
-    return (
-        <div className="flex items-end gap-2 justify-center">
-            {days.map((d) => {
-                const dateObj = new Date(d.date);
-                const shortHand = PERSIAN_SHORT_DAYS[dateObj.getDay()] || String(d.dayId);
+    const weekRangeLabel = `${days[0].shamsiStr} تا ${days[6].shamsiStr}`;
 
-                return (
-                    <div key={d.dayId} className="flex flex-col items-center gap-1">
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between text-[11px]">
+                <span className="text-gray-400 font-bold">{weekRangeLabel}</span>
+                <div className="flex items-center gap-1">
+                    {weekOffset !== 0 && (
                         <button
                             type="button"
-                            onClick={() => setCurrentDay(d.dayId)}
-                            className={`relative w-10 flex flex-col items-center justify-end h-14 bg-gray-100 dark:bg-gray-700/50 rounded-xl overflow-hidden hover:opacity-80 transition cursor-pointer ${d.dayId === currentDay ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900 border border-indigo-200 dark:border-indigo-800' : ''}`}
+                            onClick={() => setWeekOffset(0)}
+                            className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-black ml-1"
                         >
+                            هفته فعلی
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setWeekOffset((w) => w - 1)}
+                        aria-label="هفته قبل"
+                        className="p-1 rounded-lg bg-gray-100 dark:bg-gray-700/60 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-500 dark:text-gray-300 transition"
+                    >
+                        <ChevronRight size={13} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setWeekOffset((w) => w + 1)}
+                        aria-label="هفته بعد"
+                        className="p-1 rounded-lg bg-gray-100 dark:bg-gray-700/60 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-500 dark:text-gray-300 transition"
+                    >
+                        <ChevronLeft size={13} />
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                {days.map((d) => (
+                    <div key={d.iso} className="flex flex-col items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={() => onSelectDate(d.iso, d.mappedDayId)}
+                            title={`${d.weekdayFull} ${d.shamsiStr}${d.total > 0 ? ` — ${formatToPersianDigits(d.done)} از ${formatToPersianDigits(d.total)} انجام‌شده` : ''}`}
+                            aria-label={`${d.weekdayFull} ${d.shamsiStr}`}
+                            className={`relative w-full max-w-[44px] flex flex-col items-center justify-end h-16 bg-gray-100/80 dark:bg-gray-700/40 rounded-xl overflow-hidden hover:opacity-90 transition cursor-pointer ${
+                                d.isSelected
+                                    ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900 border border-indigo-200 dark:border-indigo-700'
+                                    : 'border border-gray-200/40 dark:border-gray-700/40'
+                            }`}
+                        >
+                            {/* Completion bar fill */}
                             <div
-                                className={`w-full rounded-b-xl transition-all duration-700 ${d.pct > 0.8 ? 'bg-emerald-500' : d.pct > 0.4 ? 'bg-indigo-400' : d.pct > 0 ? 'bg-indigo-300' : 'bg-transparent'}`}
+                                className={`w-full transition-all duration-700 ${
+                                    d.pct >= 0.8
+                                        ? 'bg-emerald-500/85'
+                                        : d.pct >= 0.4
+                                          ? 'bg-indigo-400/85'
+                                          : d.pct > 0
+                                            ? 'bg-indigo-300/80'
+                                            : 'bg-transparent'
+                                }`}
                                 style={{ height: `${Math.max(d.pct * 100, 0)}%` }}
                             />
-                            {d.isToday && (
-                                <div className="absolute top-1 right-0 left-0 flex justify-center">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
-                                </div>
-                            )}
+
+                            {/* Shamsi date number & today dot overlay */}
+                            <div className="absolute inset-x-0 top-1.5 flex flex-col items-center pointer-events-none">
+                                <span
+                                    className={`text-[10px] font-black leading-none ${
+                                        d.pct > 0.65
+                                            ? 'text-white drop-shadow-sm'
+                                            : d.isToday
+                                              ? 'text-indigo-600 dark:text-indigo-300'
+                                              : 'text-gray-600 dark:text-gray-300'
+                                    }`}
+                                >
+                                    {d.shamsiDayNum}
+                                </span>
+                                {d.isToday && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse mt-1" />
+                                )}
+                            </div>
                         </button>
-                        <span className={`text-[10px] whitespace-nowrap font-bold ${d.isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'}`}>
-                            {shortHand}
+
+                        <span
+                            className={`text-[10px] whitespace-nowrap font-bold ${
+                                d.isToday
+                                    ? 'text-indigo-600 dark:text-indigo-400 font-black'
+                                    : d.isSelected
+                                      ? 'text-gray-800 dark:text-white font-extrabold'
+                                      : 'text-gray-400'
+                            }`}
+                        >
+                            {d.weekdayShort}
+                        </span>
+                        <span className="text-[9px] text-gray-400 font-mono leading-none">
+                            {d.total > 0 ? `${formatToPersianDigits(d.done)}/${formatToPersianDigits(d.total)}` : '·'}
                         </span>
                     </div>
-                );
-            })}
+                ))}
+            </div>
         </div>
     );
 };
@@ -150,8 +247,22 @@ const Dashboard = () => {
 
     const overallProgress = getProgress();
 
-    const activeDateIso = getDayDate(currentDay);
+    const [selectedDateOverride, setSelectedDateOverride] = useState<string | null>(null);
+    useEffect(() => {
+        setSelectedDateOverride(null);
+    }, [currentDay]);
+
+    const activeDateIso = selectedDateOverride || getDayDate(currentDay);
     const dailyTasks = useMemo(() => getTasksByDate(activeDateIso), [getTasksByDate, activeDateIso]);
+
+    const handleSelectWeekDate = (iso: string, mappedDayId?: number) => {
+        if (mappedDayId !== undefined) {
+            setSelectedDateOverride(null);
+            setCurrentDay(mappedDayId);
+        } else {
+            setSelectedDateOverride(iso);
+        }
+    };
 
     const currentStream = settings?.stream || 'life';
     const isAcademicStream = currentStream === 'riazi' || currentStream === 'tajrobi' || currentStream === 'ensani';
@@ -410,7 +521,7 @@ const Dashboard = () => {
                         نمای هفتگی
                     </h3>
                 </div>
-                <WeekMini />
+                <WeekMini selectedIso={activeDateIso} onSelectDate={handleSelectWeekDate} />
             </div>
 
             {/* ===== STREAK CARD ===== */}

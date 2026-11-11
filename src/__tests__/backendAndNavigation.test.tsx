@@ -154,6 +154,7 @@ import { syncEngine } from '../../services/syncEngine';
 import Analysis from '../../pages/Analysis';
 import Dashboard from '../../pages/Dashboard';
 import Layout from '../../components/Layout';
+import WeeklyView from '../../components/WeeklyView';
 import { UIProvider } from '../../context/UIContext';
 
 beforeAll(() => {
@@ -250,6 +251,18 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
 
         expect(screen.getByText('تایمر فوکوس')).toBeInTheDocument();
         expect(screen.getByText(/زنجیره پیوستگی/)).toBeInTheDocument();
+
+        // WeekMini Saturday-to-Friday distinct weekdays & navigation
+        ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'].forEach((wd) => {
+            expect(screen.getByText(wd)).toBeInTheDocument();
+        });
+        expect(screen.getByRole('button', { name: 'هفته قبل' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'هفته بعد' })).toBeInTheDocument();
+
+        render(<WeeklyView />);
+        ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].forEach((fullWd) => {
+            expect(screen.getByText(fullWd)).toBeInTheDocument();
+        });
     });
 
     it('unifies Search+Ctrl+K and restricts mobile bottom nav strictly to 5 core tabs without دفترچه/روتین/لایتنر', () => {
