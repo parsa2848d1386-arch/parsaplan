@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import {
-    Plus, Target, Clock, CalendarDays,
-    Clipboard, Sparkles, Zap, TrendingUp,
-    CheckCircle2, Circle, Star, Flame,
-    ArrowDownToLine, BookOpen, Play, ChevronRight, ChevronLeft, GitCompare, Brain, RefreshCw,
-    Sunrise, MoonStar, PenTool
+    Plus, CalendarDays,
+    Clipboard, Zap, TrendingUp,
+    CheckCircle2, Flame,
+    ArrowDownToLine, Play, ChevronRight, ChevronLeft, GitCompare, RefreshCw
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { getShamsiDate, toIsoString, addDays, getDiffDays, formatToPersianDigits } from '../utils';
+import { getShamsiDate, toIsoString, addDays, formatToPersianDigits } from '../utils';
 import { getLogicalDateKey } from '../utils/streakEngine';
 import { useFocus } from '../context/FocusContext';
-import { useUI } from '../context/UIContext';
 import MoodTracker from '../components/MoodTracker';
 import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
@@ -40,143 +37,6 @@ const AnimatedNumber = ({ value, suffix = '' }: { value: number; suffix?: string
     }, [value]);
 
     return <span>{display}{suffix}</span>;
-};
-
-/* ===== 2026 Circadian Bio-Readiness Rhythm Panel ===== */
-const CircadianRhythmPanel = () => {
-    const currentHour = new Date().getHours();
-    
-    // Calculate current energy level and advice based on hour
-    let energy = 50;
-    let title = '';
-    let advice = '';
-    let orbColor = 'bg-blue-500';
-    let pathColor = '#6366f1';
-
-    if (currentHour >= 6 && currentHour < 12) {
-        energy = 90;
-        title = 'پیک اول انرژی (تمرکز تحلیلی و کار عمیق)';
-        advice = 'ذهن در بالاترین سطح هوشیاری است. بهترین زمان برای حل مسائل پیچیده، برنامه‌ریزی پروژه، کدنویسی یا یادگیری مفاهیم جدید!';
-        orbColor = 'bg-amber-400 shadow-amber-450/40';
-        pathColor = '#fbbf24';
-    } else if (currentHour >= 12 && currentHour < 16) {
-        energy = 55;
-        title = 'شیب ملایم ظهرگاهی (هماهنگی و کارهای سبک)';
-        advice = 'افت موقت انرژی طبیعی است. بهترین زمان برای کارهای اجرایی، پاسخ به پیام‌ها، مرور نکات یا استراحت پومودورو!';
-        orbColor = 'bg-teal-400 shadow-teal-450/40';
-        pathColor = '#2dd4bf';
-    } else if (currentHour >= 16 && currentHour < 22) {
-        energy = 80;
-        title = 'پیک دوم انرژی (خلاقیت، ورزش و تثبیت)';
-        advice = 'زمان عالی برای کارهای خلاقانه، مطالعه کتاب، تمرین ورزشی و جمع‌بندی پروژه‌های روز!';
-        orbColor = 'bg-indigo-50 shadow-indigo-500/40';
-        pathColor = '#6366f1';
-    } else {
-        energy = 20;
-        title = 'فاز بازیابی و آرامش شبانه';
-        advice = 'بدن آماده استراحت است. برای عملکرد پایدار فردا، زمان ریکاوری، جمع‌بندی روز و خواب باکیفیت است.';
-        orbColor = 'bg-purple-600 shadow-purple-500/40';
-        pathColor = '#a855f7';
-    }
-
-    // Circadian SVG path coordinates (24 points, standard circadian cycle)
-    const points = [
-        { h: 0, y: 80 }, { h: 2, y: 90 }, { h: 4, y: 95 }, { h: 6, y: 70 },
-        { h: 8, y: 25 }, { h: 10, y: 15 }, { h: 12, y: 35 }, { h: 14, y: 55 },
-        { h: 16, y: 45 }, { h: 18, y: 20 }, { h: 20, y: 25 }, { h: 22, y: 50 }, { h: 24, y: 80 }
-    ];
-
-    // Build SVG path
-    const svgPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${(p.h / 24) * 100}% ${p.y}%`).join(' ');
-
-    // Calculate current pointer X position (percentage)
-    const pointerX = (currentHour / 24) * 100;
-    
-    // Find approximate Y value for the current hour
-    const activePoint = points.find(p => p.h === Math.floor(currentHour / 2) * 2) || { y: 50 };
-    const pointerY = activePoint.y;
-
-    return (
-        <div className="bg-white dark:bg-gray-800/80 rounded-[2.25rem] p-5 border border-gray-100/80 dark:border-gray-700/50 shadow-lg relative overflow-hidden animate-card-enter">
-            {/* Ambient decoration orb */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-transparent blur-2xl pointer-events-none" />
-
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500">
-                        <Brain size={16} />
-                    </div>
-                    <div>
-                        <h3 className="text-xs font-black text-gray-800 dark:text-white">ریتم آمادگی زیستی هوشمند</h3>
-                        <p className="text-[9px] text-gray-400 font-bold mt-0.5">منحنی پویای هوشیاری ذهنی شما</p>
-                    </div>
-                </div>
-                <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-extrabold px-2.5 py-1 rounded-full">
-                     آمادگی: {energy}%
-                </span>
-            </div>
-
-            {/* SVG Interactive Line Chart */}
-            <div className="relative h-20 w-full bg-gray-50/50 dark:bg-slate-900/30 rounded-2xl border border-gray-100/30 dark:border-gray-800/30 p-2 overflow-visible">
-                <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                    {/* Grid Lines */}
-                    <line x1="0" y1="25%" x2="100%" y2="25%" stroke="rgba(156,163,175,0.08)" strokeDasharray="3" />
-                    <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(156,163,175,0.08)" strokeDasharray="3" />
-                    <line x1="0" y1="75%" x2="100%" y2="75%" stroke="rgba(156,163,175,0.08)" strokeDasharray="3" />
-
-                    {/* Circadian Curve */}
-                    <path
-                        d={svgPath}
-                        fill="none"
-                        stroke={pathColor}
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        className="transition-all duration-1000"
-                    />
-
-                    {/* Current Time Indicator Vertical Bar */}
-                    <line
-                        x1={`${pointerX}%`}
-                        y1="0"
-                        x2={`${pointerX}%`}
-                        y2="100%"
-                        stroke="rgba(156,163,175,0.3)"
-                        strokeWidth="1"
-                        strokeDasharray="4"
-                    />
-                </svg>
-
-                {/* Glowing Active Dot */}
-                <div
-                    className={`absolute w-3.5 h-3.5 rounded-full border-2 border-white dark:border-gray-800 ${orbColor} animate-pulse shadow-md transition-all duration-1000`}
-                    style={{
-                        left: `calc(${pointerX}% - 7px)`,
-                        top: `calc(${pointerY}% - 7px)`,
-                    }}
-                />
-
-                {/* Timeline labels */}
-                <div className="absolute bottom-1.5 left-2 right-2 flex justify-between text-[8px] text-gray-400 font-bold font-mono" dir="ltr">
-                    <span>0:00</span>
-                    <span>6:00</span>
-                    <span>12:00</span>
-                    <span>18:00</span>
-                    <span>24:00</span>
-                </div>
-            </div>
-
-            {/* Current Phase description */}
-            <div className="mt-4 p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-2xl border border-gray-150/10 dark:border-gray-700/30">
-                <span className="text-[10px] font-black text-gray-800 dark:text-white flex items-center gap-1.5 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${orbColor}`}></span>
-                    {title}
-                </span>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-semibold">
-                    {advice}
-                </p>
-            </div>
-        </div>
-    );
 };
 
 /* ===== SVG Progress Ring ===== */
@@ -217,12 +77,23 @@ const ProgressRing = ({
     );
 };
 
+const PERSIAN_SHORT_DAYS: Record<number, string> = {
+    6: 'ش',
+    0: '۱ش',
+    1: '۲ش',
+    2: '۳ش',
+    3: '۴ش',
+    4: '۵ش',
+    5: 'ج',
+};
+
 /* ===== Quick Week Mini-View ===== */
 const WeekMini = () => {
     const { getTasksByDate, getDayDate, currentDay, totalDays, setCurrentDay } = useStore();
     const today = toIsoString(new Date());
-    const days = Array.from({ length: 7 }, (_, i) => {
-        const dayId = Math.max(1, currentDay - 3 + i);
+    const windowStart = Math.max(1, Math.min(currentDay - 3, Math.max(1, totalDays - 6)));
+    const days = Array.from({ length: Math.min(7, totalDays) }, (_, i) => {
+        const dayId = windowStart + i;
         const date = getDayDate(dayId);
         const tasks = getTasksByDate(date);
         const done = tasks.filter(t => t.isCompleted).length;
@@ -234,14 +105,14 @@ const WeekMini = () => {
 
     return (
         <div className="flex items-end gap-2 justify-center">
-            {days.map((d, i) => {
+            {days.map((d) => {
                 const dateObj = new Date(d.date);
-                const dayName = new Intl.DateTimeFormat('fa-IR', { weekday: 'long' }).format(dateObj);
-                const shortHand = dayName.replace('شنبه', 'ش').replace('یکشنبه', 'ی').replace('دوشنبه', 'د').replace('سه‌شنبه', 'س').replace('چهارشنبه', 'چ').replace('پنجشنبه', 'پ').replace('جمعه', 'ج').slice(0, 3);
+                const shortHand = PERSIAN_SHORT_DAYS[dateObj.getDay()] || String(d.dayId);
 
                 return (
-                    <div key={i} className="flex flex-col items-center gap-1">
+                    <div key={d.dayId} className="flex flex-col items-center gap-1">
                         <button
+                            type="button"
                             onClick={() => setCurrentDay(d.dayId)}
                             className={`relative w-10 flex flex-col items-center justify-end h-14 bg-gray-100 dark:bg-gray-700/50 rounded-xl overflow-hidden hover:opacity-80 transition cursor-pointer ${d.dayId === currentDay ? 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-900 border border-indigo-200 dark:border-indigo-800' : ''}`}
                         >
@@ -259,7 +130,7 @@ const WeekMini = () => {
                             {shortHand}
                         </span>
                     </div>
-                )
+                );
             })}
         </div>
     );
@@ -269,21 +140,18 @@ const WeekMini = () => {
 const Dashboard = () => {
     const {
         userName, currentDay, getProgress, getTasksByDate, getDayDate,
-        tasks: allTasks, totalDays, setIsTimerOpen, level, xp, progressPercent,
+        tasks: allTasks, totalDays, setIsTimerOpen, level, progressPercent,
         currentLevelXp, xpForNextLevel,
-        toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode, dailyQuote, showQuotes,
+        toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode,
         isNewUser, setIsNewUser, addTask, setCurrentDay, rebalancePlan,
-        showConfetti, setShowConfetti, settings, showToast,
+        setShowConfetti, settings,
         syncData, syncQueueCount, streakStats, studyMinutesByDate
     } = useStore();
-    const { startFocusForTask } = useFocus();
-    const { setMorningModalOpen, setEveningModalOpen, setBrainDumpOpen } = useUI();
 
-    const navigate = useNavigate();
     const overallProgress = getProgress();
 
     const activeDateIso = getDayDate(currentDay);
-    const dailyTasks = getTasksByDate(activeDateIso);
+    const dailyTasks = useMemo(() => getTasksByDate(activeDateIso), [getTasksByDate, activeDateIso]);
 
     const currentStream = settings?.stream || 'life';
     const isAcademicStream = currentStream === 'riazi' || currentStream === 'tajrobi' || currentStream === 'ensani';
@@ -302,20 +170,14 @@ const Dashboard = () => {
 
     const cutoffHour = settings?.dayCutoffHour ?? 5;
     const todayLogicalKey = getLogicalDateKey(new Date(), cutoffHour);
-    const dDayTitle = settings?.targetExamTitle?.trim() || '';
-    const dDayDate = settings?.targetExamDate?.trim() || '';
-    const hasCustomDDay = Boolean(dDayTitle && dDayDate);
-    const dDayRemaining = hasCustomDDay ? getDiffDays(toIsoString(new Date()), dDayDate) : 0;
 
-    const last7Days = Array.from({ length: 7 }, (_, idx) => {
+    const last7Days = useMemo(() => Array.from({ length: 7 }, (_, idx) => {
         const dKey = toIsoString(addDays(todayLogicalKey, idx - 6));
         const mins = studyMinutesByDate?.[dKey] || 0;
         return { dKey, mins };
-    });
+    }), [todayLogicalKey, studyMinutesByDate]);
 
-    const todayMitTasks = dailyTasks.filter(t => t.isMIT && !t.isCompleted).slice(0, 3);
-
-    const filteredDailyTasks = dailyTasks.filter(task => {
+    const filteredDailyTasks = useMemo(() => dailyTasks.filter(task => {
         if (onlySpecialized && isAcademicStream) {
             const isSpecialized = isSpecializedSubject(currentStream, task.subject);
             if (!isSpecialized) return false;
@@ -324,19 +186,21 @@ const Dashboard = () => {
             return false;
         }
         return true;
-    });
+    }), [dailyTasks, onlySpecialized, isAcademicStream, currentStream, selectedFilterSubject]);
 
-    const dailySubjects = Array.from(new Set(dailyTasks.map(t => t.subject)));
-    const completedDailyTasks = dailyTasks.filter(t => t.isCompleted).length;
+    const dailySubjects = useMemo(() => Array.from(new Set(dailyTasks.map(t => t.subject))), [dailyTasks]);
+    const completedDailyTasks = useMemo(() => dailyTasks.filter(t => t.isCompleted).length, [dailyTasks]);
     const daysLeft = Math.max(0, totalDays - currentDay);
     const dailyPct = dailyTasks.length > 0 ? Math.round((completedDailyTasks / dailyTasks.length) * 100) : 0;
 
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [quoteVisible, setQuoteVisible] = useState(false);
 
     const todayIso = toIsoString(new Date());
-    const overdueTasks = allTasks.filter(t => t.date < todayIso && !t.isCompleted && t.date !== activeDateIso);
+    const overdueTasks = useMemo(
+        () => allTasks.filter(t => t.date < todayIso && !t.isCompleted && t.date !== activeDateIso),
+        [allTasks, todayIso, activeDateIso]
+    );
 
     const [celebratedToday, setCelebratedToday] = useState(false);
     useEffect(() => {
@@ -349,11 +213,6 @@ const Dashboard = () => {
             setCelebratedToday(false);
         }
     }, [dailyPct, dailyTasks.length, celebratedToday]);
-
-    useEffect(() => {
-        const t = setTimeout(() => setQuoteVisible(true), 600);
-        return () => clearTimeout(t);
-    }, []);
 
     const getGreeting = () => {
         const h = new Date().getHours();
@@ -477,16 +336,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* ===== QUOTE ===== */}
-            {dailyQuote && showQuotes && (
-                <div className={`transition-all duration-700 ${quoteVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
-                    <div className="bg-white dark:bg-gray-800/80 rounded-2xl px-4 py-3 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
-                        <Sparkles size={15} className="text-amber-400 mt-0.5 flex-shrink-0 animate-float" />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 italic leading-relaxed">{dailyQuote}</p>
-                    </div>
-                </div>
-            )}
-
             {/* ===== STATS CARDS ===== */}
             <div className="grid grid-cols-3 gap-3">
                 {/* Card 1: پیشرفت کل */}
@@ -564,64 +413,8 @@ const Dashboard = () => {
                 <WeekMini />
             </div>
 
-            {/* ===== D-DAY & STREAK CARDS ===== */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 animate-card-enter">
-                {/* D-Day Target Countdown (Authentic user-defined goal, zero fake dates) */}
-                <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100/80 dark:border-gray-700/50 shadow-sm flex flex-col justify-between gap-3">
-                    {hasCustomDDay ? (
-                        <>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center">
-                                        <Target size={18} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[11px] font-bold text-gray-400">شمارش معکوس هدف اصلی</p>
-                                        <h3 className="text-sm font-black text-gray-800 dark:text-white">{dDayTitle}</h3>
-                                    </div>
-                                </div>
-                                <div className="text-left">
-                                    <span className="text-xl font-black text-rose-600 dark:text-rose-400">
-                                        {dDayRemaining >= 0 ? `D-${formatToPersianDigits(dDayRemaining)}` : 'موعد هدف'}
-                                    </span>
-                                    <p className="text-[10px] text-gray-400">{getShamsiDate(dDayDate)}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
-                                    <span>پیشرفت کل تا هدف</span>
-                                    <span>{formatToPersianDigits(overallProgress)}٪</span>
-                                </div>
-                                <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-l from-rose-500 to-indigo-500 transition-all duration-700"
-                                        style={{ width: `${overallProgress}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex items-center justify-between gap-3 h-full">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center shrink-0">
-                                    <Target size={18} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xs font-black text-gray-800 dark:text-white">شمارش معکوس هدف (D-Day)</h3>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">پروژه، سفر، رویداد یا آزمون مهم بعدی خود را تنظیم کنید</p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => navigate('/settings')}
-                                className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 text-[11px] font-black shrink-0 hover:bg-indigo-100 transition"
-                            >
-                                تعیین هدف
-                            </button>
-                        </div>
-                    )}
-                </div>
-
+            {/* ===== STREAK CARD ===== */}
+            <div className="animate-card-enter">
                 {/* Streak Card + 7-day cadence */}
                 <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-4 border border-gray-100/80 dark:border-gray-700/50 shadow-sm flex flex-col justify-between gap-3">
                     <div className="flex items-center justify-between">
@@ -664,92 +457,23 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* ===== MIT SPOTLIGHT + MOOD & RITUALS ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
-                <div className="lg:col-span-2 bg-gradient-to-l from-amber-50/80 to-indigo-50/70 dark:from-amber-950/20 dark:to-indigo-950/20 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/30">
-                    <div className="flex items-center justify-between mb-2.5">
-                        <div className="flex items-center gap-2">
-                            <Star size={16} className="text-amber-500 fill-amber-400" />
-                            <h3 className="text-xs font-black text-gray-800 dark:text-white">۳ اولویت طلایی امروز (MIT Spotlight)</h3>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setMorningModalOpen(true)}
-                            className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-                        >
-                            <Sunrise size={13} /> تنظیم در آیین صبح
-                        </button>
-                    </div>
-                    {todayMitTasks.length === 0 ? (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            هنوز اولویت طلایی برای امروز انتخاب نکرده‌اید. از «تنظیم در آیین صبح» حداکثر ۳ کار کلیدی امروز را مشخص کنید.
-                        </p>
-                    ) : (
-                        <div className="flex flex-wrap gap-2">
-                            {todayMitTasks.map((t) => (
-                                <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => startFocusForTask(t)}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-amber-200/70 dark:border-gray-700 shadow-sm hover:border-indigo-400 transition text-xs"
-                                >
-                                    <Play size={12} fill="currentColor" className="text-indigo-500" />
-                                    <span className="font-black text-gray-800 dark:text-white">{t.topic}</span>
-                                    <span className="text-[10px] text-gray-400">({t.subject})</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="bg-white dark:bg-gray-800/80 rounded-2xl p-3 border border-gray-100/80 dark:border-gray-700/50">
+            {/* ===== MOOD & FOCUS TIMER ===== */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 items-stretch">
+                <div className="md:col-span-2 bg-white dark:bg-gray-800/80 rounded-2xl p-3 border border-gray-100/80 dark:border-gray-700/50">
                     <MoodTracker />
                 </div>
-            </div>
-
-            {/* ===== BIOLOGICAL CIRCADIAN READINESS ===== */}
-            <CircadianRhythmPanel />
-
-            {/* ===== QUICK ACTIONS ===== */}
-            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 select-none">
                 <button
-                    onClick={() => setBrainDumpOpen(true)}
-                    className="col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-l from-amber-500 to-orange-600 text-white rounded-2xl font-bold text-sm transition-all duration-200 shadow-md group btn-micro-interactive"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Sparkles size={18} />
-                        </div>
-                        <span className="text-right">تخلیه ذهن سریع (Brain Dump)<br /><span className="text-[10px] text-amber-100 font-normal">تبدیل متن/صوت به تسک زمان‌بندی‌شده</span></span>
-                    </div>
-                </button>
-                <button
-                    onClick={() => navigate('/planner')}
-                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-indigo-50 dark:bg-gray-800/80 border border-indigo-100/40 dark:border-gray-700/40 hover:bg-indigo-100 dark:hover:bg-gray-700 text-indigo-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition"
-                >
-                    <CalendarDays size={18} />
-                    <span>تایم‌لاین ۱۰ دقیقه‌ای</span>
-                </button>
-                <button
-                    onClick={() => navigate('/notes')}
-                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-emerald-50 dark:bg-gray-800/80 border border-emerald-100/40 dark:border-gray-700/40 hover:bg-emerald-100 dark:hover:bg-gray-700 text-emerald-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition"
-                >
-                    <PenTool size={18} />
-                    <span>دفترچه و تخته قلم</span>
-                </button>
-                <button
-                    onClick={() => setEveningModalOpen(true)}
-                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-purple-50 dark:bg-gray-800/80 border border-purple-100/40 dark:border-gray-700/40 hover:bg-purple-100 dark:hover:bg-gray-700 text-purple-600 dark:text-gray-200 rounded-2xl font-bold text-xs transition"
-                >
-                    <MoonStar size={18} />
-                    <span>جمع‌بندی شبانه</span>
-                </button>
-                <button
+                    type="button"
                     onClick={() => setIsTimerOpen(true)}
-                    className="flex items-center flex-col justify-center gap-1.5 p-3 bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-bold text-xs border border-gray-200 dark:border-gray-700 shadow-sm transition"
+                    className="flex items-center justify-center gap-3 p-4 bg-white dark:bg-gray-800/80 hover:bg-emerald-50/40 dark:hover:bg-gray-700/80 text-gray-800 dark:text-gray-100 rounded-2xl font-black text-sm border border-gray-200/80 dark:border-gray-700 shadow-sm transition btn-micro-interactive"
                 >
-                    <Play size={18} className="text-emerald-500" />
-                    <span>تایمر فوکوس</span>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center shrink-0">
+                        <Play size={20} fill="currentColor" />
+                    </div>
+                    <div className="text-right">
+                        <span className="block text-sm font-black">تایمر فوکوس</span>
+                        <span className="block text-[10px] text-gray-400 font-bold mt-0.5">شروع جلسه تمرکز و ثبت خودکار</span>
+                    </div>
                 </button>
             </div>
 

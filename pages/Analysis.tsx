@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Subject } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import { TrendingUp, CheckCircle, Clock, Award, Target, Zap, Activity, FileText, BrainCircuit } from 'lucide-react';
 import ActivityHeatmap from '../components/ActivityHeatmap';
 import SmartMacroPlanner from '../components/SmartMacroPlanner';
@@ -37,40 +36,46 @@ const Analysis = () => {
         ? Math.round(((totalCorrect * 3 - totalWrong) / (totalTests * 3)) * 100)
         : 0;
 
-    // --- 3. Subject-wise Deep Analysis ---
-    const allSubjectNames = subjects.map(s => s.name);
+    // --- 3. Subject-wise Deep Analysis (includes AI / custom subjects as well) ---
+    const subjectAnalysis = useMemo(() => {
+        const allSubjectNames = Array.from(
+            new Set([
+                ...subjects.map(s => s.name),
+                ...tasks.map(t => t.subject).filter(Boolean),
+            ])
+        );
+        return allSubjectNames.map(subject => {
+            const subTasks = tasks.filter(t => t.subject === subject);
+            const subCompleted = subTasks.filter(t => t.isCompleted);
 
-    const subjectAnalysis = allSubjectNames.map(subject => {
-        const subTasks = tasks.filter(t => t.subject === subject);
-        const subCompleted = subTasks.filter(t => t.isCompleted);
+            const progress = subTasks.length > 0 ? Math.round((subCompleted.length / subTasks.length) * 100) : 0;
 
-        const progress = subTasks.length > 0 ? Math.round((subCompleted.length / subTasks.length) * 100) : 0;
+            const subRated = subCompleted.filter(t => t.qualityRating);
+            const avgQ = subRated.length > 0
+                ? (subRated.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / subRated.length)
+                : 0;
 
-        const subRated = subCompleted.filter(t => t.qualityRating);
-        const avgQ = subRated.length > 0
-            ? (subRated.reduce((acc, t) => acc + (t.qualityRating || 0), 0) / subRated.length)
-            : 0;
+            const subTested = subCompleted.filter(t => t.testStats && t.testStats.total > 0);
+            const sTotal = subTested.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
+            const sCorrect = subTested.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
+            const sWrong = subTested.reduce((acc, t) => acc + (t.testStats?.wrong || 0), 0);
+            const sAcc = sTotal > 0 ? Math.round(((sCorrect * 3 - sWrong) / (sTotal * 3)) * 100) : 0;
 
-        const subTested = subCompleted.filter(t => t.testStats && t.testStats.total > 0);
-        const sTotal = subTested.reduce((acc, t) => acc + (t.testStats?.total || 0), 0);
-        const sCorrect = subTested.reduce((acc, t) => acc + (t.testStats?.correct || 0), 0);
-        const sWrong = subTested.reduce((acc, t) => acc + (t.testStats?.wrong || 0), 0);
-        const sAcc = sTotal > 0 ? Math.round(((sCorrect * 3 - sWrong) / (sTotal * 3)) * 100) : 0;
-
-        return {
-            subject,
-            progress,
-            qualityScore: avgQ * 20,
-            displayQuality: avgQ,
-            accuracy: sAcc > 0 ? sAcc : 0,
-            realAccuracy: sAcc,
-            completedCount: subCompleted.length,
-            totalCount: subTasks.length,
-            totalTests: sTotal,
-            correctTests: sCorrect,
-            wrongTests: sWrong
-        };
-    });
+            return {
+                subject,
+                progress,
+                qualityScore: avgQ * 20,
+                displayQuality: avgQ,
+                accuracy: sAcc > 0 ? sAcc : 0,
+                realAccuracy: sAcc,
+                completedCount: subCompleted.length,
+                totalCount: subTasks.length,
+                totalTests: sTotal,
+                correctTests: sCorrect,
+                wrongTests: sWrong
+            };
+        });
+    }, [subjects, tasks]);
 
     const StatCard = ({ title, value, subtitle, icon: Icon, colorName }: any) => (
         <div className="bg-white dark:bg-gray-800 p-4 lg:p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between relative overflow-hidden group">
@@ -176,17 +181,69 @@ const Analysis = () => {
                         />
                     </div>
 
-                    <div className="grid lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
+                    <div className="space-y-6">
+                        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
+                                <TrendingUp size={18} className="text-emerald-500" />
+                                جزئیات عملکرد
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {subjectAnalysis.map((sub, idx) => (
+                                    <div key={idx} className="group">
+                                        <div className="flex justify-between items-end mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100/20`}>
+                                                    {sub.subject[0]}
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">{sub.subject}</h4>
+                                                    <div className="flex gap-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                                        <span>کیفیت: {sub.displayQuality > 0 ? sub.displayQuality.toFixed(1) : '-'}</span>
+                                                        <span>•</span>
+                                                        <span>{sub.completedCount} تسک</span>
+                                                        {sub.totalTests > 0 && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span className="text-emerald-600 dark:text-emerald-400">{sub.totalTests} تست ({sub.correctTests}✓)</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className={`block text-lg font-black ${sub.realAccuracy >= 50 ? 'text-emerald-600' : sub.realAccuracy > 0 ? 'text-amber-500' : 'text-gray-300'}`}>
+                                                    {sub.realAccuracy > 0 ? sub.realAccuracy + '%' : '-'}
+                                                </span>
+                                                <span className="text-[10px] text-gray-400">دقت</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mb-1 mt-1 text-[10px] font-bold text-gray-400">
+                                            <span>پیشرفت حجمی:</span>
+                                            <span className="text-indigo-600 dark:text-indigo-400">{sub.progress}%</span>
+                                        </div>
+                                        <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative border border-gray-200/25 dark:border-gray-700/25">
+                                            <div 
+                                                className="h-full rounded-full bg-gradient-to-l from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                                style={{ width: `${sub.progress}%` }} 
+                                                title="پیشرفت حجمی"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
                             <div className="mb-4">
                                 <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
                                     <Activity size={18} className="text-indigo-500" />
                                     تعادل مطالعاتی
                                 </h3>
                             </div>
-                            <div className="flex-1 min-h-[250px] relative">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={subjectAnalysis}>
+                            <div className="flex-1 min-h-[280px] relative">
+                                <ResponsiveContainer width="100%" height={280}>
+                                    <RadarChart cx="50%" cy="50%" outerRadius="72%" data={subjectAnalysis}>
                                         <PolarGrid stroke="#9ca3af" strokeOpacity={0.3} />
                                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 'bold' }} />
                                         <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
@@ -221,58 +278,6 @@ const Analysis = () => {
                                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
                                     <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">دقت تست‌زنی</span>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                            <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
-                                <TrendingUp size={18} className="text-emerald-500" />
-                                جزئیات عملکرد دروس
-                            </h3>
-                            <div className="space-y-6">
-                                {subjectAnalysis.map((sub, idx) => (
-                                    <div key={idx} className="group">
-                                        <div className="flex justify-between items-end mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100/20`}>
-                                                    {sub.subject[0]}
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">{sub.subject}</h4>
-                                                    <div className="flex gap-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                                                        <span>کیفیت: {sub.displayQuality > 0 ? sub.displayQuality.toFixed(1) : '-'}</span>
-                                                        <span>•</span>
-                                                        <span>{sub.completedCount} تسک</span>
-                                                        {sub.totalTests > 0 && (
-                                                            <>
-                                                                <span>•</span>
-                                                                <span className="text-emerald-600 dark:text-emerald-400">{sub.totalTests} تست ({sub.correctTests}✓)</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className={`block text-lg font-black ${sub.realAccuracy >= 50 ? 'text-emerald-600' : sub.realAccuracy > 0 ? 'text-amber-500' : 'text-gray-300'}`}>
-                                                    {sub.realAccuracy > 0 ? sub.realAccuracy + '%' : '-'}
-                                                </span>
-                                                <span className="text-[10px] text-gray-400">دقت تست</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between mb-1 mt-1 text-[10px] font-bold text-gray-400">
-                                            <span>پیشرفت حجمی درس:</span>
-                                            <span className="text-indigo-600 dark:text-indigo-400">{sub.progress}%</span>
-                                        </div>
-                                        <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden relative border border-gray-200/25 dark:border-gray-700/25">
-                                            <div 
-                                                className="h-full rounded-full bg-gradient-to-l from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
-                                                style={{ width: `${sub.progress}%` }} 
-                                                title="پیشرفت حجمی"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>

@@ -9,12 +9,10 @@ import {
     LayoutDashboard,
     CalendarClock,
     BookOpen,
-    PenTool,
     BarChart2,
     Trophy,
     Bot,
     Settings,
-    BrainCircuit,
     Timer,
     Sparkles,
     Sunrise,
@@ -86,9 +84,6 @@ export const CommandPalette: React.FC = () => {
             } else if (key === 'p') {
                 e.preventDefault();
                 navigate('/planner');
-            } else if (key === 'n') {
-                e.preventDefault();
-                navigate('/notes');
             }
         };
 
@@ -119,12 +114,10 @@ export const CommandPalette: React.FC = () => {
             { id: 'act-theme', label: 'تغییر حالت شب / روز', group: 'ابزار سریع', icon: Moon, run: closeAnd(() => toggleDarkMode()) },
 
             { id: 'nav-home', label: 'داشبورد اصلی', group: 'صفحات', icon: LayoutDashboard, run: closeAnd(() => navigate('/')) },
-            { id: 'nav-planner', label: 'برنامه‌ریز ۱۰ دقیقه‌ای و تایم‌لاین', group: 'صفحات', shortcut: 'P', icon: CalendarClock, run: closeAnd(() => navigate('/planner')) },
-            { id: 'nav-subjects', label: 'دروس و نماهای چندگانه (جدول / کانبان / آیزنهاور)', group: 'صفحات', icon: BookOpen, run: closeAnd(() => navigate('/subjects')) },
-            { id: 'nav-notes', label: 'دفترچه هوشمند و تخته قلم', group: 'صفحات', shortcut: 'N', icon: PenTool, run: closeAnd(() => navigate('/notes')) },
-            { id: 'nav-leitner', label: 'جعبه لایتنر و مرور فعال', group: 'صفحات', icon: BrainCircuit, run: closeAnd(() => navigate('/leitner')) },
+            { id: 'nav-planner', label: 'تایم‌لاین ۲۴ ساعته و گرید ۱۰ دقیقه‌ای', group: 'صفحات', shortcut: 'P', icon: CalendarClock, run: closeAnd(() => navigate('/planner')) },
+            { id: 'nav-subjects', label: 'حوزه‌ها و نماهای چندگانه (جدول / کانبان / آیزنهاور)', group: 'صفحات', icon: BookOpen, run: closeAnd(() => navigate('/subjects')) },
             { id: 'nav-analysis', label: 'تحلیل عملکرد و هیت‌مپ سالانه', group: 'صفحات', icon: BarChart2, run: closeAnd(() => navigate('/analysis')) },
-            { id: 'nav-lb', label: 'تالار رقابت و اتاق مطالعه گروهی', group: 'صفحات', icon: Trophy, run: closeAnd(() => navigate('/leaderboard')) },
+            { id: 'nav-lb', label: 'لیگ رقابت و اتاق‌های مطالعه YPT', group: 'صفحات', icon: Trophy, run: closeAnd(() => navigate('/leaderboard')) },
             { id: 'nav-ai', label: 'مشاور هوشمند Gemini AI', group: 'صفحات', icon: Bot, run: closeAnd(() => navigate('/ai-chat')) },
             { id: 'nav-settings', label: 'تنظیمات و پروفایل', group: 'صفحات', icon: Settings, run: closeAnd(() => navigate('/settings')) },
         ];
@@ -132,7 +125,7 @@ export const CommandPalette: React.FC = () => {
         const q = query.trim().toLowerCase();
         const filteredBase = q ? baseActions.filter((a) => a.label.toLowerCase().includes(q)) : baseActions;
 
-        const matchingTasks: PaletteAction[] = q
+        const matchingTasks: PaletteAction[] = (q
             ? tasks
                   .filter(
                       (t) =>
@@ -141,17 +134,17 @@ export const CommandPalette: React.FC = () => {
                           t.details.toLowerCase().includes(q)
                   )
                   .slice(0, 8)
-                  .map((t) => ({
-                      id: `task-focus-${t.id}`,
-                      label: `شروع تمرکز: ${t.subject} — ${t.topic}`,
-                      group: 'تسک‌ها' as const,
-                      icon: t.isCompleted ? CheckSquare : Play,
-                      run: closeAnd(() => {
-                          if (!t.isCompleted) startFocusForTask(t);
-                          else toggleTask(t.id);
-                      }),
-                  }))
-            : [];
+            : tasks.filter((t) => !t.isCompleted).slice(0, 5)
+        ).map((t) => ({
+            id: `task-focus-${t.id}`,
+            label: `شروع تمرکز: ${t.subject} — ${t.topic}`,
+            group: 'تسک‌ها' as const,
+            icon: t.isCompleted ? CheckSquare : Play,
+            run: closeAnd(() => {
+                if (!t.isCompleted) startFocusForTask(t);
+                else toggleTask(t.id);
+            }),
+        }));
 
         return [...filteredBase, ...matchingTasks];
     }, [
@@ -175,6 +168,7 @@ export const CommandPalette: React.FC = () => {
     if (!isCommandPaletteOpen) return null;
 
     const handleInputKeyDown = (e: React.KeyboardEvent) => {
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setSelectedIdx((i) => Math.min(actions.length - 1, i + 1));

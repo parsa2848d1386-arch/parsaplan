@@ -16,7 +16,7 @@ interface ExtraMeta {
 }
 
 export const BrainDumpModal: React.FC = () => {
-    const { addTask, startDate, currentDay, geminiApiKey, settings, subjects } = useStore();
+    const { addTasksBatch, startDate, currentDay, geminiApiKey, settings, subjects } = useStore();
     const { isBrainDumpOpen, setBrainDumpOpen, showToast } = useUI();
 
     const [rawText, setRawText] = useState('');
@@ -147,10 +147,10 @@ ${rawText}`;
 
     const handleConfirmAdd = () => {
         if (!parsedPreview) return;
-        parsedPreview.forEach((p, idx) => {
+        const batch: SubjectTask[] = parsedPreview.map((p, idx) => {
             const extra = metaMap[idx] || {};
             const safeDate = p.date || toIsoString(new Date());
-            const newTask: SubjectTask = {
+            return {
                 id: `bd_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
                 dayId: Math.max(1, getDiffDays(startDate, safeDate) + 1),
                 date: safeDate,
@@ -165,10 +165,10 @@ ${rawText}`;
                 startTime: extra.startTime,
                 durationMinutes: extra.durationMinutes ?? 60,
                 isCustom: true,
+                tags: ['AI'],
             };
-            addTask(newTask);
         });
-        showToast(`${parsedPreview.length} تسک به برنامه شما اضافه شد!`, 'success');
+        addTasksBatch(batch, 'تخلیه ذهن سریع');
         setParsedPreview(null);
         setRawText('');
         setBrainDumpOpen(false);

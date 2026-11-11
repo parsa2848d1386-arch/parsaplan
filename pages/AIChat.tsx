@@ -4,7 +4,8 @@ import { useStore } from '../context/StoreContext';
 // @ts-ignore
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { get, set } from 'idb-keyval';
-import { SubjectTask, SUBJECT_LISTS } from '../types';
+import { SubjectTask, SUBJECT_LISTS, TaskPriority } from '../types';
+import { getDiffDays, toIsoString } from '../utils';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
 import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
 import { ChatMessage } from '../components/AIChat/ChatMessage';
@@ -20,6 +21,7 @@ interface Message {
     timestamp: Date;
     isError?: boolean;
     pendingTasks?: ParsedTask[];
+    tasksApplied?: boolean;
     attachments?: { type: 'image' | 'video' | 'file'; url: string; name: string }[];
 }
 
@@ -30,7 +32,7 @@ export interface AIChatProps {
 
 const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTask, startDate, currentDay, totalDays, routineTemplate, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes, showToast, geminiApiKey, userId } = useStore();
+    const { settings, updateSettings, subjects, addTasksBatch, askConfirm, startDate, currentDay, totalDays, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes, showToast, geminiApiKey, userId } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -120,18 +122,23 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
 
     const deleteSession = (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
-        if (!window.confirm('آیا این چت حذف شود؟')) return;
-
-        setSessions(prev => {
-            const filtered = prev.filter(s => s.id !== id);
-            if (activeSessionId === id) {
-                setActiveSessionId(filtered.length > 0 ? filtered[0].id : null);
-            }
-            if (filtered.length === 0) {
-                setTimeout(() => createNewChat(), 0);
-            }
-            return filtered;
-        });
+        askConfirm(
+            'حذف گفتگو',
+            'آیا این گفتگو برای همیشه حذف شود؟',
+            () => {
+                setSessions(prev => {
+                    const filtered = prev.filter(s => s.id !== id);
+                    if (activeSessionId === id) {
+                        setActiveSessionId(filtered.length > 0 ? filtered[0].id : null);
+                    }
+                    if (filtered.length === 0) {
+                        setTimeout(() => createNewChat(), 0);
+                    }
+                    return filtered;
+                });
+            },
+            'danger'
+        );
     };
 
     const renameSession = (id: string, newTitle: string) => {
@@ -217,8 +224,6 @@ const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
         const streamSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['life'];
         const allSubjects = [...new Set([...streamSubjects, ...(subjects?.map(s => s.name) || [])])].join(', ');
 
-        const routineSummary = routineTemplate.map(r => `- ${r.time}: ${r.title} (${r.type})`).join('\n');
-
         // Context: Progress & Mood & Notes
         const planCompletion = Math.round((currentDay / totalDays) * 100);
         const taskCompletion = getProgress();
@@ -300,9 +305,6 @@ Identity: You help ${userName || 'the user'} organize work, personal goals, heal
 ${tTotal > 0 ? `- Exam/Quiz Accuracy: ${accuracy}%` : ''}
 - Category Completion: ${subPerformance}
 
-**User's Daily Routine (Schedule):**
-${routineSummary}
-
 **Historical & Future Task Timeline (Window):**
 ${tasksSummary || 'No upcoming tasks scheduled.'}
 
@@ -318,38 +320,74 @@ ${recentLogs}
 **YOUR OPERATIONAL PROTOCOL:**
 1. Speak **PERSIAN (Farsi)** exclusively.
 2. Adapt to the user's workspace mode (${currentStream}) and support ANY topic (work projects, fitness, habits, personal errands, finances, creative writing, OR academics).
-3. **If asked to plan, add, or schedule tasks, YOU MUST output a JSON block** within your response.
-4. Choose appropriate \`studyType\`: \`"task"\`, \`"project"\`, \`"habit"\`, \`"health"\`, \`"meeting"\`, \`"creative"\`, \`"study"\`, \`"review"\`, or \`"exam"\`/\`"analysis"\` only if academic.
+3. **If asked to plan, schedule, or add tasks, YOU MUST output a JSON block** within your response. Always include realistic \`date\` (\`YYYY-MM-DD\`), \`startTime\` (\`"HH:mm"\`), \`durationMinutes\` (integer, e.g. \`45\` or \`60\`), \`priority\` (\`"urgent"|"high"|"medium"|"low"\`), and \`studyType\` (\`"task"|"project"|"habit"|"health"|"meeting"|"creative"|"study"|"review"|"exam"|"analysis"\`) so every added task seamlessly syncs with the 24h Timeline, Dashboard, Kanban/Eisenhower views, and Analytics!
+4. If the user explicitly asks you to directly/automatically add tasks (e.g., "اضافه کن"، "بذار تو برنامه"، "خودکار ثبت کن"), use \`"type": "auto_add_tasks"\`. If they ask for suggestions/draft plans, use \`"type": "preview_tasks"\`.
 
 **JSON SCHEMAS (MANDATORY FORMAT):**
 
-Type A: Specific Tasks or Multi-day Schedule
+Type A: Auto-Add or Preview Tasks (Unified Dashboard + 24h Timeline + Views)
 \`\`\`json
 { 
-  "type": "preview_tasks", 
+  "type": "auto_add_tasks", 
   "message": "یک پیام کوتاه...", 
   "tasks": [
-    { "subject": "کار و پروژه", "topic": "تکمیل ارائه پروژه", "details": "آماده‌سازی اسلایدها", "date": "YYYY-MM-DD", "studyType": "project" },
-    { "subject": "ورزش و سلامت", "topic": "دویدن یا باشگاه", "details": "۴۵ دقیقه تمرین", "date": "YYYY-MM-DD", "studyType": "health" }
+    { "subject": "کار و پروژه", "topic": "تکمیل ارائه پروژه", "details": "آماده‌سازی اسلایدها", "date": "${todayIso}", "startTime": "09:30", "durationMinutes": 90, "priority": "high", "studyType": "project" },
+    { "subject": "ورزش و سلامت", "topic": "تمرین ورزشی", "details": "۴۵ دقیقه دویدن", "date": "${todayIso}", "startTime": "18:00", "durationMinutes": 45, "priority": "medium", "studyType": "health" }
   ] 
 }
 \`\`\`
 
-Type B: Recurring Study Series (Daily consecutive repeat)
+Type B: Recurring Multi-Day Series (Daily consecutive repeat)
 \`\`\`json
 { 
   "type": "autopilot_series", 
   "message": "پیام...", 
   "series": { 
-    "subject": "NameOfSubject", "topic": "Topic...", 
+    "subject": "NameOfCategory", "topic": "Topic...", 
     "startDay": ${currentDay}, "endDay": ${currentDay + 5}, 
-    "dailyCount": 30, "startTest": 1, "interval": 1
+    "startTime": "10:00", "durationMinutes": 60,
+    "dailyCount": 0, "startTest": 1, "interval": 1
   } 
 }
 \`\`\`
 
-**FINAL COMMAND**: Be proactive and helpful. Use the user's name (${userName}) correctly. If you suggest a plan, always include the JSON.
+**FINAL COMMAND**: Be proactive and helpful. Use the user's name (${userName}) correctly. If you create tasks or schedules, always include the JSON block with valid times and dates.
 `.trim();
+    };
+
+    const mapParsedTasksToSubjectTasks = (list: ParsedTask[]): SubjectTask[] => {
+        const planStart = startDate || toIsoString(new Date());
+        return list.map((t) => {
+            const safeDate = t.date && !isNaN(Date.parse(t.date)) ? t.date : toIsoString(new Date());
+            const diffDays = getDiffDays(planStart, safeDate);
+            const rawDayId = diffDays + 1;
+            const computedDayId = rawDayId >= 1 && rawDayId <= totalDays ? rawDayId : 0;
+            const validPriority: TaskPriority =
+                t.priority === 'urgent' || t.priority === 'high' || t.priority === 'medium' || t.priority === 'low'
+                    ? t.priority
+                    : 'medium';
+            const validStart = typeof t.startTime === 'string' && /^\d{2}:\d{2}$/.test(t.startTime) ? t.startTime : undefined;
+            const validDuration = Math.min(480, Math.max(15, Number(t.durationMinutes) || 60));
+
+            return {
+                id: crypto.randomUUID(),
+                dayId: computedDayId,
+                date: safeDate,
+                subject: (t.subject || 'شخصی').trim(),
+                topic: (t.topic || t.title || 'تسک جدید').trim(),
+                details: t.details || '',
+                testRange: t.testRange || '',
+                isCompleted: false,
+                status: 'todo',
+                isCustom: computedDayId === 0,
+                priority: validPriority,
+                startTime: validStart,
+                durationMinutes: validDuration,
+                studyType: t.studyType || 'task',
+                subTasks: t.subTasks as any,
+                tags: ['AI'],
+            };
+        });
     };
 
     const handleSend = async (manualInput?: string, attachments?: File[]) => {
@@ -430,8 +468,9 @@ Type B: Recurring Study Series (Daily consecutive repeat)
             const response = result.response;
             const text = response.text();
 
-            // JSON Logic
+            // JSON Logic (supports auto_add_tasks, preview_tasks, and autopilot_series)
             let parsedTasks: ParsedTask[] | undefined;
+            let shouldAutoAdd = false;
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             let jsonString = "";
 
@@ -441,16 +480,15 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                     const action = JSON.parse(jsonString);
 
                     if (action.type === 'autopilot_series' && action.series) {
-                        const { subject, topic, startDay, endDay, dailyCount, startTest, interval = 1 } = action.series;
+                        const { subject, topic, startDay, endDay, dailyCount = 0, startTest = 1, interval = 1, startTime, durationMinutes } = action.series;
 
                         const safeStartDay = startDay || currentDay;
                         const safeEndDay = endDay || safeStartDay;
 
                         parsedTasks = [];
-                        let currentTest = startTest || 1;
+                        let currentTest = startTest;
                         const planStart = new Date(startDate);
 
-                        // Loop relative to plan start
                         for (let day = safeStartDay; day <= safeEndDay; day += interval) {
                             if (day > totalDays) break;
                             const taskDate = new Date(planStart);
@@ -462,14 +500,17 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                                 title: `${subject}`,
                                 subject,
                                 topic,
-                                details: dailyCount > 0 ? `تست ${currentTest} تا ${endTest}` : 'مرور/مطالعه',
+                                details: dailyCount > 0 ? `تست ${currentTest} تا ${endTest}` : 'برنامه‌ریزی شده',
                                 date: taskDate.toISOString().split('T')[0],
-                                studyType: 'study',
+                                startTime,
+                                durationMinutes: durationMinutes || 60,
+                                studyType: dailyCount > 0 ? 'study' : 'task',
                                 id: crypto.randomUUID()
                             });
                             currentTest = endTest + 1;
                         }
-                    } else if (action.type === 'preview_tasks' && action.tasks) {
+                    } else if ((action.type === 'preview_tasks' || action.type === 'auto_add_tasks') && Array.isArray(action.tasks)) {
+                        shouldAutoAdd = action.type === 'auto_add_tasks';
                         parsedTasks = action.tasks.map((t: any) => ({
                             ...t,
                             id: crypto.randomUUID()
@@ -477,8 +518,14 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                     }
                 } catch (e) {
                     console.error("JSON Error", e);
-                    jsonString = ""; // Reset if invalid
+                    jsonString = "";
                 }
+            }
+
+            let autoApplied = false;
+            if (shouldAutoAdd && parsedTasks && parsedTasks.length > 0) {
+                addTasksBatch(mapParsedTasksToSubjectTasks(parsedTasks), 'دستیار هوشمند AI');
+                autoApplied = true;
             }
 
             // Remove JSON from the speech text
@@ -489,10 +536,11 @@ Type B: Recurring Study Series (Daily consecutive repeat)
 
             const aiMsg: Message = {
                 id: Date.now().toString(),
-                text: cleanText || (parsedTasks ? 'لیست تسک‌ها آماده بررسی است:' : text),
+                text: cleanText || (autoApplied ? `${parsedTasks?.length} تسک به‌صورت خودکار به برنامه، تایم‌لاین و تحلیل اضافه شد. ✅` : parsedTasks ? 'لیست تسک‌ها آماده بررسی است:' : text),
                 sender: 'ai',
                 timestamp: new Date(),
-                pendingTasks: parsedTasks
+                pendingTasks: parsedTasks,
+                tasksApplied: autoApplied,
             };
 
             updateActiveSessionMessages([...updatedMsgs, aiMsg]);
@@ -553,43 +601,38 @@ Type B: Recurring Study Series (Daily consecutive repeat)
 
     const handleClearSession = () => {
         if (!activeSessionId) return;
-        if (!window.confirm('آیا تاریخچه گفتگوهای این چت پاک شود؟')) return;
-        updateActiveSessionMessages([]);
-        showToast('تاریخچه این گفتگو پاک شد', 'info');
+        askConfirm(
+            'پاک‌سازی گفتگو',
+            'آیا تاریخچه گفتگوهای این چت پاک شود؟',
+            () => {
+                updateActiveSessionMessages([]);
+                showToast('تاریخچه این گفتگو پاک شد', 'info');
+            },
+            'danger'
+        );
+    };
+
+    const handleAutoAddMessageTasks = (list: ParsedTask[], messageId: string) => {
+        if (!list || list.length === 0) return;
+        addTasksBatch(mapParsedTasksToSubjectTasks(list), 'دستیار هوشمند AI');
+        const nextMsgs = messages.map((m) => (m.id === messageId ? { ...m, tasksApplied: true } : m));
+        const confirmMsg: Message = {
+            id: Date.now().toString(),
+            text: `${list.length} تسک با موفقیت به داشبورد، تایم‌لاین ۲۴ ساعته و بخش تحلیل اضافه شد. ✅`,
+            sender: 'ai',
+            timestamp: new Date(),
+        };
+        updateActiveSessionMessages([...nextMsgs, confirmMsg]);
     };
 
     const handleConfirmTasks = () => {
-        if (reviewTasks) {
-            reviewTasks.forEach(t => {
-                // محاسبه dayId از تاریخ تسک
-                let computedDayId = 0;
-                if (t.date && startDate) {
-                    const taskDate = new Date(t.date);
-                    const planStart = new Date(startDate);
-                    const diffTime = taskDate.getTime() - planStart.getTime();
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    computedDayId = diffDays + 1;
-                    if (computedDayId < 1 || computedDayId > totalDays) computedDayId = 0;
-                }
-
-                addTask({
-                    id: crypto.randomUUID(),
-                    dayId: computedDayId,
-                    date: t.date,
-                    subject: t.subject as any,
-                    topic: t.topic,
-                    details: t.details,
-                    testRange: t.testRange || '',
-                    isCompleted: false,
-                    isCustom: computedDayId === 0,
-                    studyType: t.studyType || 'study',
-                    subTasks: t.subTasks as any,
-                    tags: ['AI']
-                });
-            });
+        if (reviewTasks && reviewTasks.length > 0) {
+            addTasksBatch(mapParsedTasksToSubjectTasks(reviewTasks), 'دستیار هوشمند AI');
             const successMsg: Message = {
-                id: Date.now().toString(), text: `${reviewTasks.length} تسک با موفقیت به برنامه اضافه شد. ✅`,
-                sender: 'ai', timestamp: new Date()
+                id: Date.now().toString(),
+                text: `${reviewTasks.length} تسک با موفقیت به برنامه و تایم‌لاین اضافه شد. ✅`,
+                sender: 'ai',
+                timestamp: new Date(),
             };
             updateActiveSessionMessages([...messages, successMsg]);
             setReviewTasks(null);
@@ -695,6 +738,8 @@ Type B: Recurring Study Series (Daily consecutive repeat)
                                         onRetry={(text) => handleSend(text)}
                                         onRegenerate={handleRegenerate}
                                         onReviewTasks={setReviewTasks}
+                                        onAutoAddTasks={handleAutoAddMessageTasks}
+                                        tasksApplied={msg.tasksApplied}
                                     />
                                 ))
                             )}

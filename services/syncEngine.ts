@@ -1,11 +1,12 @@
 import { get, set } from 'idb-keyval';
 import {
     collection,
-    deleteDoc,
     doc,
     Firestore,
     getDoc,
     getDocs,
+    limit,
+    query,
     setDoc,
     writeBatch,
 } from 'firebase/firestore';
@@ -32,9 +33,15 @@ export interface OutboxTransaction {
 }
 
 const getOutboxKey = (userId: string) => `parsaplan_outbox_${userId}`;
+const MAX_RETRY_COUNT = 5;
 
 /**
- * Strips sensitive client-only secrets (such as geminiApiKey) before cloud persistence.
+ * Unique identifier per browser tab so Firestore listeners can skip self-echoes.
+ */
+export const CLIENT_INSTANCE_ID = `cli_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+/**
+ * Strips client-only secrets and undefined values before cloud persistence.
  */
 export function sanitizeSnapshotForCloud(snapshot: Partial<AppDataV1>): Record<string, unknown> {
     const cloned = JSON.parse(JSON.stringify(snapshot));
@@ -64,8 +71,12 @@ class CloudSyncEngine {
     async enqueue(userId: string, op: Omit<OutboxTransaction, 'id' | 'timestamp' | 'retryCount'>): Promise<number> {
         if (!userId || userId === 'parsaplan_local_user') return 0;
         const queue = await this.getQueue(userId);
-        // Deduplicate same entity/type to keep queue compact
-        const filtered = queue.filter((q) => !(q.type === op.type && q.entityId === op.entityId));
+        // Coalesce conflicting operations on the same entity to keep queue minimal
+        const filtered = queue.filter((q) => {
+            if (q.type === op.type && q.entityId === op.entityId) return false;
+            if (op.type === 'delete_task' && q.type === 'upsert_task' && q.entityId === op.entityId) return false;
+            return true;
+        });
         filtered.push({
             ...op,
             id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -76,6 +87,31 @@ class CloudSyncEngine {
         return filtered.length;
     }
 
+    async enqueueMany(
+        userId: string,
+        ops: Array<Omit<OutboxTransaction, 'id' | 'timestamp' | 'retryCount'>>
+    ): Promise<number> {
+        if (!userId || userId === 'parsaplan_local_user' || ops.length === 0) return 0;
+        const queue = await this.getQueue(userId);
+        const incomingKeys = new Set(ops.map((o) => `${o.type}:${o.entityId}`));
+        const filtered = queue.filter((q) => !incomingKeys.has(`${q.type}:${q.entityId}`));
+        const now = Date.now();
+        ops.forEach((op, idx) => {
+            filtered.push({
+                ...op,
+                id: `tx_${now}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+                timestamp: now,
+                retryCount: 0,
+            });
+        });
+        await set(getOutboxKey(userId), filtered);
+        return filtered.length;
+    }
+
+    /**
+     * Flushes queued delta operations in efficient Firestore writeBatches (up to 250 ops per batch)
+     * with retry-cap protection for scalability.
+     */
     async flushOutbox(db: Firestore | null, userId: string, user: unknown): Promise<{ flushed: number; remaining: number }> {
         if (!isCloudSyncAllowed(db, userId, user) || !db) {
             return { flushed: 0, remaining: (await this.getQueue(userId)).length };
@@ -94,14 +130,32 @@ class CloudSyncEngine {
 
             let flushed = 0;
             const remaining: OutboxTransaction[] = [];
+            const BATCH_LIMIT = 250;
 
-            for (const tx of queue) {
+            for (let i = 0; i < queue.length; i += BATCH_LIMIT) {
+                const slice = queue.slice(i, i + BATCH_LIMIT);
                 try {
-                    await this.applyTransactionToFirestore(db, userId, tx);
-                    flushed++;
-                } catch (err) {
-                    console.warn('[SyncEngine] Outbox tx failed, will retry:', tx.type, err);
-                    remaining.push({ ...tx, retryCount: tx.retryCount + 1 });
+                    const batch = writeBatch(db);
+                    for (const tx of slice) {
+                        this.addTxToBatch(batch, db, userId, tx);
+                    }
+                    await batch.commit();
+                    flushed += slice.length;
+                } catch (batchErr) {
+                    console.warn('[SyncEngine] Batch flush fallback to single ops:', batchErr);
+                    for (const tx of slice) {
+                        try {
+                            const singleBatch = writeBatch(db);
+                            this.addTxToBatch(singleBatch, db, userId, tx);
+                            await singleBatch.commit();
+                            flushed++;
+                        } catch (err) {
+                            console.warn('[SyncEngine] Outbox tx failed:', tx.type, err);
+                            if (tx.retryCount + 1 < MAX_RETRY_COUNT) {
+                                remaining.push({ ...tx, retryCount: tx.retryCount + 1 });
+                            }
+                        }
+                    }
                 }
             }
 
@@ -112,48 +166,54 @@ class CloudSyncEngine {
         }
     }
 
-    private async applyTransactionToFirestore(db: Firestore, userId: string, tx: OutboxTransaction): Promise<void> {
+    private addTxToBatch(
+        batch: ReturnType<typeof writeBatch>,
+        db: Firestore,
+        userId: string,
+        tx: OutboxTransaction
+    ): void {
         const cleanPayload = tx.payload ? JSON.parse(JSON.stringify(tx.payload)) : undefined;
         switch (tx.type) {
             case 'upsert_task':
-                await setDoc(doc(db, 'users', userId, 'tasks', tx.entityId), cleanPayload, { merge: true });
+                batch.set(doc(db, 'users', userId, 'tasks', tx.entityId), cleanPayload, { merge: true });
                 break;
             case 'delete_task':
-                await deleteDoc(doc(db, 'users', userId, 'tasks', tx.entityId));
+                batch.delete(doc(db, 'users', userId, 'tasks', tx.entityId));
                 break;
             case 'upsert_session':
-                await setDoc(doc(db, 'users', userId, 'sessions', tx.entityId), cleanPayload, { merge: true });
+                batch.set(doc(db, 'users', userId, 'sessions', tx.entityId), cleanPayload, { merge: true });
                 break;
             case 'upsert_flashcard':
-                await setDoc(doc(db, 'users', userId, 'flashcards', tx.entityId), cleanPayload, { merge: true });
+                batch.set(doc(db, 'users', userId, 'flashcards', tx.entityId), cleanPayload, { merge: true });
                 break;
             case 'delete_flashcard':
-                await deleteDoc(doc(db, 'users', userId, 'flashcards', tx.entityId));
+                batch.delete(doc(db, 'users', userId, 'flashcards', tx.entityId));
                 break;
             case 'upsert_page':
-                await setDoc(doc(db, 'users', userId, 'pages', tx.entityId), cleanPayload, { merge: true });
+                batch.set(doc(db, 'users', userId, 'pages', tx.entityId), cleanPayload, { merge: true });
                 break;
             case 'delete_page':
-                await deleteDoc(doc(db, 'users', userId, 'pages', tx.entityId));
+                batch.delete(doc(db, 'users', userId, 'pages', tx.entityId));
                 break;
-            case 'save_profile':
-                await setDoc(doc(db, 'users', userId), sanitizeSnapshotForCloud(cleanPayload || {}), { merge: true });
+            case 'save_profile': {
+                const safeProfile = sanitizeSnapshotForCloud(cleanPayload || {});
+                safeProfile.lastClientId = CLIENT_INSTANCE_ID;
+                safeProfile.lastUpdated = Date.now();
+                batch.set(doc(db, 'users', userId), safeProfile, { merge: true });
                 break;
+            }
         }
     }
 
     /**
-     * Performs a clean cloud sync: writes profile metadata to users/{uid} (without geminiApiKey)
-     * and batches tasks, sessions, flashcards, and notebookPages to dedicated subcollections.
+     * Full snapshot cloud sync (explicit upload / migration).
      */
     async syncFullState(db: Firestore, userId: string, snapshot: Partial<AppDataV1>): Promise<number> {
+        const syncTs = Number(snapshot.lastUpdated || Date.now());
         const safeProfile = sanitizeSnapshotForCloud({
             userName: snapshot.userName,
-            routine: snapshot.routine,
-            routineTemplate: snapshot.routineTemplate,
-            notes: snapshot.notes,
             xp: snapshot.xp,
-            logs: snapshot.logs?.slice(0, 100),
+            logs: snapshot.logs?.slice(0, 50),
             moods: snapshot.moods,
             studyHoursLog: snapshot.studyHoursLog,
             startDate: snapshot.startDate,
@@ -161,9 +221,10 @@ class CloudSyncEngine {
             subjects: snapshot.subjects,
             archivedPlans: snapshot.archivedPlans,
             settings: snapshot.settings,
-            lastUpdated: snapshot.lastUpdated || Date.now(),
+            lastUpdated: syncTs,
             schemaVersion: 3,
         });
+        safeProfile.lastClientId = CLIENT_INSTANCE_ID;
 
         await setDoc(doc(db, 'users', userId), safeProfile, { merge: true });
 
@@ -190,25 +251,17 @@ class CloudSyncEngine {
         for (const s of snapshot.sessions || []) {
             if (s.id) batchItems.push({ col: 'sessions', id: s.id, data: s });
         }
-        for (const f of snapshot.flashcards || []) {
-            if (f.id) batchItems.push({ col: 'flashcards', id: f.id, data: f });
-        }
-        for (const p of snapshot.notebookPages || []) {
-            if (p.id) batchItems.push({ col: 'pages', id: p.id, data: p });
-        }
 
         if (batchItems.length > 0) {
             await commitInChunks(batchItems);
         }
 
-        // Clear outbox on full sync success
         await set(getOutboxKey(userId), []);
-        return Number(safeProfile.lastUpdated || Date.now());
+        return syncTs;
     }
 
     /**
-     * Loads user state from Firestore subcollections while supporting seamless
-     * fallback from legacy monolithic users/{uid} documents.
+     * Loads user state from Firestore bounded subcollections (with legacy monolithic fallback).
      */
     async loadFullState(db: Firestore, userId: string): Promise<Partial<AppDataV1> | null> {
         const profileSnap = await getDoc(doc(db, 'users', userId));
@@ -217,10 +270,10 @@ class CloudSyncEngine {
         const profileData = profileSnap.data() as Partial<AppDataV1>;
 
         const [tasksSnap, sessionsSnap, flashcardsSnap, pagesSnap] = await Promise.all([
-            getDocs(collection(db, 'users', userId, 'tasks')),
-            getDocs(collection(db, 'users', userId, 'sessions')),
-            getDocs(collection(db, 'users', userId, 'flashcards')),
-            getDocs(collection(db, 'users', userId, 'pages')),
+            getDocs(query(collection(db, 'users', userId, 'tasks'), limit(1500))),
+            getDocs(query(collection(db, 'users', userId, 'sessions'), limit(1500))),
+            getDocs(query(collection(db, 'users', userId, 'flashcards'), limit(500))),
+            getDocs(query(collection(db, 'users', userId, 'pages'), limit(300))),
         ]);
 
         const subTasks: SubjectTask[] = [];

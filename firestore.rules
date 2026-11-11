@@ -1,8 +1,8 @@
 rules_version = '2';
 
 // ===============================================================
-// ParsaPlan 2.0 - Cloud Firestore Security Rules
-// Local-First Architecture + Subcollections + Live Study Rooms
+// ParsaPlan 2.1 - Standardized Cloud Firestore Security Rules
+// Local-First Subcollections + Scalable Leaderboard + YPT Study Rooms
 // ===============================================================
 
 service cloud.firestore {
@@ -48,15 +48,23 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // Public Leaderboard Profiles
+    // Standardized Scalable Public Leaderboard (Lean Index + Lazy Detail)
     // ---------------------------------------------------------------
     match /publicProfiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(profileId) &&
+        request.resource.data.xp is number &&
+        request.resource.data.xp >= 0;
+      allow delete: if isOwner(profileId);
+    }
+
+    match /publicProfileDetails/{profileId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isOwner(profileId);
     }
 
     // ---------------------------------------------------------------
-    // Public Live Study Cabins
+    // Public Live Study Cabins (Indexed by lastPing)
     // ---------------------------------------------------------------
     match /liveSessions/{sessionId} {
       allow read: if isAuthenticated();
@@ -64,18 +72,30 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
-    // Group Study Rooms (Private 6-Char Code Rooms)
+    // YPT-Style Group Study Rooms (Public Directory + 6-Char Invite Code)
     // ---------------------------------------------------------------
     match /study_rooms/{roomId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
-        request.resource.data.creatorId == request.auth.uid;
+        request.resource.data.creatorId == request.auth.uid &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() >= 2 &&
+        request.resource.data.name.size() <= 80 &&
+        (!('maxMembers' in request.resource.data) || (request.resource.data.maxMembers is int && request.resource.data.maxMembers >= 2 && request.resource.data.maxMembers <= 200)) &&
+        (!('targetHours' in request.resource.data) || (request.resource.data.targetHours is number && request.resource.data.targetHours >= 1 && request.resource.data.targetHours <= 16));
       allow update, delete: if isAuthenticated() &&
         resource.data.creatorId == request.auth.uid;
 
       match /members/{memberId} {
         allow read: if isAuthenticated();
-        allow create, update, delete: if isOwner(memberId);
+        allow create, delete: if isOwner(memberId);
+        // Member manages own row; room peers may only increment cheersReceived by 1
+        allow update: if isOwner(memberId) || (
+          isAuthenticated() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cheersReceived']) &&
+          request.resource.data.cheersReceived is number &&
+          request.resource.data.cheersReceived == resource.data.cheersReceived + 1
+        );
       }
 
       match /messages/{messageId} {

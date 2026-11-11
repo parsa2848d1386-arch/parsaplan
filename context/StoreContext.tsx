@@ -28,7 +28,7 @@ import { StorageManager, AppDataV1 } from '../utils/StorageManager';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { calculateLevelInfo, getXpReward, XP_REWARDS } from '../utils/xpSystem';
 import { buildStudyMinutesByDate, calculateStreak, getLogicalDateKey } from '../utils/streakEngine';
-import { isCloudSyncAllowed, syncEngine } from '../services/syncEngine';
+import { CLIENT_INSTANCE_ID, isCloudSyncAllowed, syncEngine } from '../services/syncEngine';
 import { SynergyCompletionResult } from '../services/synergyBridge';
 
 import { doc, onSnapshot, Firestore } from 'firebase/firestore';
@@ -49,6 +49,7 @@ interface StoreContextType {
     tasks: SubjectTask[];
     toggleTask: (taskId: string) => void;
     addTask: (task: SubjectTask) => void;
+    addTasksBatch: (newTasks: SubjectTask[], sourceLabel?: string) => void;
     updateTask: (task: SubjectTask) => void;
     deleteTask: (taskId: string) => void;
     moveTaskToDate: (taskId: string, newIsoDate: string) => void;
@@ -379,9 +380,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             setIsInitialized(false);
             try {
                 const backupUserId = userId || 'parsaplan_local_user';
-                await StorageManager.createBackup(backupUserId);
-
-                let data = await StorageManager.load(backupUserId);
+                let [data, pending] = await Promise.all([
+                    StorageManager.load(backupUserId),
+                    syncEngine.getQueue(backupUserId),
+                ]);
 
                 if (!data && backupUserId !== 'parsaplan_local_user') {
                     const guestData = await StorageManager.load('parsaplan_local_user');
@@ -423,19 +425,20 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                         setSubjects([...defaultSubjects, ...oldCustoms]);
                     }
 
-                    if (data.startDate) {
-                        setStartDateState(data.startDate);
-                        recalcToday(data.startDate, data.totalDays || TOTAL_DAYS);
-                    } else {
-                        recalcToday(detectedStart, data.totalDays || TOTAL_DAYS);
-                    }
+                    // Upgrade legacy empty seed date ('2026-01-31') to today cleanly when workspace has no user tasks/sessions
+                    const hasUserActivity = (data.tasks?.length || 0) > 0 || (data.sessions?.length || 0) > 0;
+                    const effectiveStart =
+                        data.startDate && !(data.startDate === '2026-01-31' && !hasUserActivity)
+                            ? data.startDate
+                            : detectedStart;
+                    setStartDateState(effectiveStart);
+                    recalcToday(effectiveStart, data.totalDays || TOTAL_DAYS);
 
                     applySettingsPayload(data.settings);
                 } else {
                     loadDefaultPlan();
                 }
 
-                const pending = await syncEngine.getQueue(backupUserId);
                 setSyncQueueCount(pending.length);
             } catch (error) {
                 console.error('Error during app initialization, loading defaults:', error);
@@ -444,6 +447,12 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
             setDailyQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
             setIsInitialized(true);
+
+            // Create rolling backup lazily after mount to avoid blocking initial UI render
+            const backupUid = userId || 'parsaplan_local_user';
+            setTimeout(() => {
+                StorageManager.createBackup(backupUid).catch(() => {});
+            }, 1500);
         };
 
         if (userId) initApp();
@@ -506,22 +515,42 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         ]
     );
 
-    // --- LOCAL PERSISTENCE (AUTO-SAVE TO INDEXEDDB) ---
+    // --- LOCAL PERSISTENCE (DEBOUNCED AUTO-SAVE TO INDEXEDDB FOR SMOOTH 60FPS UI) ---
+    const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (!isInitialized) return;
         let cancelled = false;
         setSaveStatus('saving');
-        StorageManager.save(buildDataSnapshot(false), userId || 'parsaplan_local_user').then((ok) => {
-            if (!cancelled) setSaveStatus(ok ? 'saved' : 'error');
-        });
+        if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+        localSaveTimerRef.current = setTimeout(() => {
+            StorageManager.save(buildDataSnapshot(false), userId || 'parsaplan_local_user').then((ok) => {
+                if (!cancelled) setSaveStatus(ok ? 'saved' : 'error');
+            });
+        }, 280);
         return () => {
             cancelled = true;
+            if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
         };
     }, [buildDataSnapshot, isInitialized, userId]);
 
-    // --- AUTO-SYNC TO CLOUD (Debounced, Offline Outbox-Safe, No Local-User Sync) ---
+    // --- AUTO-SYNC PROFILE METADATA + INCREMENTAL OUTBOX FLUSH (HIGH-SCALE ARCHITECTURE) ---
     const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const ignoreSyncUntilRef = useRef(0);
+    const profileSignature = useMemo(
+        () =>
+            JSON.stringify({
+                userName,
+                xp,
+                moods,
+                studyHoursLog,
+                startDate,
+                totalDays,
+                subjects,
+                archivedPlans,
+                settings: buildSettingsObject(false),
+            }),
+        [userName, xp, moods, studyHoursLog, startDate, totalDays, subjects, archivedPlans, buildSettingsObject]
+    );
 
     useEffect(() => {
         if (!isInitialized || !isCloudSyncAllowed(db, userId, user) || !db) return;
@@ -530,36 +559,44 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
 
         syncTimeoutRef.current = setTimeout(async () => {
-            const snapshot = buildDataSnapshot(false);
+            await syncEngine.enqueue(userId, {
+                type: 'save_profile',
+                entityId: userId,
+                payload: {
+                    userName,
+                    xp,
+                    logs: auditLog.slice(0, 50),
+                    moods,
+                    studyHoursLog,
+                    startDate,
+                    totalDays,
+                    subjects,
+                    archivedPlans,
+                    settings: buildSettingsObject(false),
+                    lastUpdated: Date.now(),
+                    schemaVersion: 3,
+                },
+            });
+
             if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                const count = await syncEngine.enqueue(userId, {
-                    type: 'save_profile',
-                    entityId: userId,
-                    payload: snapshot,
-                });
-                setSyncQueueCount(count);
+                const q = await syncEngine.getQueue(userId);
+                setSyncQueueCount(q.length);
                 return;
             }
-            try {
-                const syncedTs = await syncEngine.syncFullState(db, userId, snapshot);
-                lastSyncTimeRef.current = syncedTs;
-                setLastSyncTime(syncedTs);
-                setSyncQueueCount(0);
-            } catch (e) {
-                console.error('Auto-sync failed, queuing offline:', e);
-                const count = await syncEngine.enqueue(userId, {
-                    type: 'save_profile',
-                    entityId: userId,
-                    payload: snapshot,
-                });
-                setSyncQueueCount(count);
+
+            const res = await syncEngine.flushOutbox(db, userId, user);
+            setSyncQueueCount(res.remaining);
+            if (res.flushed > 0) {
+                const ts = Date.now();
+                lastSyncTimeRef.current = ts;
+                setLastSyncTime(ts);
             }
-        }, 4000);
+        }, 2500);
 
         return () => {
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
         };
-    }, [buildDataSnapshot, isInitialized, db, userId, user]);
+    }, [profileSignature, tasks.length, sessions.length, isInitialized, db, userId, user]);
 
     // --- ONLINE RECONNECT FLUSH ---
     useEffect(() => {
@@ -584,6 +621,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             async (docSnap) => {
                 if (!docSnap.exists()) return;
                 const data = docSnap.data();
+                if (data.lastClientId === CLIENT_INSTANCE_ID) return;
                 const remoteLastUpdated = Number(data.lastUpdated || 0);
                 const localLastUpdated = lastSyncTimeRef.current || 0;
                 if (remoteLastUpdated > localLastUpdated) {
@@ -880,21 +918,65 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     // --- TASKS ---
+    const ensureSubjectsExist = useCallback((candidateNames: string[]) => {
+        const cleaned = Array.from(new Set(candidateNames.map((n) => n.trim()).filter(Boolean)));
+        if (cleaned.length === 0) return;
+        setSubjects((prev) => {
+            const existing = new Set(prev.map((s) => s.name));
+            const additions = cleaned
+                .filter((name) => !existing.has(name))
+                .map((name) => {
+                    const style = getSubjectStyle(name);
+                    return { id: name, name, icon: style.icon, color: style.color };
+                });
+            return additions.length > 0 ? [...prev, ...additions] : prev;
+        });
+    }, []);
+
+    const normalizeTaskPayload = useCallback(
+        (task: SubjectTask): SubjectTask => {
+            let finalDate = task.date;
+            if (task.dayId > 0 && !task.date) finalDate = toIsoString(addDays(startDate, task.dayId - 1));
+            return {
+                ...task,
+                subject: (task.subject || 'شخصی').trim(),
+                date: finalDate || getDayDate(currentDay),
+                id: task.id || crypto.randomUUID(),
+                status: task.status || (task.isCompleted ? 'completed' : 'todo'),
+                priority: task.priority || 'medium',
+                durationMinutes: task.durationMinutes ?? 60,
+                blocks: task.blocks || [],
+            };
+        },
+        [startDate, currentDay]
+    );
+
     const addTask = (task: SubjectTask) => {
-        let finalDate = task.date;
-        if (task.dayId > 0 && !task.date) finalDate = toIsoString(addDays(startDate, task.dayId - 1));
-        const newTask: SubjectTask = {
-            ...task,
-            date: finalDate || getDayDate(currentDay),
-            id: task.id || crypto.randomUUID(),
-            status: task.status || (task.isCompleted ? 'completed' : 'todo'),
-            priority: task.priority || 'medium',
-            durationMinutes: task.durationMinutes ?? 60,
-            blocks: task.blocks || [],
-        };
+        const newTask = normalizeTaskPayload(task);
+        ensureSubjectsExist([newTask.subject]);
         setTasks((prev) => [...prev, newTask]);
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: newTask.id, payload: newTask }).then(setSyncQueueCount);
+        }
         logAction('add_task', `افزودن تسک: ${newTask.subject}`);
         showToast('تسک اضافه شد', 'success');
+    };
+
+    const addTasksBatch = (incomingTasks: SubjectTask[], sourceLabel = 'افزودن خودکار') => {
+        if (!incomingTasks || incomingTasks.length === 0) return;
+        const normalizedList = incomingTasks.map(normalizeTaskPayload);
+        ensureSubjectsExist(normalizedList.map((t) => t.subject));
+        setTasks((prev) => [...prev, ...normalizedList]);
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine
+                .enqueueMany(
+                    userId,
+                    normalizedList.map((t) => ({ type: 'upsert_task' as const, entityId: t.id, payload: t }))
+                )
+                .then(setSyncQueueCount);
+        }
+        logAction('batch_add_tasks', `${sourceLabel}: ${normalizedList.length} تسک`);
+        showToast(`${normalizedList.length} تسک با موفقیت به برنامه اضافه شد ✅`, 'success');
     };
 
     const updateTask = (updatedTask: SubjectTask) => {
@@ -909,6 +991,9 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             status: updatedTask.isCompleted ? 'completed' : updatedTask.status === 'completed' ? 'todo' : updatedTask.status || 'todo',
         };
         setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? normalized : t)));
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: normalized.id, payload: normalized }).then(setSyncQueueCount);
+        }
         logAction('update_task', `ویرایش: ${updatedTask.subject}`);
         showToast('ذخیره شد', 'success');
     };
@@ -962,6 +1047,11 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         });
 
         setTasks(nextTasks);
+
+        const toggledTask = nextTasks.find((t) => t.id === taskId);
+        if (toggledTask && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: toggledTask.id, payload: toggledTask }).then(setSyncQueueCount);
+        }
 
         // Award PERFECT_DAY_BONUS once per date when all tasks on that date become completed
         if (wasCompleted && completedDateToCheck && !perfectDates[completedDateToCheck]) {
@@ -1257,6 +1347,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         tasks,
         toggleTask,
         addTask,
+        addTasksBatch,
         updateTask,
         deleteTask,
         moveTaskToDate,

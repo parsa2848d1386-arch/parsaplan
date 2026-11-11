@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { SubjectTask, StudySession, DailyRoutineSlot, getSubjectStyle } from '../../types';
+import { SubjectTask, StudySession, getSubjectStyle } from '../../types';
 import { useStore } from '../../context/StoreContext';
 import { useFocus } from '../../context/FocusContext';
 import { useUI } from '../../context/UIContext';
@@ -10,10 +10,9 @@ import {
     computeTimelineLanes,
     findNextFreeSlot,
 } from '../../utils/timelineLayout';
-import { formatToPersianDigits, normalizeFarsiNums } from '../../utils';
+import { formatToPersianDigits } from '../../utils';
 import {
     Play,
-    Plus,
     CheckCircle2,
     Circle,
     Clock,
@@ -21,7 +20,6 @@ import {
     Sparkles,
     AlertTriangle,
     ZoomIn,
-    Layers,
     Eye,
     Crosshair,
     X,
@@ -43,22 +41,6 @@ const ZOOM_PX_PER_HOUR: Record<ZoomLevel, number> = {
     expanded: 108,
 };
 
-function parseRoutineRange(timeStr: string): { start: string; duration: number } | null {
-    const norm = normalizeFarsiNums(timeStr || '');
-    const m = norm.match(/(\d{1,2}):(\d{2})\s*[-–تاالی]+\s*(\d{1,2}):(\d{2})/);
-    if (!m) return null;
-    const h1 = Math.min(23, Math.max(0, parseInt(m[1], 10)));
-    const min1 = Math.min(59, Math.max(0, parseInt(m[2], 10)));
-    const h2 = Math.min(23, Math.max(0, parseInt(m[3], 10)));
-    const min2 = Math.min(59, Math.max(0, parseInt(m[4], 10)));
-    let diff = (h2 * 60 + min2) - (h1 * 60 + min1);
-    if (diff <= 0) diff += 1440;
-    return {
-        start: `${String(h1).padStart(2, '0')}:${String(min1).padStart(2, '0')}`,
-        duration: Math.max(15, Math.min(480, diff)),
-    };
-}
-
 export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
     logicalDate,
     tasks,
@@ -67,13 +49,12 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
     onAddAtHour,
     onEditTask,
 }) => {
-    const { toggleTask, updateTask, addTask, routineTemplate, settings, currentDay } = useStore();
+    const { toggleTask, updateTask, settings } = useStore();
     const { startFocusForTask } = useFocus();
     const { showToast } = useUI();
 
     const [zoom, setZoom] = useState<ZoomLevel>('normal');
     const [showActualTrack, setShowActualTrack] = useState<boolean>(true);
-    const [showRoutineOverlay, setShowRoutineOverlay] = useState<boolean>(true);
     const [dragHoverTime, setDragHoverTime] = useState<string | null>(null);
     const [dragHoverTopPx, setDragHoverTopPx] = useState<number>(0);
     const [resizingState, setResizingState] = useState<{ taskId: string; previewDuration: number } | null>(null);
@@ -140,22 +121,6 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
         });
         return computeTimelineLanes(spans);
     }, [sessions, logicalDate, cutoffHour]);
-
-    const routineBlocks = useMemo(() => {
-        if (!showRoutineOverlay || !routineTemplate || routineTemplate.length === 0) return [];
-        const items: { slot: DailyRoutineSlot; start: string; duration: number; startOffset: number }[] = [];
-        routineTemplate.forEach((slot) => {
-            const parsed = parseRoutineRange(slot.time);
-            if (!parsed) return;
-            items.push({
-                slot,
-                start: parsed.start,
-                duration: parsed.duration,
-                startOffset: getOffsetMinutesFromCutoff(parsed.start, cutoffHour),
-            });
-        });
-        return items;
-    }, [routineTemplate, showRoutineOverlay, cutoffHour]);
 
     const conflictCount = useMemo(
         () => positionedTasks.filter((p) => p.hasConflict).length,
@@ -258,24 +223,6 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
         });
 
         showToast(`${formatToPersianDigits(count)} کار به صورت خودکار در فضاهای خالی زمان‌بندی شد!`, 'success');
-    };
-
-    const handleConvertRoutineSlot = (slot: DailyRoutineSlot, start: string, duration: number) => {
-        addTask({
-            id: `rt_${Date.now()}_${slot.id}`,
-            dayId: currentDay || 1,
-            date: logicalDate,
-            subject: 'روتین و عادت‌ها',
-            topic: slot.title,
-            details: slot.description || 'از روتین روزانه',
-            isCompleted: false,
-            status: 'todo',
-            studyType: 'habit',
-            priority: 'medium',
-            startTime: start,
-            durationMinutes: duration,
-            isCustom: true,
-        });
     };
 
     const scrollToNow = () => {
@@ -386,18 +333,6 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                         <Eye size={13} /> تطبیق با زمان واقعی ({formatToPersianDigits(positionedSessions.length)})
                     </button>
 
-                    <button
-                        type="button"
-                        onClick={() => setShowRoutineOverlay(!showRoutineOverlay)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${
-                            showRoutineOverlay
-                                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300'
-                                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500'
-                        }`}
-                    >
-                        <Layers size={13} /> روکش روتین
-                    </button>
-
                     {isToday && (
                         <button
                             type="button"
@@ -494,33 +429,6 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                     </span>
                                 </div>
                             ))}
-
-                            {/* Routine Ghost Overlay Blocks */}
-                            {routineBlocks.map(({ slot, start, duration, startOffset }) => {
-                                const top = startOffset * pxPerMin;
-                                const height = Math.max(26, duration * pxPerMin);
-                                return (
-                                    <div
-                                        key={`rt_ghost_${slot.id}`}
-                                        style={{ top, height }}
-                                        className="pointer-events-auto absolute right-2 left-2 rounded-2xl border-2 border-dashed border-purple-300/70 dark:border-purple-700/50 bg-purple-50/35 dark:bg-purple-950/15 px-3 py-1 flex items-start justify-between z-[1]"
-                                    >
-                                        <div className="text-[10px] font-bold text-purple-700 dark:text-purple-300 truncate">
-                                            🔄 روتین: {slot.title} ({start})
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleConvertRoutineSlot(slot, start, duration);
-                                            }}
-                                            className="px-2 py-0.5 rounded-lg bg-purple-600/90 hover:bg-purple-700 text-white text-[9px] font-black shrink-0 flex items-center gap-0.5"
-                                        >
-                                            <Plus size={10} /> ثبت برای امروز
-                                        </button>
-                                    </div>
-                                );
-                            })}
 
                             {/* Drag Hover Guide */}
                             {dragHoverTime && (

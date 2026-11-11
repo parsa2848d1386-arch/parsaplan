@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, Firestore } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, User, Auth } from 'firebase/auth';
 import { FirebaseConfig, ToastType } from '../types';
 import { DEFAULT_FIREBASE_CONFIG, IS_DEFAULT_FIREBASE_ENABLED } from '../firebaseConfig';
@@ -82,7 +82,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 app = initializeApp(config);
             }
 
-            const firestore = getFirestore(app);
+            let firestore: Firestore;
+            try {
+                firestore = initializeFirestore(app, {
+                    localCache: persistentLocalCache({
+                        tabManager: persistentMultipleTabManager(),
+                    }),
+                });
+            } catch {
+                firestore = getFirestore(app);
+            }
             const firebaseAuth = getAuth(app);
 
             setDb(firestore);

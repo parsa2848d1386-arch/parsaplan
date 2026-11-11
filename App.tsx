@@ -13,7 +13,6 @@ import { BrainDumpModal } from './components/BrainDumpModal';
 
 // Lazy Load Pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
-const DailyRoutine = React.lazy(() => import('./pages/DailyRoutine'));
 const Subjects = React.lazy(() => import('./pages/Subjects'));
 const Analysis = React.lazy(() => import('./pages/Analysis'));
 const Settings = React.lazy(() => import('./pages/Settings'));
@@ -22,8 +21,6 @@ const History = React.lazy(() => import('./pages/History'));
 const Welcome = React.lazy(() => import('./pages/Welcome'));
 const AIChat = React.lazy(() => import('./pages/AIChat'));
 const VisualPlanner = React.lazy(() => import('./pages/VisualPlanner'));
-const WorkspaceNotes = React.lazy(() => import('./pages/WorkspaceNotes'));
-const LeitnerBox = React.lazy(() => import('./pages/LeitnerBox'));
 
 
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -42,11 +39,8 @@ function App() {
                 <Route path="/welcome" element={<Welcome />} />
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Dashboard />} />
-                  <Route path="routine" element={<DailyRoutine />} />
                   <Route path="planner" element={<VisualPlanner />} />
                   <Route path="subjects" element={<Subjects />} />
-                  <Route path="notes" element={<WorkspaceNotes />} />
-                  <Route path="leitner" element={<LeitnerBox />} />
                   <Route path="analysis" element={<Analysis />} />
                   <Route path="leaderboard" element={<Leaderboard />} />
                   <Route path="settings" element={<Settings />} />

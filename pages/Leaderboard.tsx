@@ -1,896 +1,1304 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Trophy, Medal, Crown, Star, TrendingUp, Users, RefreshCw, User, Eye, EyeOff, Loader2, X, BookOpen, Target, Calendar, ChevronLeft, Search, Award, Flame, Brain } from 'lucide-react';
-import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot, getDoc } from 'firebase/firestore';
-import { getShamsiDate } from '../utils';
-
-// Public profile interface
-interface PublicProfile {
-    id: string;
-    userName: string;
-    xp: number;
-    level: number;
-    progress: number;
-    tasksCompleted: number;
-    totalTasks: number;
-    lastActive: number;
-    examAverage?: number;
-}
-
-// Extended profile with tasks for viewing
-interface FullProfile extends PublicProfile {
-    tasks?: any[];
-    routineTemplate?: any[];
-    subjects?: any[];
-}
-
-// Live Study Room interface
-interface LiveSession {
-    id: string;
-    userName: string;
-    subject: string;
-    topic: string;
-    startedAt: number;
-    lastPing: number;
-}
+import { useFocus } from '../context/FocusContext';
+import {
+    Trophy,
+    Medal,
+    Crown,
+    Star,
+    TrendingUp,
+    Users,
+    RefreshCw,
+    Eye,
+    EyeOff,
+    Loader2,
+    X,
+    BookOpen,
+    Target,
+    Search,
+    Award,
+    Flame,
+    Plus,
+    Copy,
+    Check,
+    LogOut,
+    Trash2,
+    Play,
+    Send,
+    DoorOpen,
+    Lock,
+    Globe,
+    Calendar,
+    Clock,
+} from 'lucide-react';
+import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { getShamsiDate, formatClockTime, formatToPersianDigits } from '../utils';
+import { getLogicalDateKey } from '../utils/streakEngine';
+import { leaderboardApi, ROOM_CATEGORIES } from '../services/backendApi';
+import { liveRoomService } from '../services/liveRoomService';
+import { LiveRoomInfo, LiveRoomMessage, LiveRoomPeer, PublicProfileDetail, PublicProfileSummary } from '../types';
 
 const Leaderboard = () => {
-    const { user, userName, xp, level, getProgress, tasks, showToast, firebaseConfig, settings, updateSettings } = useStore();
-    const [leaderboardData, setLeaderboardData] = useState<PublicProfile[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const {
+        user,
+        userId,
+        db,
+        userName,
+        xp,
+        level,
+        getProgress,
+        tasks,
+        showToast,
+        askConfirm,
+        firebaseConfig,
+        settings,
+        updateSettings,
+        studyMinutesByDate,
+    } = useStore();
+
+    const {
+        activeRoomCode,
+        setActiveRoomCode,
+        status: focusStatus,
+        selectedSubject,
+        elapsedSeconds: focusElapsedSeconds,
+        setIsTimerOpen,
+        startTimer,
+    } = useFocus();
+
+    // Primary Page Tab ('rooms' YPT vs 'ranking' Leaderboard)
+    const [activeSection, setActiveSection] = useState<'rooms' | 'ranking'>('rooms');
+
+    // --- Scalable Paginated Leaderboard State ---
+    const [leaderboardData, setLeaderboardData] = useState<PublicProfileSummary[]>([]);
+    const [isLoadingLb, setIsLoadingLb] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMoreLb, setHasMoreLb] = useState(false);
+    const [lbCursor, setLbCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
     const [isMyProfilePublic, setIsMyProfilePublic] = useState(false);
-    const [isToggling, setIsToggling] = useState(false);
+    const [isTogglingPublic, setIsTogglingPublic] = useState(false);
     const [sortBy, setSortBy] = useState<'xp' | 'exam'>('xp');
-
-    // Live Study Room State
-    const [liveSessions, setLiveSessions] = useState<LiveSession[]>([]);
-    const [isJoiningRoom, setIsJoiningRoom] = useState(false);
-    const [currentStudySubject, setCurrentStudySubject] = useState('');
-    const [currentStudyTopic, setCurrentStudyTopic] = useState('');
-    const [hasNotificationPermission, setHasNotificationPermission] = useState(false);
-
-    // Profile viewer state
-    const [viewingProfile, setViewingProfile] = useState<FullProfile | null>(null);
-    const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-
-    // Search state
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Calculate user stats
-    const calculateStats = useCallback(() => {
-        const completedTasks = tasks.filter(t => t.isCompleted);
-        const examTasks = completedTasks.filter(t => t.studyType === 'exam' && t.testStats && t.testStats.total > 0);
+    // Profile Viewer Modal (<dialog>)
+    const [viewingProfile, setViewingProfile] = useState<PublicProfileDetail | null>(null);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+    const profileDialogRef = useRef<HTMLDialogElement>(null);
 
+    // --- YPT Study Rooms State ---
+    const [publicRooms, setPublicRooms] = useState<LiveRoomInfo[]>([]);
+    const [isLoadingRooms, setIsLoadingRooms] = useState(false);
+    const [roomSearch, setRoomSearch] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('همه');
+    const [joinCodeInput, setJoinCodeInput] = useState('');
+    const [roomActionLoading, setRoomActionLoading] = useState(false);
+
+    // Active Joined Room State
+    const [activeRoomInfo, setActiveRoomInfo] = useState<LiveRoomInfo | null>(null);
+    const [roomPeers, setRoomPeers] = useState<LiveRoomPeer[]>([]);
+    const [roomMessages, setRoomMessages] = useState<LiveRoomMessage[]>([]);
+    const [roomChatText, setRoomChatText] = useState('');
+    const [copiedCode, setCopiedCode] = useState(false);
+    const [localTick, setLocalTick] = useState(0);
+
+    // Create Room Modal (<dialog>)
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const createRoomDialogRef = useRef<HTMLDialogElement>(null);
+    const [newRoomName, setNewRoomName] = useState('');
+    const [newRoomCategory, setNewRoomCategory] = useState<string>(ROOM_CATEGORIES[0]);
+    const [newRoomDesc, setNewRoomDesc] = useState('');
+    const [newRoomTargetHours, setNewRoomTargetHours] = useState(4);
+    const [newRoomMaxMembers, setNewRoomMaxMembers] = useState(25);
+    const [newRoomIsPublic, setNewRoomIsPublic] = useState(true);
+
+    const isCloudAuthenticated = Boolean(db && user && userId && userId !== 'parsaplan_local_user');
+
+    const myTodayStudySeconds = useMemo(() => {
+        const key = getLogicalDateKey(new Date(), settings?.dayCutoffHour ?? 5);
+        return Math.max(0, Math.round((studyMinutesByDate?.[key] || 0) * 60)) + (focusStatus === 'running' ? focusElapsedSeconds : 0);
+    }, [studyMinutesByDate, settings?.dayCutoffHour, focusStatus, focusElapsedSeconds]);
+
+    // Calculate Lean User Stats
+    const myStats: PublicProfileSummary = useMemo(() => {
+        const completedTasks = tasks.filter((t) => t.isCompleted);
+        const examTasks = completedTasks.filter((t) => t.studyType === 'exam' && t.testStats && t.testStats.total > 0);
         let examAvg = 0;
         if (examTasks.length > 0) {
-            const sumPercentages = examTasks.reduce((acc, t) => {
+            const sum = examTasks.reduce((acc, t) => {
                 const total = t.testStats!.total;
                 const correct = t.testStats!.correct;
                 const wrong = t.testStats!.wrong;
-                const percentage = total > 0 ? Math.round(((correct * 3 - wrong) / (total * 3)) * 100) : 0;
-                return acc + (percentage > 0 ? percentage : 0);
+                const pct = total > 0 ? Math.round(((correct * 3 - wrong) / (total * 3)) * 100) : 0;
+                return acc + (pct > 0 ? pct : 0);
             }, 0);
-            examAvg = Math.round(sumPercentages / examTasks.length);
+            examAvg = Math.round(sum / examTasks.length);
         }
 
         return {
             id: user?.uid || 'local',
-            userName: userName,
-            xp: xp,
-            level: level,
+            userName: userName || 'کاربر پارسا پلن',
+            xp,
+            level,
             progress: getProgress(),
             tasksCompleted: completedTasks.length,
             totalTasks: tasks.length,
             lastActive: Date.now(),
-            examAverage: examAvg
+            examAverage: examAvg,
         };
-    }, [user, userName, xp, level, getProgress, tasks]);
+    }, [user?.uid, userName, xp, level, getProgress, tasks]);
 
-    const myStats = calculateStats();
-
-    // Get Firestore instance
-    const getDb = useCallback(() => {
-        if (!firebaseConfig) return null;
-        try {
-            return getFirestore();
-        } catch {
-            return null;
-        }
-    }, [firebaseConfig]);
-
-    // Fetch leaderboard data from Firebase
-    const fetchLeaderboard = useCallback(async () => {
-        setIsLoading(true);
-        const db = getDb();
-
-        if (!db) {
-            setLeaderboardData([]);
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            const publicProfilesRef = collection(db, 'publicProfiles');
-            const snapshot = await getDocs(publicProfilesRef);
-
-            const profiles: PublicProfile[] = [];
-            snapshot.forEach((doc) => {
-                profiles.push(doc.data() as PublicProfile);
-            });
-
-            if (user) {
-                const isPublic = profiles.some(p => p.id === user.uid);
-                setIsMyProfilePublic(isPublic);
-            }
-
-            profiles.sort((a, b) => b.xp - a.xp);
-            setLeaderboardData(profiles);
-        } catch (error) {
-            console.error('Error fetching leaderboard:', error);
-            setLeaderboardData([]);
-        }
-
-        setIsLoading(false);
-    }, [getDb, user]);
-
-    // Listen to real-time updates
+    // Sync Native Dialog Open/Close Safely (Modern Web Guidance)
     useEffect(() => {
-        const db = getDb();
-        if (!db) {
-            setIsLoading(false);
-            return;
-        }
-
-        const publicProfilesRef = collection(db, 'publicProfiles');
-
-        const unsubscribe = onSnapshot(publicProfilesRef, (snapshot) => {
-            const profiles: PublicProfile[] = [];
-            snapshot.forEach((doc) => {
-                profiles.push(doc.data() as PublicProfile);
-            });
-
-            if (user) {
-                const isPublic = profiles.some(p => p.id === user.uid);
-                setIsMyProfilePublic(isPublic);
-            }
-
-            setLeaderboardData(profiles);
-            setIsLoading(false);
-        }, (error) => {
-            console.error('Leaderboard listener error:', error);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [getDb, user]);
-
-    // Request Notification Permission
-    useEffect(() => {
-        if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
-                setHasNotificationPermission(true);
-            } else if (Notification.permission !== 'denied') {
-                Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        setHasNotificationPermission(true);
-                    }
-                });
-            }
-        }
-    }, []);
-
-    // Listen to real-time active study sessions
-    useEffect(() => {
-        const db = getDb();
-        if (!db) return;
-
-        const sessionsRef = collection(db, 'liveSessions');
-        let previousSessionIds = new Set<string>();
-
-        const unsubscribe = onSnapshot(sessionsRef, (snapshot) => {
-            const sessions: LiveSession[] = [];
-            const now = Date.now();
-
-            snapshot.forEach((doc) => {
-                const data = doc.data() as LiveSession;
-                if (now - data.lastPing < 600000) {
-                    sessions.push(data);
-
-                    if (!previousSessionIds.has(data.id) && data.id !== user?.uid && hasNotificationPermission) {
-                        if (document.hidden) {
-                            new Notification('هم‌کلاسی آنلاین شد! 📚', {
-                                body: `${data.userName} شروع به مطالعه ${data.subject} (${data.topic}) کرد. شما هم به اتاق مطالعه بپیوندید!`,
-                                icon: '/icon-192.png'
-                            });
-                        } else {
-                            showToast(`${data.userName} در حال مطالعه ${data.subject} است!`, 'info');
-                        }
-                    }
-                } else {
-                    deleteDoc(doc.ref).catch(() => { });
-                }
-            });
-
-            previousSessionIds = new Set(sessions.map(s => s.id));
-            setLiveSessions(sessions.sort((a, b) => b.startedAt - a.startedAt));
-
-        }, (error) => {
-            console.error('Sessions listener error:', error);
-        });
-
-        return () => unsubscribe();
-    }, [getDb, user, hasNotificationPermission, showToast]);
-
-    // Live Study Room Actions
-    const joinLiveRoom = async () => {
-        if (!user) {
-            showToast('ابتدا وارد حساب خود شوید', 'warning');
-            return;
-        }
-        if (!currentStudySubject || !currentStudyTopic) {
-            showToast('لطفا نام درس و مبحث را وارد کنید', 'warning');
-            return;
-        }
-
-        setIsJoiningRoom(true);
-        const db = getDb();
-        if (db) {
-            try {
-                const session: LiveSession = {
-                    id: user.uid,
-                    userName: userName || 'کاربر',
-                    subject: currentStudySubject,
-                    topic: currentStudyTopic,
-                    startedAt: Date.now(),
-                    lastPing: Date.now()
-                };
-                await setDoc(doc(db, 'liveSessions', user.uid), session);
-                showToast('شما با موفقیت به اتاق مطالعه پیوستید!', 'success');
-            } catch (e) {
-                showToast('خطا در پیوستن به اتاق', 'error');
-            }
-        }
-        setIsJoiningRoom(false);
-    };
-
-    const leaveLiveRoom = async () => {
-        if (!user) return;
-        const db = getDb();
-        if (db) {
-            try {
-                await deleteDoc(doc(db, 'liveSessions', user.uid));
-                showToast('از اتاق مطالعه خارج شدید', 'info');
-                setCurrentStudySubject('');
-                setCurrentStudyTopic('');
-            } catch (e) { }
-        }
-    };
-
-    // Ping loop to keep session alive
-    useEffect(() => {
-        if (!user || liveSessions.findIndex(s => s.id === user.uid) === -1) return;
-
-        const db = getDb();
-        if (!db) return;
-
-        const pingInterval = setInterval(async () => {
-            try {
-                await setDoc(doc(db, 'liveSessions', user.uid), { lastPing: Date.now() }, { merge: true });
-            } catch (e) { }
-        }, 180000);
-
-        return () => clearInterval(pingInterval);
-    }, [user, liveSessions, getDb]);
-
-    // Toggle public profile
-    const toggleMyPublicProfile = async () => {
-        if (!user) {
-            showToast('برای شرکت در لیگ باید وارد حساب خود شوید', 'warning');
-            return;
-        }
-
-        const db = getDb();
-        if (!db) {
-            showToast('برای شرکت در لیگ باید فایربیس متصل باشد', 'warning');
-            return;
-        }
-
-        setIsToggling(true);
-
-        try {
-            const docRef = doc(db, 'publicProfiles', user.uid);
-
-            if (isMyProfilePublic) {
-                await deleteDoc(docRef);
-                setIsMyProfilePublic(false);
-                showToast('پروفایل شما خصوصی شد', 'success');
+        const el = createRoomDialogRef.current;
+        if (!el) return;
+        if (isCreateModalOpen) {
+            el.returnValue = '';
+            el.setAttribute('closedby', 'any');
+            if (typeof el.showModal === 'function') {
+                if (!el.open) el.showModal();
             } else {
-                await setDoc(docRef, {
-                    ...myStats,
-                    id: user.uid,
-                    lastActive: Date.now(),
-                    tasks: tasks.slice(0, 50),
-                });
-                setIsMyProfilePublic(true);
-                showToast('پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود', 'success');
+                el.setAttribute('open', '');
             }
-        } catch (error) {
-            console.error('Error toggling profile:', error);
-            showToast('خطا در تغییر وضعیت پروفایل', 'error');
+        } else {
+            if (typeof el.close === 'function') {
+                if (el.open) el.close();
+            } else {
+                el.removeAttribute('open');
+            }
+            el.returnValue = '';
         }
+    }, [isCreateModalOpen]);
 
-        setIsToggling(false);
+    useEffect(() => {
+        const el = profileDialogRef.current;
+        if (!el) return;
+        if (viewingProfile) {
+            el.returnValue = '';
+            el.setAttribute('closedby', 'any');
+            if (typeof el.showModal === 'function') {
+                if (!el.open) el.showModal();
+            } else {
+                el.setAttribute('open', '');
+            }
+        } else {
+            if (typeof el.close === 'function') {
+                if (el.open) el.close();
+            } else {
+                el.removeAttribute('open');
+            }
+            el.returnValue = '';
+        }
+    }, [viewingProfile]);
+
+    // Local 1-second timer tick for live YPT desk clocks without server polling
+    useEffect(() => {
+        if (!activeRoomCode) return;
+        const interval = setInterval(() => setLocalTick((t) => t + 1), 1000);
+        return () => clearInterval(interval);
+    }, [activeRoomCode]);
+
+    // Load Paginated Leaderboard
+    const loadLeaderboardPage = useCallback(
+        async (forceRefresh = false) => {
+            if (!db) {
+                setLeaderboardData([]);
+                setIsLoadingLb(false);
+                return;
+            }
+            setIsLoadingLb(true);
+            const res = await leaderboardApi.fetchPage(db, { sortBy, pageSize: 25, forceRefresh });
+            if (res.ok) {
+                setLeaderboardData(res.data.items);
+                setLbCursor(res.data.nextCursor);
+                setHasMoreLb(res.data.hasMore);
+            } else {
+                showToast(res.error.message, 'error');
+            }
+            setIsLoadingLb(false);
+        },
+        [db, sortBy, showToast]
+    );
+
+    const loadMoreLeaderboard = async () => {
+        if (!db || !lbCursor || isLoadingMore) return;
+        setIsLoadingMore(true);
+        const res = await leaderboardApi.fetchPage(db, { sortBy, pageSize: 25, cursor: lbCursor });
+        if (res.ok) {
+            setLeaderboardData((prev) => {
+                const seen = new Set(prev.map((p) => p.id));
+                const next = res.data.items.filter((item) => !seen.has(item.id));
+                return [...prev, ...next];
+            });
+            setLbCursor(res.data.nextCursor);
+            setHasMoreLb(res.data.hasMore);
+        }
+        setIsLoadingMore(false);
     };
 
-    // Update public profile stats periodically
-    useEffect(() => {
-        if (!isMyProfilePublic || !user) return;
-
-        const db = getDb();
-        if (!db) return;
-
-        const updateStats = async () => {
-            try {
-                const docRef = doc(db, 'publicProfiles', user.uid);
-                await setDoc(docRef, {
-                    ...myStats,
-                    id: user.uid,
-                    lastActive: Date.now(),
-                    tasks: tasks.slice(0, 50),
-                }, { merge: true });
-            } catch (error) {
-                console.error('Error updating public profile:', error);
+    // Load Public YPT Rooms
+    const loadPublicRooms = useCallback(
+        async (forceRefresh = false) => {
+            if (!db) {
+                setPublicRooms([]);
+                return;
             }
+            setIsLoadingRooms(true);
+            const res = await liveRoomService.listPublicRooms(db, undefined, forceRefresh);
+            if (res.ok) {
+                setPublicRooms(res.data);
+            } else {
+                showToast(res.error.message, 'error');
+            }
+            setIsLoadingRooms(false);
+        },
+        [db, showToast]
+    );
+
+    // Check own public profile status once on login & load initial cached lists
+    useEffect(() => {
+        if (!db) {
+            setIsLoadingLb(false);
+            return;
+        }
+        loadPublicRooms(false);
+        loadLeaderboardPage(false);
+        if (user?.uid) {
+            leaderboardApi.checkIsPublic(db, user.uid).then(setIsMyProfilePublic);
+        }
+    }, [db, user?.uid, loadPublicRooms, loadLeaderboardPage]);
+
+    // Dirty-checked throttled leaderboard stats sync
+    useEffect(() => {
+        if (!isMyProfilePublic || !isCloudAuthenticated || !db || !user) return;
+        leaderboardApi.syncStatsIfDirty(db, user.uid, myStats, tasks).catch(() => {});
+    }, [isMyProfilePublic, isCloudAuthenticated, db, user, myStats, tasks]);
+
+    // Subscribe to Active Joined YPT Room (Members & Chat)
+    useEffect(() => {
+        if (!activeRoomCode || !isCloudAuthenticated || !db) {
+            setActiveRoomInfo(null);
+            setRoomPeers([]);
+            setRoomMessages([]);
+            return;
+        }
+
+        let mounted = true;
+        liveRoomService.getGroupRoom(db, activeRoomCode).then((info) => {
+            if (mounted) setActiveRoomInfo(info);
+        });
+
+        const unsubPeers = liveRoomService.subscribeRoomMembers(db, activeRoomCode, (peers) => {
+            setRoomPeers(peers);
+        });
+        const unsubMsgs = liveRoomService.subscribeRoomMessages(db, activeRoomCode, (msgs) => {
+            setRoomMessages(msgs);
+        });
+
+        return () => {
+            mounted = false;
+            unsubPeers();
+            unsubMsgs();
         };
+    }, [activeRoomCode, isCloudAuthenticated, db]);
 
-        updateStats();
-    }, [xp, tasks.length, userName, isMyProfilePublic, user, getDb, myStats.examAverage]);
+    // --- YPT Study Room Handlers ---
+    const handleCreateRoom = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!isCloudAuthenticated || !db) {
+            showToast('برای ساخت اتاق مطالعه آنلاین ابتدا وارد حساب کاربری شوید', 'warning');
+            return;
+        }
+        if (newRoomName.trim().length < 2) {
+            showToast('لطفاً نام اتاق را حداقل با ۲ کاراکتر وارد کنید', 'warning');
+            return;
+        }
 
-    // View another user's profile
-    const viewUserProfile = async (profile: PublicProfile) => {
+        setRoomActionLoading(true);
+        const res = await liveRoomService.createRoomSafe(db, {
+            creatorId: userId,
+            creatorName: userName || 'کاربر',
+            name: newRoomName.trim(),
+            category: newRoomCategory,
+            description: newRoomDesc.trim(),
+            targetHours: newRoomTargetHours,
+            maxMembers: newRoomMaxMembers,
+            isPublic: newRoomIsPublic,
+        });
+
+        if (res.ok) {
+            const info = res.data;
+            await liveRoomService.upsertMemberPresence(db, info.code, {
+                uid: userId,
+                displayName: userName || 'کاربر',
+                avatar: '👑',
+                status: focusStatus === 'running' ? 'STUDYING' : 'RESTING',
+                activeSubject: selectedSubject || info.category,
+                activeTopic: '',
+                elapsedSeconds: focusStatus === 'running' ? focusElapsedSeconds : 0,
+                dailyStudySeconds: myTodayStudySeconds,
+                cheersReceived: 0,
+                lastPing: Date.now(),
+            });
+            setActiveRoomInfo(info);
+            setActiveRoomCode(info.code);
+            setIsCreateModalOpen(false);
+            setNewRoomName('');
+            setNewRoomDesc('');
+            await loadPublicRooms(true);
+            showToast(`اتاق «${info.name}» با کد ${info.code} ساخته شد! 🎉`, 'success');
+        } else {
+            showToast(res.error.message, 'error');
+        }
+        setRoomActionLoading(false);
+    };
+
+    const handleJoinRoom = async (rawCode: string) => {
+        const clean = rawCode.trim().toUpperCase();
+        if (clean.length !== 6) {
+            showToast('کد دعوت اتاق باید ۶ کاراکتر باشد', 'warning');
+            return;
+        }
+        if (!isCloudAuthenticated || !db) {
+            showToast('برای ورود به اتاق مطالعه آنلاین ابتدا وارد حساب کاربری شوید', 'warning');
+            return;
+        }
+
+        setRoomActionLoading(true);
+        try {
+            const info = await liveRoomService.getGroupRoom(db, clean);
+            if (!info) {
+                showToast('اتاقی با این کد یافت نشد', 'error');
+                setRoomActionLoading(false);
+                return;
+            }
+            await liveRoomService.upsertMemberPresence(db, clean, {
+                uid: userId,
+                displayName: userName || 'کاربر',
+                avatar: '🎓',
+                status: focusStatus === 'running' ? 'STUDYING' : 'RESTING',
+                activeSubject: selectedSubject || info.category,
+                activeTopic: '',
+                elapsedSeconds: focusStatus === 'running' ? focusElapsedSeconds : 0,
+                dailyStudySeconds: myTodayStudySeconds,
+                cheersReceived: 0,
+                lastPing: Date.now(),
+            });
+            setActiveRoomInfo(info);
+            setActiveRoomCode(clean);
+            setJoinCodeInput('');
+            showToast(`وارد اتاق «${info.name}» شدید! 👥`, 'success');
+        } catch {
+            showToast('خطا در اتصال به اتاق مطالعه', 'error');
+        } finally {
+            setRoomActionLoading(false);
+        }
+    };
+
+    const handleLeaveActiveRoom = async () => {
+        if (!activeRoomCode) return;
+        if (db && isCloudAuthenticated) {
+            await liveRoomService.leaveGroupRoom(db, activeRoomCode, userId).catch(() => {});
+        }
+        setActiveRoomCode(null);
+        setActiveRoomInfo(null);
+        showToast('از اتاق مطالعه خارج شدید', 'info');
+    };
+
+    const handleDeleteActiveRoom = () => {
+        if (!db || !activeRoomCode || !activeRoomInfo || activeRoomInfo.creatorId !== userId) return;
+        askConfirm(
+            'بستن و حذف اتاق',
+            `آیا از حذف دائمی اتاق «${activeRoomInfo.name}» مطمئن هستید؟`,
+            async () => {
+                const res = await liveRoomService.deleteGroupRoom(db, activeRoomCode);
+                if (res.ok) {
+                    setActiveRoomCode(null);
+                    setActiveRoomInfo(null);
+                    await loadPublicRooms(true);
+                    showToast('اتاق مطالعه بسته شد', 'info');
+                } else {
+                    showToast(res.error.message, 'error');
+                }
+            },
+            'danger'
+        );
+    };
+
+    const handleQuickRoomStatus = async (nextStatus: 'STUDYING' | 'RESTING') => {
+        if (!db || !activeRoomCode || !isCloudAuthenticated) return;
+        await liveRoomService.updateMemberStatus(
+            db,
+            activeRoomCode,
+            userId,
+            nextStatus,
+            selectedSubject || activeRoomInfo?.category || 'تمرکز',
+            '',
+            focusElapsedSeconds
+        );
+    };
+
+    const handleSendRoomChat = async () => {
+        if (!db || !activeRoomCode || !isCloudAuthenticated || !roomChatText.trim()) return;
+        const msg = roomChatText;
+        setRoomChatText('');
+        await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'کاربر', msg);
+    };
+
+    const handleStartFocusInsideRoom = () => {
+        setIsTimerOpen(true);
+        if (focusStatus !== 'running') {
+            startTimer();
+        }
+    };
+
+    const handleCopyRoomCode = (code: string) => {
+        navigator.clipboard?.writeText(code);
+        setCopiedCode(true);
+        showToast(`کد دعوت ${code} کپی شد`, 'success');
+        setTimeout(() => setCopiedCode(false), 2000);
+    };
+
+    // --- Leaderboard Handlers ---
+    const toggleMyPublicProfile = async () => {
+        if (!isCloudAuthenticated || !db || !user) {
+            showToast('برای شرکت در لیگ باید وارد حساب آنلاین خود شوید', 'warning');
+            return;
+        }
+        setIsTogglingPublic(true);
+        const res = isMyProfilePublic
+            ? await leaderboardApi.unpublishProfile(db, user.uid)
+            : await leaderboardApi.publishProfile(db, user.uid, myStats, tasks);
+
+        if (res.ok) {
+            const nextState = !isMyProfilePublic;
+            setIsMyProfilePublic(nextState);
+            showToast(
+                nextState ? 'پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود' : 'پروفایل شما خصوصی شد',
+                'success'
+            );
+            await loadLeaderboardPage(true);
+        } else {
+            showToast(res.error.message, 'error');
+        }
+        setIsTogglingPublic(false);
+    };
+
+    const viewUserProfile = async (profile: PublicProfileSummary) => {
         if (profile.id === user?.uid) {
             showToast('این پروفایل خودتان است!', 'info');
             return;
         }
-
+        if (!db) return;
         setIsLoadingProfile(true);
-        const db = getDb();
-
-        if (!db) {
-            showToast('خطا در اتصال به سرور', 'error');
-            setIsLoadingProfile(false);
-            return;
+        const res = await leaderboardApi.fetchProfileDetail(db, profile.id);
+        if (res.ok && res.data) {
+            setViewingProfile(res.data);
+        } else if (!res.ok) {
+            showToast(res.error.message, 'error');
+        } else {
+            showToast('پروفایل یافت نشد', 'error');
         }
-
-        try {
-            const docRef = doc(db, 'publicProfiles', profile.id);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const fullData = docSnap.data() as FullProfile;
-                setViewingProfile(fullData);
-            } else {
-                showToast('پروفایل یافت نشد', 'error');
-            }
-        } catch (error) {
-            console.error('Error viewing profile:', error);
-            showToast('خطا در بارگذاری پروفایل', 'error');
-        }
-
         setIsLoadingProfile(false);
     };
 
-    const getRankIcon = (rank: number) => {
-        switch (rank) {
-            case 1: return <Crown className="text-yellow-500 filter drop-shadow-[0_0_8px_rgba(234,179,8,0.4)] animate-bounce" size={24} style={{ animationDuration: '3s' }} />;
-            case 2: return <Medal className="text-gray-400 filter drop-shadow-[0_0_6px_rgba(156,163,175,0.3)]" size={22} />;
-            case 3: return <Medal className="text-amber-600 filter drop-shadow-[0_0_6px_rgba(217,119,6,0.3)]" size={22} />;
-            default: return <span className="text-gray-400 font-bold text-lg">{rank}</span>;
-        }
-    };
+    const filteredPublicRooms = useMemo(() => {
+        const q = roomSearch.trim().toLowerCase();
+        return publicRooms.filter((r) => {
+            if (selectedCategory !== 'همه' && r.category !== selectedCategory) return false;
+            if (q && !r.name.toLowerCase().includes(q) && !r.code.toLowerCase().includes(q)) return false;
+            return true;
+        });
+    }, [publicRooms, selectedCategory, roomSearch]);
 
-    const getRankBg = (rank: number) => {
-        switch (rank) {
-            case 1: return 'bg-gradient-to-r from-yellow-50/80 to-amber-50/80 dark:from-yellow-950/20 dark:to-amber-950/20 border-yellow-200/50 dark:border-yellow-800/30';
-            case 2: return 'bg-gradient-to-r from-gray-50/80 to-slate-50/80 dark:from-gray-800/40 dark:to-slate-800/40 border-gray-200/50 dark:border-gray-700/30';
-            case 3: return 'bg-gradient-to-r from-amber-50/80 to-orange-50/80 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200/50 dark:border-amber-800/30';
-            default: return 'bg-white/70 dark:bg-gray-800/70 border-gray-100/50 dark:border-gray-700/30';
-        }
+    const filteredLeaderboard = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        const base = q ? leaderboardData.filter((p) => p.userName.toLowerCase().includes(q)) : [...leaderboardData];
+        if (sortBy === 'exam') base.sort((a, b) => (b.examAverage || 0) - (a.examAverage || 0));
+        else base.sort((a, b) => b.xp - a.xp);
+        return base;
+    }, [leaderboardData, searchQuery, sortBy]);
+
+    const getRankIcon = (rank: number) => {
+        if (rank === 1) return <Crown className="text-yellow-500" size={22} />;
+        if (rank === 2) return <Medal className="text-gray-400" size={20} />;
+        if (rank === 3) return <Medal className="text-amber-600" size={20} />;
+        return <span className="text-gray-400 font-bold text-sm">{rank}</span>;
     };
 
     const getTimeAgo = (timestamp: number) => {
-        const diff = Date.now() - timestamp;
-        const hours = Math.floor(diff / 3600000);
-        if (hours < 1) return 'الان';
+        const hours = Math.floor((Date.now() - timestamp) / 3_600_000);
+        if (hours < 1) return 'آنلاین';
         if (hours < 24) return `${hours} ساعت پیش`;
         return `${Math.floor(hours / 24)} روز پیش`;
     };
 
-    // Profile Viewer Modal
-    const ProfileViewerModal = () => {
-        if (!viewingProfile) return null;
-
-        const completedTasks = viewingProfile.tasks?.filter((t: any) => t.isCompleted) || [];
-        const pendingTasks = viewingProfile.tasks?.filter((t: any) => !t.isCompleted) || [];
-
-        return createPortal(
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200" dir="rtl">
-                {/* Neon Glassmorphic Container */}
-                <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden border border-white/20 dark:border-gray-800/50 animate-in zoom-in-95 duration-300">
-                    
-                    {/* Header with vibrant copper/indigo gradient */}
-                    <div className="p-6 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white relative overflow-hidden shrink-0">
-                        {/* Ambient glowing circles */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
-                        <button
-                            onClick={() => setViewingProfile(null)}
-                            className="absolute left-5 top-5 p-2 bg-white/10 hover:bg-white/20 active:scale-95 rounded-xl transition text-white border border-white/10"
-                        >
-                            <X size={18} />
-                        </button>
-
-                        <div className="flex items-center gap-4 mt-2">
-                            <div className="w-16 h-16 rounded-2xl bg-white/20 border border-white/20 flex items-center justify-center text-2xl font-black shadow-lg">
-                                {viewingProfile.userName?.[0] || '?'}
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-black tracking-tight">{viewingProfile.userName}</h2>
-                                <p className="text-xs font-bold bg-white/20 px-2.5 py-0.5 rounded-full w-max mt-1">سطح {viewingProfile.level}</p>
-                            </div>
-                        </div>
-
-                        {/* Interactive Stats Grid */}
-                        <div className="grid grid-cols-3 gap-3 mt-5">
-                            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-2.5 text-center transition-transform hover:scale-[1.03]">
-                                <Star size={16} className="mx-auto mb-1 text-amber-300 fill-amber-300" />
-                                <p className="font-black text-sm">{viewingProfile.xp}</p>
-                                <p className="text-[9px] opacity-75 font-bold">امتیاز XP</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-2.5 text-center transition-transform hover:scale-[1.03]">
-                                <TrendingUp size={16} className="mx-auto mb-1 text-indigo-200" />
-                                <p className="font-black text-sm">{viewingProfile.progress}%</p>
-                                <p className="text-[9px] opacity-75 font-bold">پیشرفت کل</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-2.5 text-center transition-transform hover:scale-[1.03]">
-                                <Target size={16} className="mx-auto mb-1 text-pink-300" />
-                                <p className="font-black text-sm">{viewingProfile.tasksCompleted}/{viewingProfile.totalTasks}</p>
-                                <p className="text-[9px] opacity-75 font-bold">تسک‌ها</p>
-                            </div>
-                        </div>
-
-                        {/* Interactive Comparison HUD */}
-                        <div className="mt-4 bg-black/15 backdrop-blur-md rounded-2xl p-3 border border-white/5">
-                            <p className="text-[9px] font-black mb-2 text-indigo-200 flex items-center gap-1">📊 مقایسه تحصیلی با شما</p>
-                            <div className="grid grid-cols-4 gap-2 text-[10px] font-bold">
-                                <div className="text-center bg-white/5 rounded-xl p-1.5 border border-white/5">
-                                    <span className="text-[8px] text-gray-300 block mb-0.5">امتیاز</span>
-                                    <div className={`${viewingProfile.xp > myStats.xp ? 'text-rose-300' : 'text-emerald-300'}`}>
-                                        {viewingProfile.xp > myStats.xp ? `+${viewingProfile.xp - myStats.xp}` : viewingProfile.xp < myStats.xp ? `-${myStats.xp - viewingProfile.xp}` : '='} XP
-                                    </div>
-                                </div>
-                                <div className="text-center bg-white/5 rounded-xl p-1.5 border border-white/5">
-                                    <span className="text-[8px] text-gray-300 block mb-0.5">پیشرفت</span>
-                                    <div className={`${viewingProfile.progress > myStats.progress ? 'text-rose-300' : 'text-emerald-300'}`}>
-                                        {viewingProfile.progress > myStats.progress ? `+${viewingProfile.progress - myStats.progress}` : viewingProfile.progress < myStats.progress ? `-${myStats.progress - viewingProfile.progress}` : '='}%
-                                    </div>
-                                </div>
-                                <div className="text-center bg-white/5 rounded-xl p-1.5 border border-white/5">
-                                    <span className="text-[8px] text-gray-300 block mb-0.5">انجام شده</span>
-                                    <div className={`${viewingProfile.tasksCompleted > myStats.tasksCompleted ? 'text-rose-300' : 'text-emerald-300'}`}>
-                                        {viewingProfile.tasksCompleted > myStats.tasksCompleted ? `+${viewingProfile.tasksCompleted - myStats.tasksCompleted}` : viewingProfile.tasksCompleted < myStats.tasksCompleted ? `-${myStats.tasksCompleted - viewingProfile.tasksCompleted}` : '='} تسک
-                                    </div>
-                                </div>
-                                <div className="text-center bg-white/5 rounded-xl p-1.5 border border-white/5">
-                                    <span className="text-[8px] text-gray-300 block mb-0.5">آزمون</span>
-                                    <div className="text-amber-300">
-                                        {viewingProfile.examAverage || 0}%
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Content Area */}
-                    <div className="p-6 overflow-y-auto max-h-[50vh] space-y-5 custom-scrollbar">
-                        {viewingProfile.tasks && viewingProfile.tasks.length > 0 ? (
-                            <div className="space-y-4">
-                                {/* Completed Tasks */}
-                                <div className="space-y-2">
-                                    <h3 className="font-extrabold text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1.5 mb-2.5">
-                                        <Award size={14} />
-                                        تسک‌های انجام شده ({completedTasks.length})
-                                    </h3>
-                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                        {completedTasks.slice(0, 10).map((task: any, i: number) => (
-                                            <div key={i} className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/20 dark:border-emerald-900/10 p-2.5 rounded-xl text-xs flex items-center gap-2 transition hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
-                                                <span className="text-emerald-500 font-extrabold">✓</span>
-                                                <span className="font-black text-emerald-800 dark:text-emerald-300">{task.subject}</span>
-                                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{task.topic}</span>
-                                            </div>
-                                        ))}
-                                        {completedTasks.length > 10 && (
-                                            <p className="text-[10px] text-gray-400 text-center font-bold">و {completedTasks.length - 10} تسک دیگر...</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Pending Tasks */}
-                                <div className="space-y-2">
-                                    <h3 className="font-extrabold text-amber-600 dark:text-amber-400 text-xs flex items-center gap-1.5 mb-2.5">
-                                        <Calendar size={14} />
-                                        تسک‌های در انتظار ({pendingTasks.length})
-                                    </h3>
-                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                        {pendingTasks.slice(0, 10).map((task: any, i: number) => (
-                                            <div key={i} className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100/20 dark:border-amber-900/10 p-2.5 rounded-xl text-xs flex items-center gap-2 transition hover:bg-amber-50 dark:hover:bg-amber-950/30">
-                                                <span className="w-2.5 h-2.5 rounded-full border-2 border-amber-500 shrink-0"></span>
-                                                <span className="font-black text-amber-800 dark:text-amber-300">{task.subject}</span>
-                                                <span className="text-amber-600 dark:text-amber-400 font-medium">{task.topic}</span>
-                                                {task.date && <span className="text-[9px] text-gray-400 font-bold mr-auto">{getShamsiDate(task.date)}</span>}
-                                            </div>
-                                        ))}
-                                        {pendingTasks.length > 10 && (
-                                            <p className="text-[10px] text-gray-400 text-center font-bold">و {pendingTasks.length - 10} تسک دیگر...</p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-center py-10 bg-gray-50/50 dark:bg-gray-800/40 rounded-[2rem] border border-dashed border-gray-200/50 dark:border-gray-700/50">
-                                <BookOpen className="mx-auto text-gray-300 dark:text-gray-600 mb-2" size={32} />
-                                <p className="text-xs text-gray-400 font-bold">این کاربر برنامه‌ای برای اشتراک‌گذاری عمومی نگذاشته است.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>,
-            document.body
-        );
-    };
-
     return (
         <>
-            <div className="p-5 pb-32 animate-in fade-in duration-300">
+            <div className="p-4 md:p-6 pb-32 space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-11 h-11 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md shadow-amber-200/50 dark:shadow-none shrink-0">
                             <Trophy className="text-white" size={22} />
                         </div>
                         <div>
-                            <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">لیگ رقابت</h1>
-                            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">رقابت و مقایسه عملکرد با دیگران</p>
+                            <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">
+                                لیگ رقابت و اتاق‌های مطالعه YPT
+                            </h1>
+                            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium pretty-text">
+                                ساخت اتاق تمرکز گروهی، رقابت روزانه با دوستان و جدول رتبه‌بندی
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
                         <button
-                            onClick={toggleMyPublicProfile}
-                            disabled={isToggling || !user}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black transition-all active:scale-95 disabled:opacity-50 shadow-sm border ${isMyProfilePublic
-                                ? 'bg-emerald-500 text-white border-emerald-400 shadow-emerald-200 dark:shadow-none'
-                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-700'
-                                }`}
+                            type="button"
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-500/20 transition"
                         >
-                            {isToggling ? (
-                                <Loader2 size={16} className="animate-spin" />
-                            ) : isMyProfilePublic ? (
-                                <Eye size={16} />
-                            ) : (
-                                <EyeOff size={16} />
-                            )}
-                            {isMyProfilePublic ? 'عمومی' : 'خصوصی'}
+                            <Plus size={16} /> ساخت اتاق مطالعه
                         </button>
 
                         <button
-                            onClick={fetchLeaderboard}
-                            disabled={isLoading}
-                            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 active:scale-95 transition disabled:opacity-50"
+                            type="button"
+                            onClick={() => (activeSection === 'rooms' ? loadPublicRooms(true) : loadLeaderboardPage(true))}
+                            disabled={isLoadingLb || isLoadingRooms}
+                            aria-label="بروزرسانی داده‌ها"
+                            className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-50"
                         >
-                            <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                            <RefreshCw size={17} className={isLoadingLb || isLoadingRooms ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
 
-                {/* Live Study Rooms */}
-                <div className="bg-white dark:bg-gray-800 p-5 rounded-[2.25rem] mb-6 shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden">
-                    {/* Ambient decoration */}
-                    <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-rose-500/5 to-transparent blur-xl pointer-events-none" />
-                    
-                    <div className="flex items-center justify-between mb-4 relative z-10">
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex items-center justify-center p-2.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl">
-                                <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
-                                <span className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full"></span>
-                                <Flame size={18} className="animate-pulse" />
-                            </div>
-                            <h2 className="font-extrabold text-gray-800 dark:text-white text-sm">کابین‌های آنلاین لایو</h2>
-                        </div>
-                        <span className="text-[10px] bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 font-extrabold px-2.5 py-1 rounded-full">
-                            {liveSessions.length} نفر فعال
-                        </span>
-                    </div>
-
-                    {!liveSessions.find(s => s.id === user?.uid) ? (
-                        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/20 rounded-2xl p-4 mb-4 flex flex-col md:flex-row gap-3 relative z-10">
-                            <input
-                                type="text"
-                                placeholder="چه درسی می‌خونی؟ (مثلا زیست🧬)"
-                                value={currentStudySubject}
-                                onChange={e => setCurrentStudySubject(e.target.value)}
-                                className="flex-1 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-700 rounded-xl px-3 py-2 text-xs outline-none shadow-sm dark:text-white font-bold"
-                            />
-                            <input
-                                type="text"
-                                placeholder="چه مبحثی؟ (مثلا ژنتیک)"
-                                value={currentStudyTopic}
-                                onChange={e => setCurrentStudyTopic(e.target.value)}
-                                className="flex-1 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-700 rounded-xl px-3 py-2 text-xs outline-none shadow-sm dark:text-white font-bold"
-                            />
-                            <button
-                                onClick={joinLiveRoom}
-                                disabled={isJoiningRoom}
-                                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl px-5 py-2 font-black text-xs transition-all shadow-md shadow-indigo-100 dark:shadow-none shrink-0"
-                            >
-                                {isJoiningRoom ? <Loader2 size={16} className="animate-spin" /> : 'شروع فوکوس لایو ⚡'}
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100/20 rounded-2xl p-4 mb-4 flex justify-between items-center text-emerald-800 dark:text-emerald-300 relative z-10">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <p className="text-xs font-bold">در حال مطالعه: <strong className="text-emerald-600 dark:text-emerald-400">{currentStudySubject} ({currentStudyTopic})</strong></p>
-                            </div>
-                            <button onClick={leaveLiveRoom} className="bg-rose-500 hover:bg-rose-600 active:scale-95 text-white rounded-xl px-4 py-1.5 text-xs font-black transition-all">اتمام مطالعه</button>
-                        </div>
-                    )}
-
-                    <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1 relative z-10">
-                        {liveSessions.length === 0 ? (
-                            <p className="text-xs text-gray-400 text-center py-4 font-bold">در حال حاضر کسی در اتاق مطالعه نیست. فوکوس رو تو شروع کن! 🚀</p>
-                        ) : (
-                            liveSessions.map(session => (
-                                <div key={session.id} className="flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/30 p-3 rounded-2xl border border-gray-100 dark:border-gray-700 transition hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 text-white flex items-center justify-center font-black text-sm relative shadow-md">
-                                            {session.userName[0]}
-                                            <span className="absolute bottom-0 left-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-800"></span>
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-xs text-gray-800 dark:text-gray-200">{session.userName}</p>
-                                            <p className="text-[9px] text-gray-400 font-bold mt-0.5">{session.subject} • {session.topic}</p>
-                                        </div>
-                                    </div>
-                                    <span className="text-[9px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/10 px-2.5 py-1 rounded-lg font-bold">درحال مطالعه ✏️</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                {/* User Stats Card */}
-                <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.25rem] p-5 text-white mb-6 shadow-xl relative overflow-hidden border border-white/10">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-lg"></div>
-
-                    <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/20 flex items-center justify-center shadow-lg text-xl font-black">
-                                    {userName?.[0] || 'P'}
-                                </div>
-                                <div>
-                                    <p className="font-black text-base">{userName}</p>
-                                    <p className="text-[10px] font-bold opacity-80 mt-0.5">سطح {level}</p>
-                                </div>
-                            </div>
-                            <div className="bg-white/20 border border-white/10 px-3.5 py-1.5 rounded-2xl backdrop-blur-md">
-                                <p className="text-[9px] opacity-75 font-bold">حریم خصوصی شما</p>
-                                <p className="font-black text-xs mt-0.5">{isMyProfilePublic ? '🌐 عمومی' : '🔒 خصوصی'}</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-4 gap-3 font-bold">
-                            <div className="bg-white/10 backdrop-blur-md border border-white/5 rounded-2xl p-2.5 text-center">
-                                <Star size={16} className="mx-auto mb-1 text-amber-300 fill-amber-300" />
-                                <p className="font-black text-sm">{xp}</p>
-                                <p className="text-[9px] opacity-70">امتیاز XP</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md border border-white/5 rounded-2xl p-2.5 text-center">
-                                <TrendingUp size={16} className="mx-auto mb-1" />
-                                <p className="font-black text-sm">{myStats.progress}%</p>
-                                <p className="text-[9px] opacity-70">پیشرفت</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md border border-white/5 rounded-2xl p-2.5 text-center">
-                                <Trophy size={16} className="mx-auto mb-1" />
-                                <p className="font-black text-sm">{myStats.tasksCompleted}</p>
-                                <p className="text-[9px] opacity-70">تسک‌ها</p>
-                            </div>
-                            <div className="bg-white/10 backdrop-blur-md border border-white/5 rounded-2xl p-2.5 text-center border-r border-white/20">
-                                <BookOpen size={16} className="mx-auto mb-1" />
-                                <p className="font-black text-sm">{myStats.examAverage || 0}%</p>
-                                <p className="text-[9px] opacity-70">معدل آزمون</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Info Box */}
-                {!user && (
-                    <div className="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl p-4 mb-6 animate-pulse">
-                        <p className="text-xs text-amber-800 dark:text-amber-300 font-bold leading-relaxed">
-                            ⚠️ برای شرکت در لیگ، همگام‌سازی زمان و مقایسه عملکرد واقعی با دانش‌آموزان دیگر، ابتدا <strong>وارد حساب کاربری خود شوید</strong>.
-                        </p>
-                    </div>
-                )}
-
-                {user && !isMyProfilePublic && (
-                    <div className="bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/30 rounded-2xl p-4 mb-6">
-                        <p className="text-xs text-blue-800 dark:text-blue-300 font-bold leading-relaxed">
-                            💡 وضعیت پروفایل شما در حال حاضر <strong>خصوصی</strong> است. برای شرکت در جدول لیگ هفتگی و نمایش رتبه خود، دکمه <strong>"عمومی"</strong> بالا را فعال کنید.
-                        </p>
-                    </div>
-                )}
-
-                {/* Live Focus Room Quick Banner + Leaderboard Controls */}
-                <div className="bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-800/40 rounded-2xl p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="text-xs font-bold text-indigo-800 dark:text-indigo-200">
-                        🎧 می‌خواهید با دوستانتان همزمان مطالعه کنید؟ اتاق مطالعه گروهی (کد دعوت + تشویق زنده) در تایمر تمرکز فعال است.
-                    </div>
+                {/* Primary Mode Switcher */}
+                <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl grid grid-cols-2 max-w-md">
                     <button
                         type="button"
-                        onClick={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })}
-                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black shrink-0 border transition ${
-                            settings?.anonymizedLeaderboard
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-200 border-gray-200 dark:border-gray-700'
+                        onClick={() => setActiveSection('rooms')}
+                        className={`py-2.5 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
+                            activeSection === 'rooms'
+                                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
                         }`}
                     >
-                        {settings?.anonymizedLeaderboard ? '🕵️ حالت ناشناس فعال است' : '👁️ نمایش نام واقعی رقبا'}
+                        <Users size={15} />
+                        اتاق‌های مطالعه (YPT)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveSection('ranking')}
+                        className={`py-2.5 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
+                            activeSection === 'ranking'
+                                ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-300 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                        }`}
+                    >
+                        <Trophy size={15} />
+                        جدول رقابت سراسری
                     </button>
                 </div>
 
-                <div className="flex gap-2 mb-4 overflow-x-auto pb-2 select-none">
-                    <button
-                        onClick={() => setSortBy('xp')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 shrink-0 ${sortBy === 'xp' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white/80 dark:bg-gray-800/80 text-gray-500 border border-gray-100 dark:border-gray-700'}`}
-                    >
-                        🏆 پرامتیازترین قهرمانان (XP)
-                    </button>
-                    <button
-                        onClick={() => setSortBy('exam')}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all active:scale-95 shrink-0 ${sortBy === 'exam' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white/80 dark:bg-gray-800/80 text-gray-500 border border-gray-100 dark:border-gray-700'}`}
-                    >
-                        📚 بالاترین بازدهی آزمون‌ها (درصد)
-                    </button>
-                </div>
-
-                {/* Leaderboard */}
-                <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Users className="text-gray-400" size={18} />
-                        <h2 className="font-extrabold text-xs text-gray-700 dark:text-gray-200">جدول نهایی لیگ رقابت سراسری</h2>
-                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-150/10 px-2.5 py-0.5 rounded-full font-bold">{leaderboardData.length} شرکت‌کننده</span>
+                {!isCloudAuthenticated && (
+                    <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 text-xs font-bold text-amber-800 dark:text-amber-200 leading-relaxed">
+                        ⚠️ برای ساخت اتاق مطالعه گروهی، ورود با کد دعوت و شرکت در لیگ آنلاین ابتدا وارد حساب ابری خود شوید.
                     </div>
+                )}
 
-                    {/* Search Bar */}
-                    <div className="relative mb-4">
-                        <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="🔍 جستجو در نام دانش‌آموزان..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pr-11 pl-4 py-3 bg-white/70 dark:bg-gray-800/70 border border-gray-200/50 dark:border-gray-700/50 rounded-2xl text-xs outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition text-gray-800 dark:text-white font-bold"
-                        />
-                    </div>
-
-                    {isLoading ? (
-                        <div className="space-y-3">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="h-20 bg-gray-150/50 dark:bg-gray-800/50 rounded-2xl animate-pulse"></div>
-                            ))}
+                {/* ======================================================
+                    TAB 1: YPT-STYLE STUDY ROOMS
+                   ====================================================== */}
+                {activeSection === 'rooms' ? (
+                    <div className="space-y-6">
+                        {/* Quick Join by Code */}
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                            <div className="flex items-center gap-2 text-xs font-black text-gray-700 dark:text-gray-200 shrink-0">
+                                <DoorOpen size={17} className="text-indigo-500" />
+                                <span>ورود سریع با کد اتاق:</span>
+                            </div>
+                            <input
+                                type="text"
+                                maxLength={6}
+                                value={joinCodeInput}
+                                onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                                onKeyDown={(e) => {
+                                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                                    if (e.key === 'Enter' && joinCodeInput.trim().length === 6) {
+                                        handleJoinRoom(joinCodeInput);
+                                    }
+                                }}
+                                placeholder="کد ۶ رقمی (مثلاً AB12CD)"
+                                dir="ltr"
+                                aria-label="کد دعوت اتاق"
+                                className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-center font-mono text-sm font-black tracking-widest outline-none focus:border-indigo-500 text-gray-800 dark:text-white uppercase"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => handleJoinRoom(joinCodeInput)}
+                                disabled={roomActionLoading || joinCodeInput.trim().length < 6}
+                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-black transition"
+                            >
+                                پیوستن به اتاق
+                            </button>
                         </div>
-                    ) : leaderboardData.length === 0 ? (
-                        <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-[2.25rem] border border-gray-150/50 dark:border-gray-700/50">
-                            <Trophy className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
-                            <p className="text-sm text-gray-500 dark:text-gray-400 font-extrabold">هنوز کسی در لیگ ثبت‌نام نکرده است!</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">اولین نفری باشید که با زدن دکمه خصوصی بالا، پروفایلش را عمومی می‌کند.</p>
-                        </div>
-                    ) : (() => {
-                        let filteredData = searchQuery.trim()
-                            ? leaderboardData.filter(p => p.userName.toLowerCase().includes(searchQuery.toLowerCase()))
-                            : [...leaderboardData];
 
-                        if (sortBy === 'exam') {
-                            filteredData.sort((a, b) => (b.examAverage || 0) - (a.examAverage || 0));
-                        } else {
-                            filteredData.sort((a, b) => b.xp - a.xp);
-                        }
+                        {/* Active YPT Room Workspace */}
+                        {activeRoomCode && (
+                            <div className="bg-white dark:bg-gray-800 rounded-[2rem] border-2 border-indigo-200 dark:border-indigo-800/60 shadow-lg overflow-hidden">
+                                {/* Room Top Banner */}
+                                <div className="p-5 bg-gradient-to-l from-indigo-600 to-violet-700 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-black">
+                                                {activeRoomInfo?.category || 'اتاق مطالعه'}
+                                            </span>
+                                            <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-bold flex items-center gap-1">
+                                                {activeRoomInfo?.isPublic === false ? <Lock size={10} /> : <Globe size={10} />}
+                                                {activeRoomInfo?.isPublic === false ? 'خصوصی' : 'عمومی'}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopyRoomCode(activeRoomCode)}
+                                                className="px-2.5 py-0.5 rounded-full bg-amber-400/90 text-slate-950 font-mono text-[11px] font-black flex items-center gap-1 hover:bg-amber-300 transition"
+                                            >
+                                                <span>{activeRoomCode}</span>
+                                                {copiedCode ? <Check size={11} /> : <Copy size={11} />}
+                                            </button>
+                                        </div>
+                                        <h2 className="text-lg font-black">{activeRoomInfo?.name || `اتاق ${activeRoomCode}`}</h2>
+                                        <p className="text-xs text-indigo-100/85 mt-0.5">
+                                            هدف روزانه: {formatToPersianDigits(activeRoomInfo?.targetHours || 4)} ساعت •{' '}
+                                            {formatToPersianDigits(roomPeers.length)} / {formatToPersianDigits(activeRoomInfo?.maxMembers || 25)} عضو
+                                            {activeRoomInfo?.description ? ` — ${activeRoomInfo.description}` : ''}
+                                        </p>
+                                    </div>
 
-                        if (filteredData.length === 0) {
-                            return (
-                                <div className="text-center py-12 bg-white/50 dark:bg-gray-800/50 rounded-[2.25rem] border border-gray-150/50 dark:border-gray-700/50">
-                                    <Search className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
-                                    <p className="text-xs text-gray-400 font-bold">دانش‌آموزی با این نام پیدا نشد 🧐</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleStartFocusInsideRoom}
+                                            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black flex items-center gap-1.5 shadow-md transition"
+                                        >
+                                            <Play size={14} fill="currentColor" />
+                                            شروع تایمر در این اتاق
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleQuickRoomStatus('RESTING')}
+                                            className="px-3 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition"
+                                        >
+                                            حالت استراحت
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleLeaveActiveRoom}
+                                            className="px-3 py-2.5 rounded-xl bg-rose-500/90 hover:bg-rose-600 text-white text-xs font-bold flex items-center gap-1 transition"
+                                        >
+                                            <LogOut size={13} /> خروج
+                                        </button>
+                                        {activeRoomInfo?.creatorId === userId && (
+                                            <button
+                                                type="button"
+                                                onClick={handleDeleteActiveRoom}
+                                                className="p-2.5 rounded-xl bg-black/25 hover:bg-rose-700 text-white transition"
+                                                title="حذف اتاق"
+                                                aria-label="حذف اتاق"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            );
-                        }
 
-                        return filteredData.map((profile, index) => {
-                            const rank = index + 1;
-                            const isCurrentUser = profile.id === user?.uid;
-                            const isMasked = !!settings?.anonymizedLeaderboard && !isCurrentUser;
-                            const displayProfileName = isMasked ? `داوطلب #${profile.id.slice(-4).toUpperCase()}` : profile.userName;
+                                <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                    {/* YPT Member Desks (2 cols) */}
+                                    <div className="lg:col-span-2 space-y-3">
+                                        <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                                            <Clock size={14} className="text-indigo-500" />
+                                            میزهای تمرکز اعضای اتاق ({formatToPersianDigits(roomPeers.length)})
+                                        </h3>
 
-                            return (
-                                <div
-                                    key={profile.id}
-                                    className={`rounded-2xl p-4 border shadow-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-md ${getRankBg(rank)} ${isCurrentUser ? 'ring-2 ring-indigo-500' : ''}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 flex items-center justify-center shrink-0">
-                                            {getRankIcon(rank)}
-                                        </div>
-
-                                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-base shadow-sm">
-                                            {displayProfileName?.[0] || '?'}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-extrabold text-xs text-gray-800 dark:text-white truncate">{displayProfileName}</p>
-                                                {isCurrentUser && <span className="text-[8px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black">شما</span>}
+                                        {roomPeers.length === 0 ? (
+                                            <div className="text-center py-10 bg-gray-50 dark:bg-gray-900/40 rounded-2xl text-xs text-gray-400 font-bold">
+                                                در حال همگام‌سازی اعضای اتاق...
                                             </div>
-                                            <p className="text-[10px] text-gray-400 font-bold mt-0.5">سطح {profile.level} • {getTimeAgo(profile.lastActive)}</p>
-                                        </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {roomPeers.map((peer) => {
+                                                    const isStudying = peer.status === 'STUDYING';
+                                                    const isResting = peer.status === 'RESTING';
+                                                    const liveElapsed = isStudying ? peer.elapsedSeconds + (localTick % 60) : peer.elapsedSeconds;
+                                                    const dailyTotal = peer.dailyStudySeconds + (isStudying ? liveElapsed : 0);
+                                                    const targetSecs = (activeRoomInfo?.targetHours || 4) * 3600;
+                                                    const goalPct = Math.min(100, Math.round((dailyTotal / targetSecs) * 100));
 
-                                        <div className="flex items-center gap-2.5 shrink-0">
-                                            <div className="text-left">
-                                                {sortBy === 'xp' ? (
-                                                    <>
-                                                        <p className="font-black text-indigo-600 dark:text-indigo-400 text-sm">{profile.xp}</p>
-                                                        <p className="text-[8px] text-gray-400 font-bold">XP</p>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{profile.examAverage || 0}%</p>
-                                                        <p className="text-[8px] text-gray-400 font-bold">معدل آزمون</p>
-                                                    </>
-                                                )}
+                                                    return (
+                                                        <div
+                                                            key={peer.uid}
+                                                            className={`p-3.5 rounded-2xl border transition ${
+                                                                isStudying
+                                                                    ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50 shadow-sm'
+                                                                    : 'bg-gray-50/70 dark:bg-gray-900/40 border-gray-200/70 dark:border-gray-700/60'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <div className="relative w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-lg shrink-0">
+                                                                        <span>{peer.avatar || '🎓'}</span>
+                                                                        <span
+                                                                            className={`absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${
+                                                                                isStudying ? 'bg-emerald-500 animate-pulse' : isResting ? 'bg-amber-400' : 'bg-gray-400'
+                                                                            }`}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-xs font-black text-gray-800 dark:text-white truncate">
+                                                                            {peer.displayName} {peer.uid === userId ? '(شما)' : ''}
+                                                                        </p>
+                                                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                                            {isStudying ? `🔥 ${peer.activeSubject || 'در حال تمرکز'}` : isResting ? '☕ استراحت' : 'آفلاین'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="text-left shrink-0">
+                                                                    <span className={`font-mono text-xs font-black ${isStudying ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                                                                        {formatClockTime(liveElapsed)}
+                                                                    </span>
+                                                                    <span className="block text-[9px] text-gray-400">
+                                                                        مجموع: {formatClockTime(dailyTotal)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mt-3 flex items-center gap-2">
+                                                                <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full rounded-full transition-all ${isStudying ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                                                                        style={{ width: `${goalPct}%` }}
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={peer.uid === userId}
+                                                                    onClick={() => db && liveRoomService.sendCheer(db, activeRoomCode, peer.uid)}
+                                                                    className="px-2 py-0.5 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-black hover:bg-amber-200 disabled:opacity-60 transition flex items-center gap-1 shrink-0"
+                                                                    title="تشویق"
+                                                                >
+                                                                    🔥 {formatToPersianDigits(peer.cheersReceived || 0)}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
+                                        )}
+                                    </div>
 
-                                            {/* Interactive View Profile Button */}
-                                            {!isCurrentUser && (
-                                                <button
-                                                    onClick={() => viewUserProfile(profile)}
-                                                    disabled={isLoadingProfile}
-                                                    className="p-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 border border-indigo-100/10 rounded-xl hover:scale-105 active:scale-95 transition-all"
-                                                    title="مشاهده برنامه درسی"
-                                                >
-                                                    <Eye size={14} />
-                                                </button>
+                                    {/* YPT Room Group Chat */}
+                                    <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 p-3 flex flex-col h-72">
+                                        <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 mb-2">گفتگوی گروهی اتاق</h3>
+                                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pl-1">
+                                            {roomMessages.length === 0 ? (
+                                                <p className="text-[11px] text-gray-400 text-center mt-10">هنوز پیامی ثبت نشده است.</p>
+                                            ) : (
+                                                roomMessages.map((m) => (
+                                                    <div key={m.id} className="bg-white dark:bg-gray-800 rounded-xl p-2 text-[11px] border border-gray-100 dark:border-gray-700">
+                                                        <span className="font-black text-indigo-600 dark:text-indigo-400 ml-1">{m.senderName}:</span>
+                                                        <span className="text-gray-700 dark:text-gray-200">{m.text}</span>
+                                                    </div>
+                                                ))
                                             )}
                                         </div>
-                                    </div>
-
-                                    {/* Glassmorphic progress bar */}
-                                    <div className="mt-3.5 h-1.5 bg-gray-150 dark:bg-gray-800 rounded-full overflow-hidden border border-gray-200/10">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-700"
-                                            style={{ width: `${profile.progress}%` }}
-                                        ></div>
+                                        <div className="mt-2 flex gap-1.5">
+                                            <input
+                                                type="text"
+                                                value={roomChatText}
+                                                onChange={(e) => setRoomChatText(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                                                    if (e.key === 'Enter') handleSendRoomChat();
+                                                }}
+                                                placeholder="پیام انگیزشی بنویسید..."
+                                                aria-label="پیام در اتاق مطالعه"
+                                                className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleSendRoomChat}
+                                                aria-label="ارسال پیام اتاق"
+                                                className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition"
+                                            >
+                                                <Send size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            );
-                        });
-                    })()}
-                </div>
+                            </div>
+                        )}
+
+                        {/* Public Rooms Directory */}
+                        <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                    {['همه', ...ROOM_CATEGORIES].map((cat) => (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            onClick={() => setSelectedCategory(cat)}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition ${
+                                                selectedCategory === cat
+                                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                                            }`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="relative sm:w-64">
+                                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                                    <input
+                                        type="text"
+                                        value={roomSearch}
+                                        onChange={(e) => setRoomSearch(e.target.value)}
+                                        placeholder="جستجوی اتاق یا کد..."
+                                        aria-label="جستجوی اتاق‌های مطالعه"
+                                        className="w-full pr-9 pl-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {isLoadingRooms ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="h-36 rounded-3xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : filteredPublicRooms.length === 0 ? (
+                                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700">
+                                    <Users className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={40} />
+                                    <p className="text-sm font-black text-gray-600 dark:text-gray-300">هنوز اتاق عمومی‌ای ساخته نشده است</p>
+                                    <p className="text-xs text-gray-400 mt-1 mb-4">اولین اتاق تمرکز YPT خودتان را بسازید و دوستانتان را دعوت کنید!</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreateModalOpen(true)}
+                                        className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 transition"
+                                    >
+                                        + ساخت اولین اتاق
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {filteredPublicRooms.map((room) => {
+                                        const isJoined = activeRoomCode === room.code;
+                                        return (
+                                            <div
+                                                key={room.code}
+                                                className={`bg-white dark:bg-gray-800 rounded-3xl p-4 border shadow-sm flex flex-col justify-between gap-3 transition hover:shadow-md ${
+                                                    isJoined
+                                                        ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+                                                        : 'border-gray-100 dark:border-gray-700'
+                                                }`}
+                                            >
+                                                <div>
+                                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                                        <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-black">
+                                                            {room.category}
+                                                        </span>
+                                                        <span className="font-mono text-[10px] font-bold text-gray-400">#{room.code}</span>
+                                                    </div>
+                                                    <h3 className="text-sm font-black text-gray-800 dark:text-white truncate">{room.name}</h3>
+                                                    {room.description && (
+                                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 pretty-text">
+                                                            {room.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+                                                    <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                                                        🎯 هدف: {formatToPersianDigits(room.targetHours)} ساعت • سقف {formatToPersianDigits(room.maxMembers)} نفر
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isJoined || roomActionLoading}
+                                                        onClick={() => handleJoinRoom(room.code)}
+                                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition shrink-0 ${
+                                                            isJoined
+                                                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                                                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                                        }`}
+                                                    >
+                                                        {isJoined ? 'عضو هستید ✓' : 'ورود'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    /* ======================================================
+                       TAB 2: SCALABLE PAGINATED LEADERBOARD
+                       ====================================================== */
+                    <div className="space-y-5">
+                        {/* My Summary Card + Privacy Switch */}
+                        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-5 text-white shadow-xl relative overflow-hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center font-black text-lg">
+                                        {userName?.[0] || 'P'}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-base">{userName || 'کاربر پارسا پلن'}</p>
+                                        <p className="text-xs opacity-80">سطح {level} • {xp} XP</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={toggleMyPublicProfile}
+                                        disabled={isTogglingPublic || !isCloudAuthenticated}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
+                                            isMyProfilePublic ? 'bg-emerald-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'
+                                        }`}
+                                    >
+                                        {isTogglingPublic ? <Loader2 size={14} className="animate-spin" /> : isMyProfilePublic ? <Eye size={14} /> : <EyeOff size={14} />}
+                                        {isMyProfilePublic ? 'نمایش عمومی فعال است' : 'عمومی‌سازی در لیگ'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })}
+                                        className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold transition"
+                                    >
+                                        {settings?.anonymizedLeaderboard ? '🕵️ حالت ناشناس' : '👁️ نمایش اسامی'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sort & Search */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setSortBy('xp')}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black transition ${
+                                        sortBy === 'xp' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700'
+                                    }`}
+                                >
+                                    🏆 برترین امتیاز (XP)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSortBy('exam')}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black transition ${
+                                        sortBy === 'exam' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700'
+                                    }`}
+                                >
+                                    🎯 میانگین دقت ارزیابی
+                                </button>
+                            </div>
+                            <div className="relative sm:w-64">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="جستجوی شرکت‌کنندگان..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    aria-label="جستجوی شرکت‌کنندگان لیگ"
+                                    className="w-full pr-10 pl-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Ranked List */}
+                        {isLoadingLb ? (
+                            <div className="space-y-3">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
+                                ))}
+                            </div>
+                        ) : filteredLeaderboard.length === 0 ? (
+                            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
+                                <Trophy className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={44} />
+                                <p className="text-sm font-black text-gray-600 dark:text-gray-300">هنوز شرکت‌کننده‌ای یافت نشد</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredLeaderboard.map((profile, idx) => {
+                                    const rank = idx + 1;
+                                    const isCurrentUser = profile.id === user?.uid;
+                                    const isMasked = !!settings?.anonymizedLeaderboard && !isCurrentUser;
+                                    const displayName = isMasked ? `شرکت‌کننده #${profile.id.slice(-4).toUpperCase()}` : profile.userName;
+
+                                    return (
+                                        <div
+                                            key={profile.id}
+                                            className={`bg-white dark:bg-gray-800 rounded-2xl p-4 border shadow-sm transition ${
+                                                isCurrentUser ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-gray-100 dark:border-gray-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 flex items-center justify-center shrink-0">{getRankIcon(rank)}</div>
+                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black">
+                                                    {displayName[0] || '?'}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-black text-xs text-gray-800 dark:text-white truncate">{displayName}</p>
+                                                        {isCurrentUser && <span className="text-[9px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black">شما</span>}
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+                                                        سطح {profile.level} • {getTimeAgo(profile.lastActive)}
+                                                    </p>
+                                                </div>
+                                                <div className="text-left shrink-0">
+                                                    <p className="font-black text-sm text-indigo-600 dark:text-indigo-400">
+                                                        {sortBy === 'xp' ? `${profile.xp} XP` : `${profile.examAverage || 0}%`}
+                                                    </p>
+                                                </div>
+                                                {!isCurrentUser && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => viewUserProfile(profile)}
+                                                        disabled={isLoadingProfile}
+                                                        aria-label="مشاهده پروفایل"
+                                                        className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 transition"
+                                                    >
+                                                        <Eye size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="mt-3 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                                                    style={{ width: `${profile.progress}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {hasMoreLb && (
+                                    <button
+                                        type="button"
+                                        onClick={loadMoreLeaderboard}
+                                        disabled={isLoadingMore}
+                                        className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-black text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-700 transition"
+                                    >
+                                        {isLoadingMore ? 'در حال بارگذاری...' : 'نمایش شرکت‌کنندگان بیشتر ↓'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Modals outside container */}
-            <ProfileViewerModal />
+            {/* Native <dialog>: Create YPT Study Room Modal */}
+            <dialog
+                ref={createRoomDialogRef}
+                aria-labelledby={isCreateModalOpen ? 'create-room-title' : undefined}
+                onCancel={(e) => {
+                    e.preventDefault();
+                    setIsCreateModalOpen(false);
+                }}
+                onClick={(e) => {
+                    if (e.target === createRoomDialogRef.current) setIsCreateModalOpen(false);
+                }}
+                className="m-auto p-0 bg-transparent border-0 max-w-md w-[calc(100%-2rem)] overflow-visible shadow-none"
+            >
+                {isCreateModalOpen && (
+                    <form
+                        onSubmit={handleCreateRoom}
+                        className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden text-right"
+                        dir="rtl"
+                    >
+                        <div className="p-5 bg-gradient-to-l from-indigo-600 to-violet-600 text-white flex items-center justify-between">
+                            <div>
+                                <h2 id="create-room-title" className="text-base font-black">ساخت اتاق مطالعه YPT</h2>
+                                <p className="text-[11px] text-indigo-100 mt-0.5">کد دعوت اختصاصی ۶ رقمی خودکار ساخته می‌شود</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsCreateModalOpen(false)}
+                                aria-label="بستن پنجره"
+                                className="p-1.5 rounded-xl hover:bg-white/20 transition"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">نام اتاق</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    required
+                                    maxLength={80}
+                                    value={newRoomName}
+                                    onChange={(e) => setNewRoomName(e.target.value)}
+                                    placeholder="مثال: تیم کار عمیق صبحگاهی"
+                                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">دسته‌بندی</label>
+                                    <select
+                                        value={newRoomCategory}
+                                        onChange={(e) => setNewRoomCategory(e.target.value)}
+                                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                                    >
+                                        {ROOM_CATEGORIES.map((cat) => (
+                                            <option key={cat} value={cat}>
+                                                {cat}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">سقف ظرفیت</label>
+                                    <select
+                                        value={newRoomMaxMembers}
+                                        onChange={(e) => setNewRoomMaxMembers(Number(e.target.value))}
+                                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                                    >
+                                        <option value={10}>۱۰ نفر</option>
+                                        <option value={25}>۲۵ نفر</option>
+                                        <option value={50}>۵۰ نفر</option>
+                                        <option value={100}>۱۰۰ نفر</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">
+                                    هدف روزانه اتاق: {formatToPersianDigits(newRoomTargetHours)} ساعت
+                                </label>
+                                <input
+                                    type="range"
+                                    min={1}
+                                    max={12}
+                                    value={newRoomTargetHours}
+                                    onChange={(e) => setNewRoomTargetHours(Number(e.target.value))}
+                                    className="w-full accent-indigo-600"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">توضیحات یا قانون اتاق (اختیاری)</label>
+                                <textarea
+                                    rows={2}
+                                    maxLength={160}
+                                    value={newRoomDesc}
+                                    onChange={(e) => setNewRoomDesc(e.target.value)}
+                                    placeholder="مثلاً: حداقل ۲ پومودورو در روز، سکوت و احترام..."
+                                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs outline-none focus:border-indigo-500 text-gray-800 dark:text-white resize-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setNewRoomIsPublic(true)}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black border flex items-center justify-center gap-1.5 transition ${
+                                        newRoomIsPublic
+                                            ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 text-indigo-700 dark:text-indigo-300'
+                                            : 'border-gray-200 dark:border-gray-700 text-gray-500'
+                                    }`}
+                                >
+                                    <Globe size={14} /> اتاق عمومی
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setNewRoomIsPublic(false)}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black border flex items-center justify-center gap-1.5 transition ${
+                                        !newRoomIsPublic
+                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 text-amber-700 dark:text-amber-300'
+                                            : 'border-gray-200 dark:border-gray-700 text-gray-500'
+                                    }`}
+                                >
+                                    <Lock size={14} /> خصوصی (با کد)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2 bg-gray-50/50 dark:bg-gray-800/40">
+                            <button
+                                type="button"
+                                onClick={() => setIsCreateModalOpen(false)}
+                                className="flex-1 py-2.5 rounded-xl font-bold text-xs text-gray-500 hover:bg-gray-200/60 dark:hover:bg-gray-700 transition"
+                            >
+                                انصراف
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={roomActionLoading}
+                                className="flex-[2] py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition"
+                            >
+                                {roomActionLoading ? 'در حال ساخت...' : 'ساخت و ورود به اتاق'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </dialog>
+
+            {/* Native <dialog>: Lazy Profile Detail Viewer */}
+            <dialog
+                ref={profileDialogRef}
+                aria-labelledby={viewingProfile ? 'profile-viewer-title' : undefined}
+                onCancel={(e) => {
+                    e.preventDefault();
+                    setViewingProfile(null);
+                }}
+                onClick={(e) => {
+                    if (e.target === profileDialogRef.current) setViewingProfile(null);
+                }}
+                className="m-auto p-0 bg-transparent border-0 max-w-lg w-[calc(100%-2rem)] overflow-visible shadow-none"
+            >
+                {viewingProfile && (
+                    <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700" dir="rtl">
+                        <div className="p-5 bg-gradient-to-br from-indigo-600 to-purple-700 text-white relative">
+                            <button
+                                type="button"
+                                onClick={() => setViewingProfile(null)}
+                                aria-label="بستن پروفایل"
+                                className="absolute left-4 top-4 p-2 rounded-xl bg-white/15 hover:bg-white/25 transition"
+                            >
+                                <X size={16} />
+                            </button>
+                            <h2 id="profile-viewer-title" className="text-lg font-black">{viewingProfile.userName}</h2>
+                            <p className="text-xs opacity-80 mt-0.5">سطح {viewingProfile.level} • {viewingProfile.xp} XP • پیشرفت {viewingProfile.progress}%</p>
+                        </div>
+
+                        <div className="p-5 max-h-[55vh] overflow-y-auto space-y-3 custom-scrollbar">
+                            {viewingProfile.tasks && viewingProfile.tasks.length > 0 ? (
+                                viewingProfile.tasks.map((t, i) => (
+                                    <div key={t.id || i} className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-xs flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className={t.isCompleted ? 'text-emerald-500 font-black' : 'text-amber-500 font-black'}>
+                                                {t.isCompleted ? '✓' : '•'}
+                                            </span>
+                                            <span className="font-bold text-gray-800 dark:text-gray-100 truncate">{t.subject} — {t.topic}</span>
+                                        </div>
+                                        {t.date && <span className="text-[10px] text-gray-400 shrink-0">{getShamsiDate(t.date)}</span>}
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-center text-xs text-gray-400 py-6">برنامه عمومی برای نمایش ثبت نشده است.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </dialog>
         </>
     );
 };

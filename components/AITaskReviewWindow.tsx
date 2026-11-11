@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { SubjectTask, Subject, StudyType } from '../types';
+import { SubjectTask, Subject, StudyType, TaskPriority } from '../types';
 import { TaskCard } from './TaskCard';
 import { Sparkles, X, Check, Plus } from 'lucide-react';
 import TaskModal from './TaskModal';
@@ -13,6 +13,9 @@ export interface ParsedTask {
     details: string;
     testRange?: string;
     date: string;
+    startTime?: string;
+    durationMinutes?: number;
+    priority?: TaskPriority;
     studyType?: StudyType;
     subTasks?: { subject: string; topic: string; }[];
     id?: string;
@@ -53,8 +56,12 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 details: t.details || '',
                 testRange: t.testRange || '',
                 isCompleted: false, // Default for preview
+                status: 'todo',
                 isCustom: true,
-                tags: [],
+                tags: ['AI'],
+                startTime: t.startTime,
+                durationMinutes: t.durationMinutes ?? 60,
+                priority: t.priority || 'medium',
                 studyType: t.studyType,
                 subTasks: t.subTasks ? t.subTasks.map((st, i) => ({ id: `sub-${idx}-${i}`, subject: st.subject, topic: st.topic })) : undefined
             };
@@ -86,6 +93,9 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 details: updated.details || '',
                 testRange: updated.testRange || '',
                 date: updated.date || new Date().toISOString().split('T')[0],
+                startTime: updated.startTime,
+                durationMinutes: updated.durationMinutes,
+                priority: updated.priority,
                 studyType: updated.studyType,
                 subTasks: updated.subTasks ? updated.subTasks.map(st => ({ subject: st.subject, topic: st.topic })) : undefined
             };
@@ -100,6 +110,9 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 details: updated.details || newTasks[editingIndex].details,
                 testRange: updated.testRange || newTasks[editingIndex].testRange,
                 date: updated.date || newTasks[editingIndex].date,
+                startTime: updated.startTime !== undefined ? updated.startTime : newTasks[editingIndex].startTime,
+                durationMinutes: updated.durationMinutes !== undefined ? updated.durationMinutes : newTasks[editingIndex].durationMinutes,
+                priority: updated.priority || newTasks[editingIndex].priority,
                 studyType: updated.studyType || newTasks[editingIndex].studyType,
                 subTasks: updated.subTasks || newTasks[editingIndex].subTasks,
             };

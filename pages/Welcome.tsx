@@ -46,7 +46,7 @@ const Welcome: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="bg-orange-100 dark:bg-orange-900/30 p-2 rounded-xl text-orange-600 dark:text-orange-400"><CheckCircle2 size={20} /></div>
-                            <span className="font-bold text-gray-700 dark:text-gray-200">دفترچه نوشن، تخته قلم، کانبان، آیزنهاور و کرنومتر تمرکز</span>
+                            <span className="font-bold text-gray-700 dark:text-gray-200">نماهای کانبان، آیزنهاور، جدول، کرنومتر تمرکز و اتاق‌های مطالعه YPT</span>
                         </div>
                     </div>
 
@@ -88,11 +88,11 @@ const Welcome: React.FC = () => {
                                 <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">مدیریت ۶ نمایی پروژه‌ها و اهداف</div>
                             </button>
                             <button
-                                onClick={() => navigate('/notes')}
+                                onClick={() => navigate('/leaderboard')}
                                 className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-800/40 text-right hover:scale-[1.02] transition"
                             >
-                                <div className="font-black text-purple-700 dark:text-purple-300">✍️ دفترچه و تخته قلم</div>
-                                <div className="text-[11px] text-purple-600 dark:text-purple-400 mt-1">یادداشت بلوکی + وایت‌برد طراحی</div>
+                                <div className="font-black text-purple-700 dark:text-purple-300">🏆 لیگ و اتاق‌های مطالعه</div>
+                                <div className="text-[11px] text-purple-600 dark:text-purple-400 mt-1">ساخت اتاق گروهی و تمرکز هم‌زمان</div>
                             </button>
                             <button
                                 onClick={() => navigate('/settings')}

@@ -17,9 +17,11 @@ export interface MessageProps {
     onRetry?: (text: string) => void;
     onRegenerate?: (messageId: string) => void;
     onReviewTasks?: (tasks: ParsedTask[]) => void;
+    onAutoAddTasks?: (tasks: ParsedTask[], messageId: string) => void;
+    tasksApplied?: boolean;
 }
 
-export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onRegenerate, onReviewTasks }) => {
+export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onRegenerate, onReviewTasks, onAutoAddTasks, tasksApplied }) => {
     const isUser = message.sender === 'user';
     const [copied, setCopied] = useState(false);
     const [speaking, setSpeaking] = useState(false);
@@ -208,32 +210,49 @@ export const ChatMessage: React.FC<MessageProps> = ({ message, onRetry, onRegene
                         <div className={`transition-all duration-300 ease-in-out overflow-hidden ${showTasks ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
                             <div className="p-4 bg-gray-50/20 dark:bg-black/10">
                                 <div className="space-y-2 mb-4">
-                                    {message.pendingTasks.slice(0, 3).map((task, i) => (
+                                    {message.pendingTasks.slice(0, 4).map((task, i) => (
                                         <div key={i} className="flex items-center gap-2.5 p-2.5 bg-white/85 dark:bg-gray-800/85 backdrop-blur-sm rounded-xl border border-gray-200/40 dark:border-gray-700/40 shadow-sm text-xs transition-all hover:translate-x-[-2px]">
                                             <div className={`w-1.5 h-8 rounded-full ${i % 2 === 0 ? 'bg-indigo-500' : 'bg-purple-500'} shadow-sm`}></div>
                                             <div className="flex-1 min-w-0 text-right">
                                                 <div className="font-extrabold text-gray-700 dark:text-gray-300 truncate">{task.subject}</div>
-                                                <div className="text-gray-400 dark:text-gray-500 truncate text-[10px] font-bold mt-0.5">{task.topic}</div>
+                                                <div className="text-gray-400 dark:text-gray-500 truncate text-[10px] font-bold mt-0.5">
+                                                    {task.topic}
+                                                    {task.startTime ? ` • ⏰ ${task.startTime}` : ''}
+                                                    {task.durationMinutes ? ` (${task.durationMinutes} دقیقه)` : ''}
+                                                </div>
                                             </div>
-                                            <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100/20 dark:border-indigo-900/20 px-2 py-1 rounded-lg text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold font-mono dir-rtl">
+                                            <div className="bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100/20 dark:border-indigo-900/20 px-2 py-1 rounded-lg text-[10px] text-indigo-600 dark:text-indigo-400 font-extrabold font-mono dir-rtl shrink-0">
                                                 {new Date(task.date).toLocaleDateString('fa-IR-u-ca-persian', { month: 'long', day: 'numeric' })}
                                             </div>
                                         </div>
                                     ))}
-                                    {message.pendingTasks.length > 3 && (
+                                    {message.pendingTasks.length > 4 && (
                                         <div className="text-center text-[10px] text-gray-400 dark:text-gray-500 font-extrabold pt-1">
-                                            و {message.pendingTasks.length - 3} مورد دیگر...
+                                            و {message.pendingTasks.length - 4} مورد دیگر...
                                         </div>
                                     )}
                                 </div>
 
-                                <button
-                                    onClick={() => onReviewTasks(message.pendingTasks!)}
-                                    className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 btn-micro-interactive"
-                                >
-                                    <Eye size={14} strokeWidth={2.5} />
-                                    بررسی کامل و افزودن
-                                </button>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    {onAutoAddTasks && !tasksApplied && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onAutoAddTasks(message.pendingTasks!, message.id)}
+                                            className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 btn-micro-interactive"
+                                        >
+                                            <Check size={14} strokeWidth={2.5} />
+                                            افزودن خودکار همه به برنامه
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => onReviewTasks(message.pendingTasks!)}
+                                        className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 btn-micro-interactive"
+                                    >
+                                        <Eye size={14} strokeWidth={2.5} />
+                                        {tasksApplied ? 'اضافه شد ✓ (مشاهده)' : 'بررسی و ویرایش'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

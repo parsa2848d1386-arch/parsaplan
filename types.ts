@@ -335,9 +335,32 @@ export interface LiveRoomInfo {
     code: string;
     name: string;
     creatorId: string;
+    creatorName?: string;
+    category: string;
+    description?: string;
+    targetHours: number;
+    maxMembers: number;
+    isPublic: boolean;
     chatEnabled: boolean;
     dailyMessageQuota: number;
     createdAt: number;
+    updatedAt?: number;
+}
+
+export interface PublicProfileSummary {
+    id: string;
+    userName: string;
+    xp: number;
+    level: number;
+    progress: number;
+    tasksCompleted: number;
+    totalTasks: number;
+    lastActive: number;
+    examAverage?: number;
+}
+
+export interface PublicProfileDetail extends PublicProfileSummary {
+    tasks?: Pick<SubjectTask, 'id' | 'subject' | 'topic' | 'isCompleted' | 'date'>[];
 }
 
 // New Feature: Audit Log

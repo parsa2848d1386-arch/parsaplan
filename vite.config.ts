@@ -152,7 +152,9 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             // Vendor chunks — each loaded on demand
             'vendor-router': ['react-router-dom'],
-            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            'vendor-firebase-app': ['firebase/app'],
+            'vendor-firebase-auth': ['firebase/auth'],
+            'vendor-firebase-db': ['firebase/firestore'],
             'vendor-charts': ['recharts'],
             'vendor-motion': ['framer-motion'],
             'vendor-ai': ['@google/generative-ai'],

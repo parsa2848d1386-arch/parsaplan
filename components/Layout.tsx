@@ -6,11 +6,9 @@ import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
     Menu, Bell, Search, X, LogOut, Moon, Sun,
     Cloud, CloudOff, AlertTriangle, MessageSquare, Sparkles, ChevronLeft, ChevronRight,
-    Zap, Star, TrendingUp, BrainCircuit, PenTool, Clock, Command, MoreHorizontal
+    Zap, Star, TrendingUp
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { useFocus } from '../context/FocusContext';
-import { useUI } from '../context/UIContext';
 const AIChat = React.lazy(() => import('../pages/AIChat'));
 import { useProactiveAI } from './AIChat/useProactiveAI';
 import { useAuth } from '../context/AuthContext';
@@ -22,16 +20,13 @@ import { useBioperformance } from '../hooks/useBioperformance';
 
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
     '/': { title: 'داشبورد', breadcrumb: 'داشبورد' },
-    '/planner': { title: 'برنامه‌ریز بصری ۱۰ دقیقه‌ای', breadcrumb: 'تایم‌لاین' },
-    '/routine': { title: 'برنامه روتین و عادت‌ها', breadcrumb: 'روتین' },
+    '/planner': { title: 'برنامه‌ریز بصری ۲۴ ساعته', breadcrumb: 'تایم‌لاین' },
     '/subjects': { title: 'حوزه‌ها و اهداف', breadcrumb: 'حوزه‌ها' },
-    '/notes': { title: 'دفترچه هوشمند و تخته قلم', breadcrumb: 'دفترچه' },
     '/analysis': { title: 'تحلیل عملکرد', breadcrumb: 'تحلیل' },
-    '/leaderboard': { title: 'لیدربورد', breadcrumb: 'لیگ' },
+    '/leaderboard': { title: 'لیگ و اتاق‌های مطالعه', breadcrumb: 'لیگ' },
     '/settings': { title: 'تنظیمات', breadcrumb: 'تنظیمات' },
     '/history': { title: 'تاریخچه', breadcrumb: 'تاریخچه' },
     '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'AI' },
-    '/leitner': { title: 'جعبه لایتنر (مرور)', breadcrumb: 'لایتنر' },
 };
 
 /* ===== XP Progress Ring ===== */
@@ -76,12 +71,7 @@ const Layout = () => {
         userName, showToast, isAiPanelOpen, setIsAiPanelOpen, settings, updateSettings, userId,
         setIsCommandPaletteOpen
     } = useStore();
-    const { startFocusForTask } = useFocus();
-    const { setBrainDumpOpen } = useUI();
 
-    const [showSearchOverlay, setShowSearchOverlay] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showMobileMore, setShowMobileMore] = useState(false);
     const [aiPanelWidth, setAiPanelWidth] = useState(360);
     const sidebarRef = useRef<HTMLDivElement>(null);
     const isResizingRef = useRef(false);
@@ -120,14 +110,19 @@ const Layout = () => {
         { to: '/', icon: Home, label: 'داشبورد', color: 'text-indigo-500' },
         { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین', color: 'text-blue-500' },
         { to: '/subjects', icon: BookOpen, label: 'حوزه‌ها', color: 'text-violet-500' },
-        { to: '/notes', icon: PenTool, label: 'دفترچه', color: 'text-emerald-500' },
         { to: '/analysis', icon: BarChart2, label: 'تحلیل', color: 'text-cyan-500' },
+        { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
     ];
     const secondaryNavItems = [
-        { to: '/routine', icon: Clock, label: 'روتین', color: 'text-sky-500' },
-        { to: '/leitner', icon: BrainCircuit, label: 'لایتنر', color: 'text-purple-500' },
-        { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
+        { to: '/ai-chat', icon: Sparkles, label: 'دستیار AI', color: 'text-purple-500' },
         { to: '/settings', icon: Settings, label: 'تنظیمات', color: 'text-gray-400' },
+    ];
+    const mobileNavItems = [
+        { to: '/', icon: Home, label: 'داشبورد' },
+        { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین' },
+        { to: '/analysis', icon: BarChart2, label: 'تحلیل' },
+        { to: '/leaderboard', icon: Trophy, label: 'لیگ' },
+        { to: '/settings', icon: Settings, label: 'تنظیمات' },
     ];
 
     const getCloudIconColor = () => {
@@ -366,12 +361,17 @@ const Layout = () => {
                             </button>
 
                             <button
+                                type="button"
                                 onClick={() => setIsCommandPaletteOpen(true)}
-                                title="پالت دستورات سریع (Ctrl+K)"
-                                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-500 hover:text-indigo-600 text-[11px] font-bold transition"
+                                title="جستجو و دستورات سریع (Ctrl+K)"
+                                aria-label="جستجو و دستورات سریع"
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100/90 dark:bg-gray-800/90 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-500 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-300 text-xs font-bold transition border border-gray-200/60 dark:border-gray-700/60"
                             >
-                                <Command size={13} />
-                                <span>Ctrl+K</span>
+                                <Search size={15} />
+                                <span className="hidden lg:inline text-[11px]">جستجو</span>
+                                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-md bg-white dark:bg-gray-900 text-[10px] font-mono text-gray-400 border border-gray-200/80 dark:border-gray-700">
+                                    Ctrl+K
+                                </kbd>
                             </button>
 
                             {syncQueueCount > 0 && (
@@ -383,13 +383,6 @@ const Layout = () => {
                                 </span>
                             )}
 
-                            <button
-                                onClick={() => setShowSearchOverlay(!showSearchOverlay)}
-                                title="جستجو در تسک‌ها"
-                                className="w-8 h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition flex items-center justify-center"
-                            >
-                                <Search size={16} />
-                            </button>
                             <NotificationBell />
                         </div>
                     </header>
@@ -399,9 +392,11 @@ const Layout = () => {
                         <div className="flex items-center gap-1">
                             <NotificationBell />
                             <button
-                                onClick={() => setShowSearchOverlay(!showSearchOverlay)}
+                                type="button"
+                                onClick={() => setIsCommandPaletteOpen(true)}
                                 className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                title="جستجو"
+                                title="جستجو و دستورات"
+                                aria-label="جستجو و دستورات"
                             >
                                 <Search size={17} />
                             </button>
@@ -426,87 +421,6 @@ const Layout = () => {
                         </button>
                     </header>
 
-                    {/* Search Overlay (Live Search Across Tasks & Pages) */}
-                    {showSearchOverlay && (
-                        <div className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0 z-30 animate-fade-in-down">
-                            <div className="flex items-center h-12 px-6 gap-3">
-                                <Search size={15} className="text-indigo-500" />
-                                <input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="جستجو در تسک‌ها، دروس یا صفحات..."
-                                    className="flex-1 bg-transparent text-sm outline-none text-gray-700 dark:text-gray-200 placeholder:text-gray-400"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Escape') {
-                                            setShowSearchOverlay(false);
-                                            setSearchQuery('');
-                                        }
-                                    }}
-                                />
-                                <button
-                                    onClick={() => {
-                                        setShowSearchOverlay(false);
-                                        setSearchQuery('');
-                                    }}
-                                >
-                                    <X size={15} className="text-gray-400" />
-                                </button>
-                            </div>
-                            {searchQuery.trim() && (
-                                <div className="max-h-60 overflow-y-auto px-6 pb-3 space-y-1.5 border-t border-gray-100 dark:border-gray-800 pt-2">
-                                    {tasks
-                                        .filter((t) => {
-                                            const q = searchQuery.trim().toLowerCase();
-                                            return (
-                                                t.topic.toLowerCase().includes(q) ||
-                                                t.subject.toLowerCase().includes(q) ||
-                                                t.details.toLowerCase().includes(q)
-                                            );
-                                        })
-                                        .slice(0, 6)
-                                        .map((t) => (
-                                            <button
-                                                key={t.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setShowSearchOverlay(false);
-                                                    setSearchQuery('');
-                                                    startFocusForTask(t);
-                                                }}
-                                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-right text-xs transition"
-                                            >
-                                                <span className="font-bold text-gray-800 dark:text-gray-100 truncate">
-                                                    {t.subject} — {t.topic}
-                                                </span>
-                                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 shrink-0 mr-2">
-                                                    شروع تمرکز ▶
-                                                </span>
-                                            </button>
-                                        ))}
-                                    {Object.entries(PAGE_TITLES)
-                                        .filter(([, meta]) => meta.title.toLowerCase().includes(searchQuery.trim().toLowerCase()))
-                                        .map(([path, meta]) => (
-                                            <button
-                                                key={path}
-                                                type="button"
-                                                onClick={() => {
-                                                    setShowSearchOverlay(false);
-                                                    setSearchQuery('');
-                                                    navigate(path);
-                                                }}
-                                                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 text-right text-xs font-bold text-indigo-700 dark:text-indigo-300"
-                                            >
-                                                <span>صفحه: {meta.title}</span>
-                                                <span className="text-[10px]">انتقال ↗</span>
-                                            </button>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
                     {/* Page Content */}
                     <div id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden outline-none">
                         <motion.div
@@ -521,62 +435,13 @@ const Layout = () => {
                         </motion.div>
                     </div>
 
-                    {/* Mobile "More" Drawer */}
-                    {showMobileMore && (
-                        <div
-                            className="fixed inset-0 z-40 bg-black/40 md:hidden flex items-end justify-center pb-20 px-4"
-                            onClick={() => setShowMobileMore(false)}
-                        >
-                            <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-full max-w-md bg-white dark:bg-gray-900 rounded-3xl p-4 border border-gray-200 dark:border-gray-700 shadow-2xl grid grid-cols-3 gap-2"
-                            >
-                                {[...mainNavItems.slice(4), ...secondaryNavItems].map((item) => (
-                                    <button
-                                        key={item.to}
-                                        type="button"
-                                        onClick={() => {
-                                            setShowMobileMore(false);
-                                            navigate(item.to);
-                                        }}
-                                        className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-gray-50 dark:bg-gray-800 hover:bg-indigo-50 text-xs font-bold text-gray-700 dark:text-gray-200"
-                                    >
-                                        <item.icon size={18} className={item.color} />
-                                        <span>{item.label}</span>
-                                    </button>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowMobileMore(false);
-                                        setBrainDumpOpen(true);
-                                    }}
-                                    className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 text-xs font-bold text-amber-700 dark:text-amber-300"
-                                >
-                                    <Sparkles size={18} />
-                                    <span>تخلیه ذهن</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowMobileMore(false);
-                                        setIsCommandPaletteOpen(true);
-                                    }}
-                                    className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 text-xs font-bold text-indigo-700 dark:text-indigo-300"
-                                >
-                                    <Command size={18} />
-                                    <span>فرمان سریع</span>
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bottom Nav — Mobile Pill */}
+                    {/* Bottom Nav — Mobile Pill (Strictly 5 items: Dashboard, Timeline, Analytics, League, Settings) */}
                     <nav aria-label="منوی موبایل" className="mobile-bottom-nav flex md:hidden">
-                        {mainNavItems.slice(0, 4).map((item) => (
+                        {mobileNavItems.map((item) => (
                             <NavLink
                                 key={item.to}
                                 to={item.to}
+                                end={item.to === '/'}
                                 className={({ isActive }) =>
                                     `nav-pill-item relative z-10 ${isActive ? 'active' : ''}`
                                 }
@@ -607,14 +472,6 @@ const Layout = () => {
                                 )}
                             </NavLink>
                         ))}
-                        <button
-                            type="button"
-                            onClick={() => setShowMobileMore(!showMobileMore)}
-                            className={`nav-pill-item relative z-10 ${showMobileMore ? 'active text-indigo-600' : ''}`}
-                        >
-                            <MoreHorizontal size={17} />
-                            <span className="leading-none">بیشتر</span>
-                        </button>
                     </nav>
                 </main>
 
