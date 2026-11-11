@@ -10,16 +10,46 @@ export const NotificationBell: React.FC = () => {
     const { showToast } = useUI();
 
     const {
-        needRefresh: [needRefresh, setNeedRefresh],
+        needRefresh: [needRefresh],
         updateServiceWorker,
     } = useRegisterSW({
         onRegistered(r: any) {
-            console.log('SW Registered');
+            if (!r) return;
+            r.update?.().catch(() => {});
+            const onVisible = () => {
+                if (document.visibilityState === 'visible') {
+                    r.update?.().catch(() => {});
+                }
+            };
+            document.addEventListener('visibilitychange', onVisible);
         },
         onRegisterError(error: any) {
             console.log('SW registration error', error);
         },
     });
+
+    // Automatically reload once when an updated Service Worker takes control of an already-cached tab
+    useEffect(() => {
+        if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !navigator.serviceWorker) return;
+
+        let hadController = Boolean(navigator.serviceWorker.controller);
+        let refreshing = false;
+
+        const handleControllerChange = () => {
+            if (!hadController) {
+                hadController = true;
+                return;
+            }
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        };
+
+        navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+        return () => {
+            navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+        };
+    }, []);
 
     const notifications = [];
     if (needRefresh) {
