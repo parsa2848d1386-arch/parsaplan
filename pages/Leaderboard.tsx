@@ -287,7 +287,12 @@ export const Leaderboard = () => {
             return;
         }
         if (user?.uid) {
-            leaderboardApi.isProfilePublic(db, user.uid).then((isPub) => setIsMyProfilePublic(isPub));
+            const checkFn = leaderboardApi?.checkIsPublic || leaderboardApi?.isProfilePublic;
+            if (typeof checkFn === 'function') {
+                checkFn.call(leaderboardApi, db, user.uid)
+                    .then((isPub) => setIsMyProfilePublic(!!isPub))
+                    .catch(() => setIsMyProfilePublic(false));
+            }
         }
         loadLeaderboardPage();
         loadPublicRooms();

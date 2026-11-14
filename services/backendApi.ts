@@ -232,6 +232,10 @@ class LeaderboardApiService {
         }
     }
 
+    async isProfilePublic(db: Firestore, uid: string): Promise<boolean> {
+        return this.checkIsPublic(db, uid);
+    }
+
     /**
      * Lazily loads profile task preview ONLY when inspecting a specific user's card.
      */
