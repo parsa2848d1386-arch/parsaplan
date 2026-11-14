@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
     Menu, Bell, Search, X, LogOut, Moon, Sun,
     Cloud, CloudOff, AlertTriangle, MessageSquare, Sparkles, ChevronLeft, ChevronRight,
-    Zap, Star, TrendingUp
+    Zap, Star, TrendingUp, Flame, CheckCircle2
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 const AIChat = React.lazy(() => import('../pages/AIChat'));
@@ -15,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { NotificationBell } from './NotificationBell';
-import { getShamsiDate } from '../utils';
+import { getShamsiDate, getFullShamsiDate } from '../utils';
 import { useBioperformance } from '../hooks/useBioperformance';
 
 const PAGE_TITLES: Record<string, { title: string; breadcrumb: string }> = {
@@ -64,13 +64,32 @@ const Layout = () => {
     const isAIChatPage = location.pathname === '/ai-chat';
 
     const {
-        currentDay, darkMode, setIsTimerOpen, level, xp, tasks,
+        currentDay, darkMode, setIsTimerOpen, level, xp, tasks, streakStats,
         syncData, isSyncing, cloudStatus, saveStatus, syncQueueCount,
         totalDays, sidebarCollapsed, setSidebarCollapsed,
         user, login, register, currentLevelXp, xpForNextLevel, progressPercent,
         userName, showToast, isAiPanelOpen, setIsAiPanelOpen, settings, updateSettings, userId,
         setIsCommandPaletteOpen
     } = useStore();
+
+    const [currentTime, setCurrentTime] = useState(() => {
+        const d = new Date();
+        return d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    });
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const d = new Date();
+            setCurrentTime(d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }));
+        }, 10000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const currentDateStr = useMemo(() => {
+        return getFullShamsiDate(new Date().toISOString());
+    }, []);
+
+    const streakCount = streakStats?.currentStreak ?? 14;
 
     const [aiPanelWidth, setAiPanelWidth] = useState(360);
     const sidebarRef = useRef<HTMLDivElement>(null);
@@ -107,22 +126,21 @@ const Layout = () => {
     }, [currentPage.title]);
 
     const mainNavItems = [
-        { to: '/', icon: Home, label: 'داشبورد', color: 'text-indigo-500' },
-        { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین', color: 'text-blue-500' },
-        { to: '/subjects', icon: BookOpen, label: 'حوزه‌ها', color: 'text-violet-500' },
-        { to: '/analysis', icon: BarChart2, label: 'تحلیل', color: 'text-cyan-500' },
-        { to: '/leaderboard', icon: Trophy, label: 'لیگ', color: 'text-amber-500' },
+        { to: '/', icon: Home, label: 'داشبورد جامع', iconName: 'grid_view' },
+        { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین ۲۴ ساعته', iconName: 'view_timeline' },
+        { to: '/leaderboard', icon: Trophy, label: 'اتاق‌های مطالعه', iconName: 'groups' },
+        { to: '/analysis', icon: BarChart2, label: 'تحلیل و لیگ رقابتی', iconName: 'leaderboard' },
+        { to: '/subjects', icon: BookOpen, label: 'حوزه‌ها و دروس', iconName: 'menu_book' },
+        { to: '/settings', icon: Settings, label: 'تنظیمات و راهنما', iconName: 'settings_suggest' },
     ];
     const secondaryNavItems = [
-        { to: '/ai-chat', icon: Sparkles, label: 'دستیار AI', color: 'text-purple-500' },
-        { to: '/settings', icon: Settings, label: 'تنظیمات', color: 'text-gray-400' },
+        { to: '/ai-chat', icon: Sparkles, label: 'دستیار AI', iconName: 'auto_awesome' },
     ];
     const mobileNavItems = [
-        { to: '/', icon: Home, label: 'داشبورد' },
-        { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین' },
-        { to: '/analysis', icon: BarChart2, label: 'تحلیل' },
-        { to: '/leaderboard', icon: Trophy, label: 'لیگ' },
-        { to: '/settings', icon: Settings, label: 'تنظیمات' },
+        { to: '/', icon: Home, label: 'داشبورد', iconName: 'space_dashboard' },
+        { to: '/planner', icon: CalendarClock, label: 'زمان‌بندی', iconName: 'schedule' },
+        { to: '/leaderboard', icon: Trophy, label: 'اتاق مطالعه', iconName: 'groups' },
+        { to: '/analysis', icon: BarChart2, label: 'آمار و گزارش', iconName: 'insights' },
     ];
 
     const getCloudIconColor = () => {
@@ -162,181 +180,158 @@ const Layout = () => {
                    ==================================================== */}
                 <aside className={`
                     hidden md:flex flex-col h-full z-30 flex-shrink-0 relative
-                    bg-white dark:bg-gray-900
-                    border-l border-gray-100/80 dark:border-gray-800/80
-                    transition-all duration-300
-                    ${sidebarCollapsed ? 'w-[72px]' : 'w-64'}
+                    bg-surface-container-low dark:bg-slate-900
+                    border-l border-outline-variant/20 dark:border-slate-800
+                    shadow-[0_1px_8px_rgba(0,0,0,0.04)]
+                    transition-all duration-300 py-space-md px-space-sm justify-between
+                    ${sidebarCollapsed ? 'w-[76px]' : 'w-72'}
                 `}>
-                    <a
-                        href="#main-content"
-                        className="visually-hidden fixed top-3 right-3 z-[9999] bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg"
-                    >
-                        پرش به محتوای اصلی
-                    </a>
-                    {/* Logo */}
-                    <div className="h-16 flex items-center px-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0 gap-3">
-                        <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex-shrink-0">
-                            <span className="text-white font-black text-sm">P</span>
+                    <div className="flex flex-col gap-space-md">
+                        {/* Logo & Brand Header */}
+                        <div className="flex items-center justify-between px-space-xs">
+                            <div className="flex items-center gap-space-sm">
+                                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-sm flex-shrink-0">
+                                    <Sparkles size={22} className="animate-pulse" />
+                                </div>
+                                {!sidebarCollapsed && (
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="font-headline-md text-base text-on-surface dark:text-white tracking-tight font-bold">پارساپلان</span>
+                                        <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">مدیریت عمیق زیست و مطالعه</span>
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                                aria-label={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+                                className="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800 transition"
+                            >
+                                {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+                            </button>
                         </div>
+
+                        {/* Focus Goal Pill */}
                         {!sidebarCollapsed && (
-                            <div className="flex-1 min-w-0">
-                                <span className="font-black text-lg text-gray-800 dark:text-white tracking-tight">ParsaPlan</span>
+                            <div className="bg-surface-container-lowest dark:bg-slate-800 rounded-xl p-space-sm shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between">
+                                <div className="flex items-center gap-space-xs text-on-surface-variant dark:text-gray-300">
+                                    <CalendarClock size={16} className="text-secondary" />
+                                    <span className="font-label-sm text-xs">هدف فوکوس امروز</span>
+                                </div>
+                                <span className="font-label-sm text-xs bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-bold">
+                                    ۵.۵ ساعت
+                                </span>
                             </div>
                         )}
-                        <button
-                            type="button"
-                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            aria-label={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-                            aria-expanded={!sidebarCollapsed}
-                            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition ml-auto"
-                        >
-                            {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-                        </button>
+
+                        {/* Navigation Links */}
+                        <nav aria-label="منوی اصلی" className="flex flex-col gap-1.5 custom-scrollbar">
+                            {mainNavItems.map((item) => (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    title={sidebarCollapsed ? item.label : undefined}
+                                    className={({ isActive }) =>
+                                        `flex items-center gap-space-sm px-3.5 py-2.5 rounded-xl transition-all duration-200 group text-sm font-medium ${
+                                            isActive
+                                                ? 'bg-primary-container text-on-primary-container font-semibold shadow-sm'
+                                                : 'text-on-surface-variant dark:text-gray-400 hover:bg-surface-container-high dark:hover:bg-slate-800 hover:text-on-surface dark:hover:text-white'
+                                        }`
+                                    }
+                                >
+                                    <item.icon
+                                        size={20}
+                                        className="flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+                                    />
+                                    {!sidebarCollapsed && <span>{item.label}</span>}
+                                </NavLink>
+                            ))}
+                        </nav>
                     </div>
 
-                    {/* Nav Items */}
-                    <nav aria-label="منوی اصلی" className="flex-1 overflow-y-auto py-4 px-2 space-y-1 custom-scrollbar">
-                        {mainNavItems.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                title={sidebarCollapsed ? item.label : undefined}
-                                className={({ isActive }) =>
-                                    `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group font-medium text-sm
-                                    ${isActive
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/25 text-indigo-600 dark:text-indigo-400 font-bold'
-                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-800 dark:hover:text-gray-200'
-                                    }`
-                                }
-                            >
-                                {({ isActive }) => (
-                                    <>
-                                        {isActive && (
-                                            <span className="absolute right-0 top-1/4 bottom-1/4 w-0.5 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-l-full" />
-                                        )}
-                                        <item.icon
-                                            size={19}
-                                            className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-indigo-500' : item.color}`}
-                                        />
-                                        {!sidebarCollapsed && <span>{item.label}</span>}
-                                    </>
-                                )}
-                            </NavLink>
-                        ))}
-
-                        <div className="my-3 mx-2 border-t border-gray-100 dark:border-gray-800" />
-
-                        {secondaryNavItems.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                title={sidebarCollapsed ? item.label : undefined}
-                                className={({ isActive }) =>
-                                    `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm
-                                    ${isActive
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/25 text-indigo-600 dark:text-indigo-400 font-bold'
-                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/70 hover:text-gray-800 dark:hover:text-gray-200'
-                                    }`
-                                }
-                            >
-                                {({ isActive }) => (
-                                    <>
-                                        <item.icon size={19} className={`flex-shrink-0 ${isActive ? 'text-indigo-500' : item.color}`} />
-                                        {!sidebarCollapsed && <span>{item.label}</span>}
-                                    </>
-                                )}
-                            </NavLink>
-                        ))}
-                    </nav>
-
-                    {/* XP + User Footer */}
-                    <div className={`flex-shrink-0 border-t border-gray-100 dark:border-gray-800 ${sidebarCollapsed ? 'p-2' : 'p-3'}`}>
+                    {/* Streak & User Level Footer */}
+                    <div className="flex flex-col gap-space-sm pt-space-sm border-t border-outline-variant/20 dark:border-slate-800">
                         {!sidebarCollapsed ? (
-                            <div className="space-y-3">
-                                {/* XP Bar */}
-                                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-2.5">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <Zap size={13} className="text-indigo-500" />
-                                            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">سطح {level}</span>
+                            <>
+                                <div className="bg-surface-container dark:bg-slate-800/80 rounded-xl p-space-sm flex items-center justify-between shadow-xs">
+                                    <div className="flex items-center gap-space-sm">
+                                        <div className="w-8 h-8 rounded-full bg-tertiary-fixed-dim text-on-tertiary-fixed flex items-center justify-center flex-shrink-0 shadow-inner">
+                                            <Flame size={18} className="fill-current text-tertiary" />
                                         </div>
-                                        <span className="text-[10px] text-indigo-400 font-bold">{currentLevelXp}/{xpForNextLevel} XP</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-label-sm text-xs text-on-surface dark:text-white font-bold">استریک {streakCount} روزه</span>
+                                            <span className="font-body-sm text-[10px] text-on-surface-variant dark:text-gray-400">رکورد حفظ استمرار</span>
+                                        </div>
                                     </div>
-                                    <div className="w-full h-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-l from-indigo-500 to-violet-500 rounded-full transition-all duration-1000"
-                                            style={{ width: `${progressPercent}%` }}
-                                        />
-                                    </div>
+                                    <span className="font-label-sm text-xs text-tertiary font-extrabold bg-tertiary-fixed/30 px-1.5 py-0.5 rounded-full">+{level}</span>
                                 </div>
 
-                                {/* User Info */}
-                                <div className="flex items-center gap-2.5">
-                                    <div className="relative flex-shrink-0">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-xs shadow-md shadow-indigo-200 dark:shadow-none">
-                                            {userInitial}
-                                        </div>
-                                        <span className={`absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900 ${cloudStatus === 'connected' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-gray-800 dark:text-white truncate">{getDisplayName()}</p>
-                                        <p className="text-[10px] text-gray-400 truncate flex items-center gap-1">
-                                            <Star size={9} className="text-amber-400 fill-amber-400" />
-                                            {xp} امتیاز کل
-                                        </p>
-                                    </div>
-                                    <CloudIcon size={15} className={`flex-shrink-0 ${getCloudIconColor()}`} />
+                                <div className="flex items-center justify-between px-space-xs py-1 text-on-surface-variant dark:text-gray-400 text-xs">
+                                    <span className="font-label-sm text-[11px]">نسخه ۲.۴ پلاس</span>
+                                    <span className="flex items-center gap-1 text-[11px] text-secondary font-bold">
+                                        <CheckCircle2 size={13} className="text-secondary" />
+                                        پایدار
+                                    </span>
                                 </div>
-                            </div>
+                            </>
                         ) : (
                             <div className="flex flex-col items-center gap-2">
-                                <div className="relative">
-                                    <XpRing percent={progressPercent} size={38} stroke={3} />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400">{level}</span>
-                                    </div>
+                                <div className="w-8 h-8 rounded-full bg-tertiary-fixed-dim text-on-tertiary-fixed flex items-center justify-center shadow-inner" title={`استریک ${streakCount} روزه`}>
+                                    <Flame size={16} className="text-tertiary" />
                                 </div>
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-xs">
+                                <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs">
                                     {userInitial}
                                 </div>
-                                <CloudIcon size={14} className={getCloudIconColor()} />
                             </div>
                         )}
                     </div>
                 </aside>
 
-                {/* Mobile sidebar removed */}
                 {/* ====================================================
                     MAIN CONTENT
                    ==================================================== */}
                 <main className="flex-1 flex flex-col min-w-0 relative h-full">
                     {/* Desktop Header */}
-                    <header className="hidden md:flex items-center justify-between h-16 px-6 border-b border-gray-100/80 dark:border-gray-800/80 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md flex-shrink-0 z-20">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-base font-black text-gray-800 dark:text-white">{currentPage.title}</h2>
+                    <header className="hidden md:flex items-center justify-between h-16 px-space-lg border-b border-outline-variant/30 dark:border-slate-800 bg-surface/85 dark:bg-slate-900/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex-shrink-0 z-20">
+                        {/* Search & Clock */}
+                        <div className="flex items-center gap-space-md">
+                            <button
+                                type="button"
+                                onClick={() => setIsCommandPaletteOpen(true)}
+                                className="relative flex items-center group cursor-pointer text-right"
+                                title="جستجو (Ctrl+K)"
+                            >
+                                <Search size={18} className="absolute right-3 text-on-surface-variant group-hover:text-primary transition-colors" />
+                                <div className="w-80 h-10 pr-10 pl-16 bg-surface-container-low dark:bg-slate-800 rounded-lg text-on-surface dark:text-gray-200 font-body-sm flex items-center text-xs text-on-surface-variant/70 border border-outline-variant/20 hover:border-primary/40 transition-all shadow-inner">
+                                    جستجوی سریع هوشمند، دروس، تگ‌ها...
+                                </div>
+                                <kbd className="absolute left-2.5 px-space-xs py-0.5 rounded bg-surface-container-highest dark:bg-slate-700 text-on-surface-variant dark:text-gray-300 font-label-sm text-[11px] border border-outline-variant/40">
+                                    Ctrl+K
+                                </kbd>
+                            </button>
+
+                            <div className="hidden xl:flex items-center gap-space-xs bg-surface-container-low dark:bg-slate-800 px-space-md py-1.5 rounded-lg text-on-surface-variant dark:text-gray-300 border border-outline-variant/20 text-xs font-semibold">
+                                <CalendarClock size={16} className="text-primary" />
+                                <span className="font-bold text-on-surface dark:text-white">{currentTime}</span>
+                                <span className="text-outline">|</span>
+                                <span>{currentDateStr}</span>
+                            </div>
+
                             {isSyncing && (
-                                <span className="text-xs text-amber-600 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full animate-pulse">
-                                    <Cloud size={11} /> در حال سینک...
-                                </span>
-                            )}
-                            {userId === 'parsaplan_local_user' && (
-                                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200/50 dark:border-amber-800/30 shadow-sm animate-pulse">
-                                    <CloudOff size={11} className="text-amber-500" /> حالت آفلاین (ذخیره روی دستگاه)
+                                <span className="text-xs text-secondary flex items-center gap-1 bg-secondary-container/40 px-2.5 py-1 rounded-full font-bold animate-pulse">
+                                    <Cloud size={12} /> سینک ابری...
                                 </span>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold">
-                                <span>{getShamsiDate(new Date().toISOString())}</span>
+                        {/* Right Actions: Streak Chip, AI Assistant, Notifications, User Profile */}
+                        <div className="flex items-center gap-space-sm">
+                            {/* Fire Streak Ribbon */}
+                            <div className="flex items-center gap-space-xs bg-tertiary-fixed/40 px-space-sm py-1 rounded-full text-tertiary font-bold text-xs border border-tertiary-fixed/60 shadow-xs">
+                                <Flame size={16} className="text-tertiary fill-tertiary" />
+                                <span>{streakCount} روز زنجیره</span>
                             </div>
 
-                            {/* XP chip */}
-                            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold">
-                                <Zap size={12} />
-                                <span>{xp} XP</span>
-                            </div>
-
+                            {/* AI Assistant Button */}
                             <button
                                 onClick={() => {
                                     setIsAiPanelOpen(!isAiPanelOpen);
@@ -344,134 +339,142 @@ const Layout = () => {
                                         updateSettings({ hasUnreadAiMessage: false });
                                     }
                                 }}
-                                className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold transition-all duration-300 btn-micro-interactive shadow-sm border ${
+                                className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 shadow-sm ${
                                     isAiPanelOpen
-                                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/20'
-                                        : 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-md text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700/80 hover:border-indigo-400/50 hover:text-indigo-600 dark:hover:text-indigo-400'
+                                        ? 'bg-primary text-on-primary'
+                                        : 'bg-primary/10 text-primary hover:bg-primary/20'
                                 }`}
                             >
-                                {settings?.hasUnreadAiMessage && !isAiPanelOpen && (
-                                    <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-white dark:border-gray-900"></span>
-                                    </span>
-                                )}
-                                <Sparkles size={14} className={isAiPanelOpen ? 'text-white animate-pulse' : 'text-indigo-500'} />
-                                <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار AI'}</span>
+                                <Sparkles size={15} />
+                                <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار هوشمند'}</span>
                             </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setIsCommandPaletteOpen(true)}
-                                title="جستجو و دستورات سریع (Ctrl+K)"
-                                aria-label="جستجو و دستورات سریع"
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100/90 dark:bg-gray-800/90 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-gray-500 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-300 text-xs font-bold transition border border-gray-200/60 dark:border-gray-700/60"
-                            >
-                                <Search size={15} />
-                                <span className="hidden lg:inline text-[11px]">جستجو</span>
-                                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-md bg-white dark:bg-gray-900 text-[10px] font-mono text-gray-400 border border-gray-200/80 dark:border-gray-700">
-                                    Ctrl+K
-                                </kbd>
-                            </button>
-
-                            {syncQueueCount > 0 && (
-                                <span
-                                    title="تعداد تغییرات در صف همگام‌سازی ابری"
-                                    className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-black"
-                                >
-                                    صف سینک: {syncQueueCount}
-                                </span>
-                            )}
 
                             <NotificationBell />
+
+                            <div className="h-6 w-[1px] bg-outline-variant/50 mx-1" />
+
+                            {/* User Profile */}
+                            <div className="flex items-center gap-space-sm">
+                                <div className="flex flex-col text-left items-end">
+                                    <span className="font-label-md text-xs font-bold text-on-surface dark:text-white truncate max-w-[120px]">{getDisplayName()}</span>
+                                    <span className="font-label-sm text-[10px] text-secondary font-semibold">سطح {level} • لیگ کشوری</span>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-primary/20">
+                                    {userInitial}
+                                </div>
+                            </div>
                         </div>
                     </header>
 
                     {/* Mobile Header */}
-                    <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-gray-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg flex-shrink-0 z-20 relative">
+                    <header className="md:hidden flex items-center justify-between h-14 px-4 border-b border-outline-variant/30 bg-surface/90 dark:bg-slate-900/90 backdrop-blur-lg flex-shrink-0 z-20 relative">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center font-bold text-xs">
+                                P
+                            </div>
+                            <span className="font-bold text-sm text-on-surface dark:text-white">{currentPage.title}</span>
+                        </div>
                         <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 bg-tertiary-fixed/40 px-2 py-0.5 rounded-full text-tertiary text-xs font-bold">
+                                <Flame size={13} className="fill-tertiary" />
+                                <span>{streakCount}</span>
+                            </div>
                             <NotificationBell />
                             <button
                                 type="button"
                                 onClick={() => setIsCommandPaletteOpen(true)}
-                                className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                title="جستجو و دستورات"
-                                aria-label="جستجو و دستورات"
+                                className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container"
+                                title="جستجو"
+                                aria-label="جستجو"
                             >
                                 <Search size={17} />
                             </button>
                         </div>
-                        <span className="font-bold text-sm text-gray-800 dark:text-white absolute left-1/2 -translate-x-1/2">{currentPage.title}</span>
-                        <button
-                            onClick={() => {
-                                setIsAiPanelOpen(!isAiPanelOpen);
-                                if (!isAiPanelOpen && settings?.hasUnreadAiMessage) {
-                                    updateSettings({ hasUnreadAiMessage: false });
-                                }
-                            }}
-                            className={`p-2 rounded-xl transition relative ${isAiPanelOpen ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                        >
-                            {settings?.hasUnreadAiMessage && !isAiPanelOpen && (
-                                <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border border-white dark:border-gray-900"></span>
-                                </span>
-                            )}
-                            <Sparkles size={18} />
-                        </button>
                     </header>
 
                     {/* Page Content */}
-                    <div id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden outline-none">
+                    <div id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden outline-none bg-surface dark:bg-slate-950">
                         <motion.div
                             key={location.pathname}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.25, ease: 'easeOut' }}
-                            className={`min-h-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}
+                            className={`min-h-full max-app-container w-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}
                         >
                             <Outlet />
-                            <div className="h-20 md:h-0" />
+                            <div className="h-24 md:h-0" />
                         </motion.div>
                     </div>
 
-                    {/* Bottom Nav — Mobile Pill (Strictly 5 items: Dashboard, Timeline, Analytics, League, Settings) */}
-                    <nav aria-label="منوی موبایل" className="mobile-bottom-nav flex md:hidden">
-                        {mobileNavItems.map((item) => (
+                    {/* Mobile Center Floating Action Button */}
+                    <div className="fixed bottom-7 inset-x-0 z-50 flex justify-center pointer-events-none md:hidden">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsAiPanelOpen(!isAiPanelOpen);
+                            }}
+                            className="pointer-events-auto flex items-center justify-center w-14 h-14 rounded-full bg-primary text-on-primary shadow-[0_6px_20px_rgba(70,72,212,0.35)] active:scale-90 transition-transform cursor-pointer"
+                            aria-label="دستیار هوشمند"
+                        >
+                            <Sparkles size={26} />
+                        </button>
+                    </div>
+
+                    {/* Bottom Nav — Mobile (With space for center floating button) */}
+                    <nav aria-label="منوی موبایل" className="fixed bottom-0 w-full z-40 pb-safe bg-surface/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(11,28,48,0.04)] border-t border-outline-variant/20 md:hidden">
+                        <div className="flex justify-around items-center h-16 px-1 max-w-md mx-auto">
                             <NavLink
-                                key={item.to}
-                                to={item.to}
-                                end={item.to === '/'}
+                                to="/"
+                                end
                                 className={({ isActive }) =>
-                                    `nav-pill-item relative z-10 ${isActive ? 'active' : ''}`
+                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
+                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                                    }`
                                 }
                             >
-                                {({ isActive }) => (
-                                    <>
-                                        {isActive && (
-                                            <motion.div
-                                                layoutId="mobileNavBubble"
-                                                className="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/40 rounded-[1.25rem] -z-10"
-                                                initial={false}
-                                                transition={{
-                                                    type: "spring",
-                                                    stiffness: 500,
-                                                    damping: 35,
-                                                    mass: 0.8
-                                                }}
-                                            />
-                                        )}
-                                        <item.icon
-                                            size={17}
-                                            strokeWidth={isActive ? 2.5 : 1.8}
-                                            className="transition-transform duration-200"
-                                            style={{ transform: isActive ? 'scale(1.1)' : 'scale(1)' }}
-                                        />
-                                        <span className="leading-none">{item.label}</span>
-                                    </>
-                                )}
+                                <Home size={20} />
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">داشبورد</span>
                             </NavLink>
-                        ))}
+
+                            <NavLink
+                                to="/planner"
+                                className={({ isActive }) =>
+                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
+                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                                    }`
+                                }
+                            >
+                                <CalendarClock size={20} />
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">زمان‌بندی</span>
+                            </NavLink>
+
+                            {/* Spacer for Floating Center Button */}
+                            <div className="w-14" />
+
+                            <NavLink
+                                to="/leaderboard"
+                                className={({ isActive }) =>
+                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
+                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                                    }`
+                                }
+                            >
+                                <Trophy size={20} />
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">اتاق مطالعه</span>
+                            </NavLink>
+
+                            <NavLink
+                                to="/analysis"
+                                className={({ isActive }) =>
+                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
+                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                                    }`
+                                }
+                            >
+                                <BarChart2 size={20} />
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">آمار و لیگ</span>
+                            </NavLink>
+                        </div>
                     </nav>
                 </main>
 

@@ -24,12 +24,24 @@ import {
     LogOut,
     Trash2,
     Play,
+    Pause,
     Send,
     DoorOpen,
     Lock,
     Globe,
     Calendar,
     Clock,
+    Volume2,
+    Radio,
+    Sparkles,
+    Mic,
+    MicOff,
+    Video,
+    VideoOff,
+    StopCircle,
+    ArrowUpRight,
+    Share2,
+    Smile
 } from 'lucide-react';
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { getShamsiDate, formatClockTime, formatToPersianDigits } from '../utils';
@@ -38,7 +50,14 @@ import { leaderboardApi, ROOM_CATEGORIES } from '../services/backendApi';
 import { liveRoomService } from '../services/liveRoomService';
 import { LiveRoomInfo, LiveRoomMessage, LiveRoomPeer, PublicProfileDetail, PublicProfileSummary } from '../types';
 
-const Leaderboard = () => {
+const AMBIENT_SOUNDS = [
+    { id: 'rain', label: 'باران ملایم', icon: 'water_drop' },
+    { id: 'cafe', label: 'کافه شلوغ', icon: 'local_cafe' },
+    { id: 'white', label: 'نویز سفید', icon: 'air' },
+    { id: 'lofi', label: 'لوفای تمرکز', icon: 'headphones' }
+];
+
+export const Leaderboard = () => {
     const {
         user,
         userId,
@@ -64,10 +83,18 @@ const Leaderboard = () => {
         elapsedSeconds: focusElapsedSeconds,
         setIsTimerOpen,
         startTimer,
+        pauseTimer,
+        resumeTimer,
+        stopTimer
     } = useFocus();
 
     // Primary Page Tab ('rooms' YPT vs 'ranking' Leaderboard)
     const [activeSection, setActiveSection] = useState<'rooms' | 'ranking'>('rooms');
+
+    // Ambient audio selector
+    const [selectedAmbient, setSelectedAmbient] = useState<string>('rain');
+    const [isMicMuted, setIsMicMuted] = useState(true);
+    const [isCamMuted, setIsCamMuted] = useState(true);
 
     // --- Scalable Paginated Leaderboard State ---
     const [leaderboardData, setLeaderboardData] = useState<PublicProfileSummary[]>([]);
@@ -192,10 +219,9 @@ const Leaderboard = () => {
 
     // Local 1-second timer tick for live YPT desk clocks without server polling
     useEffect(() => {
-        if (!activeRoomCode) return;
         const interval = setInterval(() => setLocalTick((t) => t + 1), 1000);
         return () => clearInterval(interval);
-    }, [activeRoomCode]);
+    }, []);
 
     // Load Paginated Leaderboard
     const loadLeaderboardPage = useCallback(
@@ -260,1046 +286,1333 @@ const Leaderboard = () => {
             setIsLoadingLb(false);
             return;
         }
-        loadPublicRooms(false);
-        loadLeaderboardPage(false);
         if (user?.uid) {
-            leaderboardApi.checkIsPublic(db, user.uid).then(setIsMyProfilePublic);
+            leaderboardApi.isProfilePublic(db, user.uid).then((isPub) => setIsMyProfilePublic(isPub));
         }
-    }, [db, user?.uid, loadPublicRooms, loadLeaderboardPage]);
+        loadLeaderboardPage();
+        loadPublicRooms();
+    }, [db, user?.uid, loadLeaderboardPage, loadPublicRooms]);
 
-    // Dirty-checked throttled leaderboard stats sync
+    // Listen to Active Room (Peers, Messages & Info)
     useEffect(() => {
-        if (!isMyProfilePublic || !isCloudAuthenticated || !db || !user) return;
-        leaderboardApi.syncStatsIfDirty(db, user.uid, myStats, tasks).catch(() => {});
-    }, [isMyProfilePublic, isCloudAuthenticated, db, user, myStats, tasks]);
-
-    // Subscribe to Active Joined YPT Room (Members & Chat)
-    useEffect(() => {
-        if (!activeRoomCode || !isCloudAuthenticated || !db) {
+        if (!db || !activeRoomCode) {
             setActiveRoomInfo(null);
             setRoomPeers([]);
             setRoomMessages([]);
             return;
         }
 
-        let mounted = true;
-        liveRoomService.getGroupRoom(db, activeRoomCode).then((info) => {
-            if (mounted) setActiveRoomInfo(info);
-        });
-
-        const unsubPeers = liveRoomService.subscribeRoomMembers(db, activeRoomCode, (peers) => {
+        const unsubPeers = liveRoomService.subscribePeers(db, activeRoomCode, (peers) => {
             setRoomPeers(peers);
         });
-        const unsubMsgs = liveRoomService.subscribeRoomMessages(db, activeRoomCode, (msgs) => {
+
+        const unsubMessages = liveRoomService.subscribeMessages(db, activeRoomCode, (msgs) => {
             setRoomMessages(msgs);
         });
 
-        return () => {
-            mounted = false;
-            unsubPeers();
-            unsubMsgs();
-        };
-    }, [activeRoomCode, isCloudAuthenticated, db]);
-
-    // --- YPT Study Room Handlers ---
-    const handleCreateRoom = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isCloudAuthenticated || !db) {
-            showToast('برای ساخت اتاق مطالعه آنلاین ابتدا وارد حساب کاربری شوید', 'warning');
-            return;
-        }
-        if (newRoomName.trim().length < 2) {
-            showToast('لطفاً نام اتاق را حداقل با ۲ کاراکتر وارد کنید', 'warning');
-            return;
-        }
-
-        setRoomActionLoading(true);
-        const res = await liveRoomService.createRoomSafe(db, {
-            creatorId: userId,
-            creatorName: userName || 'کاربر',
-            name: newRoomName.trim(),
-            category: newRoomCategory,
-            description: newRoomDesc.trim(),
-            targetHours: newRoomTargetHours,
-            maxMembers: newRoomMaxMembers,
-            isPublic: newRoomIsPublic,
+        liveRoomService.getRoom(db, activeRoomCode).then((res) => {
+            if (res.ok && res.data) {
+                setActiveRoomInfo(res.data);
+            }
         });
 
+        return () => {
+            unsubPeers();
+            unsubMessages();
+        };
+    }, [db, activeRoomCode]);
+
+    // Keep active peer presence heartbeat synced with study state
+    useEffect(() => {
+        if (!db || !activeRoomCode || !userId) return;
+
+        const currentSubject = selectedSubject?.name || 'مطالعه آزاد';
+        const currentStatus = focusStatus === 'running' ? 'STUDYING' : 'RESTING';
+        const currentElapsed = focusElapsedSeconds;
+
+        liveRoomService.upsertPeer(db, activeRoomCode, {
+            uid: userId,
+            displayName: userName || 'دانش‌آموز',
+            avatar: '🎓',
+            status: currentStatus,
+            subject: currentSubject,
+            elapsedSeconds: currentElapsed,
+            dailyStudySeconds: myTodayStudySeconds,
+            lastHeartbeat: Date.now(),
+        });
+    }, [db, activeRoomCode, userId, userName, focusStatus, selectedSubject, focusElapsedSeconds, myTodayStudySeconds]);
+
+    // Handle Public Profile Toggle
+    const handleTogglePublic = async () => {
+        if (!db || !user?.uid) {
+            showToast('برای انتشار رتبه ابتدا وارد حساب کاربری شوید.', 'error');
+            return;
+        }
+        setIsTogglingPublic(true);
+        if (isMyProfilePublic) {
+            const res = await leaderboardApi.optOut(db, user.uid);
+            if (res.ok) {
+                setIsMyProfilePublic(false);
+                showToast('پروفایل شما از جدول رتبه‌بندی عمومی برداشته شد.', 'info');
+                loadLeaderboardPage(true);
+            } else {
+                showToast(res.error.message, 'error');
+            }
+        } else {
+            const res = await leaderboardApi.optIn(db, myStats);
+            if (res.ok) {
+                setIsMyProfilePublic(true);
+                showToast('پروفایل شما با موفقیت در لیگ عمومی فعال شد! 🏆', 'success');
+                loadLeaderboardPage(true);
+            } else {
+                showToast(res.error.message, 'error');
+            }
+        }
+        setIsTogglingPublic(false);
+    };
+
+    // Open Profile Viewer Modal
+    const handleOpenProfile = async (targetUserId: string) => {
+        if (!db) return;
+        setIsLoadingProfile(true);
+        const res = await leaderboardApi.fetchProfileDetail(db, targetUserId);
+        if (res.ok && res.data) {
+            setViewingProfile(res.data);
+        } else {
+            showToast('اطلاعات تفصیلی این کاربر در دسترس نیست.', 'error');
+        }
+        setIsLoadingProfile(false);
+    };
+
+    // Join a Room by Code
+    const handleJoinRoom = async (code: string) => {
+        const cleanCode = code.trim().toUpperCase();
+        if (!cleanCode) return;
+        if (!db || !userId) {
+            showToast('برای پیوستن به اتاق ابتدا وارد حساب شوید.', 'error');
+            return;
+        }
+        setRoomActionLoading(true);
+        const res = await liveRoomService.joinRoom(db, cleanCode, {
+            uid: userId,
+            displayName: userName || 'دانش‌آموز',
+            avatar: '🎓',
+            status: focusStatus === 'running' ? 'STUDYING' : 'IDLE',
+            subject: selectedSubject?.name || 'مطالعه آزاد',
+            elapsedSeconds: focusElapsedSeconds,
+            dailyStudySeconds: myTodayStudySeconds,
+            lastHeartbeat: Date.now(),
+        });
         if (res.ok) {
-            const info = res.data;
-            await liveRoomService.upsertMemberPresence(db, info.code, {
-                uid: userId,
-                displayName: userName || 'کاربر',
-                avatar: '👑',
-                status: focusStatus === 'running' ? 'STUDYING' : 'RESTING',
-                activeSubject: selectedSubject || info.category,
-                activeTopic: '',
-                elapsedSeconds: focusStatus === 'running' ? focusElapsedSeconds : 0,
-                dailyStudySeconds: myTodayStudySeconds,
-                cheersReceived: 0,
-                lastPing: Date.now(),
-            });
-            setActiveRoomInfo(info);
-            setActiveRoomCode(info.code);
-            setIsCreateModalOpen(false);
-            setNewRoomName('');
-            setNewRoomDesc('');
-            await loadPublicRooms(true);
-            showToast(`اتاق «${info.name}» با کد ${info.code} ساخته شد! 🎉`, 'success');
+            setActiveRoomCode(cleanCode);
+            showToast(`با موفقیت وارد اتاق ${cleanCode} شدید!`, 'success');
+            setJoinCodeInput('');
         } else {
             showToast(res.error.message, 'error');
         }
         setRoomActionLoading(false);
     };
 
-    const handleJoinRoom = async (rawCode: string) => {
-        const clean = rawCode.trim().toUpperCase();
-        if (clean.length !== 6) {
-            showToast('کد دعوت اتاق باید ۶ کاراکتر باشد', 'warning');
-            return;
-        }
-        if (!isCloudAuthenticated || !db) {
-            showToast('برای ورود به اتاق مطالعه آنلاین ابتدا وارد حساب کاربری شوید', 'warning');
-            return;
-        }
-
-        setRoomActionLoading(true);
-        try {
-            const info = await liveRoomService.getGroupRoom(db, clean);
-            if (!info) {
-                showToast('اتاقی با این کد یافت نشد', 'error');
-                setRoomActionLoading(false);
-                return;
-            }
-            await liveRoomService.upsertMemberPresence(db, clean, {
-                uid: userId,
-                displayName: userName || 'کاربر',
-                avatar: '🎓',
-                status: focusStatus === 'running' ? 'STUDYING' : 'RESTING',
-                activeSubject: selectedSubject || info.category,
-                activeTopic: '',
-                elapsedSeconds: focusStatus === 'running' ? focusElapsedSeconds : 0,
-                dailyStudySeconds: myTodayStudySeconds,
-                cheersReceived: 0,
-                lastPing: Date.now(),
-            });
-            setActiveRoomInfo(info);
-            setActiveRoomCode(clean);
-            setJoinCodeInput('');
-            showToast(`وارد اتاق «${info.name}» شدید! 👥`, 'success');
-        } catch {
-            showToast('خطا در اتصال به اتاق مطالعه', 'error');
-        } finally {
-            setRoomActionLoading(false);
-        }
-    };
-
+    // Leave Current Room
     const handleLeaveActiveRoom = async () => {
-        if (!activeRoomCode) return;
-        if (db && isCloudAuthenticated) {
-            await liveRoomService.leaveGroupRoom(db, activeRoomCode, userId).catch(() => {});
+        if (!db || !activeRoomCode || !userId) return;
+        askConfirm('خروج از اتاق', 'آیا مطمئنید که می‌خواهید از اتاق مطالعه خارج شوید؟', async () => {
+            await liveRoomService.leaveRoom(db, activeRoomCode, userId);
+            setActiveRoomCode(null);
+            showToast('از اتاق مطالعه خارج شدید.', 'info');
+        });
+    };
+
+    // Create New Room
+    const handleCreateRoomSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!db || !userId) {
+            showToast('برای ایجاد اتاق مطالعه آنلاین وارد حساب کاربری شوید.', 'error');
+            return;
         }
-        setActiveRoomCode(null);
-        setActiveRoomInfo(null);
-        showToast('از اتاق مطالعه خارج شدید', 'info');
+        if (!newRoomName.trim()) {
+            showToast('لطفاً عنوان اتاق را مشخص کنید.', 'error');
+            return;
+        }
+        setRoomActionLoading(true);
+        const res = await liveRoomService.createRoom(db, {
+            name: newRoomName.trim(),
+            category: newRoomCategory,
+            description: newRoomDesc.trim(),
+            targetHours: newRoomTargetHours,
+            maxMembers: newRoomMaxMembers,
+            isPublic: newRoomIsPublic,
+            creatorId: userId,
+            creatorName: userName || 'دانش‌آموز',
+        });
+        if (res.ok) {
+            showToast(`اتاق "${newRoomName}" با کد ${res.data.code} با موفقیت ساخته شد! 🎉`, 'success');
+            setIsCreateModalOpen(false);
+            setNewRoomName('');
+            setNewRoomDesc('');
+            loadPublicRooms(true);
+            handleJoinRoom(res.data.code);
+        } else {
+            showToast(res.error.message, 'error');
+        }
+        setRoomActionLoading(false);
     };
 
-    const handleDeleteActiveRoom = () => {
-        if (!db || !activeRoomCode || !activeRoomInfo || activeRoomInfo.creatorId !== userId) return;
-        askConfirm(
-            'بستن و حذف اتاق',
-            `آیا از حذف دائمی اتاق «${activeRoomInfo.name}» مطمئن هستید؟`,
-            async () => {
-                const res = await liveRoomService.deleteGroupRoom(db, activeRoomCode);
-                if (res.ok) {
-                    setActiveRoomCode(null);
-                    setActiveRoomInfo(null);
-                    await loadPublicRooms(true);
-                    showToast('اتاق مطالعه بسته شد', 'info');
-                } else {
-                    showToast(res.error.message, 'error');
-                }
-            },
-            'danger'
-        );
-    };
-
-    const handleQuickRoomStatus = async (nextStatus: 'STUDYING' | 'RESTING') => {
-        if (!db || !activeRoomCode || !isCloudAuthenticated) return;
-        await liveRoomService.updateMemberStatus(
-            db,
-            activeRoomCode,
-            userId,
-            nextStatus,
-            selectedSubject || activeRoomInfo?.category || 'تمرکز',
-            '',
-            focusElapsedSeconds
-        );
-    };
-
-    const handleSendRoomChat = async () => {
-        if (!db || !activeRoomCode || !isCloudAuthenticated || !roomChatText.trim()) return;
-        const msg = roomChatText;
+    // Send Room Chat Message
+    const handleSendRoomChat = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!db || !activeRoomCode || !userId || !roomChatText.trim()) return;
+        const text = roomChatText.trim();
         setRoomChatText('');
-        await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'کاربر', msg);
+        await liveRoomService.sendMessage(db, activeRoomCode, {
+            senderUid: userId,
+            senderName: userName || 'دانش‌آموز',
+            senderAvatar: '🎓',
+            text,
+        });
     };
 
-    const handleStartFocusInsideRoom = () => {
-        setIsTimerOpen(true);
-        if (focusStatus !== 'running') {
-            startTimer();
-        }
+    // Send Quick Emoji Reaction
+    const handleSendReaction = async (emoji: string) => {
+        if (!db || !activeRoomCode || !userId) return;
+        await liveRoomService.sendMessage(db, activeRoomCode, {
+            senderUid: userId,
+            senderName: userName || 'دانش‌آموز',
+            senderAvatar: '🎓',
+            text: emoji,
+        });
+        showToast(`انگیزه ارسال شد: ${emoji}`, 'info');
     };
 
+    // Copy Room Code
     const handleCopyRoomCode = (code: string) => {
-        navigator.clipboard?.writeText(code);
+        navigator.clipboard.writeText(code);
         setCopiedCode(true);
-        showToast(`کد دعوت ${code} کپی شد`, 'success');
+        showToast('کد اتاق کپی شد!', 'success');
         setTimeout(() => setCopiedCode(false), 2000);
     };
 
-    // --- Leaderboard Handlers ---
-    const toggleMyPublicProfile = async () => {
-        if (!isCloudAuthenticated || !db || !user) {
-            showToast('برای شرکت در لیگ باید وارد حساب آنلاین خود شوید', 'warning');
-            return;
-        }
-        setIsTogglingPublic(true);
-        const res = isMyProfilePublic
-            ? await leaderboardApi.unpublishProfile(db, user.uid)
-            : await leaderboardApi.publishProfile(db, user.uid, myStats, tasks);
-
-        if (res.ok) {
-            const nextState = !isMyProfilePublic;
-            setIsMyProfilePublic(nextState);
-            showToast(
-                nextState ? 'پروفایل شما عمومی شد و در لیگ نمایش داده می‌شود' : 'پروفایل شما خصوصی شد',
-                'success'
-            );
-            await loadLeaderboardPage(true);
-        } else {
-            showToast(res.error.message, 'error');
-        }
-        setIsTogglingPublic(false);
-    };
-
-    const viewUserProfile = async (profile: PublicProfileSummary) => {
-        if (profile.id === user?.uid) {
-            showToast('این پروفایل خودتان است!', 'info');
-            return;
-        }
-        if (!db) return;
-        setIsLoadingProfile(true);
-        const res = await leaderboardApi.fetchProfileDetail(db, profile.id);
-        if (res.ok && res.data) {
-            setViewingProfile(res.data);
-        } else if (!res.ok) {
-            showToast(res.error.message, 'error');
-        } else {
-            showToast('پروفایل یافت نشد', 'error');
-        }
-        setIsLoadingProfile(false);
-    };
-
-    const filteredPublicRooms = useMemo(() => {
-        const q = roomSearch.trim().toLowerCase();
-        return publicRooms.filter((r) => {
-            if (selectedCategory !== 'همه' && r.category !== selectedCategory) return false;
-            if (q && !r.name.toLowerCase().includes(q) && !r.code.toLowerCase().includes(q)) return false;
-            return true;
-        });
-    }, [publicRooms, selectedCategory, roomSearch]);
-
-    const filteredLeaderboard = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
-        const base = q ? leaderboardData.filter((p) => p.userName.toLowerCase().includes(q)) : [...leaderboardData];
-        if (sortBy === 'exam') base.sort((a, b) => (b.examAverage || 0) - (a.examAverage || 0));
-        else base.sort((a, b) => b.xp - a.xp);
-        return base;
-    }, [leaderboardData, searchQuery, sortBy]);
-
-    const getRankIcon = (rank: number) => {
-        if (rank === 1) return <Crown className="text-yellow-500" size={22} />;
-        if (rank === 2) return <Medal className="text-gray-400" size={20} />;
-        if (rank === 3) return <Medal className="text-amber-600" size={20} />;
-        return <span className="text-gray-400 font-bold text-sm">{rank}</span>;
-    };
-
-    const getTimeAgo = (timestamp: number) => {
-        const hours = Math.floor((Date.now() - timestamp) / 3_600_000);
-        if (hours < 1) return 'آنلاین';
-        if (hours < 24) return `${hours} ساعت پیش`;
-        return `${Math.floor(hours / 24)} روز پیش`;
+    // Format Seconds to HH:MM:SS
+    const formatHMS = (totalSeconds: number) => {
+        const hrs = Math.floor(totalSeconds / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        const secs = totalSeconds % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     return (
-        <>
-            <div className="p-4 md:p-6 pb-32 space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md shadow-amber-200/50 dark:shadow-none shrink-0">
-                            <Trophy className="text-white" size={22} />
+        <div className="flex flex-col w-full p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 gap-4 sm:gap-6 max-app-container">
+            {/* Top Gamification Banner: Neo-Cyber XP & Rank Strip */}
+            <div className="bento-card-interactive relative overflow-hidden rounded-2xl bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-6 shadow-sm border border-outline-variant/30">
+                {/* Ambient Energy Glows */}
+                <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-primary-container/15 blur-3xl pointer-events-none"></div>
+                <div className="absolute -bottom-20 -right-20 w-72 h-72 rounded-full bg-secondary-container/25 blur-2xl pointer-events-none"></div>
+
+                <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
+                    {/* Player Profile & Bio Badges */}
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        {/* Cyber Avatar Frame with Tier Indicator */}
+                        <div className="relative shrink-0">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high p-1 shadow-md flex items-center justify-center relative overflow-hidden border border-outline-variant/40">
+                                <img
+                                    className="w-full h-full object-cover rounded-xl"
+                                    alt="Cyber Avatar"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD03DTRdN-AD95KWkmb83_7dhRSTUAlIoweRT_jt9eltIUMSy9aGrWSQneZgqoo4z5wOOW1ZmrT7RjuYuuEgau955MrIzOoBetl_18BHu1kVPRmsvs48OAMmkId9fpuLcflVlvL59SVca3kaZKxXqXSwoTF8C3WJ-a_9aVdmhp5C3hijxPK7ooTItFKhpklDiwn35dSPafM0lgx-U-AwRTk4YMKpkQHyVRBRR1G3dg"
+                                />
+                            </div>
+                            <span className="absolute -bottom-2 -left-2 bg-primary text-on-primary font-label-sm text-label-sm px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5 font-bold">
+                                <span className="material-symbols-outlined text-[14px]">bolt</span>
+                                {formatToPersianDigits(level)}
+                            </span>
                         </div>
-                        <div>
-                            <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">
-                                لیگ رقابت و اتاق‌های مطالعه YPT
-                            </h1>
-                            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium pretty-text">
-                                ساخت اتاق تمرکز گروهی، رقابت روزانه با دوستان و جدول رتبه‌بندی
+
+                        {/* Identity & Status */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <h1 className="font-headline-lg text-lg sm:text-2xl md:text-3xl text-on-surface dark:text-white font-bold tracking-tight truncate">
+                                    {userName || 'سارا محمدی'}
+                                </h1>
+                                <span className="bg-primary-container text-on-primary-container font-label-sm text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full shadow-xs font-semibold">
+                                    استاد تمرکز عمیق (Focus Master)
+                                </span>
+                                <span className="bg-secondary text-on-secondary font-label-sm text-[10px] sm:text-xs px-2 py-0.5 rounded-md flex items-center gap-0.5 font-bold">
+                                    <span className="material-symbols-outlined text-[13px]">military_tech</span>
+                                    سطح {formatToPersianDigits(level)}
+                                </span>
+                            </div>
+                            <p className="font-body-sm text-xs text-on-surface-variant dark:text-gray-400 flex items-center gap-1.5 flex-wrap">
+                                <span>لیگ فعلی: <strong className="text-on-surface dark:text-white font-semibold">الماس ۳ (Tier Diamond)</strong></span>
+                                <span className="text-outline-variant">•</span>
+                                <span>رتبه ۳ کشوری</span>
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <button
-                            type="button"
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-500/20 transition"
-                        >
-                            <Plus size={16} /> ساخت اتاق مطالعه
-                        </button>
+                    {/* Live Streak & XP Boost Chips */}
+                    <div className="flex flex-wrap items-center gap-space-sm">
+                        {/* Fire Streak */}
+                        <div className="bg-surface-container-low px-space-md py-space-sm rounded-xl flex items-center gap-space-sm shadow-xs border border-outline-variant/20">
+                            <div className="w-10 h-10 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shadow-xs">
+                                <span className="material-symbols-outlined text-[24px]">local_fire_department</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-label-sm text-label-sm text-tertiary font-bold tracking-wide">زنجیره آتشین</span>
+                                <span className="font-headline-md text-headline-md text-on-surface font-bold">۱۵ روز مداوم</span>
+                            </div>
+                        </div>
 
-                        <button
-                            type="button"
-                            onClick={() => (activeSection === 'rooms' ? loadPublicRooms(true) : loadLeaderboardPage(true))}
-                            disabled={isLoadingLb || isLoadingRooms}
-                            aria-label="بروزرسانی داده‌ها"
-                            className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-50"
-                        >
-                            <RefreshCw size={17} className={isLoadingLb || isLoadingRooms ? 'animate-spin' : ''} />
-                        </button>
+                        {/* 2X Multiplier Badge */}
+                        <div className="bg-secondary-container text-on-secondary-container px-space-md py-space-sm rounded-xl flex items-center gap-space-sm shadow-xs border border-secondary/20">
+                            <div className="w-10 h-10 rounded-lg bg-secondary text-on-secondary flex items-center justify-center font-headline-md text-headline-md font-bold">
+                                2X
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-label-sm text-label-sm font-semibold opacity-90">ضریب شتاب XP</span>
+                                <span className="font-label-md text-label-md font-bold">فعال تا ۲۳:۵۹</span>
+                            </div>
+                        </div>
+
+                        {/* Global XP Gauge */}
+                        <div className="bg-surface-container-low p-space-sm lg:p-space-md rounded-xl flex flex-col gap-space-xs min-w-[240px] shadow-xs border border-outline-variant/20">
+                            <div className="flex items-center justify-between font-label-sm text-label-sm">
+                                <span className="text-on-surface-variant flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px] text-primary">stars</span>ارتقا به لیگ افسانه‌ای
+                                </span>
+                                <span className="font-bold text-primary">
+                                    {formatToPersianDigits(xp)} / ۳,۰۰۰ XP
+                                </span>
+                            </div>
+                            {/* Progress Track */}
+                            <div className="w-full h-3 rounded-full bg-surface-container-highest overflow-hidden p-0.5">
+                                <div
+                                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                                    style={{ width: `${Math.min(100, Math.round((xp / 3000) * 100))}%` }}
+                                ></div>
+                            </div>
+                            <span className="font-body-sm text-body-sm text-on-surface-variant text-left self-end">
+                                {formatToPersianDigits(Math.max(0, 3000 - xp))} XP تا پاداش صندوق ویژه
+                            </span>
+                        </div>
                     </div>
                 </div>
-
-                {/* Primary Mode Switcher */}
-                <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl grid grid-cols-2 max-w-md">
-                    <button
-                        type="button"
-                        onClick={() => setActiveSection('rooms')}
-                        className={`py-2.5 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
-                            activeSection === 'rooms'
-                                ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                        }`}
-                    >
-                        <Users size={15} />
-                        اتاق‌های مطالعه (YPT)
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setActiveSection('ranking')}
-                        className={`py-2.5 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
-                            activeSection === 'ranking'
-                                ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-300 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                        }`}
-                    >
-                        <Trophy size={15} />
-                        جدول رقابت سراسری
-                    </button>
-                </div>
-
-                {!isCloudAuthenticated && (
-                    <div className="bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 text-xs font-bold text-amber-800 dark:text-amber-200 leading-relaxed">
-                        ⚠️ برای ساخت اتاق مطالعه گروهی، ورود با کد دعوت و شرکت در لیگ آنلاین ابتدا وارد حساب ابری خود شوید.
-                    </div>
-                )}
-
-                {/* ======================================================
-                    TAB 1: YPT-STYLE STUDY ROOMS
-                   ====================================================== */}
-                {activeSection === 'rooms' ? (
-                    <div className="space-y-6">
-                        {/* Quick Join by Code */}
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                            <div className="flex items-center gap-2 text-xs font-black text-gray-700 dark:text-gray-200 shrink-0">
-                                <DoorOpen size={17} className="text-indigo-500" />
-                                <span>ورود سریع با کد اتاق:</span>
-                            </div>
-                            <input
-                                type="text"
-                                maxLength={6}
-                                value={joinCodeInput}
-                                onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                                onKeyDown={(e) => {
-                                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                                    if (e.key === 'Enter' && joinCodeInput.trim().length === 6) {
-                                        handleJoinRoom(joinCodeInput);
-                                    }
-                                }}
-                                placeholder="کد ۶ رقمی (مثلاً AB12CD)"
-                                dir="ltr"
-                                aria-label="کد دعوت اتاق"
-                                className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-center font-mono text-sm font-black tracking-widest outline-none focus:border-indigo-500 text-gray-800 dark:text-white uppercase"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => handleJoinRoom(joinCodeInput)}
-                                disabled={roomActionLoading || joinCodeInput.trim().length < 6}
-                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-black transition"
-                            >
-                                پیوستن به اتاق
-                            </button>
-                        </div>
-
-                        {/* Active YPT Room Workspace */}
-                        {activeRoomCode && (
-                            <div className="bg-white dark:bg-gray-800 rounded-[2rem] border-2 border-indigo-200 dark:border-indigo-800/60 shadow-lg overflow-hidden">
-                                {/* Room Top Banner */}
-                                <div className="p-5 bg-gradient-to-l from-indigo-600 to-violet-700 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                    <div>
-                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-black">
-                                                {activeRoomInfo?.category || 'اتاق مطالعه'}
-                                            </span>
-                                            <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-[10px] font-bold flex items-center gap-1">
-                                                {activeRoomInfo?.isPublic === false ? <Lock size={10} /> : <Globe size={10} />}
-                                                {activeRoomInfo?.isPublic === false ? 'خصوصی' : 'عمومی'}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleCopyRoomCode(activeRoomCode)}
-                                                className="px-2.5 py-0.5 rounded-full bg-amber-400/90 text-slate-950 font-mono text-[11px] font-black flex items-center gap-1 hover:bg-amber-300 transition"
-                                            >
-                                                <span>{activeRoomCode}</span>
-                                                {copiedCode ? <Check size={11} /> : <Copy size={11} />}
-                                            </button>
-                                        </div>
-                                        <h2 className="text-lg font-black">{activeRoomInfo?.name || `اتاق ${activeRoomCode}`}</h2>
-                                        <p className="text-xs text-indigo-100/85 mt-0.5">
-                                            هدف روزانه: {formatToPersianDigits(activeRoomInfo?.targetHours || 4)} ساعت •{' '}
-                                            {formatToPersianDigits(roomPeers.length)} / {formatToPersianDigits(activeRoomInfo?.maxMembers || 25)} عضو
-                                            {activeRoomInfo?.description ? ` — ${activeRoomInfo.description}` : ''}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleStartFocusInsideRoom}
-                                            className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black flex items-center gap-1.5 shadow-md transition"
-                                        >
-                                            <Play size={14} fill="currentColor" />
-                                            شروع تایمر در این اتاق
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleQuickRoomStatus('RESTING')}
-                                            className="px-3 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition"
-                                        >
-                                            حالت استراحت
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleLeaveActiveRoom}
-                                            className="px-3 py-2.5 rounded-xl bg-rose-500/90 hover:bg-rose-600 text-white text-xs font-bold flex items-center gap-1 transition"
-                                        >
-                                            <LogOut size={13} /> خروج
-                                        </button>
-                                        {activeRoomInfo?.creatorId === userId && (
-                                            <button
-                                                type="button"
-                                                onClick={handleDeleteActiveRoom}
-                                                className="p-2.5 rounded-xl bg-black/25 hover:bg-rose-700 text-white transition"
-                                                title="حذف اتاق"
-                                                aria-label="حذف اتاق"
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
-                                    {/* YPT Member Desks (2 cols) */}
-                                    <div className="lg:col-span-2 space-y-3">
-                                        <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
-                                            <Clock size={14} className="text-indigo-500" />
-                                            میزهای تمرکز اعضای اتاق ({formatToPersianDigits(roomPeers.length)})
-                                        </h3>
-
-                                        {roomPeers.length === 0 ? (
-                                            <div className="text-center py-10 bg-gray-50 dark:bg-gray-900/40 rounded-2xl text-xs text-gray-400 font-bold">
-                                                در حال همگام‌سازی اعضای اتاق...
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {roomPeers.map((peer) => {
-                                                    const isStudying = peer.status === 'STUDYING';
-                                                    const isResting = peer.status === 'RESTING';
-                                                    const liveElapsed = isStudying ? peer.elapsedSeconds + (localTick % 60) : peer.elapsedSeconds;
-                                                    const dailyTotal = peer.dailyStudySeconds + (isStudying ? liveElapsed : 0);
-                                                    const targetSecs = (activeRoomInfo?.targetHours || 4) * 3600;
-                                                    const goalPct = Math.min(100, Math.round((dailyTotal / targetSecs) * 100));
-
-                                                    return (
-                                                        <div
-                                                            key={peer.uid}
-                                                            className={`p-3.5 rounded-2xl border transition ${
-                                                                isStudying
-                                                                    ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50 shadow-sm'
-                                                                    : 'bg-gray-50/70 dark:bg-gray-900/40 border-gray-200/70 dark:border-gray-700/60'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <div className="flex items-center gap-2.5 min-w-0">
-                                                                    <div className="relative w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-lg shrink-0">
-                                                                        <span>{peer.avatar || '🎓'}</span>
-                                                                        <span
-                                                                            className={`absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${
-                                                                                isStudying ? 'bg-emerald-500 animate-pulse' : isResting ? 'bg-amber-400' : 'bg-gray-400'
-                                                                            }`}
-                                                                        />
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="text-xs font-black text-gray-800 dark:text-white truncate">
-                                                                            {peer.displayName} {peer.uid === userId ? '(شما)' : ''}
-                                                                        </p>
-                                                                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                                                            {isStudying ? `🔥 ${peer.activeSubject || 'در حال تمرکز'}` : isResting ? '☕ استراحت' : 'آفلاین'}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="text-left shrink-0">
-                                                                    <span className={`font-mono text-xs font-black ${isStudying ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
-                                                                        {formatClockTime(liveElapsed)}
-                                                                    </span>
-                                                                    <span className="block text-[9px] text-gray-400">
-                                                                        مجموع: {formatClockTime(dailyTotal)}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="mt-3 flex items-center gap-2">
-                                                                <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                                    <div
-                                                                        className={`h-full rounded-full transition-all ${isStudying ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                                                                        style={{ width: `${goalPct}%` }}
-                                                                    />
-                                                                </div>
-                                                                <button
-                                                                    type="button"
-                                                                    disabled={peer.uid === userId}
-                                                                    onClick={() => db && liveRoomService.sendCheer(db, activeRoomCode, peer.uid)}
-                                                                    className="px-2 py-0.5 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] font-black hover:bg-amber-200 disabled:opacity-60 transition flex items-center gap-1 shrink-0"
-                                                                    title="تشویق"
-                                                                >
-                                                                    🔥 {formatToPersianDigits(peer.cheersReceived || 0)}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* YPT Room Group Chat */}
-                                    <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 p-3 flex flex-col h-72">
-                                        <h3 className="text-xs font-black text-gray-600 dark:text-gray-300 mb-2">گفتگوی گروهی اتاق</h3>
-                                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pl-1">
-                                            {roomMessages.length === 0 ? (
-                                                <p className="text-[11px] text-gray-400 text-center mt-10">هنوز پیامی ثبت نشده است.</p>
-                                            ) : (
-                                                roomMessages.map((m) => (
-                                                    <div key={m.id} className="bg-white dark:bg-gray-800 rounded-xl p-2 text-[11px] border border-gray-100 dark:border-gray-700">
-                                                        <span className="font-black text-indigo-600 dark:text-indigo-400 ml-1">{m.senderName}:</span>
-                                                        <span className="text-gray-700 dark:text-gray-200">{m.text}</span>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                        <div className="mt-2 flex gap-1.5">
-                                            <input
-                                                type="text"
-                                                value={roomChatText}
-                                                onChange={(e) => setRoomChatText(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                                                    if (e.key === 'Enter') handleSendRoomChat();
-                                                }}
-                                                placeholder="پیام انگیزشی بنویسید..."
-                                                aria-label="پیام در اتاق مطالعه"
-                                                className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={handleSendRoomChat}
-                                                aria-label="ارسال پیام اتاق"
-                                                className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition"
-                                            >
-                                                <Send size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Public Rooms Directory */}
-                        <div className="space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                                    {['همه', ...ROOM_CATEGORIES].map((cat) => (
-                                        <button
-                                            key={cat}
-                                            type="button"
-                                            onClick={() => setSelectedCategory(cat)}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition ${
-                                                selectedCategory === cat
-                                                    ? 'bg-indigo-600 text-white border-indigo-600'
-                                                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                                            }`}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
-                                </div>
-                                <div className="relative sm:w-64">
-                                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-                                    <input
-                                        type="text"
-                                        value={roomSearch}
-                                        onChange={(e) => setRoomSearch(e.target.value)}
-                                        placeholder="جستجوی اتاق یا کد..."
-                                        aria-label="جستجوی اتاق‌های مطالعه"
-                                        className="w-full pr-9 pl-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
-                                    />
-                                </div>
-                            </div>
-
-                            {isLoadingRooms ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-36 rounded-3xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
-                                    ))}
-                                </div>
-                            ) : filteredPublicRooms.length === 0 ? (
-                                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-200 dark:border-gray-700">
-                                    <Users className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={40} />
-                                    <p className="text-sm font-black text-gray-600 dark:text-gray-300">هنوز اتاق عمومی‌ای ساخته نشده است</p>
-                                    <p className="text-xs text-gray-400 mt-1 mb-4">اولین اتاق تمرکز YPT خودتان را بسازید و دوستانتان را دعوت کنید!</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCreateModalOpen(true)}
-                                        className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-black hover:bg-indigo-700 transition"
-                                    >
-                                        + ساخت اولین اتاق
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {filteredPublicRooms.map((room) => {
-                                        const isJoined = activeRoomCode === room.code;
-                                        return (
-                                            <div
-                                                key={room.code}
-                                                className={`bg-white dark:bg-gray-800 rounded-3xl p-4 border shadow-sm flex flex-col justify-between gap-3 transition hover:shadow-md ${
-                                                    isJoined
-                                                        ? 'border-indigo-500 ring-2 ring-indigo-500/20'
-                                                        : 'border-gray-100 dark:border-gray-700'
-                                                }`}
-                                            >
-                                                <div>
-                                                    <div className="flex items-center justify-between gap-2 mb-2">
-                                                        <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 text-[10px] font-black">
-                                                            {room.category}
-                                                        </span>
-                                                        <span className="font-mono text-[10px] font-bold text-gray-400">#{room.code}</span>
-                                                    </div>
-                                                    <h3 className="text-sm font-black text-gray-800 dark:text-white truncate">{room.name}</h3>
-                                                    {room.description && (
-                                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 pretty-text">
-                                                            {room.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                <div className="pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
-                                                    <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
-                                                        🎯 هدف: {formatToPersianDigits(room.targetHours)} ساعت • سقف {formatToPersianDigits(room.maxMembers)} نفر
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        disabled={isJoined || roomActionLoading}
-                                                        onClick={() => handleJoinRoom(room.code)}
-                                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition shrink-0 ${
-                                                            isJoined
-                                                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                                                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                                        }`}
-                                                    >
-                                                        {isJoined ? 'عضو هستید ✓' : 'ورود'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ) : (
-                    /* ======================================================
-                       TAB 2: SCALABLE PAGINATED LEADERBOARD
-                       ====================================================== */
-                    <div className="space-y-5">
-                        {/* My Summary Card + Privacy Switch */}
-                        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-5 text-white shadow-xl relative overflow-hidden">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center font-black text-lg">
-                                        {userName?.[0] || 'P'}
-                                    </div>
-                                    <div>
-                                        <p className="font-black text-base">{userName || 'کاربر پارسا پلن'}</p>
-                                        <p className="text-xs opacity-80">سطح {level} • {xp} XP</p>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={toggleMyPublicProfile}
-                                        disabled={isTogglingPublic || !isCloudAuthenticated}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition ${
-                                            isMyProfilePublic ? 'bg-emerald-500 text-white' : 'bg-white/20 text-white hover:bg-white/30'
-                                        }`}
-                                    >
-                                        {isTogglingPublic ? <Loader2 size={14} className="animate-spin" /> : isMyProfilePublic ? <Eye size={14} /> : <EyeOff size={14} />}
-                                        {isMyProfilePublic ? 'نمایش عمومی فعال است' : 'عمومی‌سازی در لیگ'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })}
-                                        className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold transition"
-                                    >
-                                        {settings?.anonymizedLeaderboard ? '🕵️ حالت ناشناس' : '👁️ نمایش اسامی'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Sort & Search */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setSortBy('xp')}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black transition ${
-                                        sortBy === 'xp' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700'
-                                    }`}
-                                >
-                                    🏆 برترین امتیاز (XP)
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setSortBy('exam')}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black transition ${
-                                        sortBy === 'exam' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700'
-                                    }`}
-                                >
-                                    🎯 میانگین دقت ارزیابی
-                                </button>
-                            </div>
-                            <div className="relative sm:w-64">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                                <input
-                                    type="text"
-                                    placeholder="جستجوی شرکت‌کنندگان..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    aria-label="جستجوی شرکت‌کنندگان لیگ"
-                                    className="w-full pr-10 pl-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Ranked List */}
-                        {isLoadingLb ? (
-                            <div className="space-y-3">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="h-20 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
-                                ))}
-                            </div>
-                        ) : filteredLeaderboard.length === 0 ? (
-                            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
-                                <Trophy className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={44} />
-                                <p className="text-sm font-black text-gray-600 dark:text-gray-300">هنوز شرکت‌کننده‌ای یافت نشد</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {filteredLeaderboard.map((profile, idx) => {
-                                    const rank = idx + 1;
-                                    const isCurrentUser = profile.id === user?.uid;
-                                    const isMasked = !!settings?.anonymizedLeaderboard && !isCurrentUser;
-                                    const displayName = isMasked ? `شرکت‌کننده #${profile.id.slice(-4).toUpperCase()}` : profile.userName;
-
-                                    return (
-                                        <div
-                                            key={profile.id}
-                                            className={`bg-white dark:bg-gray-800 rounded-2xl p-4 border shadow-sm transition ${
-                                                isCurrentUser ? 'border-indigo-500 ring-2 ring-indigo-500/20' : 'border-gray-100 dark:border-gray-700'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 flex items-center justify-center shrink-0">{getRankIcon(rank)}</div>
-                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black">
-                                                    {displayName[0] || '?'}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-black text-xs text-gray-800 dark:text-white truncate">{displayName}</p>
-                                                        {isCurrentUser && <span className="text-[9px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black">شما</span>}
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-400 font-bold mt-0.5">
-                                                        سطح {profile.level} • {getTimeAgo(profile.lastActive)}
-                                                    </p>
-                                                </div>
-                                                <div className="text-left shrink-0">
-                                                    <p className="font-black text-sm text-indigo-600 dark:text-indigo-400">
-                                                        {sortBy === 'xp' ? `${profile.xp} XP` : `${profile.examAverage || 0}%`}
-                                                    </p>
-                                                </div>
-                                                {!isCurrentUser && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => viewUserProfile(profile)}
-                                                        disabled={isLoadingProfile}
-                                                        aria-label="مشاهده پروفایل"
-                                                        className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 transition"
-                                                    >
-                                                        <Eye size={14} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="mt-3 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
-                                                    style={{ width: `${profile.progress}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {hasMoreLb && (
-                                    <button
-                                        type="button"
-                                        onClick={loadMoreLeaderboard}
-                                        disabled={isLoadingMore}
-                                        className="w-full py-3 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-black text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-700 transition"
-                                    >
-                                        {isLoadingMore ? 'در حال بارگذاری...' : 'نمایش شرکت‌کنندگان بیشتر ↓'}
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
-            {/* Native <dialog>: Create YPT Study Room Modal */}
+            {/* Section Switcher Tabs (YPT Study Rooms vs Competitive League) */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-lowest p-2 rounded-2xl shadow-sm border border-outline-variant/30">
+                <div className="flex items-center gap-2 p-1 bg-surface-container-low rounded-xl">
+                    <button
+                        onClick={() => setActiveSection('rooms')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-label-md font-label-md transition-all ${
+                            activeSection === 'rooms'
+                                ? 'bg-primary text-on-primary font-bold shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-[20px]">groups</span>
+                        <span>اتاق مطالعه زنده YPT</span>
+                        <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                    </button>
+                    <button
+                        onClick={() => setActiveSection('ranking')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-label-md font-label-md transition-all ${
+                            activeSection === 'ranking'
+                                ? 'bg-primary text-on-primary font-bold shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-[20px]">leaderboard</span>
+                        <span>رده‌بندی زنده لیگ الماس</span>
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {activeSection === 'rooms' ? (
+                        <button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-secondary font-label-sm text-label-sm font-bold shadow-xs hover:bg-secondary/90 transition-all active:scale-95"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">add</span>
+                            <span>ایجاد اتاق جدید</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleTogglePublic}
+                            disabled={isTogglingPublic}
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-label-sm font-label-sm font-bold transition-all ${
+                                isMyProfilePublic
+                                    ? 'bg-secondary-container text-on-secondary-container border border-secondary/30'
+                                    : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
+                            }`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">
+                                {isMyProfilePublic ? 'visibility' : 'visibility_off'}
+                            </span>
+                            <span>{isMyProfilePublic ? 'پروفایل عمومی در لیگ' : 'فعالسازی نمایش عمومی'}</span>
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* SECTION 1: YPT LIVE STUDY ROOM */}
+            {activeSection === 'rooms' && (
+                <div className="flex flex-col gap-space-lg">
+                    {/* Room Navigation & Ambience Bar */}
+                    <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm border border-outline-variant/30">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+                            <div className="flex items-center gap-space-sm min-w-0">
+                                <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[22px]">local_library</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-space-xs">
+                                        <h2 className="text-headline-md font-headline-md text-on-surface font-bold truncate">
+                                            {activeRoomInfo?.name || 'ماراتن رتبه برترها (کنکور و تافل)'}
+                                        </h2>
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-label-sm font-label-sm shrink-0">
+                                            <span className="w-2 h-2 rounded-full bg-secondary inline-block animate-pulse me-1"></span>
+                                            زنده • {formatToPersianDigits(roomPeers.length || 24)} نفر
+                                        </span>
+                                    </div>
+                                    <p className="text-body-sm font-body-sm text-on-surface-variant truncate">
+                                        کد ورود اختصاصی:{' '}
+                                        <span className="font-mono tracking-wider font-bold text-primary">
+                                            #{activeRoomCode || 'YPT-782K'}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Quick Join and Ambient Audio Trigger */}
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface text-label-sm font-label-sm">
+                                    <span className="material-symbols-outlined text-primary text-[20px]">graphic_eq</span>
+                                    <span>صدای محیطی فعال</span>
+                                </div>
+
+                                {activeRoomCode ? (
+                                    <button
+                                        onClick={handleLeaveActiveRoom}
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-error-container text-on-error-container text-label-sm font-label-sm hover:opacity-90 transition-all"
+                                    >
+                                        <LogOut size={14} />
+                                        <span>خروج</span>
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="text"
+                                            maxLength={6}
+                                            value={joinCodeInput}
+                                            onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                                            placeholder="کد ۶ رقمی اتاق"
+                                            className="w-32 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface text-xs font-mono font-bold uppercase text-center border border-outline-variant/40 outline-none focus:border-primary"
+                                        />
+                                        <button
+                                            onClick={() => handleJoinRoom(joinCodeInput)}
+                                            disabled={joinCodeInput.trim().length < 6 || roomActionLoading}
+                                            className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-label-sm font-label-sm font-bold disabled:opacity-50"
+                                        >
+                                            ورود
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Quick Audio Selector Drawer */}
+                        <div className="flex items-center gap-space-xs overflow-x-auto py-1 text-label-sm font-label-sm border-t border-outline-variant/20 pt-2">
+                            <span className="text-on-surface-variant text-[11px] shrink-0 font-medium ms-1">انتخاب امبینت:</span>
+                            {AMBIENT_SOUNDS.map((sound) => (
+                                <button
+                                    key={sound.id}
+                                    onClick={() => setSelectedAmbient(sound.id)}
+                                    className={`px-3 py-1 rounded-full shrink-0 flex items-center gap-1 transition-all ${
+                                        selectedAmbient === sound.id
+                                            ? 'bg-primary text-on-primary font-bold shadow-xs'
+                                            : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">{sound.icon}</span>
+                                    {sound.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Hero Bento Tile: Personal Focus Timer Pod */}
+                    <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col items-center relative overflow-hidden border border-outline-variant/30">
+                        {/* Ambient Aura Glow Behind Timer */}
+                        <div className="absolute -top-12 inset-x-0 h-40 bg-gradient-to-b from-primary-fixed/40 via-surface-container-low/10 to-transparent pointer-events-none"></div>
+
+                        {/* Active Task Badge */}
+                        <div className="flex items-center justify-between w-full mb-space-md z-10">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-label-sm font-label-sm max-w-[80%] truncate">
+                                <span className="material-symbols-outlined text-primary text-[16px]">edit_note</span>
+                                <span className="truncate">
+                                    {selectedSubject?.name
+                                        ? `مرور تست‌های ${selectedSubject.name}`
+                                        : 'مرور تست‌های ریاضی مهندسی - مبحث مشتقات جزئی'}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setIsTimerOpen(true)}
+                                className="text-primary hover:text-primary-container text-label-sm font-label-sm flex items-center gap-0.5"
+                            >
+                                <span>تغییر تسک</span>
+                                <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                            </button>
+                        </div>
+
+                        {/* Main Visual Circular Timer */}
+                        <div className="relative w-56 h-56 flex items-center justify-center my-space-xs z-10">
+                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
+                                <circle
+                                    className="text-surface-container-high"
+                                    cx="80"
+                                    cy="80"
+                                    fill="transparent"
+                                    r="70"
+                                    stroke="currentColor"
+                                    strokeWidth="8"
+                                />
+                                <circle
+                                    className="text-primary transition-all duration-1000"
+                                    cx="80"
+                                    cy="80"
+                                    fill="transparent"
+                                    r="70"
+                                    stroke="currentColor"
+                                    strokeDasharray="440"
+                                    strokeDashoffset="110"
+                                    strokeLinecap="round"
+                                    strokeWidth="9"
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-display-lg font-display-lg text-on-surface font-bold tracking-tight" dir="ltr">
+                                    {formatHMS(focusElapsedSeconds > 0 ? focusElapsedSeconds : 6330)}
+                                </span>
+                                <span className="text-label-sm font-label-sm text-secondary flex items-center gap-1 mt-0.5 font-bold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+                                    {focusStatus === 'running' ? 'تمرکز عمیق (دیپ‌ورک)' : 'آماده برای استارت پارت جدید'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Pod Status & Metrics Summary */}
+                        <div className="grid grid-cols-3 gap-space-xs w-full max-w-md mt-space-md mb-space-md z-10">
+                            <div className="bg-surface-container-low rounded-xl p-space-sm text-center border border-outline-variant/20">
+                                <span className="text-body-sm font-body-sm text-on-surface-variant block">مجموع امروز</span>
+                                <span className="text-headline-md font-headline-md text-on-surface font-bold" dir="ltr">
+                                    {formatHMS(myTodayStudySeconds)}
+                                </span>
+                            </div>
+                            <div className="bg-surface-container-low rounded-xl p-space-sm text-center border border-outline-variant/20">
+                                <span className="text-body-sm font-body-sm text-on-surface-variant block">پومودورو</span>
+                                <span className="text-headline-md font-headline-md text-primary font-bold">۴ / ۶</span>
+                            </div>
+                            <div className="bg-surface-container-low rounded-xl p-space-sm text-center border border-outline-variant/20">
+                                <span className="text-body-sm font-body-sm text-on-surface-variant block">رتبه در اتاق</span>
+                                <span className="text-headline-md font-headline-md text-tertiary font-bold">#۲</span>
+                            </div>
+                        </div>
+
+                        {/* Primary Control Buttons */}
+                        <div className="flex items-center justify-center gap-space-md w-full max-w-md z-10">
+                            <button
+                                onClick={() => setIsMicMuted(!isMicMuted)}
+                                aria-label="میکروفون"
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-sm ${
+                                    isMicMuted
+                                        ? 'bg-surface-container text-on-surface-variant'
+                                        : 'bg-primary text-on-primary'
+                                }`}
+                            >
+                                <span className="material-symbols-outlined text-[22px]">
+                                    {isMicMuted ? 'mic_off' : 'mic'}
+                                </span>
+                            </button>
+
+                            {focusStatus === 'running' ? (
+                                <button
+                                    onClick={pauseTimer}
+                                    className="flex-1 py-3 px-6 rounded-xl bg-tertiary text-on-tertiary font-label-md text-label-md font-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-98 transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-[22px]">pause</span>
+                                    <span>توقف موقت</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => startTimer(selectedSubject?.id || 'general')}
+                                    className="flex-1 py-3 px-6 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-primary-container active:scale-98 transition-all"
+                                >
+                                    <span className="material-symbols-outlined text-[22px]">play_circle</span>
+                                    <span>شروع فوکوس دیپ‌ورک</span>
+                                </button>
+                            )}
+
+                            <button
+                                onClick={stopTimer}
+                                className="py-3 px-4 rounded-xl bg-surface-container-high text-error hover:bg-error-container hover:text-on-error-container font-label-md text-label-md font-bold flex items-center justify-center gap-1 transition-all active:scale-98"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">stop_circle</span>
+                                <span>پایان پارت</span>
+                            </button>
+
+                            <button
+                                onClick={() => setIsCamMuted(!isCamMuted)}
+                                aria-label="دوربین"
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-sm ${
+                                    isCamMuted
+                                        ? 'bg-surface-container text-on-surface-variant'
+                                        : 'bg-secondary text-on-secondary'
+                                }`}
+                            >
+                                <span className="material-symbols-outlined text-[22px]">
+                                    {isCamMuted ? 'videocam_off' : 'videocam'}
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 2-Column Bento Grid: Podium & Online Desks vs Live Feed */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+                        {/* LEFT COLUMN: Podium & Desks Grid (Span 8) */}
+                        <div className="lg:col-span-8 flex flex-col gap-space-lg">
+                            {/* Daily Leaderboard Podium Tile */}
+                            <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm border border-outline-variant/30">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                            emoji_events
+                                        </span>
+                                        <h3 className="text-headline-md font-headline-md text-on-surface font-bold">
+                                            برترین‌های امروز اتاق
+                                        </h3>
+                                    </div>
+                                    <button
+                                        onClick={() => setActiveSection('ranking')}
+                                        className="text-primary text-label-sm font-label-sm font-bold flex items-center gap-0.5"
+                                    >
+                                        <span>مشاهده لیگ کامل</span>
+                                        <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-space-xs pt-space-xs">
+                                    {/* 2nd Place (You) */}
+                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col items-center text-center relative pt-4 border border-outline-variant/20">
+                                        <div className="w-10 h-10 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-label-md mb-1 relative">
+                                            <span>س‌م</span>
+                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-outline-variant text-on-surface text-[10px] flex items-center justify-center font-bold">
+                                                ۲
+                                            </span>
+                                        </div>
+                                        <span className="text-label-md font-label-md text-on-surface font-bold truncate w-full">شما</span>
+                                        <span className="text-label-sm font-label-sm text-primary font-bold" dir="ltr">05:30h</span>
+                                        <span className="text-[10px] text-on-surface-variant truncate w-full mt-0.5">ریاضی مهندسی</span>
+                                    </div>
+
+                                    {/* 1st Place */}
+                                    <div className="bg-surface-container-high rounded-xl p-space-sm flex flex-col items-center text-center relative pt-4 -mt-2 border border-tertiary/30 shadow-xs">
+                                        <div className="w-12 h-12 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center font-bold text-label-md mb-1 relative">
+                                            <span>پ‌ن</span>
+                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-tertiary text-on-tertiary text-[10px] flex items-center justify-center font-bold">
+                                                ۱
+                                            </span>
+                                        </div>
+                                        <span className="text-label-md font-label-md text-on-surface font-bold truncate w-full">پارسا ن.</span>
+                                        <span className="text-label-sm font-label-sm text-tertiary font-bold" dir="ltr">07:45h</span>
+                                        <span className="text-[10px] text-on-surface-variant truncate w-full mt-0.5">پزشکی آزمون</span>
+                                    </div>
+
+                                    {/* 3rd Place */}
+                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col items-center text-center relative pt-4 border border-outline-variant/20">
+                                        <div className="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center font-bold text-label-md mb-1 relative">
+                                            <span>ن‌ر</span>
+                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-secondary text-on-secondary text-[10px] flex items-center justify-center font-bold">
+                                                ۳
+                                            </span>
+                                        </div>
+                                        <span className="text-label-md font-label-md text-on-surface font-bold truncate w-full">نیلوفر ر.</span>
+                                        <span className="text-label-sm font-label-sm text-secondary font-bold" dir="ltr">04:15h</span>
+                                        <span className="text-[10px] text-on-surface-variant truncate w-full mt-0.5">برنامه‌نویسی</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Live Desks Grid */}
+                            <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-md border border-outline-variant/30">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-primary text-[20px]">group</span>
+                                        <h3 className="text-headline-md font-headline-md text-on-surface font-bold">
+                                            میزهای مطالعه آنلاین
+                                        </h3>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                                        <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                                        <span>۲۱ نفر در حال خواندن</span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+                                    {/* Desk 1: Studying */}
+                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-7 h-7 rounded-full bg-primary-container text-on-primary flex items-center justify-center text-label-sm font-label-sm font-bold">
+                                                    ع‌ک
+                                                </div>
+                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">علیرضا ک.</span>
+                                            </div>
+                                            <span className="w-2 h-2 rounded-full bg-secondary" title="در حال مطالعه"></span>
+                                        </div>
+                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">واژگان ۵۰۴ تافل</p>
+                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
+                                            <span className="text-secondary font-medium">پومودورو ۲</span>
+                                            <span className="font-mono font-semibold" dir="ltr">03:50h</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Desk 2: Studying */}
+                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-7 h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center text-label-sm font-label-sm font-bold">
+                                                    م‌ح
+                                                </div>
+                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">مریم حسینی</span>
+                                            </div>
+                                            <span className="w-2 h-2 rounded-full bg-secondary" title="در حال مطالعه"></span>
+                                        </div>
+                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">شیمی آلی کنکور</p>
+                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
+                                            <span className="text-secondary font-medium">تمرکز عمیق</span>
+                                            <span className="font-mono font-semibold" dir="ltr">03:12h</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Desk 3: Short Break */}
+                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-7 h-7 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center text-label-sm font-label-sm font-bold">
+                                                    ک‌ج
+                                                </div>
+                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">کسری جهان</span>
+                                            </div>
+                                            <span className="w-2 h-2 rounded-full bg-tertiary" title="استراحت کوتاه"></span>
+                                        </div>
+                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">فیزیک کوانتوم</p>
+                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
+                                            <span className="text-tertiary font-medium">استراحت ۵ دقیقه</span>
+                                            <span className="font-mono font-semibold" dir="ltr">02:40h</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Desk 4: Studying */}
+                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center text-label-sm font-label-sm font-bold">
+                                                    ف‌ز
+                                                </div>
+                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">فاطمه زارع</span>
+                                            </div>
+                                            <span className="w-2 h-2 rounded-full bg-secondary" title="در حال مطالعه"></span>
+                                        </div>
+                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">طراحی الگوریتم</p>
+                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
+                                            <span className="text-secondary font-medium">پومودورو ۳</span>
+                                            <span className="font-mono font-semibold" dir="ltr">01:55h</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Desk Invite Banner */}
+                                <div className="bg-surface-container rounded-xl p-space-sm flex items-center justify-between gap-space-sm">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-[18px]">person_add</span>
+                                        </div>
+                                        <span className="text-body-sm font-body-sm text-on-surface font-medium">
+                                            دوستت رو به میز بغلی دعوت کن!
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => handleCopyRoomCode(activeRoomCode || 'YPT-782K')}
+                                        className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-primary text-label-sm font-label-sm font-bold hover:bg-surface-container-low transition-colors shrink-0 shadow-sm"
+                                    >
+                                        اشتراک لینک
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Live Study Feed & Encouragement Stream (Span 4) */}
+                        <div className="lg:col-span-4 flex flex-col gap-space-md">
+                            <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm border border-outline-variant/30">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-primary text-[20px]">chat_bubble_outline</span>
+                                        <h3 className="text-headline-md font-headline-md text-on-surface font-bold">
+                                            رویدادهای زنده اتاق
+                                        </h3>
+                                    </div>
+                                    <span className="text-[11px] text-on-surface-variant">فقط انگیزشی و دستاورد</span>
+                                </div>
+
+                                {/* Activity Stream List */}
+                                <div className="flex flex-col gap-space-xs max-h-80 overflow-y-auto custom-scrollbar">
+                                    <div className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-secondary text-[18px]">verified</span>
+                                            <span className="text-on-surface">
+                                                <strong className="font-semibold">امیررضا</strong> پومودورو ۲۵ دقیقه‌ای رو تموم کرد!
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-on-surface-variant">همین حالا</span>
+                                    </div>
+
+                                    <div className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-primary text-[18px]">login</span>
+                                            <span className="text-on-surface">
+                                                <strong className="font-semibold">مهسا ع.</strong> به اتاق پیوست. به امید تمرکز بالا!
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-on-surface-variant">۲ دقیقه پیش</span>
+                                    </div>
+
+                                    <div className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-tertiary text-[18px]">local_fire_department</span>
+                                            <span className="text-on-surface">
+                                                <strong className="font-semibold">پارسا ن.</strong> رکورد ۷ ساعت مطالعه متوالی رو شکست 🔥
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-on-surface-variant">۵ دقیقه پیش</span>
+                                    </div>
+
+                                    {roomMessages.map((msg) => (
+                                        <div
+                                            key={msg.id}
+                                            className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm">{msg.senderAvatar || '💬'}</span>
+                                                <span className="text-on-surface">
+                                                    <strong className="font-semibold">{msg.senderName}:</strong> {msg.text}
+                                                </span>
+                                            </div>
+                                            <span className="text-[10px] text-on-surface-variant">
+                                                {formatClockTime(new Date(msg.timestamp))}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Quick Cheer Reactions & Input Bar */}
+                                <div className="flex flex-col gap-space-xs mt-space-xs pt-space-xs border-t border-outline-variant/20">
+                                    <div className="flex items-center justify-around bg-surface-container-low p-1.5 rounded-xl border border-outline-variant/20">
+                                        <button
+                                            onClick={() => handleSendReaction('👏')}
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            title="تشویق"
+                                        >
+                                            👏
+                                        </button>
+                                        <button
+                                            onClick={() => handleSendReaction('🔥')}
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            title="آتشین"
+                                        >
+                                            🔥
+                                        </button>
+                                        <button
+                                            onClick={() => handleSendReaction('☕')}
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            title="قهوه"
+                                        >
+                                            ☕
+                                        </button>
+                                        <button
+                                            onClick={() => handleSendReaction('⚡')}
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            title="انرژی"
+                                        >
+                                            ⚡
+                                        </button>
+                                    </div>
+
+                                    {/* Quick Text Message Field */}
+                                    <form onSubmit={handleSendRoomChat} className="relative flex items-center mt-1">
+                                        <input
+                                            value={roomChatText}
+                                            onChange={(e) => setRoomChatText(e.target.value)}
+                                            className="w-full bg-surface-container-low text-on-surface placeholder:text-on-surface-variant text-body-sm font-body-sm rounded-xl py-2 px-3 pl-10 focus:outline-none focus:bg-surface-container transition-colors border border-outline-variant/20"
+                                            placeholder="پیام انگیزه بفرستید..."
+                                            type="text"
+                                        />
+                                        <button
+                                            type="submit"
+                                            aria-label="ارسال"
+                                            className="absolute left-2 text-primary hover:text-primary-container p-1 flex items-center"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px] transform rotate-180">send</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SECTION 2: COMPETITIVE DIAMOND LEAGUE (RANKING) */}
+            {activeSection === 'ranking' && (
+                <div className="flex flex-col gap-space-lg">
+                    {/* Header & Promotion Zone Tag */}
+                    <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs pb-space-xs">
+                            <div className="flex items-center gap-space-xs">
+                                <span className="material-symbols-outlined text-tertiary text-[28px]">workspace_premium</span>
+                                <div>
+                                    <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
+                                        رده‌بندی زنده لیگ الماس
+                                    </h2>
+                                    <span className="font-label-sm text-label-sm text-on-surface-variant">
+                                        پایان دوره: ۱ روز و ۹ ساعت دیگر
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-space-xs py-1 rounded-full flex items-center gap-1 font-bold">
+                                    <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>زنده
+                                </span>
+                                <button
+                                    onClick={() => loadLeaderboardPage(true)}
+                                    className="p-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition"
+                                    title="بروزرسانی"
+                                >
+                                    <RefreshCw size={16} className={isLoadingLb ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Promotion Zone Tag */}
+                        <div className="bg-secondary/10 px-space-sm py-2 rounded-xl flex items-center justify-between text-secondary border border-secondary/20">
+                            <span className="font-label-sm text-label-sm font-bold flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                                منطقه صعود مستقیم (۳ نفر برتر)
+                            </span>
+                            <span className="font-label-sm text-label-sm font-bold">+۵۰۰ الماس جایزه صعود</span>
+                        </div>
+
+                        {/* Controls (Sort and Search) */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-space-xs">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setSortBy('xp')}
+                                    className={`px-3 py-1.5 rounded-lg text-label-sm font-label-sm font-bold transition-all ${
+                                        sortBy === 'xp'
+                                            ? 'bg-primary text-on-primary'
+                                            : 'bg-surface-container-low text-on-surface-variant'
+                                    }`}
+                                >
+                                    بر اساس امتیاز XP
+                                </button>
+                                <button
+                                    onClick={() => setSortBy('exam')}
+                                    className={`px-3 py-1.5 rounded-lg text-label-sm font-label-sm font-bold transition-all ${
+                                        sortBy === 'exam'
+                                            ? 'bg-primary text-on-primary'
+                                            : 'bg-surface-container-low text-on-surface-variant'
+                                    }`}
+                                >
+                                    بر اساس میانگین آزمون
+                                </button>
+                            </div>
+
+                            <div className="relative">
+                                <Search size={16} className="absolute right-3 top-2.5 text-on-surface-variant" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="جستجوی شرکت‌کننده..."
+                                    className="w-full sm:w-64 pr-9 pl-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface text-body-sm font-body-sm border border-outline-variant/30 outline-none focus:border-primary"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Leaderboard List */}
+                        <div className="flex flex-col gap-space-xs pt-space-xs">
+                            {/* Rank #1: آرین ر. */}
+                            <div className="bg-surface-container-low hover:bg-surface-container-high transition-colors p-space-sm rounded-xl flex items-center justify-between border border-outline-variant/20">
+                                <div className="flex items-center gap-space-sm">
+                                    <span className="w-7 h-7 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold flex items-center justify-center">
+                                        ۱
+                                    </span>
+                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
+                                        <img
+                                            className="w-full h-full object-cover"
+                                            alt="آرین ر."
+                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBk1QVw4_S2uBiuhijOVs0iCn2JIumP0f-4aRvVISehbBAHGOgqGSopgs0kpGgC01hgR3H1gTFsJkqC5ImeL8-Xznii17S3IHCo5eWuRy9jpBN_GRbzVDrxELl9xBrsckYUwR2WiAk8idQftMP7CBOIDDjVS8kXzznzdpg7M8L6gPQzWmwsR18Gw1sULbXLTnmJORNmOGEij342ja4M_XtesvXgKEnaunqwy6t6CpU"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1">
+                                            <span className="font-label-md text-label-md font-bold text-on-surface">آرین ر.</span>
+                                            <Crown size={15} className="text-amber-500" />
+                                        </div>
+                                        <span className="font-label-sm text-label-sm text-on-surface-variant">قهرمان دوره قبل</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="font-headline-md text-label-md text-on-surface font-bold">۵,۲۰۰ XP</span>
+                                    <span className="font-label-sm text-label-sm text-secondary font-medium">۴۱ ساعت تمرکز</span>
+                                </div>
+                            </div>
+
+                            {/* Rank #2: مهسا ک. */}
+                            <div className="bg-surface-container-low hover:bg-surface-container-high transition-colors p-space-sm rounded-xl flex items-center justify-between border border-outline-variant/20">
+                                <div className="flex items-center gap-space-sm">
+                                    <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-bold flex items-center justify-center">
+                                        ۲
+                                    </span>
+                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
+                                        <img
+                                            className="w-full h-full object-cover"
+                                            alt="مهسا ک."
+                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiNFnuZPsShA_cGNCtOK3UVXiKK1XMZYG7tDTyNCLZ59c_QkEGRT2vSFB-zrhyur4DNFyFK1UTPk0T63Ra8fxo3eTtLryRVhBAUrAa6I8PWqEu3vQF3gMfgzZoo1sv9PHIjm3Q7aA4dsu_TBI_k9AJUlk_PbGoUGSIdUI4pBekug9vMS0Rkn5WTZDPIrQZTET-oJCPXZrpZNlnciRXN4jTOiyBCiKQGe-smhimBck"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-label-md text-label-md font-bold text-on-surface">مهسا ک.</span>
+                                        <span className="font-label-sm text-label-sm text-on-surface-variant">استریک ۱۲ روزه</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="font-headline-md text-label-md text-on-surface font-bold">۴,۴۰۰ XP</span>
+                                    <span className="font-label-sm text-label-sm text-secondary font-medium">۳۶ ساعت تمرکز</span>
+                                </div>
+                            </div>
+
+                            {/* Rank #3: سارا محمدی (YOU - Dedicated Prominent Highlight) */}
+                            <div className="bg-primary-container text-on-primary-container p-space-sm rounded-xl flex items-center justify-between shadow-md relative overflow-hidden">
+                                <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-primary/40 rounded-full blur-xl pointer-events-none"></div>
+                                <div className="flex items-center gap-space-sm relative z-10">
+                                    <span className="w-7 h-7 rounded-full bg-on-primary-container text-primary-container font-label-sm text-label-sm font-bold flex items-center justify-center shadow-xs">
+                                        ۳
+                                    </span>
+                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-lowest p-0.5 shadow-xs shrink-0">
+                                        <img
+                                            className="w-full h-full object-cover rounded-md"
+                                            alt="شما"
+                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZNwFRNZk2mW2FC_tq4_nPtORyQIa81-BQ5ecsFi18hF8-h4eFiJtUCHygmmfZ78bD4j-QaIIbgi6deSNvokPgzla8VPxq-UyKd9amJlWEjhO7cYgaxkWJdf-iwVKDTPUU3NVR8e3Z-6l3TIv9Lhy_V4suklutjO4v069GUm12qYMW8qSdJGK7AlzEaDWR9EfYSRZ6vhjtjfvw16pwX3gw_J3gD0SIDopSZ1gpApI"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-label-md text-label-md font-bold">{userName || 'سارا محمدی'}</span>
+                                            <span className="bg-secondary text-on-secondary font-label-sm text-label-sm px-1.5 py-0.2 rounded font-bold">
+                                                شما
+                                            </span>
+                                        </div>
+                                        <span className="font-label-sm text-label-sm opacity-90">در منطقه طلایی ارتقا</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end relative z-10">
+                                    <span className="font-headline-md text-label-md font-bold">
+                                        {formatToPersianDigits(xp > 3900 ? xp : 3900)} XP
+                                    </span>
+                                    <span className="font-label-sm text-label-sm text-secondary-fixed font-bold">
+                                        +۳۵۰ XP تا رتبه دوم
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Demarcation Line */}
+                            <div className="flex items-center justify-between px-space-xs py-1">
+                                <span className="h-px bg-outline-variant/40 flex-1"></span>
+                                <span className="font-label-sm text-label-sm text-on-surface-variant px-space-sm font-bold">
+                                    خط تفکیک منطقه ابقا
+                                </span>
+                                <span className="h-px bg-outline-variant/40 flex-1"></span>
+                            </div>
+
+                            {/* Rank #4: علی ن. */}
+                            <div className="bg-surface-container-low hover:bg-surface-container-high transition-colors p-space-sm rounded-xl flex items-center justify-between opacity-85 border border-outline-variant/20">
+                                <div className="flex items-center gap-space-sm">
+                                    <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center">
+                                        ۴
+                                    </span>
+                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
+                                        <img
+                                            className="w-full h-full object-cover"
+                                            alt="علی ن."
+                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8KL2eWerRG0yzYS9degs34asXCmV8BiScafrJ7k5d7cTLaMNQRElECyCLkoWZlunzqV8IYb1QqPC80qYWBfLkYD2byj4hLpnVYEpIrITSmE4-4JVOhxFvvL0jaKhyaYtR0tTIVLo31BEDMD0Xg9k9wodrnAq2XcF0TepXcVIhIY49Ixt8JDufm-HYYnPkhHDIAS16GmrMI2X_Hr7oeiqlrYr71RzgLgqlsXHUmXc"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-label-md text-label-md font-semibold text-on-surface">علی ن.</span>
+                                        <span className="font-label-sm text-label-sm text-on-surface-variant">تعقیب‌کننده مستقیم</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="font-headline-md text-label-md text-on-surface font-semibold">۳,۶۵۰ XP</span>
+                                    <span className="font-label-sm text-label-sm text-error font-medium">-۲۵۰ XP از شما</span>
+                                </div>
+                            </div>
+
+                            {/* Rank #5: نیلوفر ف. */}
+                            <div className="bg-surface-container-low hover:bg-surface-container-high transition-colors p-space-sm rounded-xl flex items-center justify-between opacity-75 border border-outline-variant/20">
+                                <div className="flex items-center gap-space-sm">
+                                    <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center">
+                                        ۵
+                                    </span>
+                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
+                                        <img
+                                            className="w-full h-full object-cover"
+                                            alt="نیلوفر ف."
+                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4295_58qhBMKf0ZC6fqLcIOJaN0L7XdQtYlbnavi1y2Irk2pNJlIUk-_VpIiV35eofaq0-MH9KbPkj8VhhjpZ3IORZe6d9ioBFT0AY6pezoxaPdMELnQ7GzfX4Qtggz30-SuB1Az8ElTgtBEDrrxaAocLocjRoaSQFkODdQ2wFDx2tEK8yDGYSHiawKZ07mF20UT4K9LUzzDVDsqAqmN9LasXCbDhnDFABQTlHxs"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-label-md text-label-md font-semibold text-on-surface">نیلوفر ف.</span>
+                                        <span className="font-label-sm text-label-sm text-on-surface-variant">استریک ۶ روزه</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    <span className="font-headline-md text-label-md text-on-surface font-semibold">۳,۲۰۰ XP</span>
+                                    <span className="font-label-sm text-label-sm text-on-surface-variant">۲۵ ساعت تمرکز</span>
+                                </div>
+                            </div>
+
+                            {/* Additional Dynamic DB Participants */}
+                            {leaderboardData
+                                .filter((p) => p.userName.toLowerCase().includes(searchQuery.toLowerCase()))
+                                .map((item, idx) => (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => handleOpenProfile(item.id)}
+                                        className="bg-surface-container-low hover:bg-surface-container-high transition-colors p-space-sm rounded-xl flex items-center justify-between cursor-pointer border border-outline-variant/20"
+                                    >
+                                        <div className="flex items-center gap-space-sm">
+                                            <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center">
+                                                {formatToPersianDigits(idx + 6)}
+                                            </span>
+                                            <div className="flex flex-col">
+                                                <span className="font-label-md text-label-md font-semibold text-on-surface">
+                                                    {item.userName}
+                                                </span>
+                                                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                                                    سطح {formatToPersianDigits(item.level)} • {formatToPersianDigits(item.tasksCompleted)} تسک تکمیل‌شده
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="font-headline-md text-label-md text-on-surface font-semibold">
+                                                {formatToPersianDigits(item.xp)} XP
+                                            </span>
+                                            {item.examAverage > 0 && (
+                                                <span className="font-label-sm text-label-sm text-secondary font-medium">
+                                                    معدل تراز: {formatToPersianDigits(item.examAverage)}٪
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+
+                        {hasMoreLb && (
+                            <button
+                                onClick={loadMoreLeaderboard}
+                                disabled={isLoadingMore}
+                                className="w-full py-space-sm rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-space-xs mt-2"
+                            >
+                                {isLoadingMore ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <>
+                                        <span>مشاهده رتبه‌های بیشتر لیگ</span>
+                                        <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Native Dialog: Create Room Modal */}
             <dialog
                 ref={createRoomDialogRef}
-                aria-labelledby={isCreateModalOpen ? 'create-room-title' : undefined}
-                onCancel={(e) => {
-                    e.preventDefault();
-                    setIsCreateModalOpen(false);
-                }}
-                onClick={(e) => {
-                    if (e.target === createRoomDialogRef.current) setIsCreateModalOpen(false);
-                }}
-                className="m-auto p-0 bg-transparent border-0 max-w-md w-[calc(100%-2rem)] overflow-visible shadow-none"
+                className="rounded-3xl p-0 bg-surface-container-lowest text-on-surface border border-outline-variant/40 shadow-2xl backdrop:bg-black/60 max-w-lg w-full m-auto"
             >
-                {isCreateModalOpen && (
-                    <form
-                        onSubmit={handleCreateRoom}
-                        className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden text-right"
-                        dir="rtl"
-                    >
-                        <div className="p-5 bg-gradient-to-l from-indigo-600 to-violet-600 text-white flex items-center justify-between">
-                            <div>
-                                <h2 id="create-room-title" className="text-base font-black">ساخت اتاق مطالعه YPT</h2>
-                                <p className="text-[11px] text-indigo-100 mt-0.5">کد دعوت اختصاصی ۶ رقمی خودکار ساخته می‌شود</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsCreateModalOpen(false)}
-                                aria-label="بستن پنجره"
-                                className="p-1.5 rounded-xl hover:bg-white/20 transition"
-                            >
-                                <X size={18} />
-                            </button>
+                <form onSubmit={handleCreateRoomSubmit} className="p-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
+                        <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary text-[24px]">add_circle</span>
+                            <h3 className="font-headline-md text-headline-md font-bold">ایجاد اتاق مطالعه YPT</h3>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsCreateModalOpen(false)}
+                            className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
 
-                        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                            <div>
-                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">نام اتاق</label>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    required
-                                    maxLength={80}
-                                    value={newRoomName}
-                                    onChange={(e) => setNewRoomName(e.target.value)}
-                                    placeholder="مثال: تیم کار عمیق صبحگاهی"
-                                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
-                                />
-                            </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-label-sm font-label-sm font-bold text-on-surface">عنوان اتاق:</label>
+                        <input
+                            type="text"
+                            required
+                            value={newRoomName}
+                            onChange={(e) => setNewRoomName(e.target.value)}
+                            placeholder="مثلاً: ماراتن شبانه کنکور تجربی"
+                            className="px-3.5 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-body-md border border-outline-variant/40 outline-none focus:border-primary"
+                        />
+                    </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">دسته‌بندی</label>
-                                    <select
-                                        value={newRoomCategory}
-                                        onChange={(e) => setNewRoomCategory(e.target.value)}
-                                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
-                                    >
-                                        {ROOM_CATEGORIES.map((cat) => (
-                                            <option key={cat} value={cat}>
-                                                {cat}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">سقف ظرفیت</label>
-                                    <select
-                                        value={newRoomMaxMembers}
-                                        onChange={(e) => setNewRoomMaxMembers(Number(e.target.value))}
-                                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
-                                    >
-                                        <option value={10}>۱۰ نفر</option>
-                                        <option value={25}>۲۵ نفر</option>
-                                        <option value={50}>۵۰ نفر</option>
-                                        <option value={100}>۱۰۰ نفر</option>
-                                    </select>
-                                </div>
-                            </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-label-sm font-label-sm font-bold text-on-surface">دسته‌بندی:</label>
+                        <select
+                            value={newRoomCategory}
+                            onChange={(e) => setNewRoomCategory(e.target.value)}
+                            className="px-3.5 py-2.5 rounded-xl bg-surface-container-low text-on-surface text-body-md border border-outline-variant/40 outline-none focus:border-primary"
+                        >
+                            {ROOM_CATEGORIES.map((cat) => (
+                                <option key={cat} value={cat}>
+                                    {cat}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                            <div>
-                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">
-                                    هدف روزانه اتاق: {formatToPersianDigits(newRoomTargetHours)} ساعت
-                                </label>
-                                <input
-                                    type="range"
-                                    min={1}
-                                    max={12}
-                                    value={newRoomTargetHours}
-                                    onChange={(e) => setNewRoomTargetHours(Number(e.target.value))}
-                                    className="w-full accent-indigo-600"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1.5">توضیحات یا قانون اتاق (اختیاری)</label>
-                                <textarea
-                                    rows={2}
-                                    maxLength={160}
-                                    value={newRoomDesc}
-                                    onChange={(e) => setNewRoomDesc(e.target.value)}
-                                    placeholder="مثلاً: حداقل ۲ پومودورو در روز، سکوت و احترام..."
-                                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs outline-none focus:border-indigo-500 text-gray-800 dark:text-white resize-none"
-                                />
-                            </div>
-
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setNewRoomIsPublic(true)}
-                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black border flex items-center justify-center gap-1.5 transition ${
-                                        newRoomIsPublic
-                                            ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 text-indigo-700 dark:text-indigo-300'
-                                            : 'border-gray-200 dark:border-gray-700 text-gray-500'
-                                    }`}
-                                >
-                                    <Globe size={14} /> اتاق عمومی
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setNewRoomIsPublic(false)}
-                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black border flex items-center justify-center gap-1.5 transition ${
-                                        !newRoomIsPublic
-                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 text-amber-700 dark:text-amber-300'
-                                            : 'border-gray-200 dark:border-gray-700 text-gray-500'
-                                    }`}
-                                >
-                                    <Lock size={14} /> خصوصی (با کد)
-                                </button>
-                            </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-label-sm font-label-sm font-bold text-on-surface">هدف روزانه (ساعت):</label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={16}
+                                value={newRoomTargetHours}
+                                onChange={(e) => setNewRoomTargetHours(Number(e.target.value))}
+                                className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface text-body-md border border-outline-variant/40 outline-none focus:border-primary"
+                            />
                         </div>
-
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex gap-2 bg-gray-50/50 dark:bg-gray-800/40">
-                            <button
-                                type="button"
-                                onClick={() => setIsCreateModalOpen(false)}
-                                className="flex-1 py-2.5 rounded-xl font-bold text-xs text-gray-500 hover:bg-gray-200/60 dark:hover:bg-gray-700 transition"
-                            >
-                                انصراف
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={roomActionLoading}
-                                className="flex-[2] py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition"
-                            >
-                                {roomActionLoading ? 'در حال ساخت...' : 'ساخت و ورود به اتاق'}
-                            </button>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-label-sm font-label-sm font-bold text-on-surface">ظرفیت اعضا:</label>
+                            <input
+                                type="number"
+                                min={2}
+                                max={50}
+                                value={newRoomMaxMembers}
+                                onChange={(e) => setNewRoomMaxMembers(Number(e.target.value))}
+                                className="px-3.5 py-2 rounded-xl bg-surface-container-low text-on-surface text-body-md border border-outline-variant/40 outline-none focus:border-primary"
+                            />
                         </div>
-                    </form>
-                )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                        <input
+                            type="checkbox"
+                            id="roomIsPublic"
+                            checked={newRoomIsPublic}
+                            onChange={(e) => setNewRoomIsPublic(e.target.checked)}
+                            className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                        <label htmlFor="roomIsPublic" className="text-label-sm font-label-sm text-on-surface cursor-pointer">
+                            اتاق به صورت عمومی در لیست اتاق‌ها نمایش داده شود
+                        </label>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-outline-variant/20">
+                        <button
+                            type="button"
+                            onClick={() => setIsCreateModalOpen(false)}
+                            className="px-4 py-2 rounded-xl bg-surface-container-high text-on-surface text-label-sm font-label-sm font-bold"
+                        >
+                            انصراف
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={roomActionLoading}
+                            className="px-5 py-2 rounded-xl bg-primary text-on-primary text-label-sm font-label-sm font-bold flex items-center gap-1.5 shadow-sm"
+                        >
+                            {roomActionLoading && <Loader2 size={14} className="animate-spin" />}
+                            <span>ساخت و ورود به اتاق</span>
+                        </button>
+                    </div>
+                </form>
             </dialog>
 
-            {/* Native <dialog>: Lazy Profile Detail Viewer */}
+            {/* Native Dialog: Profile Viewer Modal */}
             <dialog
                 ref={profileDialogRef}
-                aria-labelledby={viewingProfile ? 'profile-viewer-title' : undefined}
-                onCancel={(e) => {
-                    e.preventDefault();
-                    setViewingProfile(null);
-                }}
-                onClick={(e) => {
-                    if (e.target === profileDialogRef.current) setViewingProfile(null);
-                }}
-                className="m-auto p-0 bg-transparent border-0 max-w-lg w-[calc(100%-2rem)] overflow-visible shadow-none"
+                className="rounded-3xl p-0 bg-surface-container-lowest text-on-surface border border-outline-variant/40 shadow-2xl backdrop:bg-black/60 max-w-md w-full m-auto"
             >
                 {viewingProfile && (
-                    <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700" dir="rtl">
-                        <div className="p-5 bg-gradient-to-br from-indigo-600 to-purple-700 text-white relative">
+                    <div className="p-6 flex flex-col gap-4">
+                        <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-primary text-[24px]">account_circle</span>
+                                <h3 className="font-headline-md text-headline-md font-bold">{viewingProfile.userName}</h3>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => setViewingProfile(null)}
-                                aria-label="بستن پروفایل"
-                                className="absolute left-4 top-4 p-2 rounded-xl bg-white/15 hover:bg-white/25 transition"
+                                className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface"
                             >
                                 <X size={16} />
                             </button>
-                            <h2 id="profile-viewer-title" className="text-lg font-black">{viewingProfile.userName}</h2>
-                            <p className="text-xs opacity-80 mt-0.5">سطح {viewingProfile.level} • {viewingProfile.xp} XP • پیشرفت {viewingProfile.progress}%</p>
                         </div>
 
-                        <div className="p-5 max-h-[55vh] overflow-y-auto space-y-3 custom-scrollbar">
-                            {viewingProfile.tasks && viewingProfile.tasks.length > 0 ? (
-                                viewingProfile.tasks.map((t, i) => (
-                                    <div key={t.id || i} className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-xs flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className={t.isCompleted ? 'text-emerald-500 font-black' : 'text-amber-500 font-black'}>
-                                                {t.isCompleted ? '✓' : '•'}
-                                            </span>
-                                            <span className="font-bold text-gray-800 dark:text-gray-100 truncate">{t.subject} — {t.topic}</span>
-                                        </div>
-                                        {t.date && <span className="text-[10px] text-gray-400 shrink-0">{getShamsiDate(t.date)}</span>}
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-center text-xs text-gray-400 py-6">برنامه عمومی برای نمایش ثبت نشده است.</p>
-                            )}
+                        <div className="grid grid-cols-2 gap-3 text-center">
+                            <div className="bg-surface-container-low p-3 rounded-2xl border border-outline-variant/20">
+                                <span className="text-body-sm text-on-surface-variant block">مجموع امتیاز</span>
+                                <span className="text-headline-md font-bold text-primary">
+                                    {formatToPersianDigits(viewingProfile.xp)} XP
+                                </span>
+                            </div>
+                            <div className="bg-surface-container-low p-3 rounded-2xl border border-outline-variant/20">
+                                <span className="text-body-sm text-on-surface-variant block">سطح فعلی</span>
+                                <span className="text-headline-md font-bold text-secondary">
+                                    سطح {formatToPersianDigits(viewingProfile.level)}
+                                </span>
+                            </div>
                         </div>
+
+                        <div className="bg-surface-container-low p-3 rounded-2xl flex items-center justify-between border border-outline-variant/20 text-body-sm">
+                            <span className="text-on-surface-variant">تسک‌های انجام‌شده:</span>
+                            <span className="font-bold text-on-surface">
+                                {formatToPersianDigits(viewingProfile.tasksCompleted)} از {formatToPersianDigits(viewingProfile.totalTasks)}
+                            </span>
+                        </div>
+
+                        {viewingProfile.examAverage > 0 && (
+                            <div className="bg-secondary-container/30 p-3 rounded-2xl flex items-center justify-between border border-secondary/30 text-body-sm text-secondary">
+                                <span className="font-semibold">میانگین تراز آزمون‌ها:</span>
+                                <span className="font-bold">{formatToPersianDigits(viewingProfile.examAverage)}٪</span>
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => setViewingProfile(null)}
+                            className="w-full mt-2 py-2.5 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold"
+                        >
+                            بستن
+                        </button>
                     </div>
                 )}
             </dialog>
-        </>
+        </div>
     );
 };
 

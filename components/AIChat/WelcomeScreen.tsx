@@ -1,126 +1,96 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Brain, ClipboardList, BookOpen } from 'lucide-react';
 
 interface WelcomeScreenProps {
     onPromptSelect: (text: string) => void;
     userName: string;
 }
 
-const QUICK_TAGS = [
-    { text: "کار و پروژه", icon: "💼", bg: "bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-900/30 hover:bg-indigo-100/50" },
-    { text: "اهداف و عادت‌ها", icon: "🌱", bg: "bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30 hover:bg-emerald-100/50" },
-    { text: "ورزش و سلامت", icon: "🏋️", bg: "bg-rose-50/50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-900/30 hover:bg-rose-100/50" },
-    { text: "تایم‌لاین امروز", icon: "📅", bg: "bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/30 hover:bg-blue-100/50" },
-    { text: "مطالعه و مهارت", icon: "📖", bg: "bg-purple-50/50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 border-purple-100/50 dark:border-purple-900/30 hover:bg-purple-100/50" },
+const TOPIC_PILLS = [
+    { text: "کار و پروژه", icon: "💼" },
+    { text: "اهداف و عادت‌ها", icon: "🌱" },
+    { text: "ورزش و سلامت", icon: "🏋️" },
+    { text: "تایم‌لاین امروز", icon: "📅" },
+    { text: "مطالعه و مهارت", icon: "📖" },
 ];
 
-const QUICK_PROMPTS = [
-    { text: "برای امروز ۳ تسک زمان‌بندی‌شده (با ساعت شروع و مدت) بساز و به تایم‌لاین اضافه کن", icon: ClipboardList, color: "text-emerald-500", bg: "bg-emerald-50/50 dark:bg-emerald-900/20" },
-    { text: "برنامه این هفته‌ام رو با تعادل کار، ورزش و استراحت بچین", icon: Brain, color: "text-purple-500", bg: "bg-purple-50/50 dark:bg-purple-900/20" },
-    { text: "عملکرد و زمان تمرکز اخیرم رو تحلیل کن", icon: BookOpen, color: "text-blue-500", bg: "bg-blue-50/50 dark:bg-blue-900/20" },
-    { text: "پیشنهاد ۳ عادت کلیدی برای افزایش انرژی و بهره‌وری", icon: Sparkles, color: "text-amber-500", bg: "bg-amber-50/50 dark:bg-amber-900/20" },
+const BENTO_PROMPTS = [
+    {
+        text: "برای امروز ۳ تسک زمان‌بندی‌شده (با ساعت شروع و مدت) بساز و به تایم‌لاین اضافه کن",
+        icon: "assignment_turned_in",
+        bg: "bg-secondary-container/40 text-on-secondary-container",
+    },
+    {
+        text: "برنامه این هفته‌ام رو با تعادل کار، ورزش و استراحت بچین",
+        icon: "psychology",
+        bg: "bg-primary-fixed text-on-primary-fixed-variant",
+    },
+    {
+        text: "عملکرد و زمان تمرکز اخیرم رو تحلیل کن و نقاط قوت و ضعف رو بگو",
+        icon: "insights",
+        bg: "bg-surface-container-highest text-primary",
+    },
+    {
+        text: "پیشنهاد ۳ عادت کلیدی برای افزایش انرژی، تمرکز و بهره‌وری",
+        icon: "bolt",
+        bg: "bg-tertiary-fixed text-tertiary",
+    },
 ];
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptSelect, userName }) => {
     return (
-        <div className="h-full flex flex-col items-center justify-center p-6 text-center select-none overflow-y-auto max-w-2xl mx-auto custom-scrollbar">
+        <div className="h-full flex flex-col items-center justify-center p-4 md:p-6 text-center select-none overflow-y-auto max-w-2xl mx-auto custom-scrollbar">
+            {/* Glowing AI Orb */}
+            <div className="relative w-24 h-24 mb-space-md flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary to-primary-container blur-xl opacity-60 animate-pulse"></div>
+                <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-tr from-primary via-primary-container to-secondary-container flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
+                    <span className="material-symbols-outlined text-on-primary text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        auto_awesome
+                    </span>
+                </div>
+            </div>
 
-            {/* Glowing Logo Circle */}
-            <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 20,
-                    delay: 0.1
-                }}
-                className="relative mb-6"
-            >
-                <div className="absolute inset-0 bg-indigo-500/20 rounded-[2rem] filter blur-xl animate-pulse-glow" />
-                <motion.div
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{
-                        duration: 4,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                    className="w-20 h-20 rounded-[2rem] bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-500/20 relative z-10 border border-white/20"
-                >
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{
-                            duration: 20,
-                            repeat: Infinity,
-                            ease: "linear"
-                        }}
-                    >
-                        <Sparkles size={34} className="text-white" />
-                    </motion.div>
-                </motion.div>
-            </motion.div>
+            {/* Greeting Headline */}
+            <h2 className="font-headline-lg-mobile text-headline-lg-mobile md:text-headline-lg font-bold text-on-surface tracking-tight mb-space-xs">
+                چطور می‌تونم کمکت کنم، <span className="text-primary font-bold">{userName || 'سارا'}</span>؟
+            </h2>
+            <p className="font-body-sm text-body-sm text-on-surface-variant max-w-sm mb-space-lg">
+                از موضوعاتی که می‌خوای انتخاب کن یا هر سوال و برنامه‌ای داری بپرس.
+            </p>
 
-            {/* Welcome Title */}
-            <motion.h1
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-xl md:text-2xl font-black text-gray-800 dark:text-gray-100 mb-2 tracking-tight flex items-center gap-2"
-            >
-                چطور می‌تونم کمکت کنم، <span className="gradient-text">{userName}</span>؟
-            </motion.h1>
-
-            <motion.p
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-gray-400 dark:text-gray-500 max-w-sm mb-8 text-xs md:text-sm font-medium leading-relaxed"
-            >
-                از موضوعاتی که می‌خوای انتخاب کن یا هر سوالی داری بپرس
-            </motion.p>
-
-            {/* Quick Tags List */}
-            <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="flex flex-wrap justify-center gap-2 mb-8"
-            >
-                {QUICK_TAGS.map((tag, idx) => (
+            {/* Topic Pills (Bento Quick Themes) */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-space-lg px-space-xs">
+                {TOPIC_PILLS.map((pill, idx) => (
                     <button
                         key={idx}
-                        onClick={() => onPromptSelect(`درباره ${tag.text} بگو`)}
-                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-extrabold border border-gray-200/50 dark:border-gray-800/80 transition-all btn-micro-interactive ${tag.bg} shadow-sm`}
+                        onClick={() => onPromptSelect(`لطفاً در زمینه «${pill.text}» من را راهنمایی کن و چند پیشنهاد اجرایی بده.`)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-lowest shadow-sm hover:shadow-md hover:bg-surface-container text-on-surface transition-all active:scale-95 border border-outline-variant/30 font-label-sm text-label-sm font-semibold"
                     >
-                        <span>{tag.icon}</span>
-                        {tag.text}
+                        <span className="text-base">{pill.icon}</span>
+                        <span>{pill.text}</span>
                     </button>
                 ))}
-            </motion.div>
+            </div>
 
-            {/* Quick Prompts Grid */}
-            <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"
-            >
-                {QUICK_PROMPTS.map((prompt, idx) => (
+            {/* Bento Action Prompt Cards */}
+            <div className="flex flex-col gap-space-sm w-full mb-space-xl">
+                {BENTO_PROMPTS.map((prompt, idx) => (
                     <button
                         key={idx}
                         onClick={() => onPromptSelect(prompt.text)}
-                        className="flex items-center gap-3.5 p-4 rounded-2xl bg-white/70 dark:bg-gray-900/70 border border-gray-200/40 dark:border-gray-800/40 backdrop-blur-md shadow-sm hover:shadow-md hover:border-indigo-300/40 dark:hover:border-indigo-800/40 transition-all btn-micro-interactive group text-right glass-premium"
+                        className="group w-full text-right p-space-md rounded-2xl bg-surface-container-lowest hover:bg-surface-container-low shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-space-sm active:scale-[0.99] border border-outline-variant/30"
                     >
-                        <div className={`p-3 rounded-xl ${prompt.bg} ${prompt.icon ? prompt.color : ''} group-hover:scale-110 transition-transform shadow-inner`}>
-                            <prompt.icon size={18} />
-                        </div>
-                        <span className="font-extrabold text-gray-700 dark:text-gray-200 text-xs md:text-[13px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <span className="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors flex-1 leading-relaxed font-medium">
                             {prompt.text}
                         </span>
+                        <div className={`w-11 h-11 shrink-0 rounded-xl ${prompt.bg} flex items-center justify-center transition-transform group-hover:scale-110 shadow-xs`}>
+                            <span className="material-symbols-outlined text-[22px]">{prompt.icon}</span>
+                        </div>
                     </button>
                 ))}
-            </motion.div>
+            </div>
         </div>
     );
 };
+
+export default WelcomeScreen;

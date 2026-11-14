@@ -113,10 +113,31 @@
   }
 
   body {
-    font-family: var(--font-vazir);
-    @apply bg-slate-50 text-gray-900 overflow-x-hidden;
+    font-family: 'Vazirmatn', 'Inter', sans-serif;
+    @apply bg-surface text-on-surface overflow-x-hidden;
     -webkit-font-smoothing: antialiased;
     transition: filter 2s ease;
+  }
+
+  .dark body {
+    background-color: #0b1c30;
+    color: #eaf1ff;
+  }
+
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'liga';
   }
 
   html.bio-morning body {
@@ -874,11 +895,68 @@ dialog::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .animate-sound-wave,
   .animate-float,
-  .animate-bounce {
-    animation: none;
+  .animate-bounce,
+  .animate-pulse {
+    animation: none !important;
+    transition: none !important;
   }
 
   html {
     scroll-behavior: auto;
   }
-}
+}
+
+/* ========================================================
+   WCAG 2.2 & Touch / Mouse Ergonomics Optimization
+   ======================================================== */
+
+/* Touch Target Minimum (Apple HIG: 44px, Android: 48px) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Prevent sticky hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .bento-card-interactive:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  .bento-card-interactive:active {
+    transform: scale(0.98) !important;
+    transition: transform 0.1s ease !important;
+  }
+}
+
+/* Mouse hover micro-interactions on desktop */
+@media (hover: hover) and (pointer: fine) {
+  .bento-card-interactive {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  }
+  .bento-card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -8px rgba(70, 72, 212, 0.12);
+  }
+}
+
+/* Smooth Horizontal Scroll without ugly scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe viewport max width cap for Ultra-wide & 4K screens */
+.max-app-container {
+  width: 100%;
+  max-width: 1920px;
+  margin-left: auto;
+  margin-right: auto;
+}
+

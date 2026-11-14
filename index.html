@@ -12,9 +12,17 @@
   <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
   <link rel="apple-touch-icon" href="/icons/icon.svg" />
 
-
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&display=swap"
-    rel="stylesheet">
+  <!-- Google Fonts: Vazirmatn, Inter, Plus Jakarta Sans, Material Symbols Outlined -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet"
+  />
   <style>
     body {
       font-family: 'Vazirmatn', sans-serif;
@@ -95,96 +103,20 @@
       transform: translateY(0);
     }
 
-    /* Mobile Optimization - Smaller Text & Icons */
+    /* Mobile Legibility Optimization */
     @media (max-width: 640px) {
       body {
-        font-size: 13px;
+        font-size: 14px;
+        line-height: 1.5;
       }
 
-      .text-xl {
-        font-size: 1rem !important;
-      }
-
-      .text-lg {
-        font-size: 0.9rem !important;
-      }
-
-      .text-base {
-        font-size: 0.8rem !important;
-      }
-
-      .text-sm {
-        font-size: 0.7rem !important;
-      }
-
-      .text-xs {
-        font-size: 0.6rem !important;
-      }
-
+      /* Keep micro-text legible (minimum 11-12px for Persian glyphs) */
       .text-\[10px\] {
-        font-size: 8px !important;
+        font-size: 11px !important;
       }
 
       .text-\[11px\] {
-        font-size: 9px !important;
-      }
-
-      /* Smaller padding on mobile */
-      .p-4 {
-        padding: 0.75rem !important;
-      }
-
-      .p-5 {
-        padding: 0.875rem !important;
-      }
-
-      .p-6 {
-        padding: 1rem !important;
-      }
-
-      .gap-4 {
-        gap: 0.75rem !important;
-      }
-
-      .gap-5 {
-        gap: 0.875rem !important;
-      }
-
-      .gap-3 {
-        gap: 0.5rem !important;
-      }
-
-      /* Smaller icons on mobile */
-      svg {
-        transform: scale(0.9);
-      }
-
-      /* Smaller rounded corners on mobile */
-      .rounded-3xl {
-        border-radius: 1rem !important;
-      }
-
-      .rounded-2xl {
-        border-radius: 0.875rem !important;
-      }
-
-      /* More compact header */
-      h1 {
-        font-size: 1.1rem !important;
-      }
-
-      h2 {
-        font-size: 0.95rem !important;
-      }
-
-      /* Smaller buttons */
-      button {
-        font-size: 0.75rem !important;
-      }
-
-      /* Compact cards */
-      .shadow-lg {
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04) !important;
+        font-size: 11.5px !important;
       }
     }
 

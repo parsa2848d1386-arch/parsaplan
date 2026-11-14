@@ -10,6 +10,59 @@ export default {
     theme: {
         extend: {
             colors: {
+                // Design Tokens from ParsaPlan Concept
+                primary: '#4648d4',
+                'on-primary': '#ffffff',
+                'primary-container': '#6063ee',
+                'on-primary-container': '#fffbff',
+                'primary-fixed': '#e1e0ff',
+                'primary-fixed-dim': '#c0c1ff',
+                'on-primary-fixed': '#07006c',
+                'on-primary-fixed-variant': '#2f2ebe',
+                'inverse-primary': '#c0c1ff',
+
+                secondary: '#006c49',
+                'on-secondary': '#ffffff',
+                'secondary-container': '#6cf8bb',
+                'on-secondary-container': '#00714d',
+                'secondary-fixed': '#6ffbbe',
+                'secondary-fixed-dim': '#4edea3',
+                'on-secondary-fixed': '#002113',
+                'on-secondary-fixed-variant': '#005236',
+
+                tertiary: '#825100',
+                'on-tertiary': '#ffffff',
+                'tertiary-container': '#a36700',
+                'on-tertiary-container': '#fffbff',
+                'tertiary-fixed': '#ffddb8',
+                'tertiary-fixed-dim': '#ffb95f',
+                'on-tertiary-fixed': '#2a1700',
+                'on-tertiary-fixed-variant': '#653e00',
+
+                surface: '#f8f9ff',
+                'on-surface': '#0b1c30',
+                'surface-variant': '#d3e4fe',
+                'on-surface-variant': '#464554',
+                'surface-dim': '#cbdbf5',
+                'surface-bright': '#f8f9ff',
+                'surface-container-lowest': '#ffffff',
+                'surface-container-low': '#eff4ff',
+                'surface-container': '#e5eeff',
+                'surface-container-high': '#dce9ff',
+                'surface-container-highest': '#d3e4fe',
+
+                outline: '#767586',
+                'outline-variant': '#c7c4d7',
+                'inverse-surface': '#213145',
+                'inverse-on-surface': '#eaf1ff',
+                'surface-tint': '#494bd6',
+
+                // Error colors
+                error: '#ba1a1a',
+                'on-error': '#ffffff',
+                'error-container': '#ffdad6',
+                'on-error-container': '#93000a',
+
                 // Premium Gray palette
                 gray: {
                     50: '#fafafa',
@@ -52,7 +105,31 @@ export default {
                 }
             },
             screens: {
+                '2xs': '320px',
                 'xs': '375px',
+                '3xl': '1920px',
+                '4xl': '2560px',
+            },
+            spacing: {
+                'space-xs': '0.25rem',
+                'space-sm': '0.5rem',
+                'space-md': '1rem',
+                'space-lg': '1.5rem',
+                'space-xl': '2rem',
+                'margin': '1rem',
+                'margin-desktop': '2rem',
+                'gutter': '1rem',
+                'gutter-desktop': '1.5rem',
+            },
+            fontFamily: {
+                'display-lg': ['Plus Jakarta Sans', 'Vazirmatn', 'sans-serif'],
+                'headline-lg': ['Plus Jakarta Sans', 'Vazirmatn', 'sans-serif'],
+                'headline-md': ['Plus Jakarta Sans', 'Vazirmatn', 'sans-serif'],
+                'body-lg': ['Inter', 'Vazirmatn', 'sans-serif'],
+                'body-md': ['Inter', 'Vazirmatn', 'sans-serif'],
+                'body-sm': ['Inter', 'Vazirmatn', 'sans-serif'],
+                'label-md': ['Inter', 'Vazirmatn', 'sans-serif'],
+                'label-sm': ['Inter', 'Vazirmatn', 'sans-serif'],
             },
             animation: {
                 'fade-in': 'fadeIn 0.3s ease-out',

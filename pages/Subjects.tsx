@@ -412,7 +412,7 @@ const Subjects = () => {
     };
 
     return (
-        <div className="p-5 pb-32 animate-in fade-in duration-300">
+        <div className="p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 max-app-container pb-32 animate-in fade-in duration-300">
             <TaskModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -436,65 +436,65 @@ const Subjects = () => {
                         <LayoutGrid className="text-white" size={22} />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">
+                        <h1 className="text-lg xs:text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">
                             {isAcademicStream ? 'مدیریت دروس و برنامه‌ها' : 'حوزه‌های زندگی، کار و پروژه‌ها'}
                         </h1>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                        <p className="text-[11px] sm:text-xs text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
                             {isAcademicStream ? 'وضعیت مطالعه و تست‌ها به تفکیک درس' : 'سازمان‌دهی همه اهداف، کارها و پروژه‌ها در ۶ نمای یکپارچه'}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
                     {/* تب‌های نمایش */}
-                    <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1 flex-wrap">
+                    <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-xl p-1 gap-1 max-w-full overflow-x-auto no-scrollbar">
                         <button
                             onClick={() => setActiveView('subjects')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'subjects' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            className={`touch-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 shrink-0 ${activeView === 'subjects' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
-                            <LayoutGrid size={13} />
+                            <LayoutGrid size={14} />
                             {isAcademicStream ? 'دروس' : 'حوزه‌ها'}
                         </button>
                         <button
                             onClick={() => setActiveView('daily')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'daily' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            className={`touch-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 shrink-0 ${activeView === 'daily' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
-                            <List size={13} />
+                            <List size={14} />
                             روزانه
                         </button>
                         <button
                             onClick={() => setActiveView('table')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'table' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            className={`touch-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 shrink-0 ${activeView === 'table' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
-                            <TableIcon size={13} />
+                            <TableIcon size={14} />
                             جدول
                         </button>
                         <button
                             onClick={() => setActiveView('kanban')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'kanban' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            className={`touch-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 shrink-0 ${activeView === 'kanban' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
-                            <KanbanIcon size={13} />
+                            <KanbanIcon size={14} />
                             کانبان
                         </button>
                         <button
                             onClick={() => setActiveView('eisenhower')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'eisenhower' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            className={`touch-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 shrink-0 ${activeView === 'eisenhower' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
-                            <MatrixIcon size={13} />
+                            <MatrixIcon size={14} />
                             آیزنهاور
                         </button>
                         <button
                             onClick={() => setActiveView('monthly')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${activeView === 'monthly' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                            className={`touch-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 shrink-0 ${activeView === 'monthly' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
                         >
-                            <Calendar size={13} />
+                            <Calendar size={14} />
                             تقویم
                         </button>
                     </div>
                     {isAcademicStream && activeView === 'subjects' && (
                         <button
                             onClick={() => setOnlySpecialized(!onlySpecialized)}
-                            className={`text-[11px] px-3.5 py-2.5 rounded-2xl font-black transition-all border shrink-0 ${
+                            className={`touch-target text-xs px-3.5 py-2 rounded-2xl font-black transition-all border shrink-0 active:scale-95 ${
                                 onlySpecialized
                                     ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100/30 dark:border-indigo-900/30'
                                     : 'bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200/30 dark:border-gray-700/30'
@@ -505,7 +505,7 @@ const Subjects = () => {
                     )}
                     <button
                         onClick={openAddSubject}
-                        className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-2xl font-black text-[11px] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 hover:translate-y-[-2px] transition-all active:scale-95 shrink-0"
+                        className="touch-target flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-2xl font-black text-xs shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 hover:translate-y-[-2px] transition-all active:scale-95 shrink-0"
                     >
                         <Plus size={18} />
                         {isAcademicStream ? 'درس جدید' : 'دسته جدید'}
