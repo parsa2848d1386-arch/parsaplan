@@ -1,58 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, RefreshCw, Info, DownloadCloud } from 'lucide-react';
-// @ts-ignore
-import { useRegisterSW } from 'virtual:pwa-register/react';
+import { Bell, RefreshCw, DownloadCloud } from 'lucide-react';
 import { useUI } from '../context/UIContext';
+import { forceUpdatePwa } from '../services/pwaManager';
 
 export const NotificationBell: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [hasUpdate, setHasUpdate] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { showToast } = useUI();
 
-    const {
-        needRefresh: [needRefresh],
-        updateServiceWorker,
-    } = useRegisterSW({
-        onRegistered(r: any) {
-            if (!r) return;
-            r.update?.().catch(() => {});
-            const onVisible = () => {
-                if (document.visibilityState === 'visible') {
-                    r.update?.().catch(() => {});
-                }
-            };
-            document.addEventListener('visibilitychange', onVisible);
-        },
-        onRegisterError(error: any) {
-            console.log('SW registration error', error);
-        },
-    });
-
-    // Automatically reload once when an updated Service Worker takes control of an already-cached tab
+    // استعلام وضعیت Service Worker جهت نمایش اعلان آماده بودن نسخه جدید
     useEffect(() => {
-        if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !navigator.serviceWorker) return;
-
-        let hadController = Boolean(navigator.serviceWorker.controller);
-        let refreshing = false;
-
-        const handleControllerChange = () => {
-            if (!hadController) {
-                hadController = true;
-                return;
+        if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg && reg.waiting) {
+                setHasUpdate(true);
             }
-            if (refreshing) return;
-            refreshing = true;
-            window.location.reload();
-        };
-
-        navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
-        return () => {
-            navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
-        };
+        }).catch(() => {});
     }, []);
 
     const notifications = [];
-    if (needRefresh) {
+    if (hasUpdate) {
         notifications.push({
             id: 'pwa-update',
             type: 'system',
@@ -65,7 +33,7 @@ export const NotificationBell: React.FC = () => {
 
     const unreadCount = notifications.length;
 
-    // Handle Click Outside
+    // بستن منو با کلیک به بیرون
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -83,20 +51,7 @@ export const NotificationBell: React.FC = () => {
     const handleUpdate = async () => {
         setIsOpen(false);
         showToast('در حال پاکسازی کش و نصب آپدیت...', 'info');
-
-        // Ensure old caches are cleared forcefully to fix "ghost" updates
-        if ('caches' in window) {
-            try {
-                const names = await caches.keys();
-                await Promise.all(names.map(name => caches.delete(name)));
-                console.log('Caches cleared for update.');
-            } catch (e) {
-                console.error('Failed to clear caches', e);
-            }
-        }
-
-        await updateServiceWorker(true);
-        window.location.reload();
+        await forceUpdatePwa();
     };
 
     return (
@@ -104,6 +59,7 @@ export const NotificationBell: React.FC = () => {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-10 h-10 md:w-8 md:h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 md:text-gray-400 transition flex items-center justify-center relative"
+                aria-label="اعلان‌ها"
             >
                 {unreadCount > 0 && (
                     <span className="absolute top-2 right-2 md:top-1.5 md:right-1.5 flex h-2.5 w-2.5">
@@ -132,10 +88,17 @@ export const NotificationBell: React.FC = () => {
                                     <Bell size={20} className="text-gray-300 dark:text-gray-600" />
                                 </div>
                                 <p className="text-xs font-bold text-gray-500 dark:text-gray-400">هیچ اعلان جدیدی ندارید!</p>
+                                <button
+                                    onClick={handleUpdate}
+                                    className="mt-3 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 font-medium py-1 px-2.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition"
+                                >
+                                    <RefreshCw size={12} />
+                                    بروزرسانی و تازه‌سازی کش برنامه
+                                </button>
                             </div>
                         ) : (
                             <div className="p-2 space-y-1">
-                                {notifications.map(n => (
+                                {notifications.map((n) => (
                                     <div key={n.id} className="p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-2xl transition">
                                         <div className="flex gap-3">
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${n.color}`}>

@@ -372,7 +372,16 @@ export interface LogEntry {
 }
 
 // New Feature: Mood Tracking
-export type MoodType = 'happy' | 'neutral' | 'sad' | 'tired' | 'energetic';
+export type MoodType =
+    | 'excellent'
+    | 'high-energy'
+    | 'normal'
+    | 'tired'
+    | 'exhausted'
+    | 'happy'
+    | 'neutral'
+    | 'sad'
+    | 'energetic';
 export interface MoodEntry {
     date: string;
     mood: MoodType;

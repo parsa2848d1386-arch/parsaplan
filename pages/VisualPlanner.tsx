@@ -150,27 +150,27 @@ export const VisualPlanner: React.FC = () => {
                 </div>
 
                 {/* Segment Switcher & View Pills */}
-                <div className="flex items-center gap-2 flex-wrap">
-                    <div className="flex items-center bg-surface-container-high dark:bg-slate-800 p-1 rounded-xl text-xs overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
+                    <div className="flex items-center bg-surface-container/70 dark:bg-slate-800/90 p-1 rounded-2xl border border-outline-variant/20 shadow-inner text-xs overflow-x-auto no-scrollbar">
                         <button
                             type="button"
                             onClick={() => setViewMode('timeline')}
-                            className={`touch-target px-3 py-1.5 rounded-lg font-label-md font-semibold flex items-center gap-1.5 transition-all min-h-[40px] ${
+                            className={`touch-target px-4 py-2 rounded-xl font-label-md font-bold flex items-center gap-2 transition-all duration-200 cursor-pointer min-h-[42px] ${
                                 viewMode === 'timeline'
-                                    ? 'bg-surface-container-lowest dark:bg-slate-700 text-primary shadow-sm'
-                                    : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface'
+                                    ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                    : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container-high/40'
                             }`}
                         >
                             <CalendarClock size={16} />
-                            <span>تایم‌لاین تعاملی</span>
+                            <span>تایم‌لاین ۲۴ ساعته</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setViewMode('grid')}
-                            className={`touch-target px-3 py-1.5 rounded-lg font-label-md font-semibold flex items-center gap-1.5 transition-all min-h-[40px] ${
+                            className={`touch-target px-4 py-2 rounded-xl font-label-md font-bold flex items-center gap-2 transition-all duration-200 cursor-pointer min-h-[42px] ${
                                 viewMode === 'grid'
-                                    ? 'bg-surface-container-lowest dark:bg-slate-700 text-primary shadow-sm'
-                                    : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface'
+                                    ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                    : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container-high/40'
                             }`}
                         >
                             <Grid3X3 size={16} />
@@ -181,38 +181,39 @@ export const VisualPlanner: React.FC = () => {
                     <button
                         type="button"
                         onClick={() => handleOpenNewAtTime('09:00')}
-                        className="touch-target h-10 px-4 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center gap-1.5 hover:bg-primary-container transition-all shadow-sm active:scale-95 cursor-pointer min-h-[44px]"
+                        className="touch-target h-11 px-4.5 rounded-2xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold text-xs flex items-center gap-2 hover:brightness-110 transition-all shadow-md active:scale-95 cursor-pointer min-h-[44px]"
                     >
                         <Plus size={18} />
-                        <span>ثبت بلوک جدید</span>
+                        <span>ثبت بلوک زمانی</span>
                     </button>
                 </div>
             </section>
 
             {/* ===== Category Filter Chips Bar ===== */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-                <span className="font-label-sm text-on-surface-variant dark:text-gray-400 pl-1 whitespace-nowrap">
-                    فیلتر فعالیت‌ها:
+                <span className="font-label-sm text-xs font-semibold text-on-surface-variant dark:text-gray-400 pl-1 whitespace-nowrap flex items-center gap-1.5">
+                    <ListFilter size={14} className="text-primary shrink-0" />
+                    دسته‌بندی:
                 </span>
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'deep' ? null : 'deep')}
-                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
+                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
                         selectedCategory === 'deep'
-                            ? 'bg-primary text-on-primary shadow-xs'
-                            : 'bg-primary/10 text-primary hover:bg-primary/20'
+                            ? 'bg-primary text-on-primary border-primary shadow-xs'
+                            : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
                     }`}
                 >
-                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="w-2 h-2 rounded-full bg-current" />
                     <span>مطالعه عمیق تخصصی (۴.۵ ساعت)</span>
                 </button>
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'test' ? null : 'test')}
-                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
+                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
                         selectedCategory === 'test'
-                            ? 'bg-secondary text-on-secondary shadow-xs'
-                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border border-outline-variant/20'
+                            ? 'bg-secondary text-on-secondary border-secondary shadow-xs'
+                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border-outline-variant/30'
                     }`}
                 >
                     <span className="w-2 h-2 rounded-full bg-secondary" />
@@ -221,10 +222,10 @@ export const VisualPlanner: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'fitness' ? null : 'fitness')}
-                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
+                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
                         selectedCategory === 'fitness'
-                            ? 'bg-tertiary text-on-tertiary shadow-xs'
-                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border border-outline-variant/20'
+                            ? 'bg-tertiary text-on-tertiary border-tertiary shadow-xs'
+                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border-outline-variant/30'
                     }`}
                 >
                     <span className="w-2 h-2 rounded-full bg-tertiary" />
@@ -233,10 +234,10 @@ export const VisualPlanner: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'rest' ? null : 'rest')}
-                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
+                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
                         selectedCategory === 'rest'
-                            ? 'bg-outline text-white shadow-xs'
-                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border border-outline-variant/20'
+                            ? 'bg-outline text-white border-outline shadow-xs'
+                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border-outline-variant/30'
                     }`}
                 >
                     <span className="w-2 h-2 rounded-full bg-outline" />

@@ -134,13 +134,13 @@ export const Analysis = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-xl overflow-x-auto no-scrollbar max-w-full">
+                <div className="flex items-center gap-1.5 p-1 bg-surface-container-low dark:bg-slate-800/90 rounded-2xl border border-outline-variant/20 shadow-inner overflow-x-auto no-scrollbar max-w-full">
                     <button
                         onClick={() => setActiveTab('cognitive')}
-                        className={`touch-target flex items-center gap-1.5 px-3 xs:px-4 py-2 rounded-lg text-label-sm font-label-sm transition-all whitespace-nowrap active:scale-95 ${
+                        className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 cursor-pointer min-h-[42px] ${
                             activeTab === 'cognitive'
-                                ? 'bg-primary text-on-primary font-bold shadow-xs'
-                                : 'text-on-surface-variant hover:text-on-surface'
+                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
                         }`}
                     >
                         <span className="material-symbols-outlined text-[18px]">psychology</span>
@@ -148,10 +148,10 @@ export const Analysis = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('exam')}
-                        className={`touch-target flex items-center gap-1.5 px-3 xs:px-4 py-2 rounded-lg text-label-sm font-label-sm transition-all whitespace-nowrap active:scale-95 ${
+                        className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 cursor-pointer min-h-[42px] ${
                             activeTab === 'exam'
-                                ? 'bg-primary text-on-primary font-bold shadow-xs'
-                                : 'text-on-surface-variant hover:text-on-surface'
+                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
                         }`}
                     >
                         <span className="material-symbols-outlined text-[18px]">query_stats</span>
@@ -159,10 +159,10 @@ export const Analysis = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('macro')}
-                        className={`touch-target flex items-center gap-1.5 px-3 xs:px-4 py-2 rounded-lg text-label-sm font-label-sm transition-all whitespace-nowrap active:scale-95 ${
+                        className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 cursor-pointer min-h-[42px] ${
                             activeTab === 'macro'
-                                ? 'bg-primary text-on-primary font-bold shadow-xs'
-                                : 'text-on-surface-variant hover:text-on-surface'
+                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
                         }`}
                     >
                         <span className="material-symbols-outlined text-[18px]">timeline</span>

@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
                 expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 }, // 30 days
               }
             },
-            // Network-first for API calls (Gemini AI, Firebase)
+            // Network-first for Gemini AI (runtime caching)
             {
               urlPattern: /^https:\/\/generativelanguage\.googleapis\.com\/.*/i,
               handler: 'NetworkFirst',
@@ -61,16 +61,6 @@ export default defineConfig(({ mode }) => {
                 cacheName: 'gemini-api-cache',
                 expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 }, // 1 day
                 networkTimeoutSeconds: 10, // fallback to cache after 10s
-                cacheableResponse: { statuses: [0, 200] }
-              }
-            },
-            {
-              urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'firestore-cache',
-                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
-                networkTimeoutSeconds: 10,
                 cacheableResponse: { statuses: [0, 200] }
               }
             }

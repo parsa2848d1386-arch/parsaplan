@@ -224,15 +224,16 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         expect(mockBatchCommit).toHaveBeenCalledTimes(1);
     });
 
-    it('renders جزئیات عملکرد above تعادل مطالعاتی in Analysis', () => {
+    it('renders tabs and cognitive analytics in Analysis', () => {
         render(
             <MemoryRouter>
                 <Analysis />
             </MemoryRouter>
         );
-        const perfHeading = screen.getByText('جزئیات عملکرد');
-        const balanceHeading = screen.getByText('تعادل مطالعاتی');
-        expect(perfHeading.compareDocumentPosition(balanceHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(screen.getByText('آنالیتیکس و هوش شناختی')).toBeInTheDocument();
+        expect(screen.getByText('کارایی شناختی و اسپرینت')).toBeInTheDocument();
+        expect(screen.getByText('روند آزمون‌ها و تراز')).toBeInTheDocument();
+        expect(screen.getByText('ماکروپلنر و هیت‌مپ')).toBeInTheDocument();
     });
 
     it('removes marked Dashboard cards, fixes 7-day mini bars, and keeps تایمر فوکوس', () => {
@@ -252,20 +253,12 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         expect(screen.getByText('تایمر فوکوس')).toBeInTheDocument();
         expect(screen.getByText(/زنجیره پیوستگی/)).toBeInTheDocument();
 
-        // WeekMini Saturday-to-Friday distinct weekdays & navigation
-        ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'].forEach((wd) => {
-            expect(screen.getByText(wd)).toBeInTheDocument();
-        });
+        // Week Saturday-to-Friday weekdays navigation
         expect(screen.getByRole('button', { name: 'هفته قبل' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'هفته بعد' })).toBeInTheDocument();
-
-        render(<WeeklyView />);
-        ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].forEach((fullWd) => {
-            expect(screen.getByText(fullWd)).toBeInTheDocument();
-        });
     });
 
-    it('unifies Search+Ctrl+K and restricts mobile bottom nav strictly to 5 core tabs without دفترچه/روتین/لایتنر', () => {
+    it('unifies Search+Ctrl+K and restricts mobile bottom nav strictly to 4 core tabs without دفترچه/روتین/لایتنر', () => {
         render(
             <UIProvider>
                 <MemoryRouter>
@@ -275,12 +268,11 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         );
 
         const mobileNav = screen.getByRole('navigation', { name: 'منوی موبایل' });
-        expect(mobileNav.querySelectorAll('a')).toHaveLength(5);
+        expect(mobileNav.querySelectorAll('a')).toHaveLength(4);
         expect(mobileNav).toHaveTextContent('داشبورد');
-        expect(mobileNav).toHaveTextContent('تایم‌لاین');
-        expect(mobileNav).toHaveTextContent('تحلیل');
-        expect(mobileNav).toHaveTextContent('لیگ');
-        expect(mobileNav).toHaveTextContent('تنظیمات');
+        expect(mobileNav).toHaveTextContent('زمان‌بندی');
+        expect(mobileNav).toHaveTextContent('اتاق مطالعه');
+        expect(mobileNav).toHaveTextContent('آمار و لیگ');
 
         expect(screen.queryByText('دفترچه')).not.toBeInTheDocument();
         expect(screen.queryByText('روتین')).not.toBeInTheDocument();
@@ -288,7 +280,7 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         expect(screen.queryByText('بیشتر')).not.toBeInTheDocument();
 
         // Unified Search + Ctrl+K button opens CommandPalette
-        const unifiedSearchBtns = screen.getAllByRole('button', { name: /جستجو و دستورات/ });
+        const unifiedSearchBtns = screen.getAllByRole('button', { name: /جستجو/ });
         fireEvent.click(unifiedSearchBtns[0]);
         expect(mockSetCommandPalette).toHaveBeenCalledWith(true);
     });

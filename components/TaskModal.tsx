@@ -224,7 +224,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
             />
 
             {/* Modal Container */}
-            <div className="relative w-full max-w-xl m-4 rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 max-h-[85vh] animate-in zoom-in-95 fade-in duration-300 pointer-events-auto flex flex-col overflow-hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl">
+            <div role="dialog" aria-modal="true" aria-label="مدیریت تسک" className="relative w-full max-w-xl m-4 rounded-2xl md:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/20 dark:border-gray-700/50 max-h-[85vh] animate-in zoom-in-95 fade-in duration-300 pointer-events-auto flex flex-col overflow-hidden bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl">
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl sticky top-0 z-10">

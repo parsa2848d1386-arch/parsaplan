@@ -1,5 +1,6 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { setupPwaAutoUpdater } from './services/pwaManager';
 import { StoreProvider } from './context/StoreContext';
 import { FocusProvider } from './context/FocusContext';
 import Layout from './components/Layout';
@@ -28,6 +29,13 @@ import { ToastContainer, ConfirmModal, LevelUpShowcase, ConfettiContainer } from
 import FocusTimer from './components/FocusTimer';
 
 function App() {
+  useEffect(() => {
+    const cleanup = setupPwaAutoUpdater();
+    return () => {
+      cleanup();
+    };
+  }, []);
+
   return (
     <StoreProvider>
       <FocusProvider>

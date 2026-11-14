@@ -603,26 +603,26 @@ export const Leaderboard = () => {
             </div>
 
             {/* Section Switcher Tabs (YPT Study Rooms vs Competitive League) */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-lowest p-2 rounded-2xl shadow-sm border border-outline-variant/30">
-                <div className="flex items-center gap-2 p-1 bg-surface-container-low rounded-xl">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-lowest dark:bg-slate-900 p-2.5 rounded-3xl shadow-sm border border-outline-variant/30">
+                <div className="flex items-center gap-1.5 p-1 bg-surface-container-low dark:bg-slate-800/90 rounded-2xl border border-outline-variant/15 shadow-inner">
                     <button
                         onClick={() => setActiveSection('rooms')}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-label-md font-label-md transition-all ${
+                        className={`touch-target flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer min-h-[42px] ${
                             activeSection === 'rooms'
-                                ? 'bg-primary text-on-primary font-bold shadow-sm'
-                                : 'text-on-surface-variant hover:text-on-surface'
+                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
                         }`}
                     >
                         <span className="material-symbols-outlined text-[20px]">groups</span>
                         <span>اتاق مطالعه زنده YPT</span>
-                        <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                        <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                     </button>
                     <button
                         onClick={() => setActiveSection('ranking')}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-label-md font-label-md transition-all ${
+                        className={`touch-target flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer min-h-[42px] ${
                             activeSection === 'ranking'
-                                ? 'bg-primary text-on-primary font-bold shadow-sm'
-                                : 'text-on-surface-variant hover:text-on-surface'
+                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
+                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
                         }`}
                     >
                         <span className="material-symbols-outlined text-[20px]">leaderboard</span>
@@ -630,11 +630,11 @@ export const Leaderboard = () => {
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                     {activeSection === 'rooms' ? (
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-secondary font-label-sm text-label-sm font-bold shadow-xs hover:bg-secondary/90 transition-all active:scale-95"
+                            className="touch-target flex items-center gap-1.5 px-4.5 py-2.5 rounded-2xl bg-gradient-to-r from-secondary to-secondary/90 text-on-secondary font-bold text-xs shadow-sm hover:brightness-110 transition-all active:scale-95 cursor-pointer min-h-[42px]"
                         >
                             <span className="material-symbols-outlined text-[18px]">add</span>
                             <span>ایجاد اتاق جدید</span>
@@ -643,10 +643,10 @@ export const Leaderboard = () => {
                         <button
                             onClick={handleTogglePublic}
                             disabled={isTogglingPublic}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-label-sm font-label-sm font-bold transition-all ${
+                            className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer min-h-[42px] ${
                                 isMyProfilePublic
-                                    ? 'bg-secondary-container text-on-secondary-container border border-secondary/30'
-                                    : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
+                                    ? 'bg-secondary-container text-on-secondary-container border border-secondary/30 shadow-xs'
+                                    : 'bg-surface-container-high dark:bg-slate-800 text-on-surface dark:text-gray-200 hover:bg-surface-container-highest border border-outline-variant/30'
                             }`}
                         >
                             <span className="material-symbols-outlined text-[18px]">
