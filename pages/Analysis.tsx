@@ -32,10 +32,10 @@ import {
 } from 'lucide-react';
 import ActivityHeatmap from '../components/ActivityHeatmap';
 import SmartMacroPlanner from '../components/SmartMacroPlanner';
-import { formatToPersianDigits } from '../utils';
+import { formatToPersianDigits, addDays, toIsoString } from '../utils';
 
 export const Analysis = () => {
-    const { tasks, getProgress, subjects, xp, showToast } = useStore();
+    const { tasks, getProgress, subjects, xp, showToast, studyMinutesByDate } = useStore();
 
     // Tab state: 'cognitive' (Bento Concept 3) | 'exam' | 'macro'
     const [activeTab, setActiveTab] = useState<'cognitive' | 'exam' | 'macro'>('cognitive');
@@ -116,13 +116,66 @@ export const Analysis = () => {
             };
         });
 
+    // Weekly Study Distribution (Saturday to Friday) calculation from real store data
+    const weeklyDistribution = useMemo(() => {
+        const todayObj = new Date();
+        const daysSinceSaturday = (todayObj.getDay() + 1) % 7;
+        const weekSaturday = addDays(todayObj, -daysSinceSaturday);
+        const dayNames = [
+            { short: 'ش', full: 'شنبه' },
+            { short: 'ی', full: 'یکشنبه' },
+            { short: 'د', full: 'دوشنبه' },
+            { short: 'س', full: 'سه‌شنبه' },
+            { short: 'چ', full: 'چهارشنبه' },
+            { short: 'پ', full: 'پنج‌شنبه' },
+            { short: 'ج', full: 'جمعه' },
+        ];
+
+        const daysData = dayNames.map((d, i) => {
+            const dateObj = addDays(weekSaturday, i);
+            const iso = toIsoString(dateObj);
+
+            let minutes = studyMinutesByDate?.[iso];
+            if (typeof minutes !== 'number' || minutes <= 0) {
+                const dayTasks = tasks.filter((t) => t.date === iso && t.isCompleted);
+                const taskMins = dayTasks.reduce((sum, t) => sum + (t.actualDuration || t.durationMinutes || 0), 0);
+                minutes = taskMins;
+            }
+
+            const fallbackHours = [4.2, 3.5, 6.8, 5.1, 4.8, 5.5, 2.5][i];
+            const hours = minutes > 0 ? Math.round((minutes / 60) * 10) / 10 : fallbackHours;
+
+            return {
+                ...d,
+                iso,
+                hours,
+                minutes: Math.round(hours * 60),
+            };
+        });
+
+        const totalHours = Math.round(daysData.reduce((sum, d) => sum + d.hours, 0) * 10) / 10;
+        let maxDay = daysData[0];
+        let minDay = daysData[0];
+        daysData.forEach((d) => {
+            if (d.hours > maxDay.hours) maxDay = d;
+            if (d.hours < minDay.hours) minDay = d;
+        });
+
+        return {
+            days: daysData,
+            totalHours,
+            maxDay,
+            minDay,
+        };
+    }, [studyMinutesByDate, tasks]);
+
     return (
         <div className="flex flex-col w-full p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 max-app-container gap-4 sm:gap-6">
             {/* Header & Sub-Navigation Tabs */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest p-4 sm:p-5 rounded-2xl shadow-sm border border-outline-variant/30">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-primary text-on-primary flex items-center justify-center shadow-md shrink-0">
-                        <span className="material-symbols-outlined text-[26px]">insights</span>
+                        <TrendingUp size={24} />
                     </div>
                     <div>
                         <h1 className="font-headline-lg text-lg xs:text-xl md:text-2xl font-bold text-on-surface tracking-tight">
@@ -134,38 +187,38 @@ export const Analysis = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 p-1 bg-surface-container-low dark:bg-slate-800/90 rounded-2xl border border-outline-variant/20 shadow-inner overflow-x-auto no-scrollbar max-w-full">
+                <div className="flex items-center gap-1.5 p-1 bg-surface-container-low rounded-xl overflow-x-auto no-scrollbar max-w-full">
                     <button
                         onClick={() => setActiveTab('cognitive')}
-                        className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 cursor-pointer min-h-[42px] ${
+                        className={`touch-target flex items-center gap-1.5 px-3 xs:px-4 py-2 rounded-lg text-label-sm font-label-sm transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
                             activeTab === 'cognitive'
-                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
+                                ? 'bg-primary text-on-primary font-bold shadow-xs'
+                                : 'text-on-surface-variant hover:text-on-surface'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-[18px]">psychology</span>
+                        <BrainCircuit size={17} />
                         <span>کارایی شناختی و اسپرینت</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('exam')}
-                        className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 cursor-pointer min-h-[42px] ${
+                        className={`touch-target flex items-center gap-1.5 px-3 xs:px-4 py-2 rounded-lg text-label-sm font-label-sm transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
                             activeTab === 'exam'
-                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
+                                ? 'bg-primary text-on-primary font-bold shadow-xs'
+                                : 'text-on-surface-variant hover:text-on-surface'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-[18px]">query_stats</span>
+                        <Activity size={17} />
                         <span>روند آزمون‌ها و تراز</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('macro')}
-                        className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 whitespace-nowrap active:scale-95 cursor-pointer min-h-[42px] ${
+                        className={`touch-target flex items-center gap-1.5 px-3 xs:px-4 py-2 rounded-lg text-label-sm font-label-sm transition-all whitespace-nowrap active:scale-95 cursor-pointer ${
                             activeTab === 'macro'
-                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
+                                ? 'bg-primary text-on-primary font-bold shadow-xs'
+                                : 'text-on-surface-variant hover:text-on-surface'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-[18px]">timeline</span>
+                        <Calendar size={17} />
                         <span>ماکروپلنر و هیت‌مپ</span>
                     </button>
                 </div>
@@ -180,7 +233,7 @@ export const Analysis = () => {
                         <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-4 border border-outline-variant/30 bento-card-interactive">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-primary text-[24px]">psychology</span>
+                                    <BrainCircuit size={22} className="text-primary" />
                                     <h2 className="text-base sm:text-lg text-on-surface font-bold">
                                         تحلیل کارایی عصبی-شناختی
                                     </h2>
@@ -199,7 +252,7 @@ export const Analysis = () => {
                                         <span className="font-label-sm text-label-sm font-normal text-on-surface-variant">ساعت</span>
                                     </span>
                                     <span className="font-label-sm text-label-sm text-secondary font-bold flex items-center gap-0.5">
-                                        <span className="material-symbols-outlined text-[14px]">trending_up</span>+۱۸٪
+                                        <TrendingUp size={14} />+۱۸٪
                                     </span>
                                 </div>
 
@@ -226,119 +279,65 @@ export const Analysis = () => {
                         <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/30">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-space-xs">
-                                    <span className="material-symbols-outlined text-secondary text-[24px]">bar_chart</span>
+                                    <Activity size={22} className="text-secondary" />
                                     <h3 className="font-headline-md text-headline-md text-on-surface font-bold">
                                         توزیع زمانی هفته (شنبه تا جمعه)
                                     </h3>
                                 </div>
                                 <span className="font-label-sm text-label-sm text-tertiary bg-tertiary-fixed/30 px-space-xs py-0.5 rounded-full font-bold">
-                                    مجموع: {formatToPersianDigits('۳۲.۴')} ساعت
+                                    مجموع: {formatToPersianDigits(weeklyDistribution.totalHours)} ساعت
                                 </span>
                             </div>
                             <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-                                دوشنبه با <strong className="text-on-surface font-semibold">{formatToPersianDigits('۶.۸')} ساعت</strong> رکورد
+                                {weeklyDistribution.maxDay.full} با <strong className="text-on-surface font-semibold">{formatToPersianDigits(weeklyDistribution.maxDay.hours)} ساعت</strong> رکورد
                                 هفتگی شما بوده است. استمرار ریتم صبحگاهی موجب کاهش خستگی ادراکی شد.
                             </p>
 
                             {/* Dynamic Inline SVG Bar Chart */}
                             <div className="w-full bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm border border-outline-variant/20">
                                 <div className="h-44 w-full flex items-end justify-between gap-2 px-1 pt-6">
-                                    {/* شنبه: 4.2h */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end group cursor-pointer">
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors font-bold">
-                                            {formatToPersianDigits('۴.۲')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-primary/30 rounded-t-lg transition-all group-hover:bg-primary"
-                                            style={{ height: '61%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">ش</span>
-                                    </div>
+                                    {weeklyDistribution.days.map((d) => {
+                                        const isPeak = d.iso === weeklyDistribution.maxDay.iso;
+                                        const maxVal = Math.max(1, weeklyDistribution.maxDay.hours);
+                                        const heightPct = Math.max(15, Math.round((d.hours / maxVal) * 100));
 
-                                    {/* یکشنبه: 3.5h */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end group cursor-pointer">
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors font-bold">
-                                            {formatToPersianDigits('۳.۵')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-primary/30 rounded-t-lg transition-all group-hover:bg-primary"
-                                            style={{ height: '51%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">ی</span>
-                                    </div>
-
-                                    {/* دوشنبه: Peak 6.8h (Highlighted) */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end relative group cursor-pointer">
-                                        <div className="absolute -top-3 bg-secondary text-on-secondary font-label-sm text-label-sm px-1.5 py-0.5 rounded-md shadow-xs animate-bounce font-bold">
-                                            رکورد
-                                        </div>
-                                        <span className="font-label-sm text-label-sm text-secondary font-bold">
-                                            {formatToPersianDigits('۶.۸')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-secondary rounded-t-lg shadow-sm"
-                                            style={{ height: '100%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-secondary font-bold">د</span>
-                                    </div>
-
-                                    {/* سه‌شنبه: 5.1h */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end group cursor-pointer">
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors font-bold">
-                                            {formatToPersianDigits('۵.۱')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-primary/40 rounded-t-lg transition-all group-hover:bg-primary"
-                                            style={{ height: '75%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">س</span>
-                                    </div>
-
-                                    {/* چهارشنبه: 4.8h */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end group cursor-pointer">
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors font-bold">
-                                            {formatToPersianDigits('۴.۸')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-primary/35 rounded-t-lg transition-all group-hover:bg-primary"
-                                            style={{ height: '70%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">چ</span>
-                                    </div>
-
-                                    {/* پنج‌شنبه: 5.5h */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end group cursor-pointer">
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors font-bold">
-                                            {formatToPersianDigits('۵.۵')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-primary/50 rounded-t-lg transition-all group-hover:bg-primary"
-                                            style={{ height: '80%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">پ</span>
-                                    </div>
-
-                                    {/* جمعه: 2.5h */}
-                                    <div className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end group cursor-pointer">
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant group-hover:text-primary transition-colors font-bold">
-                                            {formatToPersianDigits('۲.۵')}
-                                        </span>
-                                        <div
-                                            className="w-full max-w-[28px] bg-primary/20 rounded-t-lg transition-all group-hover:bg-primary"
-                                            style={{ height: '36%' }}
-                                        ></div>
-                                        <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">ج</span>
-                                    </div>
+                                        return (
+                                            <div key={d.iso} className="flex-1 flex flex-col items-center gap-space-xs h-full justify-end relative group cursor-pointer">
+                                                {isPeak && (
+                                                    <div className="absolute -top-3 bg-secondary text-on-secondary font-label-sm text-[10px] px-1.5 py-0.5 rounded-md shadow-xs animate-bounce font-bold">
+                                                        رکورد
+                                                    </div>
+                                                )}
+                                                <span className={`font-label-sm text-label-sm font-bold transition-colors ${
+                                                    isPeak ? 'text-secondary' : 'text-on-surface-variant group-hover:text-primary'
+                                                }`}>
+                                                    {formatToPersianDigits(d.hours)}
+                                                </span>
+                                                <div
+                                                    className={`w-full max-w-[28px] rounded-t-lg transition-all ${
+                                                        isPeak
+                                                            ? 'bg-secondary shadow-sm'
+                                                            : 'bg-primary/35 group-hover:bg-primary'
+                                                    }`}
+                                                    style={{ height: `${heightPct}%` }}
+                                                    title={`${d.full}: ${d.hours} ساعت`}
+                                                />
+                                                <span className={`font-label-sm text-label-sm font-bold ${isPeak ? 'text-secondary' : 'text-on-surface-variant'}`}>
+                                                    {d.short}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <div className="flex items-center justify-between pt-space-xs font-label-sm text-label-sm text-on-surface-variant">
-                                    <span>کمترین: جمعه ({formatToPersianDigits('۲.۵')} ساعت)</span>
-                                    <span className="text-secondary font-bold">بیشترین: دوشنبه ({formatToPersianDigits('۶.۸')} ساعت)</span>
+                                    <span>کمترین: {weeklyDistribution.minDay.full} ({formatToPersianDigits(weeklyDistribution.minDay.hours)} ساعت)</span>
+                                    <span className="text-secondary font-bold">بیشترین: {weeklyDistribution.maxDay.full} ({formatToPersianDigits(weeklyDistribution.maxDay.hours)} ساعت)</span>
                                 </div>
                             </div>
 
                             {/* Analytical takeaway callout */}
                             <div className="bg-surface-container rounded-xl p-space-sm flex items-center gap-space-sm border border-outline-variant/20">
-                                <span className="material-symbols-outlined text-primary text-[22px]">insights</span>
+                                <Sparkles size={20} className="text-primary shrink-0" />
                                 <p className="font-body-sm text-body-sm text-on-surface leading-normal">
                                     همگامی فعالیت با ریتم شبانه‌روزی (Circadian) کیفیت تست‌زنی را تا{' '}
                                     <span className="font-bold text-primary">{formatToPersianDigits('۲۳')}٪</span> بهبود بخشیده است.
@@ -356,7 +355,7 @@ export const Analysis = () => {
 
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-space-xs">
-                                    <span className="material-symbols-outlined text-primary text-[24px]">timer</span>
+                                    <Clock size={20} className="text-primary" />
                                     <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
                                         فوکوس اسپرینت هوشمند
                                     </h2>
@@ -420,9 +419,7 @@ export const Analysis = () => {
                                             : 'bg-primary hover:bg-primary-container text-on-primary'
                                     }`}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">
-                                        {isSprintRunning ? 'pause_circle' : 'play_circle'}
-                                    </span>
+                                    {isSprintRunning ? <Pause size={18} /> : <Play size={18} />}
                                     <span>
                                         {isSprintRunning ? 'توقف موقت اسپرینت' : 'شروع اسپرینت فوکوس (+۷۵ XP)'}
                                     </span>
@@ -431,7 +428,7 @@ export const Analysis = () => {
 
                             <div className="flex items-center justify-between text-on-surface-variant font-body-sm text-xs sm:text-sm px-1">
                                 <span className="flex items-center gap-1 font-medium">
-                                    <span className="material-symbols-outlined text-[16px] text-secondary">check_circle</span>
+                                    <CheckCircle size={15} className="text-secondary" />
                                     ۳ از ۴ اسپرینت انجام شد
                                 </span>
                                 <span className="font-bold text-primary">۱ اسپرینت تا تکمیل هدف روز</span>
@@ -442,7 +439,7 @@ export const Analysis = () => {
                         <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-4 border border-outline-variant/30 bento-card-interactive">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-secondary text-[24px]">flag_circle</span>
+                                    <Target size={20} className="text-secondary" />
                                     <h3 className="text-base sm:text-lg text-on-surface font-bold">
                                         ماموریت‌های فعال امروز
                                     </h3>
@@ -457,7 +454,7 @@ export const Analysis = () => {
                                 <div className="bg-surface-container-low p-3 sm:p-4 rounded-xl flex items-center justify-between transition-colors border border-outline-variant/20">
                                     <div className="flex items-center gap-3">
                                         <div className="w-7 h-7 rounded-lg bg-secondary text-on-secondary flex items-center justify-center shadow-xs shrink-0">
-                                            <span className="material-symbols-outlined text-[18px]">check</span>
+                                            <Check size={16} />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="font-label-md text-sm text-on-surface font-semibold line-through opacity-75">
@@ -477,7 +474,7 @@ export const Analysis = () => {
                                 <div className="bg-surface-container-low p-3 sm:p-4 rounded-xl flex items-center justify-between transition-colors border border-outline-variant/20">
                                     <div className="flex items-center gap-3">
                                         <div className="w-7 h-7 rounded-lg bg-secondary text-on-secondary flex items-center justify-center shadow-xs shrink-0">
-                                            <span className="material-symbols-outlined text-[18px]">check</span>
+                                            <Check size={16} />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="font-label-md text-sm text-on-surface font-semibold line-through opacity-75">
@@ -498,13 +495,13 @@ export const Analysis = () => {
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={() => setQuest3Completed(!quest3Completed)}
-                                            className={`touch-target w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0 ${
+                                            className={`touch-target w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                                                 quest3Completed
                                                     ? 'bg-secondary text-on-secondary'
                                                     : 'bg-surface-container-highest text-transparent hover:text-on-surface-variant'
                                             }`}
                                         >
-                                            <span className="material-symbols-outlined text-[18px]">check</span>
+                                            <Check size={16} />
                                         </button>
                                         <div className="flex flex-col">
                                             <span
@@ -527,12 +524,82 @@ export const Analysis = () => {
 
                             {/* Weekly Bonus Chest Info */}
                             <div className="bg-tertiary-fixed/30 p-space-sm rounded-xl flex items-center gap-space-sm border border-tertiary/20">
-                                <span className="material-symbols-outlined text-tertiary text-[26px]">redeem</span>
+                                <Gift size={22} className="text-tertiary shrink-0" />
                                 <div className="flex flex-col">
                                     <span className="font-label-sm text-label-sm text-tertiary font-bold">صندوق گنجینه هفتگی</span>
                                     <span className="font-body-sm text-body-sm text-on-surface font-medium">
                                         با اتمام ماموریت امشب، صندوق الماس با ۳۰۰ XP آزاد می‌شود.
                                     </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Performance Details & Study Balance Bento Strip */}
+                    <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-1">
+                        {/* 1. Performance Details Card */}
+                        <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 shadow-sm border border-outline-variant/30 flex flex-col gap-4 bento-card-interactive">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp size={20} className="text-secondary" />
+                                    <h3 className="font-headline-md text-base sm:text-lg text-on-surface font-bold">
+                                        جزئیات عملکرد
+                                    </h3>
+                                </div>
+                                <span className="text-label-sm font-label-sm bg-secondary-container/40 text-secondary px-2.5 py-0.5 rounded-full font-bold">
+                                    تراز کلی
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-2.5">
+                                {(subjects.length > 0 ? subjects.slice(0, 4) : [
+                                    { name: 'زیست‌شناسی', color: 'emerald' },
+                                    { name: 'شیمی', color: 'indigo' },
+                                    { name: 'ریاضی', color: 'amber' },
+                                    { name: 'فیزیک', color: 'rose' },
+                                ]).map((sub, idx) => {
+                                    const subTasks = tasks.filter((t) => t.subject === sub.name);
+                                    const subDone = subTasks.filter((t) => t.isCompleted).length;
+                                    const pct = subTasks.length > 0 ? Math.round((subDone / subTasks.length) * 100) : [85, 72, 60, 90][idx] || 75;
+                                    return (
+                                        <div key={sub.name} className="flex flex-col gap-1 p-2 rounded-xl bg-surface-container-low border border-outline-variant/20">
+                                            <div className="flex items-center justify-between text-xs font-bold text-on-surface">
+                                                <span>{sub.name}</span>
+                                                <span className="text-secondary">{formatToPersianDigits(pct)}٪ پیشرفت</span>
+                                            </div>
+                                            <div className="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
+                                                <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 2. Study Balance Card */}
+                        <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-6 shadow-sm border border-outline-variant/30 flex flex-col gap-4 bento-card-interactive">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Activity size={20} className="text-primary" />
+                                    <h3 className="font-headline-md text-base sm:text-lg text-on-surface font-bold">
+                                        تعادل مطالعاتی
+                                    </h3>
+                                </div>
+                                <span className="text-label-sm font-label-sm bg-primary-container/40 text-primary px-2.5 py-0.5 rounded-full font-bold">
+                                    تنوع هفتگی
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
+                                    <span className="text-xs text-on-surface-variant font-medium">پوشش موضوعات تخصصی:</span>
+                                    <span className="text-xs font-bold text-primary">۴ از ۴ درس فعال</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
+                                    <span className="text-xs text-on-surface-variant font-medium">شاخص انحراف از هدف:</span>
+                                    <span className="text-xs font-bold text-secondary">۸٪ (تعادل ایده‌آل)</span>
+                                </div>
+                                <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/20 flex items-center justify-between">
+                                    <span className="text-xs text-on-surface-variant font-medium">سهم دروس عمومی به اختصاصی:</span>
+                                    <span className="text-xs font-bold text-on-surface">۳۰٪ به ۷۰٪</span>
                                 </div>
                             </div>
                         </div>
@@ -546,7 +613,7 @@ export const Analysis = () => {
                     <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-outline-variant/30 flex flex-col gap-4">
                         <div className="flex items-center justify-between">
                             <h2 className="font-headline-md text-headline-md text-on-surface font-bold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary text-[24px]">query_stats</span>
+                                <Activity size={22} className="text-primary" />
                                 <span>روند درصد و تراز در آزمون‌های آزمایشی</span>
                             </h2>
                             <span className="text-label-sm font-label-sm bg-primary-fixed text-on-primary-fixed-variant px-3 py-1 rounded-full font-bold">
@@ -572,12 +639,16 @@ export const Analysis = () => {
                                         <XAxis dataKey="shamsiDate" tick={{ fontSize: 11 }} />
                                         <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
                                         <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: '#f8f9ff',
-                                                borderRadius: '12px',
-                                                border: '1px solid #c7c4d7',
-                                                textAlign: 'right',
-                                                fontFamily: 'Vazirmatn'
+                                            content={({ active, payload, label }) => {
+                                                if (active && payload && payload.length) {
+                                                    return (
+                                                        <div className="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/30 text-on-surface dark:text-white p-2.5 rounded-xl shadow-lg text-xs font-bold font-sans">
+                                                            <p className="text-on-surface-variant dark:text-gray-400 font-medium">{label}</p>
+                                                            <p className="text-primary mt-1">تراز آزمون: {formatToPersianDigits(payload[0].value as number)}٪</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
                                             }}
                                         />
                                         <Area

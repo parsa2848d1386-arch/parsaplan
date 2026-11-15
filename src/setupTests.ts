@@ -62,7 +62,16 @@ if (!window.AudioContext && !(window as any).webkitAudioContext) {
     };
 }
 
-// Mock Vite PWA virtual module in test environment
+// 2. Mock Vite PWA virtual modules for JSDOM test suite
 vi.mock('virtual:pwa-register', () => ({
-    registerSW: vi.fn(() => vi.fn()),
+    registerSW: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
 }));
+
+vi.mock('virtual:pwa-register/react', () => ({
+    useRegisterSW: () => ({
+        offlineReady: [false, vi.fn()],
+        needRefresh: [false, vi.fn()],
+        updateServiceWorker: vi.fn(),
+    }),
+}));
+

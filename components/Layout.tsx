@@ -138,9 +138,10 @@ const Layout = () => {
     ];
     const mobileNavItems = [
         { to: '/', icon: Home, label: 'داشبورد', iconName: 'space_dashboard' },
-        { to: '/planner', icon: CalendarClock, label: 'زمان‌بندی', iconName: 'schedule' },
-        { to: '/leaderboard', icon: Trophy, label: 'اتاق مطالعه', iconName: 'groups' },
-        { to: '/analysis', icon: BarChart2, label: 'آمار و گزارش', iconName: 'insights' },
+        { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین', iconName: 'schedule' },
+        { to: '/analysis', icon: BarChart2, label: 'تحلیل', iconName: 'insights' },
+        { to: '/leaderboard', icon: Trophy, label: 'لیگ', iconName: 'groups' },
+        { to: '/settings', icon: Settings, label: 'تنظیمات', iconName: 'settings' },
     ];
 
     const getCloudIconColor = () => {
@@ -298,7 +299,8 @@ const Layout = () => {
                                 type="button"
                                 onClick={() => setIsCommandPaletteOpen(true)}
                                 className="relative flex items-center group cursor-pointer text-right"
-                                title="جستجو (Ctrl+K)"
+                                title="جستجو و دستورات (Ctrl+K)"
+                                aria-label="جستجو و دستورات (Ctrl+K)"
                             >
                                 <Search size={18} className="absolute right-3 text-on-surface-variant group-hover:text-primary transition-colors" />
                                 <div className="w-80 h-10 pr-10 pl-16 bg-surface-container-low dark:bg-slate-800 rounded-lg text-on-surface dark:text-gray-200 font-body-sm flex items-center text-xs text-on-surface-variant/70 border border-outline-variant/20 hover:border-primary/40 transition-all shadow-inner">
@@ -384,8 +386,8 @@ const Layout = () => {
                                 type="button"
                                 onClick={() => setIsCommandPaletteOpen(true)}
                                 className="p-2 rounded-xl text-on-surface-variant hover:bg-surface-container"
-                                title="جستجو"
-                                aria-label="جستجو"
+                                title="جستجو و دستورات"
+                                aria-label="جستجو و دستورات"
                             >
                                 <Search size={17} />
                             </button>
@@ -406,21 +408,22 @@ const Layout = () => {
                         </motion.div>
                     </div>
 
-                    {/* Mobile Center Floating Action Button */}
-                    <div className="fixed bottom-7 inset-x-0 z-50 flex justify-center pointer-events-none md:hidden">
+                    {/* Mobile Floating Action Button for AI Assistant */}
+                    <div className="fixed bottom-20 left-4 z-40 md:hidden">
                         <button
                             type="button"
                             onClick={() => {
                                 setIsAiPanelOpen(!isAiPanelOpen);
                             }}
-                            className="pointer-events-auto flex items-center justify-center w-14 h-14 rounded-full bg-primary text-on-primary shadow-[0_6px_20px_rgba(70,72,212,0.35)] active:scale-90 transition-transform cursor-pointer"
+                            className="flex items-center justify-center w-13 h-13 rounded-full bg-primary text-on-primary shadow-[0_6px_20px_rgba(70,72,212,0.35)] active:scale-90 transition-transform cursor-pointer"
                             aria-label="دستیار هوشمند"
+                            title="دستیار هوشمند"
                         >
-                            <Sparkles size={26} />
+                            <Sparkles size={24} />
                         </button>
                     </div>
 
-                    {/* Bottom Nav — Mobile (With space for center floating button) */}
+                    {/* Bottom Nav — Mobile (Strict 5 core tabs) */}
                     <nav aria-label="منوی موبایل" className="fixed bottom-0 w-full z-40 pb-safe bg-surface/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(11,28,48,0.04)] border-t border-outline-variant/20 md:hidden">
                         <div className="flex justify-around items-center h-16 px-1 max-w-md mx-auto">
                             <NavLink
@@ -445,22 +448,7 @@ const Layout = () => {
                                 }
                             >
                                 <CalendarClock size={20} />
-                                <span className="font-label-sm text-[10px] sm:text-[11px]">زمان‌بندی</span>
-                            </NavLink>
-
-                            {/* Spacer for Floating Center Button */}
-                            <div className="w-14" />
-
-                            <NavLink
-                                to="/leaderboard"
-                                className={({ isActive }) =>
-                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
-                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
-                                    }`
-                                }
-                            >
-                                <Trophy size={20} />
-                                <span className="font-label-sm text-[10px] sm:text-[11px]">اتاق مطالعه</span>
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">تایم‌لاین</span>
                             </NavLink>
 
                             <NavLink
@@ -472,7 +460,31 @@ const Layout = () => {
                                 }
                             >
                                 <BarChart2 size={20} />
-                                <span className="font-label-sm text-[10px] sm:text-[11px]">آمار و لیگ</span>
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">تحلیل</span>
+                            </NavLink>
+
+                            <NavLink
+                                to="/leaderboard"
+                                className={({ isActive }) =>
+                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
+                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                                    }`
+                                }
+                            >
+                                <Trophy size={20} />
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">لیگ</span>
+                            </NavLink>
+
+                            <NavLink
+                                to="/settings"
+                                className={({ isActive }) =>
+                                    `touch-target flex flex-col items-center justify-center gap-1 w-14 h-12 transition-all active:scale-90 ${
+                                        isActive ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                                    }`
+                                }
+                            >
+                                <Settings size={20} />
+                                <span className="font-label-sm text-[10px] sm:text-[11px]">تنظیمات</span>
                             </NavLink>
                         </div>
                     </nav>

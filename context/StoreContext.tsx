@@ -1074,22 +1074,41 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     const updateTaskStatus = (taskId: string, status: TaskStatus) => {
-        setTasks((prev) =>
-            prev.map((t) => {
-                if (t.id !== taskId) return t;
-                const isCompleted = status === 'completed';
-                if (isCompleted !== t.isCompleted) {
-                    const reward = getXpReward('COMPLETE_TASK', streakStats.currentStreak);
-                    isCompleted ? addXp(reward) : addXp(-reward);
-                    if (isCompleted) soundFX.playSuccess();
-                }
-                return { ...t, status, isCompleted };
-            })
-        );
+        let targetTask: SubjectTask | undefined;
+        const nextTasks = tasks.map((t) => {
+            if (t.id !== taskId) return t;
+            const isCompleted = status === 'completed';
+            if (isCompleted !== t.isCompleted) {
+                const reward = getXpReward('COMPLETE_TASK', streakStats.currentStreak);
+                isCompleted ? addXp(reward) : addXp(-reward);
+                if (isCompleted) soundFX.playSuccess();
+            }
+            const res = { ...t, status, isCompleted };
+            targetTask = res;
+            return res;
+        });
+        setTasks(nextTasks);
+
+        if (targetTask && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: targetTask }).then(setSyncQueueCount);
+        }
     };
 
     const moveTaskToDate = (taskId: string, newIsoDate: string) => {
-        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, date: newIsoDate, dayId: 0, isCustom: true } : t)));
+        let targetTask: SubjectTask | undefined;
+        const nextTasks = tasks.map((t) => {
+            if (t.id === taskId) {
+                const res = { ...t, date: newIsoDate, dayId: 0, isCustom: true };
+                targetTask = res;
+                return res;
+            }
+            return t;
+        });
+        setTasks(nextTasks);
+
+        if (targetTask && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: targetTask }).then(setSyncQueueCount);
+        }
         showToast('تسک منتقل شد', 'success');
     };
 

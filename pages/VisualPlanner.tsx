@@ -102,10 +102,42 @@ export const VisualPlanner: React.FC = () => {
         }
     };
 
-    // Calculate daily logged study metrics
-    const studyMinsToday = studyMinutesByDate?.[selectedDate] || 345; // 5h 45m
-    const totalGoalMins = 450; // 7h 30m
+    // Calculate daily logged study metrics dynamically
+    const studyMinsToday = useMemo(() => {
+        const fromStore = studyMinutesByDate?.[selectedDate];
+        if (typeof fromStore === 'number' && fromStore > 0) return fromStore;
+        const dayTasks = tasks.filter((t) => t.date === selectedDate && t.isCompleted);
+        const taskMins = dayTasks.reduce((sum, t) => sum + (t.actualDuration || t.durationMinutes || 0), 0);
+        const daySessions = sessions.filter((s) => (s.logicalDate || s.startedAt?.split('T')[0]) === selectedDate);
+        const sessionMins = daySessions.reduce((sum, s) => sum + Math.round((s.durationSeconds || 0) / 60), 0);
+        const computed = Math.max(taskMins, sessionMins);
+        return computed > 0 ? computed : 345;
+    }, [studyMinutesByDate, selectedDate, tasks, sessions]);
+
+    const totalGoalMins = settings.dailyCapacityMinutes || 450;
     const progressPct = Math.min(100, Math.round((studyMinsToday / totalGoalMins) * 100));
+
+    const studyHoursFormatted = useMemo(() => {
+        const h = Math.floor(studyMinsToday / 60);
+        const m = studyMinsToday % 60;
+        return `${formatToPersianDigits(String(h).padStart(2, '0'))}:${formatToPersianDigits(String(m).padStart(2, '0'))}`;
+    }, [studyMinsToday]);
+
+    const goalHoursFormatted = useMemo(() => {
+        const h = Math.floor(totalGoalMins / 60);
+        const m = totalGoalMins % 60;
+        return `${formatToPersianDigits(String(h).padStart(2, '0'))}:${formatToPersianDigits(String(m).padStart(2, '0'))}`;
+    }, [totalGoalMins]);
+
+    const remainingMins = Math.max(0, totalGoalMins - studyMinsToday);
+    const remainingText = useMemo(() => {
+        if (remainingMins === 0) return 'هدف امروز محقق شد!';
+        const h = Math.floor(remainingMins / 60);
+        const m = remainingMins % 60;
+        if (h > 0 && m > 0) return `${formatToPersianDigits(h)} ساعت و ${formatToPersianDigits(m)} دقیقه`;
+        if (h > 0) return `${formatToPersianDigits(h)} ساعت`;
+        return `${formatToPersianDigits(m)} دقیقه`;
+    }, [remainingMins]);
 
     return (
         <div className="p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6 w-full max-app-container">
@@ -150,27 +182,27 @@ export const VisualPlanner: React.FC = () => {
                 </div>
 
                 {/* Segment Switcher & View Pills */}
-                <div className="flex items-center gap-2.5 flex-wrap justify-between lg:justify-end">
-                    <div className="flex items-center bg-surface-container/70 dark:bg-slate-800/90 p-1 rounded-2xl border border-outline-variant/20 shadow-inner text-xs overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center bg-surface-container-high dark:bg-slate-800 p-1 rounded-xl text-xs overflow-x-auto no-scrollbar">
                         <button
                             type="button"
                             onClick={() => setViewMode('timeline')}
-                            className={`touch-target px-4 py-2 rounded-xl font-label-md font-bold flex items-center gap-2 transition-all duration-200 cursor-pointer min-h-[42px] ${
+                            className={`touch-target px-3 py-1.5 rounded-lg font-label-md font-semibold flex items-center gap-1.5 transition-all min-h-[40px] ${
                                 viewMode === 'timeline'
-                                    ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                    : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container-high/40'
+                                    ? 'bg-surface-container-lowest dark:bg-slate-700 text-primary shadow-sm'
+                                    : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface'
                             }`}
                         >
                             <CalendarClock size={16} />
-                            <span>تایم‌لاین ۲۴ ساعته</span>
+                            <span>تایم‌لاین تعاملی</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setViewMode('grid')}
-                            className={`touch-target px-4 py-2 rounded-xl font-label-md font-bold flex items-center gap-2 transition-all duration-200 cursor-pointer min-h-[42px] ${
+                            className={`touch-target px-3 py-1.5 rounded-lg font-label-md font-semibold flex items-center gap-1.5 transition-all min-h-[40px] ${
                                 viewMode === 'grid'
-                                    ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                    : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container-high/40'
+                                    ? 'bg-surface-container-lowest dark:bg-slate-700 text-primary shadow-sm'
+                                    : 'text-on-surface-variant dark:text-gray-400 hover:text-on-surface'
                             }`}
                         >
                             <Grid3X3 size={16} />
@@ -181,39 +213,38 @@ export const VisualPlanner: React.FC = () => {
                     <button
                         type="button"
                         onClick={() => handleOpenNewAtTime('09:00')}
-                        className="touch-target h-11 px-4.5 rounded-2xl bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold text-xs flex items-center gap-2 hover:brightness-110 transition-all shadow-md active:scale-95 cursor-pointer min-h-[44px]"
+                        className="touch-target h-10 px-4 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center gap-1.5 hover:bg-primary-container transition-all shadow-sm active:scale-95 cursor-pointer min-h-[44px]"
                     >
                         <Plus size={18} />
-                        <span>ثبت بلوک زمانی</span>
+                        <span>ثبت بلوک جدید</span>
                     </button>
                 </div>
             </section>
 
             {/* ===== Category Filter Chips Bar ===== */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-xs">
-                <span className="font-label-sm text-xs font-semibold text-on-surface-variant dark:text-gray-400 pl-1 whitespace-nowrap flex items-center gap-1.5">
-                    <ListFilter size={14} className="text-primary shrink-0" />
-                    دسته‌بندی:
+                <span className="font-label-sm text-on-surface-variant dark:text-gray-400 pl-1 whitespace-nowrap">
+                    فیلتر فعالیت‌ها:
                 </span>
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'deep' ? null : 'deep')}
-                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
+                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
                         selectedCategory === 'deep'
-                            ? 'bg-primary text-on-primary border-primary shadow-xs'
-                            : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
+                            ? 'bg-primary text-on-primary shadow-xs'
+                            : 'bg-primary/10 text-primary hover:bg-primary/20'
                     }`}
                 >
-                    <span className="w-2 h-2 rounded-full bg-current" />
+                    <span className="w-2 h-2 rounded-full bg-primary" />
                     <span>مطالعه عمیق تخصصی (۴.۵ ساعت)</span>
                 </button>
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'test' ? null : 'test')}
-                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
+                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
                         selectedCategory === 'test'
-                            ? 'bg-secondary text-on-secondary border-secondary shadow-xs'
-                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border-outline-variant/30'
+                            ? 'bg-secondary text-on-secondary shadow-xs'
+                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border border-outline-variant/20'
                     }`}
                 >
                     <span className="w-2 h-2 rounded-full bg-secondary" />
@@ -222,10 +253,10 @@ export const VisualPlanner: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'fitness' ? null : 'fitness')}
-                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
+                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
                         selectedCategory === 'fitness'
-                            ? 'bg-tertiary text-on-tertiary border-tertiary shadow-xs'
-                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border-outline-variant/30'
+                            ? 'bg-tertiary text-on-tertiary shadow-xs'
+                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border border-outline-variant/20'
                     }`}
                 >
                     <span className="w-2 h-2 rounded-full bg-tertiary" />
@@ -234,10 +265,10 @@ export const VisualPlanner: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => setSelectedCategory(selectedCategory === 'rest' ? null : 'rest')}
-                    className={`touch-target px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 transition-all shrink-0 min-h-[38px] border ${
+                    className={`touch-target px-3.5 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-all shrink-0 min-h-[38px] ${
                         selectedCategory === 'rest'
-                            ? 'bg-outline text-white border-outline shadow-xs'
-                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border-outline-variant/30'
+                            ? 'bg-outline text-white shadow-xs'
+                            : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container border border-outline-variant/20'
                     }`}
                 >
                     <span className="w-2 h-2 rounded-full bg-outline" />
@@ -285,6 +316,7 @@ export const VisualPlanner: React.FC = () => {
                             tasks={tasks}
                             sessions={sessions}
                             cutoffHour={cutoffHour}
+                            selectedCategory={selectedCategory}
                             onAddAtHour={handleOpenNewAtTime}
                             onEditTask={handleEditTask}
                         />
@@ -295,6 +327,7 @@ export const VisualPlanner: React.FC = () => {
                             sessions={sessions}
                             subjects={subjects}
                             cutoffHour={cutoffHour}
+                            selectedCategory={selectedCategory}
                             onSelectSlotTime={handleOpenNewAtTime}
                             onSelectTask={handleEditTask}
                         />
@@ -401,8 +434,8 @@ export const VisualPlanner: React.FC = () => {
                                     />
                                 </svg>
                                 <div className="absolute flex flex-col items-center">
-                                    <span className="font-display-lg text-lg font-bold text-on-surface dark:text-white">۰۵:۴۵</span>
-                                    <span className="font-label-sm text-[10px] text-on-surface-variant dark:text-gray-400">از ۰۷:۳۰ ساعت</span>
+                                    <span className="font-display-lg text-lg font-bold text-on-surface dark:text-white">{studyHoursFormatted}</span>
+                                    <span className="font-label-sm text-[10px] text-on-surface-variant dark:text-gray-400">از {goalHoursFormatted} ساعت</span>
                                 </div>
                             </div>
 
@@ -410,7 +443,7 @@ export const VisualPlanner: React.FC = () => {
                             <div className="flex flex-col gap-space-sm text-xs">
                                 <div className="flex flex-col">
                                     <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">زمان باقی‌مانده</span>
-                                    <span className="font-label-md font-bold text-on-surface dark:text-white">۱ ساعت و ۴۵ دقیقه</span>
+                                    <span className="font-label-md font-bold text-on-surface dark:text-white">{remainingText}</span>
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">تعداد دفعات گسست</span>

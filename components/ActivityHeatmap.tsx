@@ -102,8 +102,8 @@ const ActivityHeatmap = () => {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative">
-            <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-sm">فعالیت ماه جاری</h3>
+        <div className="relative w-full">
+            <h3 className="font-headline-md font-bold text-on-surface dark:text-white mb-4 text-sm sm:text-base">فعالیت ماه جاری</h3>
             
             <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                 {days.map((date, idx) => {

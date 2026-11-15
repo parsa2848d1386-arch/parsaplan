@@ -30,6 +30,7 @@ interface UnifiedTimelineProps {
     tasks: SubjectTask[];
     sessions: StudySession[];
     cutoffHour?: number;
+    selectedCategory?: string | null;
     onAddAtHour: (startTime: string) => void;
     onEditTask: (task: SubjectTask) => void;
 }
@@ -41,11 +42,104 @@ const ZOOM_PX_PER_HOUR: Record<ZoomLevel, number> = {
     expanded: 108,
 };
 
+const SUBJECT_COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+    indigo: {
+        bg: 'bg-indigo-50/95 dark:bg-indigo-950/70',
+        border: 'border-indigo-300 dark:border-indigo-800/80',
+        text: 'text-indigo-900 dark:text-indigo-100',
+        dot: 'bg-indigo-500',
+    },
+    emerald: {
+        bg: 'bg-emerald-50/95 dark:bg-emerald-950/70',
+        border: 'border-emerald-300 dark:border-emerald-800/80',
+        text: 'text-emerald-900 dark:text-emerald-100',
+        dot: 'bg-emerald-500',
+    },
+    green: {
+        bg: 'bg-emerald-50/95 dark:bg-emerald-950/70',
+        border: 'border-emerald-300 dark:border-emerald-800/80',
+        text: 'text-emerald-900 dark:text-emerald-100',
+        dot: 'bg-emerald-500',
+    },
+    amber: {
+        bg: 'bg-amber-50/95 dark:bg-amber-950/70',
+        border: 'border-amber-300 dark:border-amber-800/80',
+        text: 'text-amber-900 dark:text-amber-100',
+        dot: 'bg-amber-500',
+    },
+    rose: {
+        bg: 'bg-rose-50/95 dark:bg-rose-950/70',
+        border: 'border-rose-300 dark:border-rose-800/80',
+        text: 'text-rose-900 dark:text-rose-100',
+        dot: 'bg-rose-500',
+    },
+    red: {
+        bg: 'bg-rose-50/95 dark:bg-rose-950/70',
+        border: 'border-rose-300 dark:border-rose-800/80',
+        text: 'text-rose-900 dark:text-rose-100',
+        dot: 'bg-rose-500',
+    },
+    sky: {
+        bg: 'bg-sky-50/95 dark:bg-sky-950/70',
+        border: 'border-sky-300 dark:border-sky-800/80',
+        text: 'text-sky-900 dark:text-sky-100',
+        dot: 'bg-sky-500',
+    },
+    purple: {
+        bg: 'bg-purple-50/95 dark:bg-purple-950/70',
+        border: 'border-purple-300 dark:border-purple-800/80',
+        text: 'text-purple-900 dark:text-purple-100',
+        dot: 'bg-purple-500',
+    },
+    violet: {
+        bg: 'bg-purple-50/95 dark:bg-purple-950/70',
+        border: 'border-purple-300 dark:border-purple-800/80',
+        text: 'text-purple-900 dark:text-purple-100',
+        dot: 'bg-purple-500',
+    },
+    teal: {
+        bg: 'bg-teal-50/95 dark:bg-teal-950/70',
+        border: 'border-teal-300 dark:border-teal-800/80',
+        text: 'text-teal-900 dark:text-teal-100',
+        dot: 'bg-teal-500',
+    },
+    blue: {
+        bg: 'bg-blue-50/95 dark:bg-blue-950/70',
+        border: 'border-blue-300 dark:border-blue-800/80',
+        text: 'text-blue-900 dark:text-blue-100',
+        dot: 'bg-blue-500',
+    },
+    orange: {
+        bg: 'bg-orange-50/95 dark:bg-orange-950/70',
+        border: 'border-orange-300 dark:border-orange-800/80',
+        text: 'text-orange-900 dark:text-orange-100',
+        dot: 'bg-orange-500',
+    },
+    slate: {
+        bg: 'bg-slate-50/95 dark:bg-slate-900/80',
+        border: 'border-slate-300 dark:border-slate-700',
+        text: 'text-slate-900 dark:text-slate-100',
+        dot: 'bg-slate-500',
+    },
+    gray: {
+        bg: 'bg-gray-50/95 dark:bg-gray-900/80',
+        border: 'border-gray-300 dark:border-gray-700',
+        text: 'text-gray-900 dark:text-gray-100',
+        dot: 'bg-gray-500',
+    },
+};
+
+const getStaticSubjectClasses = (colorName?: string) => {
+    if (!colorName) return SUBJECT_COLOR_CLASSES.indigo;
+    return SUBJECT_COLOR_CLASSES[colorName] || SUBJECT_COLOR_CLASSES.indigo;
+};
+
 export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
     logicalDate,
     tasks,
     sessions,
     cutoffHour = 5,
+    selectedCategory = null,
     onAddAtHour,
     onEditTask,
 }) => {
@@ -77,8 +171,32 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
     const nowOffsetMins = getOffsetMinutesFromCutoff(nowTimeStr, cutoffHour);
     const nowTopPx = nowOffsetMins * pxPerMin;
 
+    const matchCategory = (task: SubjectTask): boolean => {
+        if (!selectedCategory) return true;
+        const normalized = `${task.subject} ${task.topic} ${task.details || ''}`.toLowerCase();
+        if (selectedCategory === 'deep') {
+            return task.studyType === 'study' || task.studyType === 'task' || task.priority === 'high' || !!task.isMIT;
+        }
+        if (selectedCategory === 'test') {
+            return (
+                task.studyType === 'exam' ||
+                task.studyType === 'test_educational' ||
+                task.studyType === 'test_speed' ||
+                !!task.testRange ||
+                normalized.includes('تست')
+            );
+        }
+        if (selectedCategory === 'fitness') {
+            return normalized.includes('ورزش') || normalized.includes('بدن') || normalized.includes('سلامت') || normalized.includes('fitness');
+        }
+        if (selectedCategory === 'rest') {
+            return task.studyType === 'review' || normalized.includes('استراحت') || normalized.includes('خواب') || normalized.includes('تفریح');
+        }
+        return true;
+    };
+
     const { scheduledTasks, unscheduledTasks } = useMemo(() => {
-        const dayTasks = tasks.filter((t) => t.date === logicalDate);
+        const dayTasks = tasks.filter((t) => t.date === logicalDate && matchCategory(t));
         const scheduled: SubjectTask[] = [];
         const free: SubjectTask[] = [];
         dayTasks.forEach((t) => {
@@ -86,7 +204,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
             else free.push(t);
         });
         return { scheduledTasks: scheduled, unscheduledTasks: free };
-    }, [tasks, logicalDate]);
+    }, [tasks, logicalDate, selectedCategory]);
 
     const positionedTasks = useMemo(() => {
         const spans = scheduledTasks.map((t) => {
@@ -258,22 +376,22 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                         e.dataTransfer.setData('text/plain', t.id);
                                         e.dataTransfer.effectAllowed = 'move';
                                     }}
-                                    className="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-2 rounded-2xl border border-amber-200/70 dark:border-gray-700 text-xs cursor-grab active:cursor-grabbing shadow-sm hover:border-indigo-400 transition"
+                                    className="flex items-center gap-2 bg-surface-container-lowest dark:bg-slate-800 px-3 py-2 rounded-2xl border border-amber-200/70 dark:border-slate-700 text-xs cursor-grab active:cursor-grabbing shadow-sm hover:border-primary transition"
                                 >
-                                    <GripVertical size={13} className="text-gray-300 shrink-0" />
+                                    <GripVertical size={13} className="text-on-surface-variant/50 shrink-0" />
                                     <span>{st.icon}</span>
                                     <button
                                         type="button"
                                         onClick={() => onEditTask(t)}
-                                        className="font-bold text-gray-800 dark:text-gray-100 hover:underline"
+                                        className="font-bold text-on-surface dark:text-white hover:underline truncate max-w-[120px]"
                                     >
                                         {t.topic}
                                     </button>
-                                    <span className="text-[10px] text-gray-400">({formatToPersianDigits(t.durationMinutes ?? 60)}&apos;)</span>
+                                    <span className="text-[10px] text-on-surface-variant">({formatToPersianDigits(t.durationMinutes ?? 60)}&apos;)</span>
                                     <button
                                         type="button"
                                         onClick={() => handleAutoScheduleSingle(t)}
-                                        className="text-[10px] px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-bold hover:bg-indigo-100 transition"
+                                        className="text-[10px] px-2 py-0.5 rounded-lg bg-primary-container text-on-primary-container font-bold hover:opacity-90 transition"
                                         title="یافتن اولین وقت خالی"
                                     >
                                         وقت خالی
@@ -281,7 +399,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => startFocusForTask(t)}
-                                        className="p-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                                        className="p-1 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition"
                                         title="شروع تمرکز"
                                     >
                                         <Play size={11} fill="currentColor" />
@@ -294,11 +412,11 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
             )}
 
             {/* Timeline Controls & Status Bar */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+            <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/30 p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
                 <div className="flex flex-wrap items-center gap-2">
                     {/* Zoom Switcher */}
-                    <div className="flex items-center bg-gray-100 dark:bg-gray-900 p-1 rounded-xl gap-1">
-                        <ZoomIn size={13} className="text-gray-400 mx-1" />
+                    <div className="flex items-center bg-surface-container-high dark:bg-slate-800 p-1 rounded-xl gap-1">
+                        <ZoomIn size={13} className="text-on-surface-variant mx-1" />
                         {(
                             [
                                 { id: 'compact', label: 'فشرده' },
@@ -312,8 +430,8 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                 onClick={() => setZoom(z.id)}
                                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
                                     zoom === z.id
-                                        ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                                        : 'text-gray-500'
+                                        ? 'bg-surface-container-lowest dark:bg-slate-700 text-primary shadow-sm'
+                                        : 'text-on-surface-variant'
                                 }`}
                             >
                                 {z.label}
@@ -326,8 +444,8 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                         onClick={() => setShowActualTrack(!showActualTrack)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${
                             showActualTrack
-                                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300'
-                                : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500'
+                                ? 'bg-secondary-container/40 dark:bg-secondary-container/20 border-secondary/30 text-secondary'
+                                : 'bg-surface-container dark:bg-slate-800 border-outline-variant/30 text-on-surface-variant'
                         }`}
                     >
                         <Eye size={13} /> تطبیق با زمان واقعی ({formatToPersianDigits(positionedSessions.length)})
@@ -337,7 +455,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                         <button
                             type="button"
                             onClick={scrollToNow}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40 text-[11px] font-black"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-error-container/40 text-error border border-error/30 text-[11px] font-black"
                         >
                             <Crosshair size={13} /> پرش به الان ({nowTimeStr})
                         </button>
@@ -347,15 +465,15 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 {/* Capacity & Conflict Pills */}
                 <div className="flex items-center gap-2 text-[11px] font-bold">
                     {conflictCount > 0 && (
-                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40">
+                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-error-container text-error border border-error/30">
                             <AlertTriangle size={12} /> تداخل زمانی
                         </span>
                     )}
                     <span
                         className={`px-2.5 py-1 rounded-xl border ${
                             isOverCapacity
-                                ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200'
-                                : 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800/40'
+                                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                                : 'bg-primary-container/40 text-primary border-primary/20'
                         }`}
                     >
                         مجموع برنامه: {formatToPersianDigits(Math.round((totalScheduledMins / 60) * 10) / 10)} /{' '}
@@ -365,16 +483,16 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
             </div>
 
             {/* Proportional 24h Calendar Canvas */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/30 shadow-sm overflow-hidden">
                 {/* Column Header */}
-                <div className="flex border-b border-gray-100 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/50 text-[11px] font-black text-gray-500 dark:text-gray-400">
-                    <div className="w-16 shrink-0 py-2.5 text-center border-l border-gray-100 dark:border-gray-700">ساعت</div>
+                <div className="flex border-b border-outline-variant/20 bg-surface-container-low dark:bg-slate-800/60 text-[11px] font-black text-on-surface-variant">
+                    <div className="w-16 shrink-0 py-2.5 text-center border-l border-outline-variant/20">ساعت</div>
                     <div className="flex-1 py-2.5 px-4 flex justify-between items-center">
                         <span>برنامه زمان‌بندی‌شده (با کشیدن بلوک جابه‌جا یا از لبه پایین تغییر مدت دهید)</span>
-                        <span className="text-[10px] font-normal text-gray-400">کلیک روی فضای خالی = افزودن سریع</span>
+                        <span className="text-[10px] font-normal text-on-surface-variant/80">کلیک روی فضای خالی = افزودن سریع</span>
                     </div>
                     {showActualTrack && (
-                        <div className="hidden md:flex w-52 shrink-0 py-2.5 px-3 border-r border-gray-100 dark:border-gray-700 justify-center text-emerald-600 dark:text-emerald-400">
+                        <div className="hidden md:flex w-52 shrink-0 py-2.5 px-3 border-r border-outline-variant/20 justify-center text-secondary font-bold">
                             عملکرد واقعی ثبت‌شده
                         </div>
                     )}
@@ -461,6 +579,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                             {positionedTasks.map((item) => {
                                 const t = item.data;
                                 const st = getSubjectStyle(t.subject);
+                                const colorStyle = getStaticSubjectClasses(st.color);
                                 const top = item.startOffset * pxPerMin;
                                 const dur = item.endOffset - item.startOffset;
                                 const height = Math.max(38, dur * pxPerMin - 2);
@@ -484,10 +603,10 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                         }}
                                         className={`group absolute rounded-2xl border shadow-sm transition-shadow hover:shadow-md z-10 flex flex-col justify-between overflow-hidden ${
                                             t.isCompleted
-                                                ? 'bg-emerald-50/90 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 opacity-85'
+                                                ? 'bg-emerald-50/90 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 opacity-85 text-emerald-950 dark:text-emerald-100'
                                                 : item.hasConflict
-                                                  ? `bg-${st.color}-50/95 dark:bg-gray-900/95 border-rose-400 ring-1 ring-rose-400/50`
-                                                  : `bg-${st.color}-50/95 dark:bg-gray-900/90 border-${st.color}-300 dark:border-${st.color}-700/70`
+                                                  ? `${colorStyle.bg} border-rose-400 ring-1 ring-rose-400/50 ${colorStyle.text}`
+                                                  : `${colorStyle.bg} ${colorStyle.border} ${colorStyle.text}`
                                         }`}
                                     >
                                         <div className="p-2 flex items-start justify-between gap-2 min-h-0">

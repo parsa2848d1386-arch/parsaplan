@@ -11,6 +11,7 @@ interface DualColumn10MinuteGridProps {
     sessions: StudySession[];
     subjects: CustomSubject[];
     cutoffHour?: number;
+    selectedCategory?: string | null;
     onSelectSlotTime?: (startTime: string) => void;
     onSelectTask?: (task: SubjectTask) => void;
 }
@@ -39,12 +40,37 @@ export const DualColumn10MinuteGrid: React.FC<DualColumn10MinuteGridProps> = ({
     sessions,
     subjects,
     cutoffHour = 5,
+    selectedCategory = null,
     onSelectSlotTime,
     onSelectTask,
 }) => {
     const { status, selectedSubject } = useFocus();
     const todayLogical = getLogicalDateKey(new Date(), cutoffHour);
     const isToday = logicalDate === todayLogical;
+
+    const matchCategory = (task: SubjectTask): boolean => {
+        if (!selectedCategory) return true;
+        const normalized = `${task.subject} ${task.topic} ${task.details || ''}`.toLowerCase();
+        if (selectedCategory === 'deep') {
+            return task.studyType === 'study' || task.studyType === 'task' || task.priority === 'high' || !!task.isMIT;
+        }
+        if (selectedCategory === 'test') {
+            return (
+                task.studyType === 'exam' ||
+                task.studyType === 'test_educational' ||
+                task.studyType === 'test_speed' ||
+                !!task.testRange ||
+                normalized.includes('تست')
+            );
+        }
+        if (selectedCategory === 'fitness') {
+            return normalized.includes('ورزش') || normalized.includes('بدن') || normalized.includes('سلامت') || normalized.includes('fitness');
+        }
+        if (selectedCategory === 'rest') {
+            return task.studyType === 'review' || normalized.includes('استراحت') || normalized.includes('خواب') || normalized.includes('تفریح');
+        }
+        return true;
+    };
 
     const subjectColorMap = useMemo(() => {
         const map: Record<string, string> = {};
@@ -57,7 +83,7 @@ export const DualColumn10MinuteGrid: React.FC<DualColumn10MinuteGridProps> = ({
     // Project planned tasks onto 144 10-minute slots
     const plannedGrid = useMemo(() => {
         const grid: (SubjectTask | null)[] = new Array(144).fill(null);
-        const dayTasks = tasks.filter((t) => t.date === logicalDate && t.startTime);
+        const dayTasks = tasks.filter((t) => t.date === logicalDate && t.startTime && matchCategory(t));
 
         dayTasks.forEach((task) => {
             const startMins = timeToMinutes(task.startTime || '08:00');
@@ -70,7 +96,7 @@ export const DualColumn10MinuteGrid: React.FC<DualColumn10MinuteGridProps> = ({
             }
         });
         return grid;
-    }, [tasks, logicalDate, cutoffHour]);
+    }, [tasks, logicalDate, cutoffHour, selectedCategory]);
 
     // Project actual focus sessions onto 144 10-minute slots
     const actualGrid = useMemo(
@@ -107,46 +133,49 @@ export const DualColumn10MinuteGrid: React.FC<DualColumn10MinuteGridProps> = ({
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 p-4 md:p-6 shadow-sm space-y-4">
+        <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/30 p-4 md:p-6 shadow-sm space-y-4">
             {/* Summary strip */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-indigo-50/70 dark:bg-indigo-950/30 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-900/40">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-300">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-primary-container/30 dark:bg-primary-container/20 rounded-2xl p-3 border border-primary/20">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
                         <Clock size={14} /> زمان‌بندی شده
                     </div>
-                    <div className="text-lg font-black text-indigo-800 dark:text-white mt-0.5">
+                    <div className="text-lg font-black text-on-surface dark:text-white mt-0.5">
                         {formatToPersianDigits(summary.plannedMinutes)} دقیقه
                     </div>
                 </div>
 
-                <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl p-3 border border-emerald-100 dark:border-emerald-900/40">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-300">
+                <div className="bg-secondary-container/40 dark:bg-secondary-container/20 rounded-2xl p-3 border border-secondary/20">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-secondary">
                         <Flame size={14} /> مطالعه واقعی ثبت‌شده
                     </div>
-                    <div className="text-lg font-black text-emerald-800 dark:text-white mt-0.5">
+                    <div className="text-lg font-black text-on-surface dark:text-white mt-0.5">
                         {formatToPersianDigits(summary.actualMinutes)} دقیقه
                     </div>
                 </div>
 
-                <div className="bg-purple-50/70 dark:bg-purple-950/30 rounded-2xl p-3 border border-purple-100 dark:border-purple-900/40">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-purple-600 dark:text-purple-300">
+                <div className="bg-tertiary-fixed/30 dark:bg-tertiary-fixed/15 rounded-2xl p-3 border border-tertiary/20">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-tertiary">
                         <Target size={14} /> انطباق با برنامه
                     </div>
-                    <div className="text-lg font-black text-purple-800 dark:text-white mt-0.5">
+                    <div className="text-lg font-black text-on-surface dark:text-white mt-0.5">
                         {formatToPersianDigits(summary.adherencePercent)}٪
                     </div>
                 </div>
             </div>
 
-            {/* Column headers */}
-            <div className="grid grid-cols-[56px_1fr_1fr] gap-2 text-[11px] font-black text-gray-500 dark:text-gray-400 px-1">
-                <span>ساعت</span>
-                <span className="text-center">برنامه پیشنهادی (ستون برنامه)</span>
-                <span className="text-center">عملکرد واقعی (ستون تمرکز ۱۰ دقیقه‌ای)</span>
-            </div>
+            {/* Responsive Horizontal Scroll Container for Small Screens */}
+            <div className="overflow-x-auto pb-2 custom-scrollbar">
+                <div className="min-w-[520px] space-y-2">
+                    {/* Column headers */}
+                    <div className="grid grid-cols-[56px_1fr_1fr] gap-2 text-[11px] font-black text-on-surface-variant px-1">
+                        <span>ساعت</span>
+                        <span className="text-center">برنامه پیشنهادی (ستون برنامه)</span>
+                        <span className="text-center">عملکرد واقعی (ستون تمرکز ۱۰ دقیقه‌ای)</span>
+                    </div>
 
-            {/* 24h x 6 slots */}
-            <div className="space-y-1.5 max-h-[600px] overflow-y-auto custom-scrollbar pl-1">
+                    {/* 24h x 6 slots */}
+                    <div className="space-y-1.5 max-h-[600px] overflow-y-auto custom-scrollbar pl-1">
                 {hoursOrder.map((hour, hIdx) => {
                     const hourLabel = `${String(hour).padStart(2, '0')}:00`;
                     return (
@@ -227,9 +256,11 @@ export const DualColumn10MinuteGrid: React.FC<DualColumn10MinuteGridProps> = ({
                         </div>
                     );
                 })}
+                    </div>
+                </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-[11px] text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-outline-variant/20 text-[11px] text-on-surface-variant">
                 <span>هر خانه = ۱۰ دقیقه (۱۴۴ بلوک از ساعت {String(cutoffHour).padStart(2, '0')}:۰۰ تا ۰۵:۰۰ بامداد)</span>
                 <span>روی خانه‌های ستون برنامه کلیک کنید تا تسک زمان‌بندی یا ویرایش شود.</span>
             </div>

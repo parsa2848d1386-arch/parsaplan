@@ -41,7 +41,15 @@ import {
     StopCircle,
     ArrowUpRight,
     Share2,
-    Smile
+    Smile,
+    Zap,
+    CloudRain,
+    Coffee,
+    Wind,
+    Headphones,
+    MessageSquare,
+    CheckCircle2,
+    UserCheck
 } from 'lucide-react';
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { getShamsiDate, formatClockTime, formatToPersianDigits } from '../utils';
@@ -56,6 +64,67 @@ const AMBIENT_SOUNDS = [
     { id: 'white', label: 'نویز سفید', icon: 'air' },
     { id: 'lofi', label: 'لوفای تمرکز', icon: 'headphones' }
 ];
+
+const AVATAR_GRADIENTS = [
+    'from-indigo-500 via-indigo-600 to-purple-600 text-white',
+    'from-emerald-500 via-teal-600 to-green-600 text-white',
+    'from-amber-500 via-orange-500 to-red-500 text-white',
+    'from-rose-500 via-pink-600 to-purple-600 text-white',
+    'from-sky-500 via-blue-600 to-indigo-600 text-white',
+    'from-violet-500 via-purple-600 to-pink-600 text-white',
+];
+
+const getAvatarGradient = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const idx = Math.abs(hash) % AVATAR_GRADIENTS.length;
+    return AVATAR_GRADIENTS[idx];
+};
+
+const getInitials = (name: string) => {
+    if (!name) return 'ک';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] || '') + ' ' + (parts[1][0] || '');
+    }
+    return name.slice(0, 2);
+};
+
+export const VectorAvatar: React.FC<{
+    name: string;
+    className?: string;
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+}> = ({ name, className = '', size = 'md' }) => {
+    const gradient = getAvatarGradient(name);
+    const initials = getInitials(name);
+    const sizeClasses = {
+        sm: 'w-7 h-7 text-[10px]',
+        md: 'w-10 h-10 text-xs',
+        lg: 'w-14 h-14 text-sm',
+        xl: 'w-16 h-16 sm:w-20 sm:h-20 text-base sm:text-xl',
+    }[size];
+
+    return (
+        <div
+            className={`rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center font-bold tracking-tight shadow-sm select-none shrink-0 ${sizeClasses} ${className}`}
+            title={name}
+        >
+            <span>{initials}</span>
+        </div>
+    );
+};
+
+const renderSoundIcon = (id: string) => {
+    switch (id) {
+        case 'rain': return <CloudRain size={14} />;
+        case 'cafe': return <Coffee size={14} />;
+        case 'white': return <Wind size={14} />;
+        case 'lofi': return <Headphones size={14} />;
+        default: return <Volume2 size={14} />;
+    }
+};
 
 export const Leaderboard = () => {
     const {
@@ -85,7 +154,7 @@ export const Leaderboard = () => {
         startTimer,
         pauseTimer,
         resumeTimer,
-        stopTimer
+        finishSession
     } = useFocus();
 
     // Primary Page Tab ('rooms' YPT vs 'ranking' Leaderboard)
@@ -307,17 +376,17 @@ export const Leaderboard = () => {
             return;
         }
 
-        const unsubPeers = liveRoomService.subscribePeers(db, activeRoomCode, (peers) => {
+        const unsubPeers = liveRoomService.subscribeRoomMembers(db, activeRoomCode, (peers) => {
             setRoomPeers(peers);
         });
 
-        const unsubMessages = liveRoomService.subscribeMessages(db, activeRoomCode, (msgs) => {
+        const unsubMessages = liveRoomService.subscribeRoomMessages(db, activeRoomCode, (msgs) => {
             setRoomMessages(msgs);
         });
 
-        liveRoomService.getRoom(db, activeRoomCode).then((res) => {
-            if (res.ok && res.data) {
-                setActiveRoomInfo(res.data);
+        liveRoomService.getGroupRoom(db, activeRoomCode).then((res) => {
+            if (res) {
+                setActiveRoomInfo(res);
             }
         });
 
@@ -331,19 +400,20 @@ export const Leaderboard = () => {
     useEffect(() => {
         if (!db || !activeRoomCode || !userId) return;
 
-        const currentSubject = selectedSubject?.name || 'مطالعه آزاد';
+        const currentSubject = selectedSubject || 'مطالعه آزاد';
         const currentStatus = focusStatus === 'running' ? 'STUDYING' : 'RESTING';
         const currentElapsed = focusElapsedSeconds;
 
-        liveRoomService.upsertPeer(db, activeRoomCode, {
+        liveRoomService.upsertMemberPresence(db, activeRoomCode, {
             uid: userId,
             displayName: userName || 'دانش‌آموز',
             avatar: '🎓',
             status: currentStatus,
-            subject: currentSubject,
+            activeSubject: currentSubject,
             elapsedSeconds: currentElapsed,
             dailyStudySeconds: myTodayStudySeconds,
-            lastHeartbeat: Date.now(),
+            cheersReceived: 0,
+            lastPing: Date.now(),
         });
     }, [db, activeRoomCode, userId, userName, focusStatus, selectedSubject, focusElapsedSeconds, myTodayStudySeconds]);
 
@@ -355,7 +425,7 @@ export const Leaderboard = () => {
         }
         setIsTogglingPublic(true);
         if (isMyProfilePublic) {
-            const res = await leaderboardApi.optOut(db, user.uid);
+            const res = await leaderboardApi.unpublishProfile(db, user.uid);
             if (res.ok) {
                 setIsMyProfilePublic(false);
                 showToast('پروفایل شما از جدول رتبه‌بندی عمومی برداشته شد.', 'info');
@@ -364,7 +434,7 @@ export const Leaderboard = () => {
                 showToast(res.error.message, 'error');
             }
         } else {
-            const res = await leaderboardApi.optIn(db, myStats);
+            const res = await leaderboardApi.publishProfile(db, user.uid, myStats, tasks);
             if (res.ok) {
                 setIsMyProfilePublic(true);
                 showToast('پروفایل شما با موفقیت در لیگ عمومی فعال شد! 🏆', 'success');
@@ -398,22 +468,24 @@ export const Leaderboard = () => {
             return;
         }
         setRoomActionLoading(true);
-        const res = await liveRoomService.joinRoom(db, cleanCode, {
-            uid: userId,
-            displayName: userName || 'دانش‌آموز',
-            avatar: '🎓',
-            status: focusStatus === 'running' ? 'STUDYING' : 'IDLE',
-            subject: selectedSubject?.name || 'مطالعه آزاد',
-            elapsedSeconds: focusElapsedSeconds,
-            dailyStudySeconds: myTodayStudySeconds,
-            lastHeartbeat: Date.now(),
-        });
-        if (res.ok) {
+        try {
+            const currentSubj = selectedSubject || 'مطالعه آزاد';
+            await liveRoomService.upsertMemberPresence(db, cleanCode, {
+                uid: userId,
+                displayName: userName || 'دانش‌آموز',
+                avatar: '🎓',
+                status: focusStatus === 'running' ? 'STUDYING' : 'RESTING',
+                activeSubject: currentSubj,
+                elapsedSeconds: focusElapsedSeconds,
+                dailyStudySeconds: myTodayStudySeconds,
+                cheersReceived: 0,
+                lastPing: Date.now(),
+            });
             setActiveRoomCode(cleanCode);
             showToast(`با موفقیت وارد اتاق ${cleanCode} شدید!`, 'success');
             setJoinCodeInput('');
-        } else {
-            showToast(res.error.message, 'error');
+        } catch (err: any) {
+            showToast(err?.message || 'خطا در ورود به اتاق', 'error');
         }
         setRoomActionLoading(false);
     };
@@ -422,7 +494,7 @@ export const Leaderboard = () => {
     const handleLeaveActiveRoom = async () => {
         if (!db || !activeRoomCode || !userId) return;
         askConfirm('خروج از اتاق', 'آیا مطمئنید که می‌خواهید از اتاق مطالعه خارج شوید؟', async () => {
-            await liveRoomService.leaveRoom(db, activeRoomCode, userId);
+            await liveRoomService.leaveGroupRoom(db, activeRoomCode, userId);
             setActiveRoomCode(null);
             showToast('از اتاق مطالعه خارج شدید.', 'info');
         });
@@ -440,7 +512,7 @@ export const Leaderboard = () => {
             return;
         }
         setRoomActionLoading(true);
-        const res = await liveRoomService.createRoom(db, {
+        const res = await liveRoomService.createRoomSafe(db, {
             name: newRoomName.trim(),
             category: newRoomCategory,
             description: newRoomDesc.trim(),
@@ -469,23 +541,13 @@ export const Leaderboard = () => {
         if (!db || !activeRoomCode || !userId || !roomChatText.trim()) return;
         const text = roomChatText.trim();
         setRoomChatText('');
-        await liveRoomService.sendMessage(db, activeRoomCode, {
-            senderUid: userId,
-            senderName: userName || 'دانش‌آموز',
-            senderAvatar: '🎓',
-            text,
-        });
+        await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'دانش‌آموز', text);
     };
 
     // Send Quick Emoji Reaction
     const handleSendReaction = async (emoji: string) => {
         if (!db || !activeRoomCode || !userId) return;
-        await liveRoomService.sendMessage(db, activeRoomCode, {
-            senderUid: userId,
-            senderName: userName || 'دانش‌آموز',
-            senderAvatar: '🎓',
-            text: emoji,
-        });
+        await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'دانش‌آموز', emoji);
         showToast(`انگیزه ارسال شد: ${emoji}`, 'info');
     };
 
@@ -516,17 +578,11 @@ export const Leaderboard = () => {
                 <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
                     {/* Player Profile & Bio Badges */}
                     <div className="flex items-center gap-3 sm:gap-4">
-                        {/* Cyber Avatar Frame with Tier Indicator */}
+                        {/* Vector Avatar Frame with Tier Indicator */}
                         <div className="relative shrink-0">
-                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high p-1 shadow-md flex items-center justify-center relative overflow-hidden border border-outline-variant/40">
-                                <img
-                                    className="w-full h-full object-cover rounded-xl"
-                                    alt="Cyber Avatar"
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuD03DTRdN-AD95KWkmb83_7dhRSTUAlIoweRT_jt9eltIUMSy9aGrWSQneZgqoo4z5wOOW1ZmrT7RjuYuuEgau955MrIzOoBetl_18BHu1kVPRmsvs48OAMmkId9fpuLcflVlvL59SVca3kaZKxXqXSwoTF8C3WJ-a_9aVdmhp5C3hijxPK7ooTItFKhpklDiwn35dSPafM0lgx-U-AwRTk4YMKpkQHyVRBRR1G3dg"
-                                />
-                            </div>
+                            <VectorAvatar name={userName || 'سارا محمدی'} size="xl" />
                             <span className="absolute -bottom-2 -left-2 bg-primary text-on-primary font-label-sm text-label-sm px-2 py-0.5 rounded-full shadow-sm flex items-center gap-0.5 font-bold">
-                                <span className="material-symbols-outlined text-[14px]">bolt</span>
+                                <Zap size={13} className="fill-current" />
                                 {formatToPersianDigits(level)}
                             </span>
                         </div>
@@ -541,7 +597,7 @@ export const Leaderboard = () => {
                                     استاد تمرکز عمیق (Focus Master)
                                 </span>
                                 <span className="bg-secondary text-on-secondary font-label-sm text-[10px] sm:text-xs px-2 py-0.5 rounded-md flex items-center gap-0.5 font-bold">
-                                    <span className="material-symbols-outlined text-[13px]">military_tech</span>
+                                    <Medal size={13} />
                                     سطح {formatToPersianDigits(level)}
                                 </span>
                             </div>
@@ -558,7 +614,7 @@ export const Leaderboard = () => {
                         {/* Fire Streak */}
                         <div className="bg-surface-container-low px-space-md py-space-sm rounded-xl flex items-center gap-space-sm shadow-xs border border-outline-variant/20">
                             <div className="w-10 h-10 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center shadow-xs">
-                                <span className="material-symbols-outlined text-[24px]">local_fire_department</span>
+                                <Flame size={22} className="text-tertiary" />
                             </div>
                             <div className="flex flex-col">
                                 <span className="font-label-sm text-label-sm text-tertiary font-bold tracking-wide">زنجیره آتشین</span>
@@ -581,7 +637,7 @@ export const Leaderboard = () => {
                         <div className="bg-surface-container-low p-space-sm lg:p-space-md rounded-xl flex flex-col gap-space-xs min-w-[240px] shadow-xs border border-outline-variant/20">
                             <div className="flex items-center justify-between font-label-sm text-label-sm">
                                 <span className="text-on-surface-variant flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-[16px] text-primary">stars</span>ارتقا به لیگ افسانه‌ای
+                                    <Sparkles size={14} className="text-primary" />ارتقا به لیگ افسانه‌ای
                                 </span>
                                 <span className="font-bold text-primary">
                                     {formatToPersianDigits(xp)} / ۳,۰۰۰ XP
@@ -603,55 +659,53 @@ export const Leaderboard = () => {
             </div>
 
             {/* Section Switcher Tabs (YPT Study Rooms vs Competitive League) */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-lowest dark:bg-slate-900 p-2.5 rounded-3xl shadow-sm border border-outline-variant/30">
-                <div className="flex items-center gap-1.5 p-1 bg-surface-container-low dark:bg-slate-800/90 rounded-2xl border border-outline-variant/15 shadow-inner">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-lowest dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-outline-variant/30">
+                <div className="flex items-center gap-2 p-1 bg-surface-container-low dark:bg-slate-800 rounded-xl">
                     <button
                         onClick={() => setActiveSection('rooms')}
-                        className={`touch-target flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer min-h-[42px] ${
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer ${
                             activeSection === 'rooms'
-                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
+                                ? 'bg-primary text-on-primary font-bold shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-[20px]">groups</span>
+                        <Users size={18} />
                         <span>اتاق مطالعه زنده YPT</span>
-                        <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
                     </button>
                     <button
                         onClick={() => setActiveSection('ranking')}
-                        className={`touch-target flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer min-h-[42px] ${
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-label-md font-label-md transition-all cursor-pointer ${
                             activeSection === 'ranking'
-                                ? 'bg-primary text-on-primary shadow-sm scale-[1.02]'
-                                : 'text-on-surface-variant dark:text-gray-300 hover:text-on-surface hover:bg-surface-container'
+                                ? 'bg-primary text-on-primary font-bold shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-[20px]">leaderboard</span>
+                        <Trophy size={18} />
                         <span>رده‌بندی زنده لیگ الماس</span>
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto">
+                <div className="flex items-center gap-2">
                     {activeSection === 'rooms' ? (
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="touch-target flex items-center gap-1.5 px-4.5 py-2.5 rounded-2xl bg-gradient-to-r from-secondary to-secondary/90 text-on-secondary font-bold text-xs shadow-sm hover:brightness-110 transition-all active:scale-95 cursor-pointer min-h-[42px]"
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-on-secondary font-label-sm text-label-sm font-bold shadow-xs hover:bg-secondary/90 transition-all active:scale-95 cursor-pointer"
                         >
-                            <span className="material-symbols-outlined text-[18px]">add</span>
+                            <Plus size={18} />
                             <span>ایجاد اتاق جدید</span>
                         </button>
                     ) : (
                         <button
                             onClick={handleTogglePublic}
                             disabled={isTogglingPublic}
-                            className={`touch-target flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer min-h-[42px] ${
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-label-sm font-label-sm font-bold transition-all cursor-pointer ${
                                 isMyProfilePublic
-                                    ? 'bg-secondary-container text-on-secondary-container border border-secondary/30 shadow-xs'
-                                    : 'bg-surface-container-high dark:bg-slate-800 text-on-surface dark:text-gray-200 hover:bg-surface-container-highest border border-outline-variant/30'
+                                    ? 'bg-secondary-container text-on-secondary-container border border-secondary/30'
+                                    : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
                             }`}
                         >
-                            <span className="material-symbols-outlined text-[18px]">
-                                {isMyProfilePublic ? 'visibility' : 'visibility_off'}
-                            </span>
+                            {isMyProfilePublic ? <Eye size={18} /> : <EyeOff size={18} />}
                             <span>{isMyProfilePublic ? 'پروفایل عمومی در لیگ' : 'فعالسازی نمایش عمومی'}</span>
                         </button>
                     )}
@@ -666,7 +720,7 @@ export const Leaderboard = () => {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
                             <div className="flex items-center gap-space-sm min-w-0">
                                 <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
-                                    <span className="material-symbols-outlined text-[22px]">local_library</span>
+                                    <BookOpen size={20} />
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-space-xs">
@@ -690,14 +744,14 @@ export const Leaderboard = () => {
                             {/* Quick Join and Ambient Audio Trigger */}
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-on-surface text-label-sm font-label-sm">
-                                    <span className="material-symbols-outlined text-primary text-[20px]">graphic_eq</span>
+                                    <Radio size={16} className="text-primary" />
                                     <span>صدای محیطی فعال</span>
                                 </div>
 
                                 {activeRoomCode ? (
                                     <button
                                         onClick={handleLeaveActiveRoom}
-                                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-error-container text-on-error-container text-label-sm font-label-sm hover:opacity-90 transition-all"
+                                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-error-container text-on-error-container text-label-sm font-label-sm hover:opacity-90 transition-all cursor-pointer"
                                     >
                                         <LogOut size={14} />
                                         <span>خروج</span>
@@ -715,7 +769,7 @@ export const Leaderboard = () => {
                                         <button
                                             onClick={() => handleJoinRoom(joinCodeInput)}
                                             disabled={joinCodeInput.trim().length < 6 || roomActionLoading}
-                                            className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-label-sm font-label-sm font-bold disabled:opacity-50"
+                                            className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-label-sm font-label-sm font-bold disabled:opacity-50 cursor-pointer"
                                         >
                                             ورود
                                         </button>
@@ -731,13 +785,13 @@ export const Leaderboard = () => {
                                 <button
                                     key={sound.id}
                                     onClick={() => setSelectedAmbient(sound.id)}
-                                    className={`px-3 py-1 rounded-full shrink-0 flex items-center gap-1 transition-all ${
+                                    className={`px-3 py-1 rounded-full shrink-0 flex items-center gap-1 transition-all cursor-pointer ${
                                         selectedAmbient === sound.id
                                             ? 'bg-primary text-on-primary font-bold shadow-xs'
                                             : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
                                     }`}
                                 >
-                                    <span className="material-symbols-outlined text-[14px]">{sound.icon}</span>
+                                    {renderSoundIcon(sound.id)}
                                     {sound.label}
                                 </button>
                             ))}
@@ -752,19 +806,19 @@ export const Leaderboard = () => {
                         {/* Active Task Badge */}
                         <div className="flex items-center justify-between w-full mb-space-md z-10">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-label-sm font-label-sm max-w-[80%] truncate">
-                                <span className="material-symbols-outlined text-primary text-[16px]">edit_note</span>
+                                <Target size={15} className="text-primary shrink-0" />
                                 <span className="truncate">
-                                    {selectedSubject?.name
-                                        ? `مرور تست‌های ${selectedSubject.name}`
+                                    {selectedSubject
+                                        ? `مرور تست‌های ${selectedSubject}`
                                         : 'مرور تست‌های ریاضی مهندسی - مبحث مشتقات جزئی'}
                                 </span>
                             </div>
                             <button
                                 onClick={() => setIsTimerOpen(true)}
-                                className="text-primary hover:text-primary-container text-label-sm font-label-sm flex items-center gap-0.5"
+                                className="text-primary hover:text-primary-container text-label-sm font-label-sm flex items-center gap-1 cursor-pointer font-bold"
                             >
                                 <span>تغییر تسک</span>
-                                <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                                <RefreshCw size={13} />
                             </button>
                         </div>
 
@@ -827,55 +881,51 @@ export const Leaderboard = () => {
                             <button
                                 onClick={() => setIsMicMuted(!isMicMuted)}
                                 aria-label="میکروفون"
-                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-sm ${
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-sm cursor-pointer ${
                                     isMicMuted
                                         ? 'bg-surface-container text-on-surface-variant'
                                         : 'bg-primary text-on-primary'
                                 }`}
                             >
-                                <span className="material-symbols-outlined text-[22px]">
-                                    {isMicMuted ? 'mic_off' : 'mic'}
-                                </span>
+                                {isMicMuted ? <MicOff size={20} /> : <Mic size={20} />}
                             </button>
 
                             {focusStatus === 'running' ? (
                                 <button
                                     onClick={pauseTimer}
-                                    className="flex-1 py-3 px-6 rounded-xl bg-tertiary text-on-tertiary font-label-md text-label-md font-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-98 transition-all"
+                                    className="flex-1 py-3 px-6 rounded-xl bg-tertiary text-on-tertiary font-label-md text-label-md font-bold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
                                 >
-                                    <span className="material-symbols-outlined text-[22px]">pause</span>
+                                    <Pause size={20} fill="currentColor" />
                                     <span>توقف موقت</span>
                                 </button>
                             ) : (
                                 <button
-                                    onClick={() => startTimer(selectedSubject?.id || 'general')}
-                                    className="flex-1 py-3 px-6 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-primary-container active:scale-98 transition-all"
+                                    onClick={() => startTimer()}
+                                    className="flex-1 py-3 px-6 rounded-xl bg-primary text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-primary-container active:scale-98 transition-all cursor-pointer"
                                 >
-                                    <span className="material-symbols-outlined text-[22px]">play_circle</span>
+                                    <Play size={20} fill="currentColor" />
                                     <span>شروع فوکوس دیپ‌ورک</span>
                                 </button>
                             )}
 
                             <button
-                                onClick={stopTimer}
-                                className="py-3 px-4 rounded-xl bg-surface-container-high text-error hover:bg-error-container hover:text-on-error-container font-label-md text-label-md font-bold flex items-center justify-center gap-1 transition-all active:scale-98"
+                                onClick={() => finishSession()}
+                                className="py-3 px-4 rounded-xl bg-surface-container-high text-error hover:bg-error-container hover:text-on-error-container font-label-md text-label-md font-bold flex items-center justify-center gap-1 transition-all active:scale-98 cursor-pointer"
                             >
-                                <span className="material-symbols-outlined text-[20px]">stop_circle</span>
+                                <StopCircle size={18} />
                                 <span>پایان پارت</span>
                             </button>
 
                             <button
                                 onClick={() => setIsCamMuted(!isCamMuted)}
                                 aria-label="دوربین"
-                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-sm ${
+                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 shadow-sm cursor-pointer ${
                                     isCamMuted
                                         ? 'bg-surface-container text-on-surface-variant'
                                         : 'bg-secondary text-on-secondary'
                                 }`}
                             >
-                                <span className="material-symbols-outlined text-[22px]">
-                                    {isCamMuted ? 'videocam_off' : 'videocam'}
-                                </span>
+                                {isCamMuted ? <VideoOff size={20} /> : <Video size={20} />}
                             </button>
                         </div>
                     </div>
@@ -888,28 +938,26 @@ export const Leaderboard = () => {
                             <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm border border-outline-variant/30">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                            emoji_events
-                                        </span>
+                                        <Trophy size={18} className="text-tertiary" />
                                         <h3 className="text-headline-md font-headline-md text-on-surface font-bold">
                                             برترین‌های امروز اتاق
                                         </h3>
                                     </div>
                                     <button
                                         onClick={() => setActiveSection('ranking')}
-                                        className="text-primary text-label-sm font-label-sm font-bold flex items-center gap-0.5"
+                                        className="text-primary text-label-sm font-label-sm font-bold flex items-center gap-1 cursor-pointer hover:underline"
                                     >
                                         <span>مشاهده لیگ کامل</span>
-                                        <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                                        <ArrowUpRight size={14} />
                                     </button>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-space-xs pt-space-xs">
                                     {/* 2nd Place (You) */}
                                     <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col items-center text-center relative pt-4 border border-outline-variant/20">
-                                        <div className="w-10 h-10 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-label-md mb-1 relative">
-                                            <span>س‌م</span>
-                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-outline-variant text-on-surface text-[10px] flex items-center justify-center font-bold">
+                                        <div className="relative mb-1">
+                                            <VectorAvatar name={userName || 'شما'} size="sm" />
+                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-outline-variant text-on-surface text-[10px] flex items-center justify-center font-bold shadow-xs">
                                                 ۲
                                             </span>
                                         </div>
@@ -920,9 +968,9 @@ export const Leaderboard = () => {
 
                                     {/* 1st Place */}
                                     <div className="bg-surface-container-high rounded-xl p-space-sm flex flex-col items-center text-center relative pt-4 -mt-2 border border-tertiary/30 shadow-xs">
-                                        <div className="w-12 h-12 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center font-bold text-label-md mb-1 relative">
-                                            <span>پ‌ن</span>
-                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-tertiary text-on-tertiary text-[10px] flex items-center justify-center font-bold">
+                                        <div className="relative mb-1">
+                                            <VectorAvatar name="پارسا ناصری" size="md" />
+                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-tertiary text-on-tertiary text-[10px] flex items-center justify-center font-bold shadow-xs">
                                                 ۱
                                             </span>
                                         </div>
@@ -933,9 +981,9 @@ export const Leaderboard = () => {
 
                                     {/* 3rd Place */}
                                     <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col items-center text-center relative pt-4 border border-outline-variant/20">
-                                        <div className="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center font-bold text-label-md mb-1 relative">
-                                            <span>ن‌ر</span>
-                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-secondary text-on-secondary text-[10px] flex items-center justify-center font-bold">
+                                        <div className="relative mb-1">
+                                            <VectorAvatar name="نیلوفر ر." size="sm" />
+                                            <span className="absolute -bottom-1 -start-1 w-5 h-5 rounded-full bg-secondary text-on-secondary text-[10px] flex items-center justify-center font-bold shadow-xs">
                                                 ۳
                                             </span>
                                         </div>
@@ -950,96 +998,110 @@ export const Leaderboard = () => {
                             <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-md border border-outline-variant/30">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-primary text-[20px]">group</span>
+                                        <Users size={18} className="text-primary" />
                                         <h3 className="text-headline-md font-headline-md text-on-surface font-bold">
                                             میزهای مطالعه آنلاین
                                         </h3>
                                     </div>
-                                    <div className="flex items-center gap-1 text-label-sm font-label-sm text-on-surface-variant">
+                                    <div className="flex items-center gap-1.5 text-label-sm font-label-sm text-on-surface-variant">
                                         <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-                                        <span>۲۱ نفر در حال خواندن</span>
+                                        <span>{formatToPersianDigits(roomPeers.length || 21)} نفر در حال خواندن</span>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-                                    {/* Desk 1: Studying */}
-                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-7 h-7 rounded-full bg-primary-container text-on-primary flex items-center justify-center text-label-sm font-label-sm font-bold">
-                                                    ع‌ک
+                                    {(roomPeers.length > 0 ? roomPeers : [
+                                        {
+                                            uid: 'peer_1',
+                                            displayName: 'علیرضا ک.',
+                                            avatar: '',
+                                            status: 'studying' as const,
+                                            activeSubject: 'واژگان ۵۰۴ تافل',
+                                            activeTopic: 'پومودورو ۲',
+                                            elapsedSeconds: 13800,
+                                            dailyStudySeconds: 13800,
+                                            cheersReceived: 3,
+                                            lastPing: Date.now(),
+                                        },
+                                        {
+                                            uid: 'peer_2',
+                                            displayName: 'مریم حسینی',
+                                            avatar: '',
+                                            status: 'studying' as const,
+                                            activeSubject: 'شیمی آلی کنکور',
+                                            activeTopic: 'تمرکز عمیق',
+                                            elapsedSeconds: 11520,
+                                            dailyStudySeconds: 11520,
+                                            cheersReceived: 5,
+                                            lastPing: Date.now(),
+                                        },
+                                        {
+                                            uid: 'peer_3',
+                                            displayName: 'کسری جهان',
+                                            avatar: '',
+                                            status: 'break' as const,
+                                            activeSubject: 'فیزیک کوانتوم',
+                                            activeTopic: 'استراحت ۵ دقیقه',
+                                            elapsedSeconds: 9600,
+                                            dailyStudySeconds: 9600,
+                                            cheersReceived: 1,
+                                            lastPing: Date.now(),
+                                        },
+                                        {
+                                            uid: 'peer_4',
+                                            displayName: 'فاطمه زارع',
+                                            avatar: '',
+                                            status: 'studying' as const,
+                                            activeSubject: 'طراحی الگوریتم',
+                                            activeTopic: 'پومودورو ۳',
+                                            elapsedSeconds: 6900,
+                                            dailyStudySeconds: 6900,
+                                            cheersReceived: 4,
+                                            lastPing: Date.now(),
+                                        },
+                                    ]).map((peer) => (
+                                        <div
+                                            key={peer.uid}
+                                            className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <VectorAvatar name={peer.displayName} size="sm" />
+                                                    <span className="text-label-md font-label-md font-bold text-on-surface truncate">
+                                                        {peer.displayName}
+                                                    </span>
                                                 </div>
-                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">علیرضا ک.</span>
+                                                <span
+                                                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                                        peer.status === 'studying'
+                                                            ? 'bg-secondary animate-pulse'
+                                                            : peer.status === 'break'
+                                                              ? 'bg-tertiary'
+                                                              : 'bg-outline-variant'
+                                                    }`}
+                                                    title={peer.status === 'studying' ? 'در حال مطالعه' : peer.status === 'break' ? 'استراحت' : 'آماده'}
+                                                />
                                             </div>
-                                            <span className="w-2 h-2 rounded-full bg-secondary" title="در حال مطالعه"></span>
-                                        </div>
-                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">واژگان ۵۰۴ تافل</p>
-                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
-                                            <span className="text-secondary font-medium">پومودورو ۲</span>
-                                            <span className="font-mono font-semibold" dir="ltr">03:50h</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Desk 2: Studying */}
-                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-7 h-7 rounded-full bg-secondary text-on-secondary flex items-center justify-center text-label-sm font-label-sm font-bold">
-                                                    م‌ح
-                                                </div>
-                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">مریم حسینی</span>
+                                            <p className="text-body-sm font-body-sm text-on-surface-variant truncate">
+                                                {peer.activeSubject || 'مطالعه متمرکز'}
+                                            </p>
+                                            <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
+                                                <span className={peer.status === 'studying' ? 'text-secondary font-medium' : 'text-tertiary font-medium'}>
+                                                    {peer.activeTopic || (peer.status === 'break' ? 'استراحت' : 'پومودورو')}
+                                                </span>
+                                                <span className="font-mono font-semibold" dir="ltr">
+                                                    {formatHMS(peer.elapsedSeconds || peer.dailyStudySeconds || 0)}
+                                                </span>
                                             </div>
-                                            <span className="w-2 h-2 rounded-full bg-secondary" title="در حال مطالعه"></span>
                                         </div>
-                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">شیمی آلی کنکور</p>
-                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
-                                            <span className="text-secondary font-medium">تمرکز عمیق</span>
-                                            <span className="font-mono font-semibold" dir="ltr">03:12h</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Desk 3: Short Break */}
-                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-7 h-7 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center text-label-sm font-label-sm font-bold">
-                                                    ک‌ج
-                                                </div>
-                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">کسری جهان</span>
-                                            </div>
-                                            <span className="w-2 h-2 rounded-full bg-tertiary" title="استراحت کوتاه"></span>
-                                        </div>
-                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">فیزیک کوانتوم</p>
-                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
-                                            <span className="text-tertiary font-medium">استراحت ۵ دقیقه</span>
-                                            <span className="font-mono font-semibold" dir="ltr">02:40h</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Desk 4: Studying */}
-                                    <div className="bg-surface-container-low rounded-xl p-space-sm flex flex-col gap-space-xs hover:bg-surface-container transition-colors border border-outline-variant/20">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center text-label-sm font-label-sm font-bold">
-                                                    ف‌ز
-                                                </div>
-                                                <span className="text-label-md font-label-md font-bold text-on-surface truncate">فاطمه زارع</span>
-                                            </div>
-                                            <span className="w-2 h-2 rounded-full bg-secondary" title="در حال مطالعه"></span>
-                                        </div>
-                                        <p className="text-body-sm font-body-sm text-on-surface-variant truncate">طراحی الگوریتم</p>
-                                        <div className="flex items-center justify-between mt-1 text-[11px] text-on-surface">
-                                            <span className="text-secondary font-medium">پومودورو ۳</span>
-                                            <span className="font-mono font-semibold" dir="ltr">01:55h</span>
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
 
                                 {/* Desk Invite Banner */}
                                 <div className="bg-surface-container rounded-xl p-space-sm flex items-center justify-between gap-space-sm">
                                     <div className="flex items-center gap-2">
                                         <div className="w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center shrink-0">
-                                            <span className="material-symbols-outlined text-[18px]">person_add</span>
+                                            <Plus size={16} />
                                         </div>
                                         <span className="text-body-sm font-body-sm text-on-surface font-medium">
                                             دوستت رو به میز بغلی دعوت کن!
@@ -1047,7 +1109,7 @@ export const Leaderboard = () => {
                                     </div>
                                     <button
                                         onClick={() => handleCopyRoomCode(activeRoomCode || 'YPT-782K')}
-                                        className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-primary text-label-sm font-label-sm font-bold hover:bg-surface-container-low transition-colors shrink-0 shadow-sm"
+                                        className="px-3 py-1.5 rounded-lg bg-surface-container-lowest text-primary text-label-sm font-label-sm font-bold hover:bg-surface-container-low transition-colors shrink-0 shadow-sm cursor-pointer"
                                     >
                                         اشتراک لینک
                                     </button>
@@ -1060,7 +1122,7 @@ export const Leaderboard = () => {
                             <div className="bg-surface-container-lowest rounded-2xl p-space-md shadow-sm flex flex-col gap-space-sm border border-outline-variant/30">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-primary text-[20px]">chat_bubble_outline</span>
+                                        <MessageSquare size={18} className="text-primary" />
                                         <h3 className="text-headline-md font-headline-md text-on-surface font-bold">
                                             رویدادهای زنده اتاق
                                         </h3>
@@ -1072,7 +1134,7 @@ export const Leaderboard = () => {
                                 <div className="flex flex-col gap-space-xs max-h-80 overflow-y-auto custom-scrollbar">
                                     <div className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20">
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-secondary text-[18px]">verified</span>
+                                            <CheckCircle2 size={16} className="text-secondary shrink-0" />
                                             <span className="text-on-surface">
                                                 <strong className="font-semibold">امیررضا</strong> پومودورو ۲۵ دقیقه‌ای رو تموم کرد!
                                             </span>
@@ -1082,7 +1144,7 @@ export const Leaderboard = () => {
 
                                     <div className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20">
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-primary text-[18px]">login</span>
+                                            <DoorOpen size={16} className="text-primary shrink-0" />
                                             <span className="text-on-surface">
                                                 <strong className="font-semibold">مهسا ع.</strong> به اتاق پیوست. به امید تمرکز بالا!
                                             </span>
@@ -1092,7 +1154,7 @@ export const Leaderboard = () => {
 
                                     <div className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20">
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-tertiary text-[18px]">local_fire_department</span>
+                                            <Flame size={16} className="text-tertiary shrink-0" />
                                             <span className="text-on-surface">
                                                 <strong className="font-semibold">پارسا ن.</strong> رکورد ۷ ساعت مطالعه متوالی رو شکست 🔥
                                             </span>
@@ -1106,13 +1168,13 @@ export const Leaderboard = () => {
                                             className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between text-body-sm font-body-sm border border-outline-variant/20"
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm">{msg.senderAvatar || '💬'}</span>
+                                                <span className="text-sm">💬</span>
                                                 <span className="text-on-surface">
                                                     <strong className="font-semibold">{msg.senderName}:</strong> {msg.text}
                                                 </span>
                                             </div>
                                             <span className="text-[10px] text-on-surface-variant">
-                                                {formatClockTime(new Date(msg.timestamp))}
+                                                {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }) : ''}
                                             </span>
                                         </div>
                                     ))}
@@ -1123,28 +1185,28 @@ export const Leaderboard = () => {
                                     <div className="flex items-center justify-around bg-surface-container-low p-1.5 rounded-xl border border-outline-variant/20">
                                         <button
                                             onClick={() => handleSendReaction('👏')}
-                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125 cursor-pointer"
                                             title="تشویق"
                                         >
                                             👏
                                         </button>
                                         <button
                                             onClick={() => handleSendReaction('🔥')}
-                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125 cursor-pointer"
                                             title="آتشین"
                                         >
                                             🔥
                                         </button>
                                         <button
                                             onClick={() => handleSendReaction('☕')}
-                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125 cursor-pointer"
                                             title="قهوه"
                                         >
                                             ☕
                                         </button>
                                         <button
                                             onClick={() => handleSendReaction('⚡')}
-                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125"
+                                            className="w-9 h-9 rounded-lg hover:bg-surface-container flex items-center justify-center text-[18px] transition-transform active:scale-125 cursor-pointer"
                                             title="انرژی"
                                         >
                                             ⚡
@@ -1163,9 +1225,9 @@ export const Leaderboard = () => {
                                         <button
                                             type="submit"
                                             aria-label="ارسال"
-                                            className="absolute left-2 text-primary hover:text-primary-container p-1 flex items-center"
+                                            className="absolute left-2 text-primary hover:text-primary-container p-1 flex items-center cursor-pointer"
                                         >
-                                            <span className="material-symbols-outlined text-[18px] transform rotate-180">send</span>
+                                            <Send size={16} className="transform rotate-180" />
                                         </button>
                                     </form>
                                 </div>
@@ -1182,7 +1244,7 @@ export const Leaderboard = () => {
                     <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/30">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs pb-space-xs">
                             <div className="flex items-center gap-space-xs">
-                                <span className="material-symbols-outlined text-tertiary text-[28px]">workspace_premium</span>
+                                <Trophy size={26} className="text-tertiary" />
                                 <div>
                                     <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
                                         رده‌بندی زنده لیگ الماس
@@ -1198,7 +1260,7 @@ export const Leaderboard = () => {
                                 </span>
                                 <button
                                     onClick={() => loadLeaderboardPage(true)}
-                                    className="p-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition"
+                                    className="p-2 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition cursor-pointer"
                                     title="بروزرسانی"
                                 >
                                     <RefreshCw size={16} className={isLoadingLb ? 'animate-spin' : ''} />
@@ -1209,7 +1271,7 @@ export const Leaderboard = () => {
                         {/* Promotion Zone Tag */}
                         <div className="bg-secondary/10 px-space-sm py-2 rounded-xl flex items-center justify-between text-secondary border border-secondary/20">
                             <span className="font-label-sm text-label-sm font-bold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                                <TrendingUp size={16} className="text-secondary" />
                                 منطقه صعود مستقیم (۳ نفر برتر)
                             </span>
                             <span className="font-label-sm text-label-sm font-bold">+۵۰۰ الماس جایزه صعود</span>
@@ -1260,13 +1322,7 @@ export const Leaderboard = () => {
                                     <span className="w-7 h-7 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-bold flex items-center justify-center">
                                         ۱
                                     </span>
-                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
-                                        <img
-                                            className="w-full h-full object-cover"
-                                            alt="آرین ر."
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBk1QVw4_S2uBiuhijOVs0iCn2JIumP0f-4aRvVISehbBAHGOgqGSopgs0kpGgC01hgR3H1gTFsJkqC5ImeL8-Xznii17S3IHCo5eWuRy9jpBN_GRbzVDrxELl9xBrsckYUwR2WiAk8idQftMP7CBOIDDjVS8kXzznzdpg7M8L6gPQzWmwsR18Gw1sULbXLTnmJORNmOGEij342ja4M_XtesvXgKEnaunqwy6t6CpU"
-                                        />
-                                    </div>
+                                    <VectorAvatar name="آرین ر." size="md" />
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-1">
                                             <span className="font-label-md text-label-md font-bold text-on-surface">آرین ر.</span>
@@ -1287,13 +1343,7 @@ export const Leaderboard = () => {
                                     <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-bold flex items-center justify-center">
                                         ۲
                                     </span>
-                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
-                                        <img
-                                            className="w-full h-full object-cover"
-                                            alt="مهسا ک."
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiNFnuZPsShA_cGNCtOK3UVXiKK1XMZYG7tDTyNCLZ59c_QkEGRT2vSFB-zrhyur4DNFyFK1UTPk0T63Ra8fxo3eTtLryRVhBAUrAa6I8PWqEu3vQF3gMfgzZoo1sv9PHIjm3Q7aA4dsu_TBI_k9AJUlk_PbGoUGSIdUI4pBekug9vMS0Rkn5WTZDPIrQZTET-oJCPXZrpZNlnciRXN4jTOiyBCiKQGe-smhimBck"
-                                        />
-                                    </div>
+                                    <VectorAvatar name="مهسا ک." size="md" />
                                     <div className="flex flex-col">
                                         <span className="font-label-md text-label-md font-bold text-on-surface">مهسا ک.</span>
                                         <span className="font-label-sm text-label-sm text-on-surface-variant">استریک ۱۲ روزه</span>
@@ -1312,13 +1362,7 @@ export const Leaderboard = () => {
                                     <span className="w-7 h-7 rounded-full bg-on-primary-container text-primary-container font-label-sm text-label-sm font-bold flex items-center justify-center shadow-xs">
                                         ۳
                                     </span>
-                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-lowest p-0.5 shadow-xs shrink-0">
-                                        <img
-                                            className="w-full h-full object-cover rounded-md"
-                                            alt="شما"
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZNwFRNZk2mW2FC_tq4_nPtORyQIa81-BQ5ecsFi18hF8-h4eFiJtUCHygmmfZ78bD4j-QaIIbgi6deSNvokPgzla8VPxq-UyKd9amJlWEjhO7cYgaxkWJdf-iwVKDTPUU3NVR8e3Z-6l3TIv9Lhy_V4suklutjO4v069GUm12qYMW8qSdJGK7AlzEaDWR9EfYSRZ6vhjtjfvw16pwX3gw_J3gD0SIDopSZ1gpApI"
-                                        />
-                                    </div>
+                                    <VectorAvatar name={userName || 'سارا محمدی'} size="md" />
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-1.5">
                                             <span className="font-label-md text-label-md font-bold">{userName || 'سارا محمدی'}</span>
@@ -1354,13 +1398,7 @@ export const Leaderboard = () => {
                                     <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center">
                                         ۴
                                     </span>
-                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
-                                        <img
-                                            className="w-full h-full object-cover"
-                                            alt="علی ن."
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8KL2eWerRG0yzYS9degs34asXCmV8BiScafrJ7k5d7cTLaMNQRElECyCLkoWZlunzqV8IYb1QqPC80qYWBfLkYD2byj4hLpnVYEpIrITSmE4-4JVOhxFvvL0jaKhyaYtR0tTIVLo31BEDMD0Xg9k9wodrnAq2XcF0TepXcVIhIY49Ixt8JDufm-HYYnPkhHDIAS16GmrMI2X_Hr7oeiqlrYr71RzgLgqlsXHUmXc"
-                                        />
-                                    </div>
+                                    <VectorAvatar name="علی ن." size="md" />
                                     <div className="flex flex-col">
                                         <span className="font-label-md text-label-md font-semibold text-on-surface">علی ن.</span>
                                         <span className="font-label-sm text-label-sm text-on-surface-variant">تعقیب‌کننده مستقیم</span>
@@ -1378,13 +1416,7 @@ export const Leaderboard = () => {
                                     <span className="w-7 h-7 rounded-full bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center">
                                         ۵
                                     </span>
-                                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-high shrink-0">
-                                        <img
-                                            className="w-full h-full object-cover"
-                                            alt="نیلوفر ف."
-                                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4295_58qhBMKf0ZC6fqLcIOJaN0L7XdQtYlbnavi1y2Irk2pNJlIUk-_VpIiV35eofaq0-MH9KbPkj8VhhjpZ3IORZe6d9ioBFT0AY6pezoxaPdMELnQ7GzfX4Qtggz30-SuB1Az8ElTgtBEDrrxaAocLocjRoaSQFkODdQ2wFDx2tEK8yDGYSHiawKZ07mF20UT4K9LUzzDVDsqAqmN9LasXCbDhnDFABQTlHxs"
-                                        />
-                                    </div>
+                                    <VectorAvatar name="نیلوفر ف." size="md" />
                                     <div className="flex flex-col">
                                         <span className="font-label-md text-label-md font-semibold text-on-surface">نیلوفر ف.</span>
                                         <span className="font-label-sm text-label-sm text-on-surface-variant">استریک ۶ روزه</span>
@@ -1436,14 +1468,14 @@ export const Leaderboard = () => {
                             <button
                                 onClick={loadMoreLeaderboard}
                                 disabled={isLoadingMore}
-                                className="w-full py-space-sm rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-space-xs mt-2"
+                                className="w-full py-space-sm rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold transition-colors flex items-center justify-center gap-space-xs mt-2 cursor-pointer"
                             >
                                 {isLoadingMore ? (
                                     <Loader2 size={16} className="animate-spin" />
                                 ) : (
                                     <>
                                         <span>مشاهده رتبه‌های بیشتر لیگ</span>
-                                        <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+                                        <RefreshCw size={14} />
                                     </>
                                 )}
                             </button>
@@ -1460,7 +1492,7 @@ export const Leaderboard = () => {
                 <form onSubmit={handleCreateRoomSubmit} className="p-6 flex flex-col gap-4">
                     <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
                         <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-[24px]">add_circle</span>
+                            <Plus size={20} className="text-primary" />
                             <h3 className="font-headline-md text-headline-md font-bold">ایجاد اتاق مطالعه YPT</h3>
                         </div>
                         <button
@@ -1566,7 +1598,7 @@ export const Leaderboard = () => {
                     <div className="p-6 flex flex-col gap-4">
                         <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
                             <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary text-[24px]">account_circle</span>
+                                <UserCheck size={22} className="text-primary" />
                                 <h3 className="font-headline-md text-headline-md font-bold">{viewingProfile.userName}</h3>
                             </div>
                             <button

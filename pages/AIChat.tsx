@@ -32,8 +32,8 @@ export interface AIChatProps {
 
 const AI_MODELS = [
     { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { id: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet' },
-    { id: 'gpt-4o-focus', label: 'GPT-4o Focus' },
+    { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+    { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
 ];
 
 export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
@@ -52,7 +52,12 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     // Settings (Persisted)
-    const activeApiKey = geminiApiKey || localStorage.getItem('gemini_api_key') || '';
+    const activeApiKey =
+        (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+        (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY as string)) ||
+        geminiApiKey ||
+        localStorage.getItem('gemini_api_key') ||
+        '';
     const selectedModel = settings.geminiModel || 'gemini-2.0-flash';
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
@@ -169,7 +174,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         }));
     };
 
-    const mapParsedTasksToSubjectTasks = (parsed: ParsedTask[]): Omit<SubjectTask, 'id'>[] => {
+    const mapParsedTasksToSubjectTasks = (parsed: ParsedTask[]): SubjectTask[] => {
         return parsed.map((p) => {
             const dateStr = p.date || toIsoString(new Date()).split('T')[0];
             const targetSubject = subjects.find(
@@ -178,13 +183,15 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
 
             let calculatedDay = currentDay;
             if (startDate) {
-                const diff = getDiffDays(new Date(startDate), new Date(dateStr));
+                const diff = getDiffDays(startDate, dateStr);
                 if (diff >= 0 && diff < totalDays) {
                     calculatedDay = diff + 1;
                 }
             }
 
             return {
+                id: p.id || crypto.randomUUID(),
+                dayId: calculatedDay,
                 day: calculatedDay,
                 subject: targetSubject ? targetSubject.name : (p.subject || 'عمومی'),
                 title: p.title || p.topic || 'تسک هوشمند',
