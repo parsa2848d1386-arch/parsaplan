@@ -111,7 +111,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     >
                         <motion.div 
                             animate={{ scale: isDone ? [1, 1.25, 1] : 1 }}
-                            transition={{ duration: 0.3, type: "spring", stiffness: 350, damping: 12 }}
+                            transition={{ duration: 0.35, ease: "easeInOut" }}
                             className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}
                         >
                             {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800 animate-in zoom-in-50" /> : <Circle size={20} strokeWidth={2} />}
@@ -179,7 +179,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 <div className="flex items-start gap-3 w-full">
                     <motion.div 
                         animate={{ scale: isDone ? [1, 1.3, 1] : 1 }}
-                        transition={{ duration: 0.3, type: "spring", stiffness: 350, damping: 12 }}
+                        transition={{ duration: 0.35, ease: "easeInOut" }}
                         className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}
                     >
                         {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800 animate-in zoom-in-50" /> : <Circle size={24} strokeWidth={2} />}
