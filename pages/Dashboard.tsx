@@ -125,7 +125,7 @@ export const Dashboard: React.FC = () => {
         tasks: allTasks, setIsTimerOpen,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode,
         isNewUser, setIsNewUser, addTask, rebalancePlan,
-        setShowConfetti, settings,
+        settings,
         streakStats, studyMinutesByDate, moods, setMood
     } = useStore();
 
@@ -228,18 +228,6 @@ export const Dashboard: React.FC = () => {
         () => allTasks.filter(t => t.date < todayIso && !t.isCompleted && t.date !== activeDateIso),
         [allTasks, todayIso, activeDateIso]
     );
-
-    const [celebratedToday, setCelebratedToday] = useState(false);
-    useEffect(() => {
-        if (dailyPct === 100 && dailyTasks.length > 0) {
-            if (!celebratedToday) {
-                setCelebratedToday(true);
-                setShowConfetti(true);
-            }
-        } else {
-            setCelebratedToday(false);
-        }
-    }, [dailyPct, dailyTasks.length, celebratedToday, setShowConfetti]);
 
     const handleEdit = (e: React.MouseEvent, task: SubjectTask) => {
         e.stopPropagation();

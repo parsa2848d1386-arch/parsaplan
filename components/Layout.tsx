@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { NotificationBell } from './NotificationBell';
+import { ErrorBoundary } from './ErrorBoundary';
 import { getShamsiDate, getFullShamsiDate } from '../utils';
 import { useBioperformance } from '../hooks/useBioperformance';
 
@@ -403,7 +404,9 @@ const Layout = () => {
                             transition={{ duration: 0.25, ease: 'easeOut' }}
                             className={`min-h-full max-app-container w-full ${isAiPanelOpen && window.innerWidth < 768 ? 'hidden' : 'block'}`}
                         >
-                            <Outlet />
+                            <ErrorBoundary>
+                                <Outlet />
+                            </ErrorBoundary>
                             <div className="h-24 md:h-0" />
                         </motion.div>
                     </div>

@@ -63,7 +63,8 @@ export const normalizeFarsiNums = (str: string): string => {
         .replace(/[٠-٩]/g, d => String.fromCharCode(d.charCodeAt(0) - 1632));
 };
 
-export const formatToPersianDigits = (val: number | string): string => {
+export const formatToPersianDigits = (val: number | string | null | undefined): string => {
+    if (val === undefined || val === null) return '';
     const pDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
     return val.toString().replace(/\d/g, d => pDigits[Number(d)]);
 };
