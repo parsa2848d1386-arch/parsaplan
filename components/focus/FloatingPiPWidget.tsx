@@ -23,7 +23,7 @@ export const FloatingPiPWidget: React.FC = () => {
     const isMobile = useMediaQuery('(max-width: 767px)');
     const viewportBoundsRef = useRef<HTMLDivElement>(null);
 
-    if (!isPiPVisible || (status !== 'running' && status !== 'paused')) return null;
+    if (isMobile || !isPiPVisible || (status !== 'running' && status !== 'paused')) return null;
 
     const pinnedTask = pinnedTaskId ? tasks.find((t) => t.id === pinnedTaskId) : undefined;
     const displayLabel = pinnedTask ? pinnedTask.topic : selectedSubject || 'جلسه تمرکز';

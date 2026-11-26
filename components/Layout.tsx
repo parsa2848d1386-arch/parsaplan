@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion, useDragControls, PanInfo } from 'framer-motion';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
-    Search, X, LogIn, Cloud, CloudOff, AlertTriangle, Sparkles,
+    Search, X, LogIn, LogOut, Cloud, CloudOff, AlertTriangle, Sparkles,
     ChevronLeft, ChevronRight, Flame, CheckCircle2, History as HistoryIcon
 } from 'lucide-react';
 import { useStore, useStoreSyncStatus } from '../context/StoreContext';
@@ -13,6 +14,7 @@ import { useProactiveAI } from './AIChat/useProactiveAI';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { NotificationBell } from './NotificationBell';
+import { DynamicIsland } from './DynamicIsland';
 import { BrandLogo } from './BrandLogo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { RouteSkeleton, AIChatSkeleton } from './Skeleton';
@@ -140,10 +142,10 @@ const Layout = () => {
     const isMobile = useMediaQuery('(max-width: 767px)');
 
     const {
-        darkMode, level, streakStats,
+        darkMode, level, xp, currentLevelXp, xpForNextLevel, streakStats,
         cloudStatus,
         sidebarCollapsed, setSidebarCollapsed,
-        user, login, register,
+        user, login, register, logout,
         userName, isAiPanelOpen, setIsAiPanelOpen, settings, updateSettings,
         isCommandPaletteOpen, setIsCommandPaletteOpen
     } = useStore();
@@ -521,142 +523,223 @@ const Layout = () => {
                         </div>
                     </header>
 
-                    {/* Mobile Top Floating Capsules — Two Morphing Liquid Glass Pills (Right: Profile + Settings, Left: Search + Notifications) */}
-                    <header className="md:hidden fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-40 pointer-events-none flex items-start justify-between gap-2">
-                        {/* Top-Right Floating Capsule: Morphs & expands when Profile or Settings is active */}
+                    {/* Mobile Top Floating Capsules — Right: Profile Bubble Trigger, Start-Offset: Dynamic Island (camera-safe), Left: Search + Notifications */}
+                    <header className="md:hidden fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-40 pointer-events-none flex items-center justify-between gap-2">
+                        {/* Top-Right Floating Capsule: Profile Button Only (Opens Unified Liquid Glass Bubble) */}
                         <motion.div
                             ref={profileCapsuleRef}
-                            layout
-                            transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
-                            className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] max-w-[calc(100vw-8.5rem)]"
+                            animate={
+                                prefersReducedMotion
+                                    ? undefined
+                                    : {
+                                          scale: isProfileChipExpanded ? 0.86 : 1,
+                                          opacity: isProfileChipExpanded ? 0 : 1,
+                                      }
+                            }
+                            transition={{ type: 'spring', stiffness: 400, damping: 18, mass: 0.75, restDelta: 0.01 }}
+                            style={{ transformOrigin: 'top right', willChange: 'transform, opacity' }}
+                            className="pointer-events-auto flex items-center gap-0.5 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shrink-0"
                         >
                             {currentPage.isSubRoute && (
                                 <motion.button
-                                    layout="position"
                                     type="button"
                                     onClick={() => {
                                         haptics.selection();
                                         handleMobileBack();
                                     }}
-                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
+                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.9 }}
                                     transition={SPRING_SNAPPY}
                                     aria-label="بازگشت"
                                     className="w-11 h-11 flex items-center justify-center rounded-full text-on-surface dark:text-white hover:bg-surface-container/80 transition cursor-pointer shrink-0"
                                 >
-                                    <ChevronRight size={20} />
+                                    <ChevronRight size={19} />
                                 </motion.button>
                             )}
 
                             <motion.button
-                                layout
                                 type="button"
                                 data-arc-target="xp-badge"
                                 onClick={() => {
                                     haptics.selection();
                                     setIsProfileChipExpanded((prev) => !prev);
                                 }}
-                                whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
-                                whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
-                                transition={SPRING_SNAPPY}
+                                whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
+                                whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+                                transition={{ type: 'spring', stiffness: 420, damping: 16 }}
                                 aria-expanded={isProfileChipExpanded}
                                 aria-label={user ? `پروفایل ${getDisplayName()}` : 'پروفایل کاربر و ورود'}
                                 title={user ? 'حساب کاربری' : 'ورود یا همگام‌سازی ابری'}
-                                className={`h-11 rounded-full flex items-center justify-center font-extrabold text-xs shadow-xs cursor-pointer transition-colors shrink-0 ${
-                                    isProfileChipExpanded
-                                        ? 'bg-primary text-on-primary pl-3 pr-1.5 gap-2'
-                                        : 'w-11 bg-primary text-on-primary'
-                                }`}
+                                className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center font-extrabold text-sm shadow-xs cursor-pointer shrink-0"
                             >
-                                <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-                                    {userInitial}
-                                </span>
-                                <AnimatePresence initial={false}>
-                                    {isProfileChipExpanded && (
-                                        <motion.span
-                                            initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
-                                            animate={{ opacity: 1, width: 'auto' }}
-                                            exit={{ opacity: 0, width: 0 }}
-                                            transition={SPRING_SNAPPY}
-                                            className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden"
-                                        >
-                                            <span className="max-w-[90px] truncate font-bold">{getDisplayName()}</span>
-                                            <span
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    haptics.selection();
-                                                    setIsProfileChipExpanded(false);
-                                                    if (!user) setIsAuthModalOpen(true);
-                                                    else navigate('/settings');
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setIsProfileChipExpanded(false);
-                                                        if (!user) setIsAuthModalOpen(true);
-                                                        else navigate('/settings');
-                                                    }
-                                                }}
-                                                className="px-2 py-0.5 rounded-full bg-white/22 text-[11px] font-bold hover:bg-white/30"
-                                            >
-                                                {user ? 'پروفایل' : 'ورود'}
-                                            </span>
-                                        </motion.span>
-                                    )}
-                                </AnimatePresence>
+                                {userInitial}
                             </motion.button>
-
-                            <NavLink
-                                to="/settings"
-                                onClick={() => {
-                                    haptics.selection();
-                                    setIsProfileChipExpanded(false);
-                                }}
-                                onPointerEnter={() => prefetchRoute('/settings')}
-                                onTouchStart={() => prefetchRoute('/settings')}
-                                onFocus={() => prefetchRoute('/settings')}
-                                aria-label="تنظیمات"
-                                title="تنظیمات"
-                                className={({ isActive }) =>
-                                    `h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 shrink-0 ${
-                                        isActive
-                                            ? 'bg-primary-fixed text-on-primary-fixed shadow-xs px-3.5 gap-1.5'
-                                            : 'w-11 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
-                                    }`
-                                }
-                            >
-                                {({ isActive }) => (
-                                    <>
-                                        <Settings size={18} strokeWidth={isActive ? 2.3 : 1.95} className="shrink-0" />
-                                        {isActive && (
-                                            <motion.span
-                                                initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
-                                                animate={{ opacity: 1, width: 'auto' }}
-                                                transition={SPRING_SNAPPY}
-                                                className="text-xs font-extrabold whitespace-nowrap overflow-hidden"
-                                            >
-                                                تنظیمات
-                                            </motion.span>
-                                        )}
-                                    </>
-                                )}
-                            </NavLink>
-
-                            <SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="mobile" />
                         </motion.div>
 
-                        {/* Top-Left Floating Capsule: Elastic liquid-glass bubble reaction matching the menu bubble */}
+                        {/* Top-Right Profile Liquid Glass Bubble Portal — Morphed seamlessly out of Profile icon; Close X lands directly over the icon */}
+                        {typeof document !== 'undefined' &&
+                            createPortal(
+                                <AnimatePresence>
+                                    {isProfileChipExpanded && (
+                                        <motion.div
+                                            initial={prefersReducedMotion ? false : { opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.18 }}
+                                            onClick={() => setIsProfileChipExpanded(false)}
+                                            className="fixed inset-0 z-[60] bg-slate-950/30 dark:bg-black/45"
+                                            dir="rtl"
+                                        >
+                                            <motion.div
+                                                initial={
+                                                    prefersReducedMotion
+                                                        ? false
+                                                        : { opacity: 0, scale: 0.14, y: 0, borderRadius: 48 }
+                                                }
+                                                animate={{ opacity: 1, scale: 1, y: 0, borderRadius: 24 }}
+                                                exit={
+                                                    prefersReducedMotion
+                                                        ? { opacity: 0 }
+                                                        : {
+                                                              opacity: 0,
+                                                              scale: 0.14,
+                                                              y: 0,
+                                                              borderRadius: 48,
+                                                              transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
+                                                          }
+                                                }
+                                                transition={{
+                                                    type: 'spring',
+                                                    stiffness: 350,
+                                                    damping: 20,
+                                                    mass: 0.82,
+                                                    restDelta: 0.015,
+                                                    restSpeed: 0.5,
+                                                }}
+                                                style={{ transformOrigin: 'calc(100% - 26px) 26px', willChange: 'transform, opacity' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] right-3 w-[min(calc(100vw-1.5rem),296px)] rounded-[24px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden pt-1 pr-1 pl-3 pb-3 space-y-2.5"
+                                            >
+                                                {/* Account Header — Close X sits first on top-right directly aligned over the closed Profile circle */}
+                                                <div className="flex items-center gap-2.5">
+                                                    <motion.button
+                                                        type="button"
+                                                        whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+                                                        onClick={() => {
+                                                            haptics.selection();
+                                                            setIsProfileChipExpanded(false);
+                                                        }}
+                                                        aria-label="بستن منوی حساب"
+                                                        className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-xs hover:brightness-110 transition cursor-pointer shrink-0"
+                                                    >
+                                                        <X size={17} />
+                                                    </motion.button>
+                                                    <div className="flex flex-col min-w-0 flex-1">
+                                                        <span className="text-sm font-extrabold text-on-surface dark:text-white truncate">
+                                                            {getDisplayName()}
+                                                        </span>
+                                                        <span className="text-[11px] font-semibold text-[var(--text-secondary)] truncate">
+                                                            {user ? (user.email || 'حساب ابری متصل') : 'حالت مهمان (ذخیره محلی)'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Level & XP Progress Pill */}
+                                                <div className="ms-1 rounded-2xl bg-white/60 dark:bg-white/8 border border-[var(--border-subtle)] p-2.5 space-y-1.5">
+                                                    <div className="flex items-center justify-between text-xs font-bold">
+                                                        <span className="text-primary dark:text-indigo-300 flex items-center gap-1">
+                                                            <Sparkles size={13} aria-hidden="true" />
+                                                            سطح {formatToPersianDigits(level ?? 1)}
+                                                        </span>
+                                                        <span className="text-[11px] text-[var(--text-secondary)] tabular-nums">
+                                                            {formatToPersianDigits(xp ?? 0)} XP
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 w-full rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                                                        <div
+                                                            className="h-full rounded-full bg-gradient-to-l from-primary to-violet-500 transition-all duration-300"
+                                                            style={{
+                                                                width: `${Math.min(
+                                                                    100,
+                                                                    Math.round(
+                                                                        ((currentLevelXp ?? 0) / Math.max(1, xpForNextLevel ?? 100)) * 100
+                                                                    )
+                                                                )}%`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Bubble Actions: Settings + Login/Logout */}
+                                                <div className="ms-1 flex flex-col gap-1.5">
+                                                    <NavLink
+                                                        to="/settings"
+                                                        onClick={() => {
+                                                            haptics.selection();
+                                                            setIsProfileChipExpanded(false);
+                                                        }}
+                                                        onPointerEnter={() => prefetchRoute('/settings')}
+                                                        className="w-full min-h-[40px] px-3 rounded-2xl bg-white/55 dark:bg-white/10 hover:bg-white/75 dark:hover:bg-white/15 text-on-surface dark:text-white text-xs font-bold flex items-center justify-between transition cursor-pointer"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <Settings size={15} className="text-primary" />
+                                                            تنظیمات
+                                                        </span>
+                                                        <ChevronLeft size={14} className="opacity-60" />
+                                                    </NavLink>
+
+                                                    {user ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                haptics.medium();
+                                                                setIsProfileChipExpanded(false);
+                                                                await logout?.();
+                                                            }}
+                                                            className="w-full min-h-[40px] px-3 rounded-2xl bg-rose-500/12 hover:bg-rose-500/20 text-rose-600 dark:text-rose-300 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+                                                        >
+                                                            <LogOut size={15} />
+                                                            <span>خروج از حساب کاربری</span>
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                haptics.selection();
+                                                                setIsProfileChipExpanded(false);
+                                                                setIsAuthModalOpen(true);
+                                                            }}
+                                                            className="w-full min-h-[40px] px-3 rounded-2xl bg-primary text-on-primary text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer hover:brightness-110"
+                                                        >
+                                                            <LogIn size={15} />
+                                                            <span>ورود / همگام‌سازی ابری</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>,
+                                document.body
+                            )}
+
+                        {/* Top Dynamic Island Hub — Offset beside Profile pill so dead-center camera/punch-hole stays clear */}
+                        <div className="flex-1 flex items-center justify-start ps-1 min-w-0">
+                            <DynamicIsland isOnline={isOnline} cloudStatus={cloudStatus} />
+                        </div>
+
+                        {/* Top-Left Floating Capsule: Slightly trimmer Search + Notifications for visual harmony */}
                         <motion.div
                             animate={
                                 prefersReducedMotion
                                     ? undefined
-                                    : { scale: isNotificationOpen || (isMobile && isCommandPaletteOpen) ? 0.92 : 1 }
+                                    : {
+                                          scale: isNotificationOpen || (isMobile && isCommandPaletteOpen) ? 0.86 : 1,
+                                          opacity: isNotificationOpen || (isMobile && isCommandPaletteOpen) ? 0 : 1,
+                                      }
                             }
-                            transition={{ type: 'spring', stiffness: 400, damping: 14, mass: 0.75, restDelta: 0.01 }}
-                            style={{ transformOrigin: 'top left', willChange: 'transform' }}
-                            className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]"
+                            transition={{ type: 'spring', stiffness: 400, damping: 18, mass: 0.75, restDelta: 0.01 }}
+                            style={{ transformOrigin: 'top left', willChange: 'transform, opacity' }}
+                            className="pointer-events-auto flex items-center gap-0.5 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shrink-0"
                         >
                             <motion.button
                                 type="button"
@@ -672,7 +755,7 @@ const Layout = () => {
                                         : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
                                 }`}
                             >
-                                <Search size={18} className="shrink-0" />
+                                <Search size={17} className="shrink-0" />
                             </motion.button>
 
                             <NotificationBell morphMode isOpenExternal={isNotificationOpen} onOpenChange={setIsNotificationOpen} />
@@ -720,18 +803,18 @@ const Layout = () => {
                     <div aria-hidden="true" className="scroll-edge-fade-top" />
                     <div aria-hidden="true" className="scroll-edge-fade-bottom" />
 
-                    {/* Bottom Nav — Smooth GPU-Fluid Auto-Compacting Liquid Glass Capsule (concrete max-width transition, zero opening lag) + Inviting AI Button */}
-                    <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 max-w-[430px] mx-auto flex items-center justify-between gap-2.5 pointer-events-none md:hidden">
+                    {/* Bottom Nav — Smooth GPU-Fluid Auto-Compacting Liquid Glass Capsule + Edge-Hugged AI Button (Tablet & Mobile) */}
+                    <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 flex items-center justify-between gap-2.5 pointer-events-none md:hidden">
                         <nav
                             onClick={expandBottomNav}
                             aria-label="منوی موبایل"
                             style={{ willChange: 'max-width' }}
-                            className={`pointer-events-auto flex-1 min-w-0 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5 transition-[max-width] duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                                isBottomNavCompact ? 'max-w-[232px]' : 'max-w-[356px]'
+                            className={`pointer-events-auto flex-1 min-w-0 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1 transition-[max-width] duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                                isBottomNavCompact ? 'max-w-[184px]' : 'max-w-[344px]'
                             }`}
                         >
                             <LayoutGroup id="mobile-bottom-nav">
-                                <div className="flex justify-between items-center gap-1">
+                                <div className="flex justify-between items-center gap-0.5">
                                     {[
                                         { to: '/', end: true, icon: Home, label: 'داشبورد' },
                                         { to: '/planner', end: false, icon: CalendarClock, label: 'تایم‌لاین' },
@@ -754,10 +837,12 @@ const Layout = () => {
                                                 className={({ isActive }) =>
                                                     `relative flex flex-col items-center justify-center h-[50px] rounded-full transition-[flex,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.95] overflow-hidden ${
                                                         isActive
-                                                            ? 'flex-[1.55] px-2.5 text-on-primary-fixed font-extrabold'
+                                                            ? isBottomNavCompact
+                                                                ? 'flex-[0.82] px-1 text-on-primary-fixed font-extrabold'
+                                                                : 'flex-[1.05] px-1.5 text-on-primary-fixed font-extrabold'
                                                             : isBottomNavCompact
-                                                              ? 'flex-[0.55] px-0.5 text-on-surface/70 dark:text-slate-300'
-                                                              : 'flex-[0.85] px-1 text-on-surface/75 dark:text-slate-300 hover:text-on-surface dark:hover:text-white font-medium'
+                                                              ? 'flex-[0.36] px-0 text-on-surface/70 dark:text-slate-300'
+                                                              : 'flex-[0.88] px-0.5 text-on-surface/75 dark:text-slate-300 hover:text-on-surface dark:hover:text-white font-medium'
                                                     }`
                                                 }
                                             >
@@ -772,23 +857,23 @@ const Layout = () => {
                                                                         : { type: 'spring', stiffness: 360, damping: 24, mass: 0.85 }
                                                                 }
                                                                 aria-hidden="true"
-                                                                className="absolute inset-0 rounded-full bg-primary-fixed/85 dark:bg-[#2a2f6c]/90 shadow-xs ring-1 ring-primary/20 dark:ring-primary/40"
+                                                                className="absolute inset-y-[3px] inset-x-1 rounded-full bg-primary-fixed/85 dark:bg-[#2a2f6c]/90 shadow-xs ring-1 ring-primary/20 dark:ring-primary/40"
                                                             />
                                                         )}
                                                         <span className="relative z-10 flex flex-col items-center justify-center gap-0.5 max-w-full">
                                                             <Icon
-                                                                size={isActive ? 20 : 16}
-                                                                strokeWidth={isActive ? 2.4 : 1.85}
+                                                                size={isActive ? 19 : 17}
+                                                                strokeWidth={isActive ? 2.3 : 1.85}
                                                                 aria-hidden="true"
                                                                 className="shrink-0 transition-transform duration-200"
                                                             />
                                                             <span
-                                                                className={`leading-tight truncate max-w-full transition-[opacity,max-height] duration-250 ease-out ${
+                                                                className={`leading-none truncate max-w-full transition-[opacity,max-height] duration-250 ease-out ${
                                                                     isBottomNavCompact && !isActive
                                                                         ? 'max-h-0 opacity-0 pointer-events-none'
                                                                         : isActive
-                                                                          ? 'max-h-5 opacity-100 text-[12px] font-extrabold'
-                                                                          : 'max-h-5 opacity-80 text-[10.5px]'
+                                                                          ? 'max-h-4 opacity-100 text-[11px] font-extrabold'
+                                                                          : 'max-h-4 opacity-80 text-[10px]'
                                                                 }`}
                                                             >
                                                                 {tab.label}
@@ -816,15 +901,15 @@ const Layout = () => {
                             transition={SPRING_SNAPPY}
                             aria-label={isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
                             title="دستیار هوشمند"
-                            className={`pointer-events-auto relative w-[62px] h-[62px] rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-all ${
+                            className={`pointer-events-auto relative w-[58px] h-[58px] rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-all ${
                                 isAiPanelOpen
                                     ? 'bg-primary text-on-primary border-primary/60 shadow-[0_12px_30px_-6px_rgba(70,72,212,0.6)]'
                                     : 'bg-gradient-to-br from-indigo-500 via-primary to-violet-600 text-white border-white/40 dark:border-indigo-300/35 shadow-[0_12px_28px_-6px_rgba(79,70,229,0.52)] dark:shadow-[0_12px_30px_-6px_rgba(129,140,248,0.45)]'
                             }`}
                         >
-                            <Sparkles size={23} aria-hidden="true" />
+                            <Sparkles size={22} aria-hidden="true" />
                             {!isAiPanelOpen && settings?.hasUnreadAiMessage && (
-                                <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
+                                <span className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
                             )}
                         </motion.button>
                     </div>

@@ -138,8 +138,8 @@ vi.mock('../../context/StoreContext', () => ({
     }),
 }));
 
-vi.mock('../../context/FocusContext', () => ({
-    useFocus: () => ({
+vi.mock('../../context/FocusContext', () => {
+    const getFocusMock = () => ({
         status: 'idle',
         selectedSubject: 'کار و پروژه',
         elapsedSeconds: 0,
@@ -148,8 +148,14 @@ vi.mock('../../context/FocusContext', () => ({
         setIsTimerOpen: mockSetIsTimerOpen,
         startTimer: vi.fn(),
         startFocusForTask: vi.fn(),
-    }),
-}));
+    });
+    return {
+        useFocus: getFocusMock,
+        useOptionalFocus: getFocusMock,
+        useFocusTick: () => 0,
+        useOptionalFocusTick: () => 0,
+    };
+});
 
 vi.mock('../../hooks/useBioperformance', () => ({
     useBioperformance: vi.fn(),
@@ -290,7 +296,9 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         expect(mobileNav).not.toHaveTextContent('تنظیمات');
         expect(screen.queryByRole('link', { name: /حوزه‌ها و نماها/ })).not.toBeInTheDocument();
 
-        // Top-right Settings circular link + Separate Circular AI Assistant button
+        // Top-right Profile capsule opens bubble menu containing Settings + Separate Circular AI Assistant button
+        const profileBtn = screen.getByRole('button', { name: /پروفایل کاربر/ });
+        fireEvent.click(profileBtn);
         expect(screen.getByRole('link', { name: 'تنظیمات' })).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: /دستیار هوشمند/ }).length).toBeGreaterThanOrEqual(1);
 

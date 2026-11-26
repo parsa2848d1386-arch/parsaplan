@@ -689,6 +689,10 @@ export const useFocus = () => {
     return ctx;
 };
 
+export const useOptionalFocus = (): FocusContextType | undefined => {
+    return useContext(FocusContext);
+};
+
 export const useFocusTick = (): FocusTickContextType => {
     const tick = useContext(FocusTickContext);
     const fallback = useContext(FocusContext);
@@ -704,4 +708,21 @@ export const useFocusTick = (): FocusTickContextType => {
         };
     }
     throw new Error('useFocusTick must be used within FocusProvider');
+};
+
+export const useOptionalFocusTick = (): FocusTickContextType | undefined => {
+    const tick = useContext(FocusTickContext);
+    const fallback = useContext(FocusContext);
+    if (tick) return tick;
+    if (fallback) {
+        return {
+            displaySeconds: fallback.displaySeconds ?? fallback.elapsedSeconds ?? 0,
+            elapsedSeconds: fallback.elapsedSeconds ?? 0,
+            targetSeconds: fallback.targetSeconds ?? 3600,
+            laps: fallback.laps ?? [],
+            isGracePeriodActive: fallback.isGracePeriodActive ?? false,
+            graceRemainingSeconds: fallback.graceRemainingSeconds ?? 0,
+        };
+    }
+    return undefined;
 };

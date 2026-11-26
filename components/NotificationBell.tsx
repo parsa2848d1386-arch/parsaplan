@@ -116,7 +116,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                             <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
                         </span>
                     )}
-                    <Bell size={18} className="shrink-0" />
+                    <Bell size={17} className="shrink-0" />
                 </motion.button>
 
                 {typeof document !== 'undefined' &&
@@ -158,7 +158,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                             restDelta: 0.015,
                                             restSpeed: 0.5,
                                         }}
-                                        style={{ transformOrigin: '28px 26px', willChange: 'transform, opacity' }}
+                                        style={{ transformOrigin: '26px 26px', willChange: 'transform, opacity' }}
                                         onClick={(e) => e.stopPropagation()}
                                         className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] left-3 w-[min(calc(100vw-1.5rem),360px)] rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"
                                     >
@@ -168,10 +168,10 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                             exit={{ opacity: 0 }}
                                             transition={{ duration: 0.16, delay: 0.06 }}
                                         >
-                                            <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
+                                            <div className="pt-1 pl-1 pr-3.5 pb-2.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 rounded-full bg-primary/12 text-primary flex items-center justify-center">
-                                                        <Bell size={16} />
+                                                        <Bell size={15} />
                                                     </div>
                                                     <h3 className="font-extrabold text-sm text-on-surface">اعلان‌ها</h3>
                                                     {unreadCount > 0 && (
@@ -180,17 +180,18 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                                         </span>
                                                     )}
                                                 </div>
-                                                <button
+                                                <motion.button
                                                     type="button"
+                                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
                                                     onClick={() => {
                                                         haptics.selection();
                                                         setIsOpen(false);
                                                     }}
                                                     aria-label="بستن اعلان‌ها"
-                                                    className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-surface-container transition cursor-pointer"
+                                                    className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-xs hover:brightness-110 transition cursor-pointer shrink-0"
                                                 >
-                                                    <span className="text-base font-bold leading-none">×</span>
-                                                </button>
+                                                    <span className="text-lg font-bold leading-none">×</span>
+                                                </motion.button>
                                             </div>
 
                                             <div className="max-h-[58vh] overflow-y-auto custom-scrollbar">

@@ -196,7 +196,7 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
         expect(within(mobileNav).getByText('تحلیل')).toBeInTheDocument();
         expect(within(mobileNav).getByText('لیگ')).toBeInTheDocument();
         expect(mobileNav).not.toHaveTextContent('تنظیمات');
-        expect(screen.getByRole('link', { name: 'تنظیمات' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /پروفایل کاربر/ })).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: /دستیار هوشمند/ }).length).toBeGreaterThanOrEqual(1);
 
         // 4. Verify Dashboard content renders
@@ -289,8 +289,10 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
             expect(document.title).toContain('لیگ و اتاق‌های مطالعه');
         });
 
-        // 4. Top-Right Floating Capsule Settings Link
-        const topSettingsLink = screen.getByRole('link', { name: 'تنظیمات' });
+        // 4. Top-Right Profile Capsule opens Liquid Glass bubble containing Settings Link
+        const profileBtn = screen.getByRole('button', { name: /پروفایل/ });
+        fireEvent.click(profileBtn);
+        const topSettingsLink = await screen.findByRole('link', { name: 'تنظیمات' });
         fireEvent.click(topSettingsLink);
         await waitFor(() => {
             expect(document.title).toContain('تنظیمات');

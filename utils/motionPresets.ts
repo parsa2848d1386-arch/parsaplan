@@ -206,9 +206,9 @@ export const fadeSlideUpVariants: Variants = {
 };
 
 export const toastVariants: Variants = {
-    hidden: { opacity: 0, y: -14, scale: 0.96 },
+    hidden: { opacity: 0, y: 16, scale: 0.96 },
     visible: { opacity: 1, y: 0, scale: 1, transition: SPRING_SNAPPY },
-    exit: { opacity: 0, y: -10, scale: 0.96, transition: TRANSITION_FAST },
+    exit: { opacity: 0, y: 12, scale: 0.96, transition: TRANSITION_FAST },
 };
 
 export const modalScaleVariants: Variants = {

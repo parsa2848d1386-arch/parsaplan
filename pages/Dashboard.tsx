@@ -543,22 +543,28 @@ export const Dashboard: React.FC = () => {
                                         : 'border-[var(--border-subtle)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
                             }`}
                         >
-                            {/* Liquid Fill Layer (Bottom-to-Top Reservoir) */}
-                            <div
-                                className={`absolute inset-x-0 bottom-0 transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)] pointer-events-none ${
+                            {/* Animated Bottom-to-Top Liquid Fill Layer */}
+                            <motion.div
+                                initial={prefersReducedMotion ? false : { height: '0%' }}
+                                animate={{ height: `${d.pct}%` }}
+                                transition={
+                                    prefersReducedMotion
+                                        ? { duration: 0 }
+                                        : { type: 'spring', stiffness: 165, damping: 22, mass: 0.85 }
+                                }
+                                className={`absolute inset-x-0 bottom-0 pointer-events-none ${
                                     d.isCompleted
-                                        ? 'bg-gradient-to-t from-emerald-500/35 via-emerald-500/20 to-emerald-400/10 dark:from-emerald-600/45 dark:via-emerald-500/25 dark:to-emerald-400/15'
-                                        : 'bg-gradient-to-t from-primary/30 via-primary/15 to-secondary/10 dark:from-indigo-600/40 dark:via-indigo-500/20 dark:to-cyan-400/10'
+                                        ? 'bg-gradient-to-t from-emerald-500/45 via-emerald-500/25 to-emerald-400/12 dark:from-emerald-600/50 dark:via-emerald-500/30 dark:to-emerald-400/15'
+                                        : 'bg-gradient-to-t from-primary/40 via-primary/20 to-secondary/12 dark:from-indigo-500/45 dark:via-indigo-500/25 dark:to-cyan-400/12'
                                 }`}
-                                style={{ height: `${d.pct}%` }}
                             >
                                 {d.pct > 0 && d.pct < 100 && (
-                                    <div className="absolute top-0 inset-x-0 h-0.5 bg-primary/60 dark:bg-white/60" />
+                                    <div className="absolute top-0 inset-x-0 h-[2px] bg-primary/70 dark:bg-white/65 shadow-[0_0_6px_rgba(99,102,241,0.5)]" />
                                 )}
                                 {d.isCompleted && (
-                                    <div className="absolute top-0 inset-x-0 h-0.5 bg-emerald-400/80" />
+                                    <div className="absolute top-0 inset-x-0 h-[2px] bg-emerald-400/90 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
                                 )}
-                            </div>
+                            </motion.div>
 
                             {/* Date Number Only */}
                             <div className="relative z-10 flex-1 flex items-center justify-center">
@@ -613,66 +619,9 @@ export const Dashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
                 {/* Main 8 Columns */}
                 <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
-                    {/* ===== Unified Tasks & Real Scheduled Timeblocks Hub ===== */}
+                    {/* ===== Today's Tasks Hub (Timeblocks unified in 24h Timeline) Hub ===== */}
                     <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-5">
-                        {/* 5.1 Real Scheduled Timeblocks Preview (Only shown when user has scheduled tasks) */}
-                        {scheduledTimeblocks.length > 0 && (
-                        <div className="bg-surface-container-low/70 p-4 squircle-card border border-[var(--border-subtle)] flex flex-col gap-3">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div className="flex items-center gap-2">
-                                    <Clock size={18} className="text-secondary shrink-0" />
-                                    <h4 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
-                                        بلوک‌های زمانی امروز
-                                    </h4>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/planner')}
-                                    className="min-h-[40px] sm:min-h-[32px] px-2 font-label-sm text-xs text-primary hover:underline font-bold cursor-pointer"
-                                >
-                                    برنامه کامل
-                                </button>
-                            </div>
-
-                            <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1 text-xs">
-                                {scheduledTimeblocks.map((blk, i) => (
-                                    <div
-                                        key={blk.id}
-                                        className={`w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm border flex flex-col gap-1.5 relative ${
-                                            i === 0
-                                                ? 'bg-primary-fixed/35 dark:bg-primary-container/25 border-primary/40 ring-2 ring-primary/30 shadow-xs'
-                                                : 'bg-surface-container-lowest dark:bg-slate-800/80 border-outline-variant/10'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between gap-1">
-                                            <span
-                                                className={`font-label-sm text-[10px] px-2 py-0.5 rounded font-bold ${
-                                                    i === 0
-                                                        ? 'bg-primary text-on-primary'
-                                                        : i === 1
-                                                            ? 'bg-secondary-fixed text-on-secondary-fixed'
-                                                            : 'bg-surface-container-highest dark:bg-slate-700 text-on-surface-variant dark:text-gray-300'
-                                                }`}
-                                            >
-                                                {blk.badge}
-                                            </span>
-                                            <span className="text-xs text-on-surface font-semibold tabular-nums" dir="ltr">
-                                                {formatToPersianDigits(blk.timeRange)}
-                                            </span>
-                                        </div>
-                                        <h5 className={`text-xs font-bold text-on-surface mt-1 line-clamp-1 ${blk.isCompleted ? 'line-through opacity-60' : ''}`}>
-                                            {blk.title}
-                                        </h5>
-                                        <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
-                                            {blk.subtitle}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        )}
-
-                        {/* 5.2 Tasks List Header (Clean — redundant buttons removed) */}
+                        {/* Tasks List Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 size={20} className="text-primary" />

@@ -152,11 +152,12 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         expect(screen.queryByText('تخلیه ذهن و ثبت سریع')).not.toBeInTheDocument();
     });
 
-    it('R2.5: Default suggested timeblocks are hidden when no tasks have scheduled startTime', () => {
+    it('R2.5: Timeblocks section is completely removed from Dashboard (unified inside 24h Timeline)', () => {
         renderDashboard();
 
+        expect(screen.queryByText('بلوک‌های زمانی امروز')).not.toBeInTheDocument();
+        expect(screen.queryByText('بلوک‌های زمانی پیش‌رو')).not.toBeInTheDocument();
         expect(screen.queryByText('الگوی پیشنهادی')).not.toBeInTheDocument();
-        expect(screen.queryByText('استراحت هوشمند')).not.toBeInTheDocument();
     });
 
     it('R2.6: Clicking New Task opens TaskModal dialog with 4 duration quick chips and validation alert on empty submit', () => {
@@ -193,19 +194,27 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         const newTaskBtns = screen.getAllByRole('button', { name: /تسک جدید/ });
         fireEvent.click(newTaskBtns[0]);
 
-        // Choice Overload: initially curated activity types (<= 4) with expand button
+        // Tab bar strictly has 2 fixed tabs (یادداشت بلوکی removed)
+        expect(screen.queryByRole('tab', { name: /یادداشت بلوکی/ })).not.toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /اطلاعات و زمان/ })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /ثبت عملکرد/ })).toBeInTheDocument();
+
+        // Open options chip to verify activity type Choice Overload
+        fireEvent.click(screen.getByRole('button', { name: /نوع، اولویت و جزئیات/ }));
         const expandTypesBtn = screen.getByRole('button', { name: /انواع بیشتر/ });
         expect(expandTypesBtn).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expandTypesBtn);
         expect(screen.getByRole('button', { name: /نمایش گزینه‌های اصلی/ })).toHaveAttribute('aria-expanded', 'true');
 
-        // Choice Overload: initially <= 6 subject chips with expand button revealing all stream subjects
+        // Open subject chip to verify <= 6 initial subjects + expand button
+        fireEvent.click(screen.getByRole('button', { name: 'انتخاب حوزه یا درس' }));
         const expandSubjectsBtn = screen.getByRole('button', { name: /مشاهده همه حوزه‌ها/ });
         expect(expandSubjectsBtn).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expandSubjectsBtn);
         expect(screen.getByRole('button', { name: /نمایش کمتر/ })).toHaveAttribute('aria-expanded', 'true');
 
-        // Parkinson's Law: smart startTime and duration pre-filled automatically from context
+        // Open schedule chip to verify Parkinson's Law smart startTime pre-filled automatically
+        fireEvent.click(screen.getByRole('button', { name: 'زمان‌بندی روز و ساعت' }));
         const startTimeInput = screen.getByLabelText(/ساعت شروع/) as HTMLInputElement;
         expect(startTimeInput.value).toMatch(/^\d{2}:\d{2}$/);
     });

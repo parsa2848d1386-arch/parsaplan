@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
     Subject,
     SubjectTask,
@@ -8,10 +8,9 @@ import {
     SubTask,
     SUBJECT_LISTS,
     TaskPriority,
-    BlockNote,
     getSubjectStyle,
 } from '../types';
-import { toIsoString, formatToPersianDigits, minutesToTime, timeToMinutes } from '../utils';
+import { addDays, getDiffDays, toIsoString, formatToPersianDigits, minutesToTime, timeToMinutes } from '../utils';
 import {
     clearSessionDraft,
     loadSessionDraft,
@@ -29,8 +28,6 @@ import {
     TRANSITION_SQUASH,
 } from '../utils/motionPresets';
 import { useStore } from '../context/StoreContext';
-import { useUI } from '../context/UIContext';
-import { BlockNoteEditor } from './editor/BlockNoteEditor';
 import { ModalSheet } from './ui/ModalSheet';
 import {
     X,
@@ -47,7 +44,6 @@ import {
     BookOpen,
     Search,
     GraduationCap,
-    FileText,
     Flag,
     Briefcase,
     HeartPulse,
@@ -174,11 +170,11 @@ const computeSmartTaskDefaults = ({
 };
 
 const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDayId, defaultDateStr }) => {
-    const { totalDays, subjects: customSubjects, settings, addFlashcard, tasks = [] } = useStore();
-    const { showToast } = useUI();
+    const { totalDays, startDate, subjects: customSubjects, settings, tasks = [], showToast } = useStore();
 
     const [formData, setFormData] = useState<Partial<SubjectTask>>({});
-    const [tab, setTab] = useState<'info' | 'notes' | 'report'>('info');
+    const [tab, setTab] = useState<'info' | 'report'>('info');
+    const [activeSection, setActiveSection] = useState<'schedule' | 'subject' | 'options' | null>(null);
     const [tagInput, setTagInput] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [errors, setErrors] = useState<TaskValidationResult['errors']>({});
@@ -208,6 +204,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
         if (!isOpen) return;
 
         setTab('info');
+        setActiveSection(null);
         setErrors({});
         setShowAllTypes(false);
         setShowAllSubjects(false);
@@ -246,8 +243,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
             fallbackCategory,
         });
 
+        const syncedDayId = defaultDateStr
+            ? Math.max(1, getDiffDays(startDate, targetDate) + 1)
+            : currentDayId;
+
         const defaultDraft: Partial<SubjectTask> = {
-            dayId: currentDayId,
+            dayId: syncedDayId,
             date: targetDate,
             subject: smartSubject,
             topic: '',
@@ -331,7 +332,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 validation.errors.subject ||
                 validation.errors.durationMinutes;
             if (firstErr) {
-                showToast(firstErr, 'error');
+                showToast?.(firstErr, 'error');
             }
             window.requestAnimationFrame(() => {
                 topicInputRef.current?.focus();
@@ -454,12 +455,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
     };
 
     const headerTabs = (
-        <div className="space-y-1.5">
-            {/* Continuity Principle: connected 3-step progression track */}
+        <div className="w-full">
+            {/* Fixed-width 2-Tab Segmented Control (never shifts width between tabs) */}
             <div
                 role="tablist"
                 aria-label="بخش‌های مدیریت تسک"
-                className="flex items-center bg-surface-container p-1 squircle-sm gap-1 overflow-x-auto no-scrollbar"
+                className="w-full grid grid-cols-2 bg-surface-container p-1 squircle-sm gap-1 relative"
             >
                 <button
                     type="button"
@@ -469,49 +470,34 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                         haptics.selection();
                         setTab('info');
                     }}
-                    className={`min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
+                    className={`relative min-h-[38px] w-full px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                         tab === 'info'
-                            ? 'bg-[var(--surface-elevated)] text-primary shadow-xs'
+                            ? 'text-primary'
                             : 'text-[var(--text-secondary)] hover:text-on-surface'
                     }`}
                 >
+                    {tab === 'info' && (
+                        <motion.span
+                            layoutId="taskModalActiveTabPill"
+                            transition={
+                                prefersReducedMotion
+                                    ? { duration: 0 }
+                                    : { type: 'spring', stiffness: 380, damping: 28 }
+                            }
+                            aria-hidden="true"
+                            className="absolute inset-0 bg-[var(--surface-elevated)] rounded-lg shadow-xs"
+                        />
+                    )}
                     <span
                         aria-hidden="true"
-                        className={`w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center ${
+                        className={`relative z-10 w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center shrink-0 ${
                             tab === 'info' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-[var(--text-secondary)]'
                         }`}
                     >
                         ۱
                     </span>
-                    <span>اطلاعات و زمان</span>
+                    <span className="relative z-10">اطلاعات و زمان</span>
                 </button>
-                <span aria-hidden="true" className="hidden sm:block w-4 h-px bg-[var(--border-subtle)] shrink-0" />
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === 'notes'}
-                    onClick={() => {
-                        haptics.selection();
-                        setTab('notes');
-                    }}
-                    className={`min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
-                        tab === 'notes'
-                            ? 'bg-[var(--surface-elevated)] text-primary shadow-xs'
-                            : 'text-[var(--text-secondary)] hover:text-on-surface'
-                    }`}
-                >
-                    <span
-                        aria-hidden="true"
-                        className={`w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center ${
-                            tab === 'notes' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-[var(--text-secondary)]'
-                        }`}
-                    >
-                        ۲
-                    </span>
-                    <FileText size={13} aria-hidden="true" />
-                    <span>یادداشت بلوکی {(formData.blocks?.length || 0) > 0 ? `(${formData.blocks?.length})` : ''}</span>
-                </button>
-                <span aria-hidden="true" className="hidden sm:block w-4 h-px bg-[var(--border-subtle)] shrink-0" />
                 <button
                     type="button"
                     role="tab"
@@ -520,23 +506,35 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                         haptics.selection();
                         setTab('report');
                     }}
-                    className={`min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
+                    className={`relative min-h-[38px] w-full px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                         tab === 'report'
-                            ? 'bg-[var(--surface-elevated)] text-emerald-600 dark:text-emerald-400 shadow-xs'
+                            ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-[var(--text-secondary)] hover:text-on-surface'
                     }`}
                 >
+                    {tab === 'report' && (
+                        <motion.span
+                            layoutId="taskModalActiveTabPill"
+                            transition={
+                                prefersReducedMotion
+                                    ? { duration: 0 }
+                                    : { type: 'spring', stiffness: 380, damping: 28 }
+                            }
+                            aria-hidden="true"
+                            className="absolute inset-0 bg-[var(--surface-elevated)] rounded-lg shadow-xs"
+                        />
+                    )}
                     <span
                         aria-hidden="true"
-                        className={`w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center ${
+                        className={`relative z-10 w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center shrink-0 ${
                             tab === 'report'
                                 ? 'bg-emerald-600 text-white'
                                 : 'bg-surface-container-high text-[var(--text-secondary)]'
                         }`}
                     >
-                        ۳
+                        ۲
                     </span>
-                    <span>ثبت عملکرد</span>
+                    <span className="relative z-10">ثبت عملکرد</span>
                 </button>
             </div>
         </div>
@@ -577,189 +575,60 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                 transition={TRANSITION_SHAKE}
             >
                 {tab === 'info' && (
-                    <div role="tabpanel" className="p-4 sm:p-5 space-y-5">
-                        {/* Type Selection — Choice Overload: curated 4 primary options + progressive expand */}
-                        {(() => {
-                            const isAcademicStream =
-                                settings?.stream === 'riazi' || settings?.stream === 'tajrobi' || settings?.stream === 'ensani';
-                            const primaryIds = isAcademicStream ? PRIMARY_ACADEMIC_TYPES : PRIMARY_GENERAL_TYPES;
-                            const curatedPrimary = ALL_ACTIVITY_TYPES.filter((t) => primaryIds.includes(t.id));
-                            if (formData.studyType && !curatedPrimary.some((t) => t.id === formData.studyType)) {
-                                const selectedTypeObj = ALL_ACTIVITY_TYPES.find((t) => t.id === formData.studyType);
-                                if (selectedTypeObj) {
-                                    curatedPrimary.splice(curatedPrimary.length - 1, 1, selectedTypeObj);
-                                }
-                            }
+                    <div role="tabpanel" className="p-4 sm:p-5 space-y-4">
+                        {/* 1. Primary Title Input (Always first, zero clutter) */}
+                        {!isExamMode && (
+                            <div>
+                                <label
+                                    htmlFor="task-topic-input"
+                                    className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
+                                >
+                                    عنوان کار یا فعالیت <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    ref={topicInputRef}
+                                    id="task-topic-input"
+                                    data-autofocus="true"
+                                    type="text"
+                                    aria-required="true"
+                                    aria-invalid={Boolean(errors.topic)}
+                                    aria-describedby={errors.topic ? 'task-topic-error' : undefined}
+                                    value={formData.topic || ''}
+                                    onChange={(e) => {
+                                        if (errors.topic) setErrors((prev) => ({ ...prev, topic: undefined }));
+                                        setFormData({ ...formData, topic: e.target.value });
+                                    }}
+                                    className={`w-full min-h-[48px] bg-surface-container-low border rounded-2xl px-4 py-3 text-base sm:text-sm font-bold outline-none focus:bg-[var(--surface-elevated)] transition text-on-surface ${
+                                        errors.topic
+                                            ? 'border-rose-500 focus:border-rose-500'
+                                            : 'border-[var(--border-subtle)] focus:border-primary'
+                                    }`}
+                                    placeholder="مثلاً: تمرین ورزشی، جلسه هفتگی یا فصل ۳ کتاب..."
+                                />
+                                {errors.topic && (
+                                    <p
+                                        id="task-topic-error"
+                                        role="alert"
+                                        className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5"
+                                    >
+                                        <AlertCircle size={14} aria-hidden="true" />
+                                        <span>{errors.topic}</span>
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
-                            return (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="text-xs font-bold text-[var(--text-secondary)] block">نوع فعالیت</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAllTypes((prev) => !prev)}
-                                            aria-expanded={showAllTypes}
-                                            className="min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-bold text-primary hover:bg-primary/10 inline-flex items-center gap-1 transition cursor-pointer"
-                                        >
-                                            <span>
-                                                {showAllTypes
-                                                    ? 'نمایش گزینه‌های اصلی'
-                                                    : `انواع بیشتر (${formatToPersianDigits(ALL_ACTIVITY_TYPES.length - curatedPrimary.length)})`}
-                                            </span>
-                                            {showAllTypes ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                        </button>
-                                    </div>
-
-                                    {!showAllTypes ? (
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                            {curatedPrimary.map((type) => {
-                                                const isSelected = formData.studyType === type.id;
-                                                return (
-                                                    <button
-                                                        key={type.id}
-                                                        type="button"
-                                                        aria-pressed={isSelected}
-                                                        onClick={() => {
-                                                            haptics.selection();
-                                                            setFormData({ ...formData, studyType: type.id });
-                                                        }}
-                                                        className={`min-h-[44px] flex items-center sm:flex-col justify-center gap-1.5 sm:gap-1 px-2.5 py-2 squircle-sm border transition cursor-pointer ${
-                                                            isSelected
-                                                                ? 'bg-primary/10 border-primary/40 text-primary font-bold shadow-xs'
-                                                                : 'bg-surface-container-low/60 border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-surface-container'
-                                                        }`}
-                                                    >
-                                                        <type.icon size={16} aria-hidden="true" />
-                                                        <span className="text-xs sm:text-[11px] font-bold truncate max-w-full">
-                                                            {type.label}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                                {UNIVERSAL_TYPES.map((type) => {
-                                                    const isSelected = formData.studyType === type.id;
-                                                    return (
-                                                        <button
-                                                            key={type.id}
-                                                            type="button"
-                                                            aria-pressed={isSelected}
-                                                            onClick={() => {
-                                                                haptics.selection();
-                                                                setFormData({ ...formData, studyType: type.id });
-                                                            }}
-                                                            className={`min-h-[44px] flex items-center sm:flex-col justify-center gap-1.5 sm:gap-1 px-2.5 py-2 squircle-sm border transition cursor-pointer ${
-                                                                isSelected
-                                                                    ? 'bg-primary/10 border-primary/40 text-primary font-bold shadow-xs'
-                                                                    : 'bg-surface-container-low/60 border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-surface-container'
-                                                            }`}
-                                                        >
-                                                            <type.icon size={16} aria-hidden="true" />
-                                                            <span className="text-xs sm:text-[11px] font-bold truncate max-w-full">
-                                                                {type.label}
-                                                            </span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                                                {ACADEMIC_TYPES.map((type) => {
-                                                    const isSelected = formData.studyType === type.id;
-                                                    return (
-                                                        <button
-                                                            key={type.id}
-                                                            type="button"
-                                                            aria-pressed={isSelected}
-                                                            onClick={() => {
-                                                                haptics.selection();
-                                                                setFormData({ ...formData, studyType: type.id });
-                                                            }}
-                                                            className={`min-h-[40px] flex items-center justify-center gap-1.5 py-1.5 px-2.5 squircle-sm border transition text-xs sm:text-[11px] font-bold cursor-pointer ${
-                                                                isSelected
-                                                                    ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 shadow-xs'
-                                                                    : 'bg-transparent border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-surface-container-low'
-                                                            }`}
-                                                        >
-                                                            <type.icon size={13} aria-hidden="true" />
-                                                            <span className="truncate">{type.label}</span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            );
-                        })()}
-
-                        {/* Date & Timeblocking Selection (Parkinson's Law smart auto-prefill) */}
-                        <div className="bg-surface-container-low p-3.5 squircle-md border border-[var(--border-subtle)] space-y-3">
-                            {hasSmartPrefill && !initialData && (
-                                <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 squircle-sm bg-primary/8 border border-primary/15 text-[11px] text-primary font-semibold">
-                                    <span>زمان‌بندی و حوزه هوشمند بر اساس برنامه امروز پیش‌فرض پر شد</span>
-                                    {formData.startTime && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setFormData((prev) => ({ ...prev, startTime: '' }));
-                                                setHasSmartPrefill(false);
-                                            }}
-                                            className="px-2 py-0.5 rounded-md bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-on-surface text-[10px] font-bold cursor-pointer shrink-0"
-                                        >
-                                            حذف ساعت
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div>
-                                    <label
-                                        htmlFor="task-day-select"
-                                        className="text-xs font-bold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1"
-                                    >
-                                        <Calendar size={13} aria-hidden="true" /> روز دوره
-                                    </label>
-                                    <select
-                                        id="task-day-select"
-                                        value={formData.dayId || 1}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, dayId: parseLocalizedInt(e.target.value, 1) })
-                                        }
-                                        className="w-full min-h-[44px] bg-[var(--surface-elevated)] rounded-xl px-3 py-2 text-base sm:text-xs font-bold text-on-surface outline-none border border-[var(--border-subtle)] focus:border-primary cursor-pointer"
-                                    >
-                                        {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => (
-                                            <option key={day} value={day}>
-                                                روز {day}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label
-                                        htmlFor="task-start-time"
-                                        className="text-xs font-bold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1"
-                                    >
-                                        <Clock size={13} aria-hidden="true" /> ساعت شروع (اختیاری)
-                                    </label>
-                                    <input
-                                        id="task-start-time"
-                                        type="time"
-                                        value={formData.startTime || ''}
-                                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                                        className="w-full min-h-[44px] bg-[var(--surface-elevated)] rounded-xl px-3 py-2 text-base sm:text-xs font-mono font-bold text-on-surface outline-none border border-[var(--border-subtle)] focus:border-primary"
-                                        dir="ltr"
-                                    />
-                                </div>
-                                <div>
-                                    <label
-                                        htmlFor="task-duration-input"
-                                        className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
-                                    >
-                                        مدت هدف (دقیقه)
-                                    </label>
+                        {/* 2. Compact 1-Row Duration + Quick Chips */}
+                        <div className="bg-surface-container-low/75 px-3.5 py-3 squircle-md border border-[var(--border-subtle)] space-y-2">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <label
+                                    htmlFor="task-duration-input"
+                                    className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-1.5"
+                                >
+                                    <Clock size={14} className="text-primary" aria-hidden="true" />
+                                    مدت هدف (دقیقه)
+                                </label>
+                                <div className="flex items-center gap-2">
                                     <input
                                         id="task-duration-input"
                                         type="text"
@@ -775,12 +644,12 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                 durationMinutes: norm === '' ? 0 : parseInt(norm, 10),
                                             });
                                         }}
-                                        className={`w-full min-h-[44px] bg-[var(--surface-elevated)] rounded-xl px-3 py-2 text-base sm:text-xs font-mono font-bold text-on-surface outline-none border focus:border-primary ${
+                                        className={`w-16 min-h-[36px] text-center bg-[var(--surface-elevated)] rounded-xl px-2 py-1 text-xs font-mono font-bold text-on-surface outline-none border focus:border-primary ${
                                             errors.durationMinutes ? 'border-rose-500' : 'border-[var(--border-subtle)]'
                                         }`}
                                         dir="ltr"
                                     />
-                                    <div className="flex items-center gap-1 mt-1.5" role="group" aria-label="مدت زمان‌های پیشنهادی">
+                                    <div className="flex items-center gap-1" role="group" aria-label="مدت زمان‌های پیشنهادی">
                                         {[25, 45, 60, 90].map((mins) => {
                                             const active = formData.durationMinutes === mins;
                                             return (
@@ -792,9 +661,9 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                         setErrors((prev) => ({ ...prev, durationMinutes: undefined }));
                                                         setFormData({ ...formData, durationMinutes: mins });
                                                     }}
-                                                    className={`flex-1 py-1 rounded-lg text-[11px] font-bold tabular-nums transition cursor-pointer ${
+                                                    className={`px-2.5 min-h-[34px] rounded-xl text-[11px] font-bold tabular-nums transition cursor-pointer ${
                                                         active
-                                                            ? 'bg-primary text-on-primary'
+                                                            ? 'bg-primary text-on-primary shadow-xs'
                                                             : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-primary'
                                                     }`}
                                                 >
@@ -803,92 +672,150 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             );
                                         })}
                                     </div>
-                                    {errors.durationMinutes && (
-                                        <p
-                                            id="task-duration-error"
-                                            role="alert"
-                                            className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1"
-                                        >
-                                            <AlertCircle size={13} aria-hidden="true" />
-                                            <span>{errors.durationMinutes}</span>
-                                        </p>
-                                    )}
                                 </div>
                             </div>
-
-                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-[var(--border-subtle)]">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <Flag size={13} className="text-primary" aria-hidden="true" />
-                                    <span className="text-xs font-bold text-[var(--text-secondary)]">اولویت:</span>
-                                    {(['urgent', 'high', 'medium', 'low'] as TaskPriority[]).map((p) => {
-                                        const isSelected = (formData.priority || 'medium') === p;
-                                        return (
-                                            <button
-                                                key={p}
-                                                type="button"
-                                                aria-pressed={isSelected}
-                                                onClick={() => {
-                                                    haptics.selection();
-                                                    setFormData({ ...formData, priority: p });
-                                                }}
-                                                className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                                                    isSelected
-                                                        ? p === 'urgent'
-                                                            ? 'bg-rose-600 text-white'
-                                                            : p === 'high'
-                                                              ? 'bg-amber-600 text-white'
-                                                              : p === 'medium'
-                                                                ? 'bg-primary text-on-primary'
-                                                                : 'bg-slate-600 text-white'
-                                                        : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
-                                                }`}
-                                            >
-                                                {p === 'urgent'
-                                                    ? 'فوری'
-                                                    : p === 'high'
-                                                      ? 'بالا'
-                                                      : p === 'medium'
-                                                        ? 'متوسط'
-                                                        : 'پایین'}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <button
-                                    type="button"
-                                    aria-pressed={Boolean(formData.isMIT)}
-                                    onClick={() => {
-                                        haptics.selection();
-                                        setFormData({ ...formData, isMIT: !formData.isMIT });
-                                    }}
-                                    className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                                        formData.isMIT
-                                            ? 'bg-amber-500 text-white border-amber-500'
-                                            : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)]'
-                                    }`}
+                            {errors.durationMinutes && (
+                                <p
+                                    id="task-duration-error"
+                                    role="alert"
+                                    className="text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1"
                                 >
-                                    <motion.span
-                                        animate={
-                                            prefersReducedMotion
-                                                ? undefined
-                                                : formData.isMIT
-                                                  ? SQUASH_STRETCH_KEYFRAMES
-                                                  : { scaleX: 1, scaleY: 1 }
-                                        }
-                                        transition={TRANSITION_SQUASH}
-                                        className="inline-flex"
-                                    >
-                                        <Star size={13} fill={formData.isMIT ? 'currentColor' : 'none'} aria-hidden="true" />
-                                    </motion.span>
-                                    <span>
-                                        اولویت کلیدی (<bdi>MIT</bdi>)
-                                    </span>
-                                </button>
-                            </div>
+                                    <AlertCircle size={13} aria-hidden="true" />
+                                    <span>{errors.durationMinutes}</span>
+                                </p>
+                            )}
                         </div>
 
-                        {/* Category / Subject Selection */}
+                        {/* 3. Progressive Smart Summary Chips (Clean 1-row disclosure for Schedule, Subject, Options) */}
+                        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="تنظیمات تکمیلی تسک">
+                            <button
+                                type="button"
+                                aria-label="زمان‌بندی روز و ساعت"
+                                aria-expanded={activeSection === 'schedule'}
+                                onClick={() => {
+                                    haptics.selection();
+                                    setActiveSection((prev) => (prev === 'schedule' ? null : 'schedule'));
+                                }}
+                                className={`min-h-[38px] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                                    activeSection === 'schedule'
+                                        ? 'bg-primary text-on-primary border-primary shadow-xs'
+                                        : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)] hover:bg-surface-container'
+                                }`}
+                            >
+                                <Calendar size={13} aria-hidden="true" />
+                                <span>
+                                    روز {formatToPersianDigits(formData.dayId || 1)}
+                                    {formData.startTime ? ` • ${formatToPersianDigits(formData.startTime)}` : ''}
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                aria-label="انتخاب حوزه یا درس"
+                                aria-expanded={activeSection === 'subject'}
+                                onClick={() => {
+                                    haptics.selection();
+                                    setActiveSection((prev) => (prev === 'subject' ? null : 'subject'));
+                                }}
+                                className={`min-h-[38px] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                                    activeSection === 'subject'
+                                        ? 'bg-primary text-on-primary border-primary shadow-xs'
+                                        : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)] hover:bg-surface-container'
+                                }`}
+                            >
+                                <span aria-hidden="true">{SUBJECT_ICONS[formData.subject || '']?.icon || '📌'}</span>
+                                <span>{isExamMode ? 'دروس آزمون' : formData.subject || 'حوزه'}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                aria-expanded={activeSection === 'options'}
+                                onClick={() => {
+                                    haptics.selection();
+                                    setActiveSection((prev) => (prev === 'options' ? null : 'options'));
+                                }}
+                                className={`min-h-[38px] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                                    activeSection === 'options'
+                                        ? 'bg-primary text-on-primary border-primary shadow-xs'
+                                        : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)] hover:bg-surface-container'
+                                }`}
+                            >
+                                <Flag size={13} aria-hidden="true" />
+                                <span>
+                                    نوع، اولویت و جزئیات
+                                    {formData.isMIT ? ' ★' : ''}
+                                </span>
+                            </button>
+                        </div>
+
+                        {/* Progressive Drawer 1: Schedule (Day + Start Time) */}
+                        {activeSection === 'schedule' && (
+                            <div className="bg-surface-container-low p-3.5 squircle-md border border-[var(--border-subtle)] space-y-3">
+                                {hasSmartPrefill && !initialData && (
+                                    <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 squircle-sm bg-primary/8 border border-primary/15 text-[11px] text-primary font-semibold">
+                                        <span>زمان‌بندی هوشمند بر اساس برنامه امروز پیش‌فرض پر شد</span>
+                                        {formData.startTime && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFormData((prev) => ({ ...prev, startTime: '' }));
+                                                    setHasSmartPrefill(false);
+                                                }}
+                                                className="px-2 py-0.5 rounded-md bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-on-surface text-[10px] font-bold cursor-pointer shrink-0"
+                                            >
+                                                حذف ساعت
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label
+                                            htmlFor="task-day-select"
+                                            className="text-xs font-bold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1"
+                                        >
+                                            <Calendar size={13} aria-hidden="true" /> روز دوره
+                                        </label>
+                                        <select
+                                            id="task-day-select"
+                                            value={formData.dayId || 1}
+                                            onChange={(e) => {
+                                                const nextDay = parseLocalizedInt(e.target.value, 1);
+                                                const nextDate = toIsoString(addDays(startDate, nextDay - 1));
+                                                setFormData({ ...formData, dayId: nextDay, date: nextDate });
+                                            }}
+                                            className="w-full min-h-[44px] bg-[var(--surface-elevated)] rounded-xl px-3 py-2 text-base sm:text-xs font-bold text-on-surface outline-none border border-[var(--border-subtle)] focus:border-primary cursor-pointer"
+                                        >
+                                            {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => (
+                                                <option key={day} value={day}>
+                                                    روز {day}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label
+                                            htmlFor="task-start-time"
+                                            className="text-xs font-bold text-[var(--text-secondary)] mb-1.5 flex items-center gap-1"
+                                        >
+                                            <Clock size={13} aria-hidden="true" /> ساعت شروع (اختیاری)
+                                        </label>
+                                        <input
+                                            id="task-start-time"
+                                            type="time"
+                                            value={formData.startTime || ''}
+                                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                            className="w-full min-h-[44px] bg-[var(--surface-elevated)] rounded-xl px-3 py-2 text-base sm:text-xs font-mono font-bold text-on-surface outline-none border border-[var(--border-subtle)] focus:border-primary"
+                                            dir="ltr"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Progressive Drawer 2: Subject / Category Picker */}
+                        {activeSection === 'subject' && (
+                            <div className="bg-surface-container-low p-3.5 squircle-md border border-[var(--border-subtle)] space-y-2.5">
                         {(() => {
                             const currentStream = settings?.stream || 'life';
                             const allowedSubjects = SUBJECT_LISTS[currentStream] || SUBJECT_LISTS['life'];
@@ -920,7 +847,6 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                 return 0;
                             });
 
-                            // Keep active selection pinned in top 6 when collapsed (Choice Overload limit <= 6)
                             const activeSubjectName = isExamMode ? selectedExamSubjects[0] : formData.subject;
                             const prioritizedIcons = [...sortedIcons];
                             if (!showAllSubjects && activeSubjectName) {
@@ -945,26 +871,26 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                     aria-label="نمایش شبکه‌ای"
                                                     aria-pressed={viewMode === 'grid'}
                                                     onClick={() => setViewMode('grid')}
-                                                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer ${
                                                         viewMode === 'grid'
                                                             ? 'bg-[var(--surface-elevated)] shadow-xs text-primary'
                                                             : 'text-[var(--text-secondary)]'
                                                     }`}
                                                 >
-                                                    <LayoutGrid size={15} />
+                                                    <LayoutGrid size={14} />
                                                 </button>
                                                 <button
                                                     type="button"
                                                     aria-label="نمایش فهرستی"
                                                     aria-pressed={viewMode === 'list'}
                                                     onClick={() => setViewMode('list')}
-                                                    className={`w-9 h-9 flex items-center justify-center rounded-lg transition cursor-pointer ${
+                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition cursor-pointer ${
                                                         viewMode === 'list'
                                                             ? 'bg-[var(--surface-elevated)] shadow-xs text-primary'
                                                             : 'text-[var(--text-secondary)]'
                                                     }`}
                                                 >
-                                                    <List size={15} />
+                                                    <List size={14} />
                                                 </button>
                                             </div>
                                         )}
@@ -983,8 +909,8 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     <div
                                         className={
                                             viewMode === 'list' && !isExamMode
-                                                ? 'grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 custom-scrollbar'
-                                                : 'grid grid-cols-3 gap-2 max-h-56 overflow-y-auto p-1 custom-scrollbar'
+                                                ? 'grid grid-cols-2 gap-2 max-h-52 overflow-y-auto p-0.5 custom-scrollbar'
+                                                : 'grid grid-cols-3 gap-2 max-h-52 overflow-y-auto p-0.5 custom-scrollbar'
                                         }
                                     >
                                         {visibleIcons.map(([name, style]) => {
@@ -1005,14 +931,14 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                             setFormData({ ...formData, subject: name as Subject });
                                                         }
                                                     }}
-                                                    className={`relative min-h-[48px] flex ${
+                                                    className={`relative min-h-[46px] flex ${
                                                         viewMode === 'list' && !isExamMode
                                                             ? 'flex-row items-center gap-2 px-3 py-2 text-right'
                                                             : 'flex-col items-center justify-center p-2'
                                                     } squircle-sm border transition active:scale-95 cursor-pointer ${
                                                         isSelected
                                                             ? 'bg-primary/10 border-primary/40 text-primary font-bold shadow-xs'
-                                                            : 'bg-surface-container-low/60 border-[var(--border-subtle)] text-on-surface hover:bg-surface-container'
+                                                            : 'bg-[var(--surface-elevated)] border-[var(--border-subtle)] text-on-surface hover:bg-surface-container'
                                                     }`}
                                                 >
                                                     <span className="text-lg shrink-0" aria-hidden="true">
@@ -1038,7 +964,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             type="button"
                                             aria-expanded={showAllSubjects}
                                             onClick={() => setShowAllSubjects((prev) => !prev)}
-                                            className="mt-2 w-full min-h-[38px] px-3 py-1.5 squircle-sm border border-[var(--border-subtle)] bg-surface-container-low hover:bg-surface-container text-xs font-bold text-primary flex items-center justify-center gap-1.5 transition cursor-pointer"
+                                            className="mt-2 w-full min-h-[36px] px-3 py-1.5 squircle-sm border border-[var(--border-subtle)] bg-[var(--surface-elevated)] hover:bg-surface-container text-xs font-bold text-primary flex items-center justify-center gap-1.5 transition cursor-pointer"
                                         >
                                             <span>
                                                 {showAllSubjects
@@ -1051,14 +977,302 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                 </div>
                             );
                         })()}
+                            </div>
+                        )}
 
-                        {/* Input Fields */}
-                        {isExamMode ? (
+                        {/* Progressive Drawer 3: Activity Type, Priority, MIT, Short Description & Tags */}
+                        {activeSection === 'options' && (
+                            <div className="bg-surface-container-low p-3.5 squircle-md border border-[var(--border-subtle)] space-y-4">
+                                {/* Activity Type */}
+                                {(() => {
+                                    const isAcademicStream =
+                                        settings?.stream === 'riazi' || settings?.stream === 'tajrobi' || settings?.stream === 'ensani';
+                                    const primaryIds = isAcademicStream ? PRIMARY_ACADEMIC_TYPES : PRIMARY_GENERAL_TYPES;
+                                    const curatedPrimary = ALL_ACTIVITY_TYPES.filter((t) => primaryIds.includes(t.id));
+                                    if (formData.studyType && !curatedPrimary.some((t) => t.id === formData.studyType)) {
+                                        const selectedTypeObj = ALL_ACTIVITY_TYPES.find((t) => t.id === formData.studyType);
+                                        if (selectedTypeObj) {
+                                            curatedPrimary.splice(curatedPrimary.length - 1, 1, selectedTypeObj);
+                                        }
+                                    }
+
+                                    return (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-xs font-bold text-[var(--text-secondary)] block">نوع فعالیت</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAllTypes((prev) => !prev)}
+                                                    aria-expanded={showAllTypes}
+                                                    className="min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-bold text-primary hover:bg-primary/10 inline-flex items-center gap-1 transition cursor-pointer"
+                                                >
+                                                    <span>
+                                                        {showAllTypes
+                                                            ? 'نمایش گزینه‌های اصلی'
+                                                            : `انواع بیشتر (${formatToPersianDigits(ALL_ACTIVITY_TYPES.length - curatedPrimary.length)})`}
+                                                    </span>
+                                                    {showAllTypes ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                                </button>
+                                            </div>
+
+                                            {!showAllTypes ? (
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                    {curatedPrimary.map((type) => {
+                                                        const isSelected = formData.studyType === type.id;
+                                                        return (
+                                                            <button
+                                                                key={type.id}
+                                                                type="button"
+                                                                aria-pressed={isSelected}
+                                                                onClick={() => {
+                                                                    haptics.selection();
+                                                                    setFormData({ ...formData, studyType: type.id });
+                                                                }}
+                                                                className={`min-h-[42px] flex items-center sm:flex-col justify-center gap-1.5 sm:gap-1 px-2.5 py-1.5 squircle-sm border transition cursor-pointer ${
+                                                                    isSelected
+                                                                        ? 'bg-primary/10 border-primary/40 text-primary font-bold shadow-xs'
+                                                                        : 'bg-[var(--surface-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-surface-container'
+                                                                }`}
+                                                            >
+                                                                <type.icon size={15} aria-hidden="true" />
+                                                                <span className="text-xs sm:text-[11px] font-bold truncate max-w-full">
+                                                                    {type.label}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                        {UNIVERSAL_TYPES.map((type) => {
+                                                            const isSelected = formData.studyType === type.id;
+                                                            return (
+                                                                <button
+                                                                    key={type.id}
+                                                                    type="button"
+                                                                    aria-pressed={isSelected}
+                                                                    onClick={() => {
+                                                                        haptics.selection();
+                                                                        setFormData({ ...formData, studyType: type.id });
+                                                                    }}
+                                                                    className={`min-h-[42px] flex items-center sm:flex-col justify-center gap-1.5 sm:gap-1 px-2.5 py-1.5 squircle-sm border transition cursor-pointer ${
+                                                                        isSelected
+                                                                            ? 'bg-primary/10 border-primary/40 text-primary font-bold shadow-xs'
+                                                                            : 'bg-[var(--surface-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-surface-container'
+                                                                    }`}
+                                                                >
+                                                                    <type.icon size={15} aria-hidden="true" />
+                                                                    <span className="text-xs sm:text-[11px] font-bold truncate max-w-full">
+                                                                        {type.label}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                                                        {ACADEMIC_TYPES.map((type) => {
+                                                            const isSelected = formData.studyType === type.id;
+                                                            return (
+                                                                <button
+                                                                    key={type.id}
+                                                                    type="button"
+                                                                    aria-pressed={isSelected}
+                                                                    onClick={() => {
+                                                                        haptics.selection();
+                                                                        setFormData({ ...formData, studyType: type.id });
+                                                                    }}
+                                                                    className={`min-h-[38px] flex items-center justify-center gap-1.5 py-1.5 px-2.5 squircle-sm border transition text-xs sm:text-[11px] font-bold cursor-pointer ${
+                                                                        isSelected
+                                                                            ? 'bg-purple-50 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 shadow-xs'
+                                                                            : 'bg-[var(--surface-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-surface-container'
+                                                                    }`}
+                                                                >
+                                                                    <type.icon size={13} aria-hidden="true" />
+                                                                    <span className="truncate">{type.label}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Priority & MIT */}
+                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-[var(--border-subtle)]">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <Flag size={13} className="text-primary" aria-hidden="true" />
+                                        <span className="text-xs font-bold text-[var(--text-secondary)]">اولویت:</span>
+                                        {(['urgent', 'high', 'medium', 'low'] as TaskPriority[]).map((p) => {
+                                            const isSelected = (formData.priority || 'medium') === p;
+                                            return (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    aria-pressed={isSelected}
+                                                    onClick={() => {
+                                                        haptics.selection();
+                                                        setFormData({ ...formData, priority: p });
+                                                    }}
+                                                    className={`min-h-[36px] px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                                        isSelected
+                                                            ? p === 'urgent'
+                                                                ? 'bg-rose-600 text-white'
+                                                                : p === 'high'
+                                                                  ? 'bg-amber-600 text-white'
+                                                                  : p === 'medium'
+                                                                    ? 'bg-primary text-on-primary'
+                                                                    : 'bg-slate-600 text-white'
+                                                            : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]'
+                                                    }`}
+                                                >
+                                                    {p === 'urgent'
+                                                        ? 'فوری'
+                                                        : p === 'high'
+                                                          ? 'بالا'
+                                                          : p === 'medium'
+                                                            ? 'متوسط'
+                                                            : 'پایین'}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        aria-pressed={Boolean(formData.isMIT)}
+                                        onClick={() => {
+                                            haptics.selection();
+                                            setFormData({ ...formData, isMIT: !formData.isMIT });
+                                        }}
+                                        className={`min-h-[38px] px-3 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
+                                            formData.isMIT
+                                                ? 'bg-amber-500 text-white border-amber-500'
+                                                : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border-[var(--border-subtle)]'
+                                        }`}
+                                    >
+                                        <motion.span
+                                            animate={
+                                                prefersReducedMotion
+                                                    ? undefined
+                                                    : formData.isMIT
+                                                      ? SQUASH_STRETCH_KEYFRAMES
+                                                      : { scaleX: 1, scaleY: 1 }
+                                            }
+                                            transition={TRANSITION_SQUASH}
+                                            className="inline-flex"
+                                        >
+                                            <Star size={13} fill={formData.isMIT ? 'currentColor' : 'none'} aria-hidden="true" />
+                                        </motion.span>
+                                        <span>
+                                            اولویت کلیدی (<bdi>MIT</bdi>)
+                                        </span>
+                                    </button>
+                                </div>
+
+                                {/* Short description & Test range */}
+                                {!isExamMode && (
+                                    <div className={`grid ${isAcademicTestMode ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-3 pt-2.5 border-t border-[var(--border-subtle)]`}>
+                                        <div>
+                                            <label
+                                                htmlFor="task-details-input"
+                                                className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
+                                            >
+                                                توضیح کوتاه / هدف (اختیاری)
+                                            </label>
+                                            <input
+                                                id="task-details-input"
+                                                type="text"
+                                                value={formData.details || ''}
+                                                onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                                                className="w-full min-h-[42px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-base sm:text-xs outline-none focus:border-primary transition text-on-surface"
+                                                placeholder={
+                                                    isAcademicTestMode
+                                                        ? 'مثلاً: ۴۵ تست'
+                                                        : 'مثلاً: تمرکز کامل روی خروجی نهایی'
+                                                }
+                                            />
+                                        </div>
+                                        {isAcademicTestMode && (
+                                            <div>
+                                                <label
+                                                    htmlFor="task-test-range"
+                                                    className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
+                                                >
+                                                    بازه تست
+                                                </label>
+                                                <input
+                                                    id="task-test-range"
+                                                    type="text"
+                                                    value={formData.testRange || ''}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, testRange: e.target.value })
+                                                    }
+                                                    className="w-full min-h-[42px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-base sm:text-xs outline-none focus:border-primary transition text-on-surface"
+                                                    placeholder="اختیاری"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Tags */}
+                                <div className="pt-2.5 border-t border-[var(--border-subtle)]">
+                                    <label
+                                        htmlFor="task-tag-input"
+                                        className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
+                                    >
+                                        تگ‌ها
+                                    </label>
+                                    {(formData.tags || []).length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mb-2">
+                                            {(formData.tags || []).map((tag) => (
+                                                <span
+                                                    key={tag}
+                                                    className="bg-[var(--surface-elevated)] text-on-surface border border-[var(--border-subtle)] text-xs pr-2.5 pl-1 py-0.5 rounded-xl flex items-center gap-1"
+                                                >
+                                                    <span>{tag}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeTag(tag)}
+                                                        aria-label={`حذف تگ ${tag}`}
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:text-rose-600 transition cursor-pointer"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="relative">
+                                        <Tag
+                                            size={15}
+                                            aria-hidden="true"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
+                                        />
+                                        <input
+                                            id="task-tag-input"
+                                            type="text"
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={addTag}
+                                            className="w-full min-h-[42px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl pl-3 pr-9 py-2 text-base sm:text-xs outline-none focus:border-primary transition text-on-surface"
+                                            placeholder="تگ جدید و اینتر..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Exam Mode Subject Topics */}
+                        {isExamMode && (
                             <div className="space-y-3">
                                 <span className="text-xs font-bold text-[var(--text-secondary)] block">مباحث آزمون</span>
                                 {selectedExamSubjects.length === 0 && (
                                     <p className="text-xs text-[var(--text-secondary)] text-center py-3 bg-surface-container-low rounded-xl">
-                                        هیچ درسی انتخاب نشده است.
+                                        از بخش حوزه، دروس آزمون را انتخاب کنید.
                                     </p>
                                 )}
                                 {selectedExamSubjects.map((subj) => (
@@ -1099,154 +1313,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                     />
                                 </div>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div>
-                                    <label
-                                        htmlFor="task-topic-input"
-                                        className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
-                                    >
-                                        عنوان کار یا فعالیت <span className="text-rose-500">*</span>
-                                    </label>
-                                    <input
-                                        ref={topicInputRef}
-                                        id="task-topic-input"
-                                        data-autofocus="true"
-                                        type="text"
-                                        aria-required="true"
-                                        aria-invalid={Boolean(errors.topic)}
-                                        aria-describedby={errors.topic ? 'task-topic-error' : undefined}
-                                        value={formData.topic || ''}
-                                        onChange={(e) => {
-                                            if (errors.topic) setErrors((prev) => ({ ...prev, topic: undefined }));
-                                            setFormData({ ...formData, topic: e.target.value });
-                                        }}
-                                        className={`w-full min-h-[46px] bg-surface-container-low border rounded-xl px-4 py-3 text-base sm:text-sm outline-none focus:bg-[var(--surface-elevated)] transition text-on-surface ${
-                                            errors.topic
-                                                ? 'border-rose-500 focus:border-rose-500'
-                                                : 'border-[var(--border-subtle)] focus:border-primary'
-                                        }`}
-                                        placeholder="مثلاً: تمرین ورزشی، جلسه هفتگی، نوشتن گزارش یا فصل ۳ کتاب..."
-                                    />
-                                    {errors.topic && (
-                                        <p
-                                            id="task-topic-error"
-                                            role="alert"
-                                            className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5"
-                                        >
-                                            <AlertCircle size={14} aria-hidden="true" />
-                                            <span>{errors.topic}</span>
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className={`grid ${isAcademicTestMode ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-4`}>
-                                    <div>
-                                        <label
-                                            htmlFor="task-details-input"
-                                            className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
-                                        >
-                                            توضیح کوتاه / هدف (اختیاری)
-                                        </label>
-                                        <input
-                                            id="task-details-input"
-                                            type="text"
-                                            value={formData.details || ''}
-                                            onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                                            className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-base sm:text-sm outline-none focus:border-primary focus:bg-[var(--surface-elevated)] transition text-on-surface"
-                                            placeholder={
-                                                isAcademicTestMode
-                                                    ? 'مثلاً: ۴۵ تست'
-                                                    : 'مثلاً: تمرکز کامل روی خروجی نهایی'
-                                            }
-                                        />
-                                    </div>
-                                    {isAcademicTestMode && (
-                                        <div>
-                                            <label
-                                                htmlFor="task-test-range"
-                                                className="block text-xs font-bold text-[var(--text-secondary)] mb-1.5"
-                                            >
-                                                بازه تست
-                                            </label>
-                                            <input
-                                                id="task-test-range"
-                                                type="text"
-                                                value={formData.testRange || ''}
-                                                onChange={(e) =>
-                                                    setFormData({ ...formData, testRange: e.target.value })
-                                                }
-                                                className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-base sm:text-sm outline-none focus:border-primary focus:bg-[var(--surface-elevated)] transition text-on-surface"
-                                                placeholder="اختیاری"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
                         )}
-
-                        {/* Tags */}
-                        <div className="bg-surface-container-low/70 p-3.5 rounded-2xl border border-dashed border-[var(--border-strong)]">
-                            <label
-                                htmlFor="task-tag-input"
-                                className="block text-xs font-bold text-[var(--text-secondary)] mb-2"
-                            >
-                                تگ‌ها
-                            </label>
-                            {(formData.tags || []).length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-2.5">
-                                    {(formData.tags || []).map((tag) => (
-                                        <span
-                                            key={tag}
-                                            className="bg-[var(--surface-elevated)] text-on-surface border border-[var(--border-subtle)] text-xs pr-3 pl-1 py-1 rounded-xl flex items-center gap-1"
-                                        >
-                                            <span>{tag}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeTag(tag)}
-                                                aria-label={`حذف تگ ${tag}`}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                                            >
-                                                <X size={13} />
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="relative">
-                                <Tag
-                                    size={16}
-                                    aria-hidden="true"
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
-                                />
-                                <input
-                                    id="task-tag-input"
-                                    type="text"
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={addTag}
-                                    className="w-full min-h-[44px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl pl-3 pr-10 py-2.5 text-base sm:text-sm outline-none focus:border-primary transition text-on-surface"
-                                    placeholder="تگ جدید و اینتر..."
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {tab === 'notes' && (
-                    <div role="tabpanel" className="p-4 sm:p-5 space-y-4">
-                        <BlockNoteEditor
-                            blocks={(formData.blocks as BlockNote[]) || []}
-                            onChange={(blocks) => setFormData({ ...formData, blocks })}
-                            onCreateFlashcard={(front, back) =>
-                                addFlashcard({
-                                    question: front,
-                                    answer: back,
-                                    subject: formData.subject || 'عمومی',
-                                    topic: formData.topic || '',
-                                })
-                            }
-                        />
                     </div>
                 )}
 

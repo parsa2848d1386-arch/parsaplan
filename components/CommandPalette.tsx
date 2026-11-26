@@ -286,30 +286,30 @@ export const CommandPalette: React.FC = () => {
                             prefersReducedMotion
                                 ? false
                                 : isMobile
-                                  ? { opacity: 0, scale: 0.24, y: -6, borderRadius: 48 }
+                                  ? { opacity: 0, scale: 0.14, y: 0, borderRadius: 48 }
                                   : { opacity: 0, scale: 0.94, y: -8 }
                         }
-                        animate={{ opacity: 1, scale: 1, y: 0, borderRadius: 26 }}
+                        animate={{ opacity: 1, scale: 1, y: 0, borderRadius: 24 }}
                         exit={
                             prefersReducedMotion
                                 ? { opacity: 0 }
                                 : isMobile
-                                  ? { opacity: 0, scale: 0.22, y: -6, borderRadius: 48, transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] } }
+                                  ? { opacity: 0, scale: 0.14, y: 0, borderRadius: 48, transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }
                                   : { opacity: 0, scale: 0.96, y: -4, transition: { duration: 0.14, ease: 'easeOut' } }
                         }
-                        transition={{ type: 'spring', stiffness: 340, damping: 18, mass: 0.85, restDelta: 0.015, restSpeed: 0.5 }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 20, mass: 0.82, restDelta: 0.015, restSpeed: 0.5 }}
                         style={{
-                            transformOrigin: isMobile ? '28px 26px' : 'top center',
+                            transformOrigin: isMobile ? '72px 26px' : 'top center',
                             willChange: 'transform, opacity',
                         }}
                         className={`${
                             isMobile
                                 ? 'liquid-glass-nav glass-pill-shadow'
                                 : 'bg-[var(--surface-elevated)]'
-                        } rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none`}
+                        } rounded-[24px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none`}
                     >
                 {/* Search Input Row */}
-                <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center gap-2 pt-1 pb-1.5 pr-3.5 pl-1 sm:px-4 sm:py-3 border-b border-[var(--border-subtle)]">
                     <Search size={18} className="text-primary shrink-0" aria-hidden="true" />
                     <input
                         autoFocus
@@ -335,10 +335,10 @@ export const CommandPalette: React.FC = () => {
                         type="button"
                         onClick={closePalette}
                         aria-label="بستن جستجو"
-                        className="w-10 h-10 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 flex items-center justify-center rounded-xl bg-surface-container text-[var(--text-secondary)] text-xs font-mono hover:bg-surface-container-high transition"
+                        className="w-11 h-11 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 flex items-center justify-center rounded-full sm:rounded-xl bg-primary text-on-primary sm:bg-surface-container sm:text-[var(--text-secondary)] text-xs font-mono shadow-xs sm:shadow-none hover:brightness-110 sm:hover:brightness-100 sm:hover:bg-surface-container-high transition cursor-pointer shrink-0"
                     >
                         <span className="hidden sm:inline">ESC</span>
-                        <X size={18} className="sm:hidden" />
+                        <X size={17} className="sm:hidden" />
                     </button>
                 </div>
 

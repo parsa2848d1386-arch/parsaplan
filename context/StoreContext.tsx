@@ -1169,11 +1169,18 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const normalizeTaskPayload = useCallback(
         (task: SubjectTask): SubjectTask => {
             let finalDate = task.date;
-            if (task.dayId > 0 && !task.date) finalDate = toIsoString(addDays(startDate, task.dayId - 1));
+            if (!finalDate && task.dayId > 0) {
+                finalDate = toIsoString(addDays(startDate, task.dayId - 1));
+            }
+            if (!finalDate) {
+                finalDate = getDayDate(currentDay);
+            }
+            const syncedDayId = Math.max(1, getDiffDays(startDate, finalDate) + 1);
             return {
                 ...task,
                 subject: (task.subject || 'شخصی').trim(),
-                date: finalDate || getDayDate(currentDay),
+                date: finalDate,
+                dayId: task.dayId && task.dayId > 0 && !task.date ? task.dayId : syncedDayId,
                 id: task.id || crypto.randomUUID(),
                 status: task.status || (task.isCompleted ? 'completed' : 'todo'),
                 priority: task.priority || 'medium',
@@ -1214,12 +1221,16 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const updateTask = (updatedTask: SubjectTask) => {
         let finalDate = updatedTask.date;
+        let finalDayId = updatedTask.dayId;
         const oldTask = tasks.find((t) => t.id === updatedTask.id);
         if (oldTask && oldTask.dayId !== updatedTask.dayId && updatedTask.dayId > 0) {
             finalDate = toIsoString(addDays(startDate, updatedTask.dayId - 1));
+        } else if (finalDate) {
+            finalDayId = Math.max(1, getDiffDays(startDate, finalDate) + 1);
         }
         const normalized: SubjectTask = {
             ...updatedTask,
+            dayId: finalDayId,
             date: finalDate,
             status: updatedTask.isCompleted ? 'completed' : updatedTask.status === 'completed' ? 'todo' : updatedTask.status || 'todo',
         };

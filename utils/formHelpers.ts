@@ -54,7 +54,7 @@ export interface TaskValidationResult {
         examSubjects?: string;
         durationMinutes?: string;
     };
-    targetTab: 'info' | 'notes' | 'report';
+    targetTab: 'info' | 'report';
 }
 
 /**
