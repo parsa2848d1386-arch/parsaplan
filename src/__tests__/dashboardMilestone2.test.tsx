@@ -109,7 +109,7 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         renderDashboard();
 
         // Greeting and active mindset
-        expect(screen.getByText(/صبح بخیر، کاربر تست/)).toBeInTheDocument();
+        expect(screen.getByText(/(صبح بخیر|ظهر بخیر|عصر بخیر|شب بخیر)، کاربر تست/)).toBeInTheDocument();
         expect(screen.getByText('سیستم آمادگی ذهنی فعال')).toBeInTheDocument();
 
         // Mini focus progress ring details
@@ -184,7 +184,7 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         expect(screen.getByText('بلوک عصر')).toBeInTheDocument();
     });
 
-    it('R2.6: Clicking New Task opens the TaskModal dialog', () => {
+    it('R2.6: Clicking New Task opens TaskModal dialog with 4 duration quick chips and validation alert on empty submit', () => {
         renderDashboard();
 
         // Click on the hero banner's new task button
@@ -193,5 +193,45 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
 
         // Dialog / Modal should now be open
         expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+        // 4 Hick's Law duration quick chips
+        const durationGroup = screen.getByRole('group', { name: 'مدت زمان‌های پیشنهادی' });
+        expect(durationGroup).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '25′' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '45′' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '60′' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: '90′' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '25′' }));
+        expect(screen.getByLabelText('مدت هدف (دقیقه)')).toHaveValue('25');
+
+        // Empty topic submit triggers accessible validation alert cleanly
+        const saveBtn = screen.getByRole('button', { name: /ذخیره فعالیت/ });
+        fireEvent.click(saveBtn);
+        expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('R2.7: TaskModal enforces Choice Overload progressive disclosure and Parkinson smart prefill', () => {
+        sessionStorage.clear();
+        renderDashboard();
+
+        const newTaskBtns = screen.getAllByRole('button', { name: /تسک جدید/ });
+        fireEvent.click(newTaskBtns[0]);
+
+        // Choice Overload: initially curated activity types (<= 4) with expand button
+        const expandTypesBtn = screen.getByRole('button', { name: /انواع بیشتر/ });
+        expect(expandTypesBtn).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(expandTypesBtn);
+        expect(screen.getByRole('button', { name: /نمایش گزینه‌های اصلی/ })).toHaveAttribute('aria-expanded', 'true');
+
+        // Choice Overload: initially <= 6 subject chips with expand button revealing all stream subjects
+        const expandSubjectsBtn = screen.getByRole('button', { name: /مشاهده همه حوزه‌ها/ });
+        expect(expandSubjectsBtn).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(expandSubjectsBtn);
+        expect(screen.getByRole('button', { name: /نمایش کمتر/ })).toHaveAttribute('aria-expanded', 'true');
+
+        // Parkinson's Law: smart startTime and duration pre-filled automatically from context
+        const startTimeInput = screen.getByLabelText(/ساعت شروع/) as HTMLInputElement;
+        expect(startTimeInput.value).toMatch(/^\d{2}:\d{2}$/);
     });
 });

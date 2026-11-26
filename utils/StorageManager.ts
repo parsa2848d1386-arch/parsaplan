@@ -32,6 +32,7 @@ export interface AppDataV1 {
     sessions?: StudySession[];
     notebookPages?: NotebookPage[];
     stylusStrokes?: StylusStroke[];
+    perfectDates?: Record<string, boolean>;
     settings: AppSettings;
     lastUpdated: number;
     schemaVersion?: number;

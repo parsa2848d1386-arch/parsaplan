@@ -17,6 +17,7 @@ export type OutboxOpType =
     | 'upsert_task'
     | 'delete_task'
     | 'upsert_session'
+    | 'delete_session'
     | 'upsert_flashcard'
     | 'delete_flashcard'
     | 'upsert_page'
@@ -30,9 +31,11 @@ export interface OutboxTransaction {
     payload?: unknown;
     timestamp: number;
     retryCount: number;
+    lastError?: string;
 }
 
 const getOutboxKey = (userId: string) => `parsaplan_outbox_${userId}`;
+const getDeadLetterKey = (userId: string) => `parsaplan_deadletter_${userId}`;
 const MAX_RETRY_COUNT = 5;
 
 /**
@@ -48,11 +51,26 @@ export function sanitizeSnapshotForCloud(snapshot: Partial<AppDataV1>): Record<s
     if (cloned.settings && 'geminiApiKey' in cloned.settings) {
         delete cloned.settings.geminiApiKey;
     }
+    if (typeof cloned.userName === 'string') {
+        cloned.userName = cloned.userName.trim().slice(0, 80);
+    }
+    if (cloned.xp !== undefined) {
+        const numericXp = Number(cloned.xp);
+        cloned.xp = Number.isFinite(numericXp) ? Math.min(10000000, Math.max(0, numericXp)) : 0;
+    }
     return cloned;
 }
 
 export function isCloudSyncAllowed(db: Firestore | null, userId: string | undefined, user: unknown): boolean {
-    return Boolean(db && user && userId && userId !== 'parsaplan_local_user');
+    if (!db || !user || !userId || userId === 'parsaplan_local_user') return false;
+    const uid = typeof user === 'object' && user !== null && 'uid' in user ? (user as { uid?: string }).uid : undefined;
+    return !uid || uid === userId;
+}
+
+export function isFirestorePermissionDenied(err: unknown): boolean {
+    const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: string }).code) : '';
+    const msg = err instanceof Error ? err.message : String(err || '');
+    return code.includes('permission-denied') || msg.includes('Missing or insufficient permissions');
 }
 
 class CloudSyncEngine {
@@ -68,6 +86,32 @@ class CloudSyncEngine {
         }
     }
 
+    async getDeadLetters(userId: string): Promise<OutboxTransaction[]> {
+        if (!userId || userId === 'parsaplan_local_user') return [];
+        try {
+            const items = await get<OutboxTransaction[]>(getDeadLetterKey(userId));
+            return Array.isArray(items) ? items : [];
+        } catch {
+            return [];
+        }
+    }
+
+    async retryDeadLetters(
+        db: Firestore | null,
+        userId: string,
+        user: unknown
+    ): Promise<{ flushed: number; remaining: number; permissionDenied?: boolean }> {
+        const deadLetters = await this.getDeadLetters(userId);
+        if (deadLetters.length === 0) {
+            return { flushed: 0, remaining: (await this.getQueue(userId)).length };
+        }
+        const resetItems = deadLetters.map((tx) => ({ ...tx, retryCount: 0, lastError: undefined }));
+        const currentQueue = await this.getQueue(userId);
+        await set(getOutboxKey(userId), [...currentQueue, ...resetItems]);
+        await set(getDeadLetterKey(userId), []);
+        return this.flushOutbox(db, userId, user);
+    }
+
     async enqueue(userId: string, op: Omit<OutboxTransaction, 'id' | 'timestamp' | 'retryCount'>): Promise<number> {
         if (!userId || userId === 'parsaplan_local_user') return 0;
         const queue = await this.getQueue(userId);
@@ -75,6 +119,9 @@ class CloudSyncEngine {
         const filtered = queue.filter((q) => {
             if (q.type === op.type && q.entityId === op.entityId) return false;
             if (op.type === 'delete_task' && q.type === 'upsert_task' && q.entityId === op.entityId) return false;
+            if (op.type === 'delete_session' && q.type === 'upsert_session' && q.entityId === op.entityId) return false;
+            if (op.type === 'delete_flashcard' && q.type === 'upsert_flashcard' && q.entityId === op.entityId) return false;
+            if (op.type === 'delete_page' && q.type === 'upsert_page' && q.entityId === op.entityId) return false;
             return true;
         });
         filtered.push({
@@ -110,30 +157,52 @@ class CloudSyncEngine {
 
     /**
      * Flushes queued delta operations in efficient Firestore writeBatches (up to 250 ops per batch)
-     * with retry-cap protection for scalability.
+     * with retry-cap protection and dead-letter recovery for scalability.
      */
-    async flushOutbox(db: Firestore | null, userId: string, user: unknown): Promise<{ flushed: number; remaining: number }> {
+    async flushOutbox(
+        db: Firestore | null,
+        userId: string,
+        user: unknown
+    ): Promise<{ flushed: number; remaining: number; permissionDenied?: boolean }> {
+        const existingDead = await this.getDeadLetters(userId);
         if (!isCloudSyncAllowed(db, userId, user) || !db) {
-            return { flushed: 0, remaining: (await this.getQueue(userId)).length };
+            return {
+                flushed: 0,
+                remaining: (await this.getQueue(userId)).length,
+            };
         }
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
-            return { flushed: 0, remaining: (await this.getQueue(userId)).length };
+            return {
+                flushed: 0,
+                remaining: (await this.getQueue(userId)).length,
+            };
         }
         if (this.isFlushing) {
-            return { flushed: 0, remaining: (await this.getQueue(userId)).length };
+            return {
+                flushed: 0,
+                remaining: (await this.getQueue(userId)).length,
+            };
         }
 
         this.isFlushing = true;
         try {
             const queue = await this.getQueue(userId);
-            if (queue.length === 0) return { flushed: 0, remaining: 0 };
+            if (queue.length === 0) {
+                return { flushed: 0, remaining: 0 };
+            }
 
             let flushed = 0;
+            let permissionDenied = false;
             const remaining: OutboxTransaction[] = [];
+            const deadLetters: OutboxTransaction[] = [...existingDead];
             const BATCH_LIMIT = 250;
 
             for (let i = 0; i < queue.length; i += BATCH_LIMIT) {
                 const slice = queue.slice(i, i + BATCH_LIMIT);
+                if (permissionDenied) {
+                    remaining.push(...slice);
+                    continue;
+                }
                 try {
                     const batch = writeBatch(db);
                     for (const tx of slice) {
@@ -142,17 +211,37 @@ class CloudSyncEngine {
                     await batch.commit();
                     flushed += slice.length;
                 } catch (batchErr) {
+                    if (isFirestorePermissionDenied(batchErr)) {
+                        permissionDenied = true;
+                        console.warn('[SyncEngine] Firestore permission-denied; keeping ops queued locally.');
+                        remaining.push(...slice);
+                        continue;
+                    }
                     console.warn('[SyncEngine] Batch flush fallback to single ops:', batchErr);
-                    for (const tx of slice) {
+                    for (let j = 0; j < slice.length; j++) {
+                        const tx = slice[j];
+                        if (permissionDenied) {
+                            remaining.push(tx);
+                            continue;
+                        }
                         try {
                             const singleBatch = writeBatch(db);
                             this.addTxToBatch(singleBatch, db, userId, tx);
                             await singleBatch.commit();
                             flushed++;
-                        } catch (err) {
+                        } catch (err: any) {
+                            if (isFirestorePermissionDenied(err)) {
+                                permissionDenied = true;
+                                console.warn('[SyncEngine] Outbox tx blocked by Firestore rules (permission-denied).');
+                                remaining.push(tx);
+                                continue;
+                            }
                             console.warn('[SyncEngine] Outbox tx failed:', tx.type, err);
+                            const errMsg = err?.message || String(err || 'Sync error');
                             if (tx.retryCount + 1 < MAX_RETRY_COUNT) {
-                                remaining.push({ ...tx, retryCount: tx.retryCount + 1 });
+                                remaining.push({ ...tx, retryCount: tx.retryCount + 1, lastError: errMsg });
+                            } else {
+                                deadLetters.push({ ...tx, retryCount: tx.retryCount + 1, lastError: errMsg });
                             }
                         }
                     }
@@ -160,7 +249,12 @@ class CloudSyncEngine {
             }
 
             await set(getOutboxKey(userId), remaining);
-            return { flushed, remaining: remaining.length };
+            if (deadLetters.length !== existingDead.length) {
+                await set(getDeadLetterKey(userId), deadLetters.slice(-50));
+            }
+            return permissionDenied
+                ? { flushed, remaining: remaining.length, permissionDenied: true }
+                : { flushed, remaining: remaining.length };
         } finally {
             this.isFlushing = false;
         }
@@ -182,6 +276,9 @@ class CloudSyncEngine {
                 break;
             case 'upsert_session':
                 batch.set(doc(db, 'users', userId, 'sessions', tx.entityId), cleanPayload, { merge: true });
+                break;
+            case 'delete_session':
+                batch.delete(doc(db, 'users', userId, 'sessions', tx.entityId));
                 break;
             case 'upsert_flashcard':
                 batch.set(doc(db, 'users', userId, 'flashcards', tx.entityId), cleanPayload, { merge: true });
@@ -216,6 +313,7 @@ class CloudSyncEngine {
             logs: snapshot.logs?.slice(0, 50),
             moods: snapshot.moods,
             studyHoursLog: snapshot.studyHoursLog,
+            perfectDates: snapshot.perfectDates,
             startDate: snapshot.startDate,
             totalDays: snapshot.totalDays,
             subjects: snapshot.subjects,
@@ -250,6 +348,12 @@ class CloudSyncEngine {
         }
         for (const s of snapshot.sessions || []) {
             if (s.id) batchItems.push({ col: 'sessions', id: s.id, data: s });
+        }
+        for (const c of snapshot.flashcards || []) {
+            if (c.id) batchItems.push({ col: 'flashcards', id: c.id, data: c });
+        }
+        for (const p of snapshot.notebookPages || []) {
+            if (p.id) batchItems.push({ col: 'pages', id: p.id, data: p });
         }
 
         if (batchItems.length > 0) {

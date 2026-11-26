@@ -1,11 +1,34 @@
-import React, { useState, useCallback } from 'react';
-import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
+import React, { useCallback, useRef } from 'react';
+import { motion, useMotionValue, useTransform, useReducedMotion, PanInfo } from 'framer-motion';
 import { SubjectTask, getSubjectStyle } from '../types';
-import { getShamsiDate } from '../utils';
-import { CheckCircle2, Circle, Trash2, Pencil, Calendar, ArrowDownToLine, Target, Play, Clock, Star, FileText } from 'lucide-react';
+import { formatToPersianDigits, getShamsiDate } from '../utils';
+import {
+    CheckCircle2,
+    Circle,
+    Trash2,
+    Pencil,
+    Calendar,
+    ArrowDownToLine,
+    Target,
+    Play,
+    Clock,
+    Star,
+    FileText,
+    Check,
+    X,
+} from 'lucide-react';
 import { ExamTaskCard } from './ExamTaskCard';
 import { useFocus } from '../context/FocusContext';
 import { haptics } from '../utils/haptics';
+import {
+    SPRING_SNAPPY,
+    SPRING_SWIPE,
+    SQUASH_STRETCH_KEYFRAMES,
+    SWIPE_COMMIT_THRESHOLD,
+    TRANSITION_SQUASH,
+    resolveRtlTaskSwipe,
+} from '../utils/motionPresets';
+import { triggerArcFlight } from './ui/MotionPrimitives';
 
 interface TaskCardProps {
     task: SubjectTask;
@@ -17,30 +40,96 @@ interface TaskCardProps {
     onMoveToToday?: (id: string) => void;
 }
 
-const SWIPE_THRESHOLD = 50;
+const SUBJECT_TEXT_COLOR_CLASSES: Record<string, string> = {
+    rose: 'text-rose-800 dark:text-rose-300',
+    lime: 'text-lime-800 dark:text-lime-300',
+    green: 'text-green-800 dark:text-green-300',
+    red: 'text-red-800 dark:text-red-300',
+    emerald: 'text-emerald-800 dark:text-emerald-300',
+    orange: 'text-orange-800 dark:text-orange-300',
+    stone: 'text-stone-800 dark:text-stone-300',
+    sky: 'text-sky-800 dark:text-sky-300',
+    cyan: 'text-cyan-800 dark:text-cyan-300',
+    violet: 'text-violet-800 dark:text-violet-300',
+    blue: 'text-blue-800 dark:text-blue-300',
+    amber: 'text-amber-800 dark:text-amber-300',
+    teal: 'text-teal-800 dark:text-teal-300',
+    purple: 'text-purple-800 dark:text-purple-300',
+    pink: 'text-pink-800 dark:text-pink-300',
+    indigo: 'text-indigo-800 dark:text-indigo-300',
+    slate: 'text-slate-800 dark:text-slate-300',
+    zinc: 'text-zinc-800 dark:text-zinc-300',
+    yellow: 'text-yellow-800 dark:text-yellow-300',
+    fuchsia: 'text-fuchsia-800 dark:text-fuchsia-300',
+    gray: 'text-gray-700 dark:text-gray-300',
+};
 
-export const TaskCard: React.FC<TaskCardProps> = ({
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     task,
     isOverdue = false,
     viewMode = 'normal',
     onToggle,
     onEdit,
     onDelete,
-    onMoveToToday
+    onMoveToToday,
 }) => {
+    const { startFocusForTask } = useFocus();
+    const prefersReducedMotion = useReducedMotion();
+    const checkBtnRef = useRef<HTMLButtonElement>(null);
+    const x = useMotionValue(0);
 
-    // 1. Check for Exam/Analysis Type
+    // Physical RTL edge alignment:
+    // - Dragging LEFT (x < 0) exposes RIGHT edge -> Complete (emerald)
+    // - Dragging RIGHT (x > 0) exposes LEFT edge -> Delete (rose)
+    const completeBgOpacity = useTransform(x, [0, -SWIPE_COMMIT_THRESHOLD], [0, 1]);
+    const deleteBgOpacity = useTransform(x, [0, SWIPE_COMMIT_THRESHOLD], [0, 1]);
+
+    const handleDragEnd = useCallback(
+        (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+            const action = resolveRtlTaskSwipe(info.offset.x, info.velocity.x);
+            if (action === 'complete') {
+                haptics.success();
+                if (!task.isCompleted) {
+                    triggerArcFlight({
+                        fromEl: checkBtnRef.current,
+                        targetSelector: '[data-arc-target="xp-badge"]',
+                        label: '+XP',
+                    });
+                }
+                onToggle(task.id!);
+            } else if (action === 'delete') {
+                haptics.warning();
+                onDelete(
+                    { stopPropagation: () => {}, preventDefault: () => {} } as unknown as React.MouseEvent,
+                    task.id!
+                );
+            }
+        },
+        [onToggle, onDelete, task.id, task.isCompleted]
+    );
+
+    const handleToggleClick = useCallback(() => {
+        if (!task.isCompleted) {
+            haptics.success();
+            triggerArcFlight({
+                fromEl: checkBtnRef.current,
+                targetSelector: '[data-arc-target="xp-badge"]',
+                label: '+XP',
+            });
+        } else {
+            haptics.light();
+        }
+        onToggle(task.id!);
+    }, [onToggle, task.id, task.isCompleted]);
+
+    // 1. Exam/Analysis Card Delegation
     if (task.studyType === 'exam' || task.studyType === 'analysis') {
-        const handleExamEdit = (e: React.MouseEvent, t: SubjectTask) => onEdit(e, t);
-        const handleExamDelete = (e: React.MouseEvent, id: string) => onDelete(e, id);
-        const handleExamToggle = (t: SubjectTask) => onToggle(t.id!);
-
         return (
             <ExamTaskCard
                 task={task}
-                onEdit={handleExamEdit}
-                onDelete={handleExamDelete}
-                onToggleComplete={handleExamToggle}
+                onEdit={(e, t) => onEdit(e, t)}
+                onDelete={(e, id) => onDelete(e, id)}
+                onToggleComplete={(t) => onToggle(t.id!)}
             />
         );
     }
@@ -49,219 +138,377 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     const isDone = task.isCompleted;
     const taskDateShamsi = getShamsiDate(task.date);
 
-    let subColor = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+    let subColor = 'bg-surface-container text-[var(--text-secondary)]';
     if (task.isCustom) {
-        subColor = 'bg-gray-800 text-white dark:bg-gray-700';
+        subColor = 'bg-slate-800 text-white dark:bg-slate-700';
     } else {
         const style = getSubjectStyle(task.subject);
-        subColor = `${style.bgColor} ${style.color === 'gray' ? 'text-gray-700 dark:text-gray-300' : `text-${style.color}-800 dark:text-${style.color}-300`}`;
+        const textCls = SUBJECT_TEXT_COLOR_CLASSES[style.color] || SUBJECT_TEXT_COLOR_CLASSES.gray;
+        subColor = `${style.bgColor} ${textCls}`;
     }
 
-    const hasTestStats = task.testStats && task.testStats.total > 0;
-    const accuracy = hasTestStats ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100) : 0;
-
-    // Swipe state
-    const { startFocusForTask } = useFocus();
-    const [swiped, setSwiped] = useState<'none' | 'left' | 'right'>('none');
-    const x = useMotionValue(0);
-    const bgRight = useTransform(x, [0, SWIPE_THRESHOLD], [0, 1]);
-    const bgLeft = useTransform(x, [0, -SWIPE_THRESHOLD], [0, 1]);
-
-    const handleDragEnd = useCallback((_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-        const offset = info.offset.x;
-        if (offset > SWIPE_THRESHOLD) {
-            haptics.success();
-            onToggle(task.id!);
-        } else if (offset < -SWIPE_THRESHOLD) {
-            haptics.heavy();
-            onDelete({ stopPropagation: () => { }, preventDefault: () => { } } as unknown as React.MouseEvent, task.id!);
-        }
-    }, [onToggle, onDelete, task.id]);
+    const hasTestStats = Boolean(task.testStats && task.testStats.total > 0);
+    const accuracy = hasTestStats
+        ? Math.round(((task.testStats!.correct * 3 - task.testStats!.wrong) / (task.testStats!.total * 3)) * 100)
+        : 0;
 
     if (viewMode === 'compact') {
         return (
-            <div className="relative w-full overflow-hidden rounded-xl mb-2">
-                {/* Swipe Background */}
-                <div className="absolute inset-0 flex justify-between items-center px-4">
-                    <motion.div style={{ opacity: bgLeft }} className="flex items-center gap-2 text-rose-500 font-bold text-xs">
-                        <Trash2 size={18} /> حذف
-                    </motion.div>
-                    <motion.div style={{ opacity: bgRight }} className="flex items-center gap-2 text-emerald-500 font-bold text-xs">
-                        انجام <CheckCircle2 size={18} />
-                    </motion.div>
-                </div>
+            <div className="relative w-full overflow-hidden squircle-md mb-2">
+                {/* Right Edge (Exposed on Left-Swipe): Complete */}
+                <motion.div
+                    style={{ opacity: completeBgOpacity }}
+                    aria-hidden="true"
+                    className="absolute inset-y-0 right-0 flex items-center gap-1.5 px-4 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs"
+                >
+                    <CheckCircle2 size={17} />
+                    <span>{isDone ? 'بازگشت' : 'انجام'}</span>
+                </motion.div>
+
+                {/* Left Edge (Exposed on Right-Swipe): Delete */}
+                <motion.div
+                    style={{ opacity: deleteBgOpacity }}
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 flex items-center gap-1.5 px-4 bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold text-xs"
+                >
+                    <span>حذف</span>
+                    <Trash2 size={17} />
+                </motion.div>
 
                 <motion.div
                     style={{ x }}
                     drag="x"
-                    dragElastic={0.1}
+                    dragConstraints={{ left: -104, right: 104 }}
+                    dragElastic={0.14}
+                    dragDirectionLock
+                    dragSnapToOrigin
+                    dragTransition={SPRING_SWIPE}
                     onDragEnd={handleDragEnd}
-                    layout="position"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ type: 'tween', duration: 0.15 }}
-                    className="relative z-10 w-full cursor-grab active:cursor-grabbing"
+                    className="relative z-10 w-full touch-pan-y"
                 >
-                    <motion.div
-                        whileHover={{ y: -2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => onToggle(task.id!)}
-                        className={`group relative z-10 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-3 cursor-pointer hover:shadow-md ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 dark:border-amber-800' : ''}`}
+                    <div
+                        className={`group relative z-10 bg-[var(--surface-elevated)] px-3 py-2.5 squircle-md shadow-xs border flex items-center gap-2.5 transition-colors ${
+                            isDone ? 'opacity-75' : ''
+                        } ${
+                            isOverdue
+                                ? 'border-amber-300/80 dark:border-amber-800/70'
+                                : 'border-[var(--border-subtle)]'
+                        }`}
                     >
-                        <motion.div 
-                            animate={{ scale: isDone ? [1, 1.25, 1] : 1 }}
-                            transition={{ duration: 0.35, ease: "easeInOut" }}
-                            className={`flex-shrink-0 transition-all ${isDone ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`}
+                        <motion.button
+                            ref={checkBtnRef}
+                            type="button"
+                            onClick={handleToggleClick}
+                            whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                            animate={
+                                prefersReducedMotion
+                                    ? undefined
+                                    : isDone
+                                      ? SQUASH_STRETCH_KEYFRAMES
+                                      : { scaleX: 1, scaleY: 1 }
+                            }
+                            transition={TRANSITION_SQUASH}
+                            aria-label={isDone ? `لغو انجام ${task.topic}` : `تکمیل ${task.topic}`}
+                            className={`w-9 h-9 flex items-center justify-center rounded-xl shrink-0 cursor-pointer transition-colors ${
+                                isDone ? 'text-emerald-500' : 'text-[var(--text-tertiary)] hover:text-primary'
+                            }`}
                         >
-                            {isDone ? <CheckCircle2 size={20} fill="currentColor" className="text-white dark:text-gray-800 animate-in zoom-in-50" /> : <Circle size={20} strokeWidth={2} />}
-                        </motion.div>
-                        <div className="flex-1 min-w-0 flex items-center justify-between">
-                            <div className={`truncate ${isDone ? 'opacity-50 line-through' : ''}`}>
-                                <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{task.subject}</span>
-                                <span className="mx-2 text-xs text-gray-400 dark:text-gray-500">|</span>
-                                <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{task.topic}</span>
+                            {isDone ? <CheckCircle2 size={20} /> : <Circle size={20} strokeWidth={2} />}
+                        </motion.button>
+
+                        <button
+                            type="button"
+                            onClick={handleToggleClick}
+                            className="flex-1 min-w-0 flex items-center justify-between gap-2 text-right cursor-pointer"
+                        >
+                            <div className={`truncate ${isDone ? 'line-through text-[var(--text-secondary)]' : ''}`}>
+                                <span className="font-bold text-sm text-on-surface">{task.subject}</span>
+                                <span className="mx-1.5 text-xs text-[var(--text-tertiary)]">·</span>
+                                <span className="text-xs text-[var(--text-secondary)] truncate">{task.topic}</span>
                             </div>
-                            <div className="flex gap-1 items-center">
+                            <div className="flex gap-1 items-center shrink-0">
                                 {hasTestStats && (
-                                    <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[9px] font-bold">
-                                        <span className="text-emerald-600 dark:text-emerald-400">{task.testStats?.correct}✅</span>
-                                        <span className="text-rose-500">{task.testStats?.wrong}❌</span>
-                                        <span className="text-gray-400">|</span>
-                                        <span className={`${accuracy >= 50 ? 'text-emerald-600' : 'text-amber-500'}`}>{accuracy}%</span>
+                                    <div className="hidden sm:flex items-center gap-1 bg-surface-container px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums">
+                                        <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                                            <Check size={10} />
+                                            {formatToPersianDigits(task.testStats?.correct ?? 0)}
+                                        </span>
+                                        <span className="inline-flex items-center gap-0.5 text-rose-500">
+                                            <X size={10} />
+                                            {formatToPersianDigits(task.testStats?.wrong ?? 0)}
+                                        </span>
+                                        <span className="text-[var(--text-tertiary)]">|</span>
+                                        <span className={accuracy >= 50 ? 'text-emerald-600' : 'text-amber-500'}>
+                                            {formatToPersianDigits(accuracy)}٪
+                                        </span>
                                     </div>
                                 )}
-                                {task.tags && task.tags.length > 0 && <span className="text-[9px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1 rounded flex items-center">#{task.tags[0]}</span>}
-                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ml-1 ${subColor}`}>
+                                {task.tags && task.tags.length > 0 && (
+                                    <span className="hidden xs:inline text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">
+                                        #{task.tags[0]}
+                                    </span>
+                                )}
+                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ${subColor}`}>
                                     {task.details}
                                 </span>
                             </div>
+                        </button>
+
+                        <div className="flex gap-1 items-center shrink-0" onPointerDownCapture={(e) => e.stopPropagation()}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    haptics.light();
+                                    startFocusForTask(task);
+                                }}
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition cursor-pointer"
+                                aria-label="شروع تمرکز"
+                                title="شروع تمرکز"
+                            >
+                                <Play size={13} fill="currentColor" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEdit(e, task);
+                                }}
+                                className="w-9 h-9 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container transition cursor-pointer"
+                                aria-label="ویرایش"
+                            >
+                                <Pencil size={14} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    haptics.warning();
+                                    onDelete(e, task.id!);
+                                }}
+                                className="w-9 h-9 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                aria-label="حذف"
+                            >
+                                <Trash2 size={14} />
+                            </button>
                         </div>
-                        <div className="flex gap-1.5 pl-1 items-center" onPointerDownCapture={(e) => e.stopPropagation()}>
-                            <button onClick={(e) => { e.stopPropagation(); startFocusForTask(task); }} className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition" aria-label="شروع تمرکز" title="شروع تمرکز"><Play size={12} fill="currentColor" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="text-gray-400 hover:text-blue-500" aria-label="ویرایش"><Pencil size={14} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="text-gray-400 hover:text-rose-500" aria-label="حذف"><Trash2 size={14} /></button>
-                        </div>
-                    </motion.div>
+                    </div>
                 </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="relative w-full overflow-hidden rounded-2xl mb-3">
-            {/* Swipe Background */}
-            <div className="absolute inset-0 flex justify-between items-center px-6">
-                <motion.div style={{ opacity: bgLeft }} className="flex items-center gap-2 text-rose-500 font-bold">
-                    <Trash2 size={22} /> حذف
-                </motion.div>
-                <motion.div style={{ opacity: bgRight }} className="flex items-center gap-2 text-emerald-500 font-bold">
-                    انجام شد <CheckCircle2 size={22} />
-                </motion.div>
-            </div>
+        <div className="relative w-full overflow-hidden squircle-card mb-3">
+            {/* Right Edge (Exposed on Left-Swipe): Complete */}
+            <motion.div
+                style={{ opacity: completeBgOpacity }}
+                aria-hidden="true"
+                className="absolute inset-y-0 right-0 flex items-center gap-2 px-5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-extrabold text-xs"
+            >
+                <CheckCircle2 size={20} />
+                <span>{isDone ? 'بازگشت به لیست' : 'انجام شد'}</span>
+            </motion.div>
+
+            {/* Left Edge (Exposed on Right-Swipe): Delete */}
+            <motion.div
+                style={{ opacity: deleteBgOpacity }}
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 flex items-center gap-2 px-5 bg-rose-500/15 text-rose-600 dark:text-rose-400 font-extrabold text-xs"
+            >
+                <span>حذف</span>
+                <Trash2 size={20} />
+            </motion.div>
 
             <motion.div
                 style={{ x }}
                 drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.5}
+                dragConstraints={{ left: -112, right: 112 }}
+                dragElastic={0.14}
+                dragDirectionLock
+                dragSnapToOrigin
+                dragTransition={SPRING_SWIPE}
                 onDragEnd={handleDragEnd}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onToggle(task.id!)}
-                className={`group relative z-10 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-3 cursor-pointer ${isDone ? 'bg-gray-50/80 dark:bg-gray-800/50' : ''} ${isOverdue ? 'border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10' : ''}`}
+                className={`group relative z-10 bg-[var(--surface-elevated)] p-4 squircle-card shadow-xs border flex flex-col gap-3 touch-pan-y transition-colors ${
+                    isOverdue
+                        ? 'border-amber-300/80 dark:border-amber-800/60 bg-amber-50/25 dark:bg-amber-950/15'
+                        : 'border-[var(--border-subtle)]'
+                }`}
             >
-                {/* Top Section: Icon + Content (Row Layout) */}
-                <div className="flex items-start gap-3 w-full">
-                    <motion.div 
-                        animate={{ scale: isDone ? [1, 1.3, 1] : 1 }}
-                        transition={{ duration: 0.35, ease: "easeInOut" }}
-                        className={`mt-1 transition-all duration-300 transform ${isDone ? 'text-emerald-500 scale-110' : 'text-gray-300 dark:text-gray-600 group-hover:text-indigo-400'}`}
+                {/* Top Section: Check Button + Task Content */}
+                <div className="flex items-start gap-2.5 w-full">
+                    <motion.button
+                        ref={checkBtnRef}
+                        type="button"
+                        onClick={handleToggleClick}
+                        whileTap={prefersReducedMotion ? undefined : { scale: 0.85 }}
+                        animate={
+                            prefersReducedMotion
+                                ? undefined
+                                : isDone
+                                  ? SQUASH_STRETCH_KEYFRAMES
+                                  : { scaleX: 1, scaleY: 1 }
+                        }
+                        transition={TRANSITION_SQUASH}
+                        aria-label={isDone ? `لغو انجام ${task.topic}` : `تکمیل ${task.topic}`}
+                        className={`w-10 h-10 -mt-1 -mr-1 flex items-center justify-center rounded-xl shrink-0 cursor-pointer transition-colors ${
+                            isDone
+                                ? 'text-emerald-500'
+                                : 'text-[var(--text-tertiary)] hover:text-primary'
+                        }`}
                     >
-                        {isDone ? <CheckCircle2 size={24} fill="currentColor" className="text-white dark:text-gray-800 animate-in zoom-in-50" /> : <Circle size={24} strokeWidth={2} />}
-                    </motion.div>
-                    <div className={`flex-1 transition-all duration-500 ${isDone ? 'opacity-40 grayscale blur-[0.5px]' : ''}`}>
-                        <div className="flex justify-between items-start">
-                            <h3 className={`font-bold text-gray-800 dark:text-gray-200 transition-all ${isDone ? 'line-through decoration-2 decoration-gray-300 dark:decoration-gray-600' : ''}`}>{task.subject}</h3>
-                            <div className="flex flex-col items-end gap-1">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${subColor}`}>
+                        {isDone ? <CheckCircle2 size={23} /> : <Circle size={23} strokeWidth={2} />}
+                    </motion.button>
+
+                    <button
+                        type="button"
+                        onClick={handleToggleClick}
+                        className={`flex-1 min-w-0 text-right cursor-pointer transition-opacity duration-200 ${
+                            isDone ? 'opacity-60' : ''
+                        }`}
+                    >
+                        <div className="flex justify-between items-start gap-2">
+                            <h3
+                                className={`font-extrabold text-sm sm:text-base text-on-surface ${
+                                    isDone ? 'line-through text-[var(--text-secondary)]' : ''
+                                }`}
+                            >
+                                {task.subject}
+                            </h3>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold ${subColor}`}>
                                     {task.details}
                                 </span>
-                                <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                                    <Calendar size={10} />
+                                <span className="flex items-center gap-1 text-[11px] text-[var(--text-secondary)] font-medium">
+                                    <Calendar size={11} />
                                     {taskDateShamsi}
                                 </span>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed font-medium">
-                            <span className="font-bold text-gray-800 dark:text-gray-300">مبحث:</span> {task.topic}
+
+                        <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 leading-relaxed font-medium">
+                            <span className="font-bold text-on-surface">مبحث:</span> {task.topic}
                         </p>
 
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                             {task.isMIT && (
-                                <span className="flex items-center gap-0.5 text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded font-bold">
-                                    <Star size={10} fill="currentColor" /> MIT
+                                <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 px-2 py-0.5 rounded-md font-bold">
+                                    <Star size={10} fill="currentColor" />
+                                    <bdi>MIT</bdi>
                                 </span>
                             )}
                             {task.startTime && (
-                                <span className="flex items-center gap-1 text-[10px] bg-sky-50 dark:bg-sky-950/30 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded font-mono font-bold">
-                                    <Clock size={10} /> {task.startTime}
+                                <span
+                                    dir="ltr"
+                                    className="inline-flex items-center gap-1 text-[11px] bg-sky-50 dark:bg-sky-950/35 text-sky-700 dark:text-sky-300 px-2 py-0.5 rounded-md font-mono font-bold tabular-nums"
+                                >
+                                    <Clock size={11} />
+                                    {task.startTime}
                                 </span>
                             )}
                             {(task.actualDuration ?? 0) > 0 && (
-                                <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold">
-                                    ⏱ {task.actualDuration} دقیقه مطالعه
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 dark:bg-emerald-950/35 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-bold tabular-nums">
+                                    <Clock size={11} />
+                                    {formatToPersianDigits(task.actualDuration ?? 0)} دقیقه مطالعه
                                 </span>
                             )}
                             {task.blocks && task.blocks.length > 0 && (
-                                <span className="flex items-center gap-1 text-[10px] bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded font-bold">
-                                    <FileText size={10} /> {task.blocks.length} بلوک
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-primary/10 text-primary px-2 py-0.5 rounded-md font-bold tabular-nums">
+                                    <FileText size={11} />
+                                    {formatToPersianDigits(task.blocks.length)} بلوک
                                 </span>
                             )}
                             {hasTestStats && (
-                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-lg px-2 py-1 text-[10px] font-bold">
-                                    <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400" title="تعداد درست"><Target size={10} /> {task.testStats?.correct}</span>
-                                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                                    <span className="text-rose-500 dark:text-rose-400" title="تعداد غلط">{task.testStats?.wrong} غلط</span>
-                                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                                    <span className={`${accuracy >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-500 dark:text-amber-400'}`}>{accuracy}%</span>
+                                <div className="inline-flex items-center gap-1.5 bg-surface-container border border-[var(--border-subtle)] rounded-lg px-2 py-0.5 text-[11px] font-bold tabular-nums">
+                                    <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400" title="تعداد درست">
+                                        <Target size={11} />
+                                        {formatToPersianDigits(task.testStats?.correct ?? 0)}
+                                    </span>
+                                    <span className="text-[var(--text-tertiary)]">|</span>
+                                    <span className="text-rose-500 dark:text-rose-400" title="تعداد غلط">
+                                        {formatToPersianDigits(task.testStats?.wrong ?? 0)} غلط
+                                    </span>
+                                    <span className="text-[var(--text-tertiary)]">|</span>
+                                    <span className={accuracy >= 50 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                                        {formatToPersianDigits(accuracy)}٪
+                                    </span>
                                 </div>
                             )}
 
                             {task.tags && task.tags.length > 0 && (
-                                <div className="flex gap-1">
-                                    {task.tags.map(t => (
-                                        <span key={t} className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 transition">#{t}</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {task.tags.map((t) => (
+                                        <span
+                                            key={t}
+                                            className="text-[10px] bg-primary/8 text-primary px-1.5 py-0.5 rounded-md border border-primary/15 font-bold"
+                                        >
+                                            #{t}
+                                        </span>
                                     ))}
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </button>
                 </div>
 
-                {/* Bottom Section: Footer Actions (Row Layout) */}
-                <div className="w-full flex justify-between items-center gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/50 mt-1" onPointerDownCapture={(e) => e.stopPropagation()}>
+                {/* Bottom Section: Footer Actions */}
+                <div
+                    className="w-full flex flex-wrap justify-between items-center gap-2 pt-2.5 border-t border-[var(--border-subtle)]"
+                    onPointerDownCapture={(e) => e.stopPropagation()}
+                >
                     <button
-                        onClick={(e) => { e.stopPropagation(); startFocusForTask(task); }}
-                        className="flex items-center gap-1.5 text-[10px] font-black px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/60 dark:border-emerald-800/40 transition"
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            haptics.medium();
+                            startFocusForTask(task);
+                        }}
+                        className="min-h-[38px] flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/50 transition active:scale-[0.98] cursor-pointer"
                         aria-label="شروع تمرکز"
                     >
-                        <Play size={13} fill="currentColor" /> شروع تمرکز
+                        <Play size={13} fill="currentColor" />
+                        <span>شروع تمرکز</span>
                     </button>
-                    <div className="flex gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); onEdit(e, task); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition" aria-label="ویرایش تسک">
-                            <Pencil size={14} /> ویرایش
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(e, task);
+                            }}
+                            className="min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-primary hover:bg-surface-container-high transition active:scale-[0.98] cursor-pointer"
+                            aria-label="ویرایش تسک"
+                        >
+                            <Pencil size={13} />
+                            <span>ویرایش</span>
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(e, task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition" aria-label="حذف تسک">
-                            <Trash2 size={14} /> حذف
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                haptics.warning();
+                                onDelete(e, task.id!);
+                            }}
+                            className="min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/35 transition active:scale-[0.98] cursor-pointer"
+                            aria-label="حذف تسک"
+                        >
+                            <Trash2 size={13} />
+                            <span>حذف</span>
                         </button>
                         {isOverdue && onMoveToToday && (
-                            <button onClick={(e) => { e.stopPropagation(); onMoveToToday(task.id!); }} className="flex items-center gap-1 text-[10px] px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition" aria-label="انتقال به امروز">
-                                <ArrowDownToLine size={14} /> انتقال به امروز
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    haptics.light();
+                                    onMoveToToday(task.id!);
+                                }}
+                                className="min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-[0.98] cursor-pointer"
+                                aria-label="انتقال به امروز"
+                            >
+                                <ArrowDownToLine size={13} />
+                                <span>انتقال به امروز</span>
                             </button>
                         )}
                     </div>
@@ -269,4 +516,5 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </motion.div>
         </div>
     );
-};
+});
+TaskCard.displayName = 'TaskCard';

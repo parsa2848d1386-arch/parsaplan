@@ -1,5 +1,8 @@
 {
   "name": "ParsaPlan",
   "description": "A comprehensive, mobile-first life, work, habit, and study planner with AI assistant and 24-hour visual timeline.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

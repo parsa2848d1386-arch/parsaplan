@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useStore } from '../context/StoreContext';
-import { useFocus } from '../context/FocusContext';
+import { FocusStatus, useFocus, useFocusTick } from '../context/FocusContext';
 import { liveRoomService } from '../services/liveRoomService';
-import { AmbientSoundType, LiveRoomInfo, LiveRoomMessage, LiveRoomPeer } from '../types';
-import { formatClockTime } from '../utils';
+import { AmbientSoundType, LiveRoomInfo, LiveRoomMessage, LiveRoomPeer, TimerMode } from '../types';
+import { formatClockTime, formatToPersianDigits } from '../utils';
+import { haptics } from '../utils/haptics';
+import { FOLLOW_THROUGH_VARIANTS, SPRING_SNAPPY } from '../utils/motionPresets';
+import { PeakEndCheckmark } from './ui/MotionPrimitives';
 import { InSessionScratchpadDrawer } from './focus/InSessionScratchpadDrawer';
 import {
     X,
@@ -18,6 +22,7 @@ import {
     Info,
     Sliders,
     ChevronDown,
+    ChevronUp,
     Minimize2,
     Lock,
     Unlock,
@@ -37,7 +42,7 @@ import {
 const FocusFlower: React.FC<{ progress: number; status: string }> = ({ progress, status }) => {
     const isFailed = status === 'failed';
     const isIdle = status === 'idle';
-    const scale = isIdle ? 0.35 : isFailed ? 0.8 : 0.35 + (progress / 100) * 0.65;
+    const scale = isIdle ? 0.42 : isFailed ? 0.72 : 0.48 + (progress / 100) * 0.42;
 
     const stemColor = isFailed ? '#6b7280' : '#10b981';
     const petalColors = isFailed
@@ -46,25 +51,28 @@ const FocusFlower: React.FC<{ progress: number; status: string }> = ({ progress,
           ? ['#f43f5e', '#ec4899', '#d946ef']
           : ['#818cf8', '#6366f1', '#4f46e5'];
 
+    const headY = isIdle ? 105 : 125 - (progress / 100) * 30;
+
     return (
-        <div className="relative w-56 h-56 flex items-center justify-center">
+        <div className="relative w-36 h-36 sm:w-44 sm:h-44 flex items-center justify-center">
             <div
-                className={`absolute w-36 h-36 rounded-full filter blur-[40px] opacity-40 transition-all duration-1000 ${
+                aria-hidden="true"
+                className={`absolute inset-0 rounded-full pointer-events-none transition-opacity duration-300 ${
                     isIdle
-                        ? 'bg-transparent'
+                        ? 'opacity-0'
                         : isFailed
-                          ? 'bg-gray-800'
+                          ? 'opacity-40 bg-[radial-gradient(circle,rgba(75,85,99,0.45)_0%,transparent_70%)]'
                           : progress >= 100
-                            ? 'bg-pink-500 animate-pulse'
-                            : 'bg-indigo-500 animate-pulse'
+                            ? 'opacity-70 bg-[radial-gradient(circle,rgba(236,72,153,0.38)_0%,transparent_70%)]'
+                            : 'opacity-70 bg-[radial-gradient(circle,rgba(99,102,241,0.38)_0%,transparent_70%)]'
                 }`}
             />
 
-            <svg width="100%" height="100%" viewBox="0 0 200 200" className="overflow-visible relative z-10">
+            <svg width="100%" height="100%" viewBox="0 0 200 200" className="relative z-10">
                 {!isIdle && (
-                    <g className="transition-all duration-700">
+                    <g>
                         <path
-                            d={`M 100 200 Q ${95 - scale * 10} ${180 - scale * 20} 100 ${150 - scale * 20}`}
+                            d={`M 100 190 Q ${95 - scale * 8} ${160} 100 ${headY}`}
                             stroke={stemColor}
                             strokeWidth="4"
                             strokeLinecap="round"
@@ -72,31 +80,28 @@ const FocusFlower: React.FC<{ progress: number; status: string }> = ({ progress,
                         />
                         {progress > 30 && (
                             <path
-                                d={`M 100 ${150 - scale * 20} Q 120 ${140 - scale * 20} 125 ${130 - scale * 20} Q 110 ${145 - scale * 20} 100 ${150 - scale * 20}`}
+                                d={`M 100 ${headY + 34} Q 120 ${headY + 24} 125 ${headY + 14} Q 110 ${headY + 28} 100 ${headY + 34}`}
                                 fill={stemColor}
                             />
                         )}
                         {progress > 60 && (
                             <path
-                                d={`M 100 ${135 - scale * 20} Q 80 ${125 - scale * 20} 75 ${115 - scale * 20} Q 90 ${130 - scale * 20} 100 ${135 - scale * 20}`}
+                                d={`M 100 ${headY + 22} Q 80 ${headY + 12} 75 ${headY + 2} Q 90 ${headY + 16} 100 ${headY + 22}`}
                                 fill={stemColor}
                             />
                         )}
                     </g>
                 )}
 
-                <g
-                    transform={`translate(100, ${isIdle ? 100 : 175 - scale * 80}) scale(${scale})`}
-                    className="transition-all duration-700 ease-out origin-center"
-                >
+                <g transform={`translate(100, ${headY}) scale(${scale})`}>
                     {isIdle ? (
-                        <circle cx="0" cy="0" r="10" fill="#10b981" className="animate-bounce" style={{ animationDuration: '2s' }} />
+                        <circle cx="0" cy="0" r="14" fill="#10b981" />
                     ) : (
                         <>
                             {[0, 60, 120, 180, 240, 300].map((deg) => (
                                 <path
                                     key={deg}
-                                    d="M 0,0 Q -25,-45 0,-70 Q 25,-45 0,0"
+                                    d="M 0,0 Q -24,-42 0,-64 Q 24,-42 0,0"
                                     fill={petalColors[0]}
                                     opacity="0.9"
                                     transform={`rotate(${deg})`}
@@ -106,14 +111,14 @@ const FocusFlower: React.FC<{ progress: number; status: string }> = ({ progress,
                                 [30, 90, 150, 210, 270, 330].map((deg) => (
                                     <path
                                         key={deg}
-                                        d="M 0,0 Q -18,-35 0,-55 Q 18,-35 0,0"
+                                        d="M 0,0 Q -17,-32 0,-50 Q 17,-32 0,0"
                                         fill={petalColors[1]}
                                         opacity="0.95"
                                         transform={`rotate(${deg})`}
                                     />
                                 ))}
-                            <circle cx="0" cy="0" r="16" fill={isFailed ? '#4b5563' : '#fbbf24'} />
-                            <circle cx="0" cy="0" r="12" fill={isFailed ? '#374151' : '#f59e0b'} />
+                            <circle cx="0" cy="0" r="15" fill={isFailed ? '#4b5563' : '#fbbf24'} />
+                            <circle cx="0" cy="0" r="11" fill={isFailed ? '#374151' : '#f59e0b'} />
                         </>
                     )}
                 </g>
@@ -132,6 +137,85 @@ const SOUND_OPTIONS: { id: AmbientSoundType; label: string; desc: string; icon: 
     { id: 'fireplace', label: 'آتش شومینه', desc: 'جرقه و چوب', icon: Flame, color: 'text-orange-500' },
     { id: 'binaural', label: 'باینورال 14Hz', desc: 'امواج بتای تمرکز', icon: Brain, color: 'text-violet-400' },
 ];
+const PRIMARY_SOUND_IDS: AmbientSoundType[] = ['none', 'brown', 'rain', 'binaural'];
+
+// ==========================================
+// Isolated 1-Second Tick Subcomponents (Zero Parent Tree Re-renders)
+// ==========================================
+const FocusClockFace = React.memo<{
+    mode: TimerMode;
+    pomoPhase: 'study' | 'break';
+    status: FocusStatus;
+    interruptionCount: number;
+}>(({ mode, pomoPhase, status, interruptionCount }) => {
+    const {
+        displaySeconds,
+        elapsedSeconds,
+        targetSeconds,
+        isGracePeriodActive,
+        graceRemainingSeconds,
+    } = useFocusTick();
+
+    const progressPercent = useMemo(() => {
+        if (mode === 'stopwatch') {
+            return Math.min((elapsedSeconds / 3600) * 100, 100);
+        }
+        return targetSeconds > 0 ? Math.min((elapsedSeconds / targetSeconds) * 100, 100) : 0;
+    }, [mode, elapsedSeconds, targetSeconds]);
+
+    return (
+        <>
+            {isGracePeriodActive && (
+                <div className="px-4 py-2 rounded-xl bg-rose-500/20 border border-rose-500 text-rose-200 text-xs font-bold">
+                    هشدار خروج! تا {graceRemainingSeconds} ثانیه دیگر برگردید
+                </div>
+            )}
+            {interruptionCount > 0 && !isGracePeriodActive && (
+                <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-bold">
+                    <AlertTriangle size={13} />
+                    <span>{interruptionCount} بار خروج از صفحه ثبت شده</span>
+                </div>
+            )}
+
+            <div className="flex flex-col items-center gap-2">
+                <FocusFlower progress={progressPercent} status={status} />
+                <div className="flex flex-col items-center">
+                    <span className="text-4xl sm:text-5xl font-black text-white tracking-wider font-mono tabular-nums" dir="ltr">
+                        {formatClockTime(displaySeconds)}
+                    </span>
+                    <span className="text-[11px] text-indigo-300 font-extrabold mt-1">
+                        {mode === 'stopwatch'
+                            ? 'کرنومتر مونو‌تونیک'
+                            : mode === 'exam'
+                              ? 'شبیه‌ساز آزمون'
+                              : mode === 'pomodoro'
+                                ? pomoPhase === 'study'
+                                    ? 'پومودورو تمرکز'
+                                    : 'استراحت'
+                                : 'شمارش معکوس'}
+                    </span>
+                </div>
+            </div>
+        </>
+    );
+});
+FocusClockFace.displayName = 'FocusClockFace';
+
+const FocusLapsList = React.memo(() => {
+    const { laps } = useFocusTick();
+    if (laps.length === 0) return null;
+    return (
+        <div className="w-full max-w-xs bg-white/5 rounded-2xl p-3 border border-white/10 max-h-28 overflow-y-auto custom-scrollbar space-y-1">
+            {laps.map((lapSec, i) => (
+                <div key={i} className="flex justify-between text-[11px] font-mono text-gray-300">
+                    <span>دور {i + 1}</span>
+                    <span className="text-indigo-300 font-bold">{formatClockTime(lapSec)}</span>
+                </div>
+            ))}
+        </div>
+    );
+});
+FocusLapsList.displayName = 'FocusLapsList';
 
 const FocusTimer: React.FC = () => {
     const {
@@ -154,10 +238,6 @@ const FocusTimer: React.FC = () => {
         customCountdownMinutes,
         setCustomCountdownMinutes,
         status,
-        displaySeconds,
-        elapsedSeconds,
-        targetSeconds,
-        laps,
         pinnedTaskId,
         setPinnedTaskId,
         selectedSubject,
@@ -167,8 +247,6 @@ const FocusTimer: React.FC = () => {
         minimizeToPiP,
         strictLockActive,
         toggleStrictLock,
-        isGracePeriodActive,
-        graceRemainingSeconds,
         interruptionCount,
         activeSound,
         setActiveSound,
@@ -176,17 +254,22 @@ const FocusTimer: React.FC = () => {
         setVolume,
         activeRoomCode,
         setActiveRoomCode,
+        getElapsedSeconds,
         startTimer,
         pauseTimer,
         resumeTimer,
         recordLap,
         finishSession,
         discardSession,
+        lastCompletionSummary,
+        clearCompletionSummary,
     } = useFocus();
+    const prefersReducedMotion = useReducedMotion();
 
     const [isTaskSelectorOpen, setIsTaskSelectorOpen] = useState(false);
     const [rightPanelTab, setRightPanelTab] = useState<'audio' | 'room'>('audio');
     const [isScratchpadOpen, setIsScratchpadOpen] = useState(false);
+    const [showAllSounds, setShowAllSounds] = useState(false);
 
     // Live Group Study Room State (connected to real Firestore)
     const [roomInfo, setRoomInfo] = useState<LiveRoomInfo | null>(null);
@@ -202,13 +285,6 @@ const FocusTimer: React.FC = () => {
     const isRunning = status === 'running';
     const isPaused = status === 'paused';
 
-    const progressPercent = useMemo(() => {
-        if (mode === 'stopwatch') {
-            return Math.min((elapsedSeconds / 3600) * 100, 100);
-        }
-        return targetSeconds > 0 ? Math.min((elapsedSeconds / targetSeconds) * 100, 100) : 0;
-    }, [mode, elapsedSeconds, targetSeconds]);
-
     // Subscribe to real Firestore Group Room when activeRoomCode is set
     useEffect(() => {
         if (!activeRoomCode || !db || !user || userId === 'parsaplan_local_user') {
@@ -218,16 +294,29 @@ const FocusTimer: React.FC = () => {
         }
 
         let active = true;
-        liveRoomService.getGroupRoom(db, activeRoomCode).then((info) => {
-            if (active) setRoomInfo(info);
-        });
+        liveRoomService
+            .getGroupRoom(db, activeRoomCode)
+            .then((info) => {
+                if (active) setRoomInfo(info);
+            })
+            .catch(() => {});
 
-        const unsubPeers = liveRoomService.subscribeRoomMembers(db, activeRoomCode, (peers) => {
-            setRoomPeers(peers);
-        });
-        const unsubMsgs = liveRoomService.subscribeRoomMessages(db, activeRoomCode, (msgs) => {
-            setRoomMessages(msgs);
-        });
+        const unsubPeers = liveRoomService.subscribeRoomMembers(
+            db,
+            activeRoomCode,
+            (peers) => {
+                setRoomPeers(peers);
+            },
+            () => {}
+        );
+        const unsubMsgs = liveRoomService.subscribeRoomMessages(
+            db,
+            activeRoomCode,
+            (msgs) => {
+                setRoomMessages(msgs);
+            },
+            (err) => console.warn('[FocusTimer] Room messages listener:', err)
+        );
 
         return () => {
             active = false;
@@ -251,7 +340,7 @@ const FocusTimer: React.FC = () => {
                 status: isRunning ? 'STUDYING' : 'RESTING',
                 activeSubject: pinnedTask ? pinnedTask.subject : selectedSubject,
                 activeTopic: pinnedTask?.topic || '',
-                elapsedSeconds,
+                elapsedSeconds: getElapsedSeconds ? getElapsedSeconds() : 0,
                 dailyStudySeconds: 0,
                 cheersReceived: 0,
                 lastPing: Date.now(),
@@ -290,7 +379,7 @@ const FocusTimer: React.FC = () => {
                 status: isRunning ? 'STUDYING' : 'RESTING',
                 activeSubject: pinnedTask ? pinnedTask.subject : selectedSubject,
                 activeTopic: pinnedTask?.topic || '',
-                elapsedSeconds,
+                elapsedSeconds: getElapsedSeconds ? getElapsedSeconds() : 0,
                 dailyStudySeconds: 0,
                 cheersReceived: 0,
                 lastPing: Date.now(),
@@ -327,10 +416,84 @@ const FocusTimer: React.FC = () => {
 
     if (!isTimerOpen) return null;
 
+    // Principle 19 (Peak-End Rule): Celebratory completion view with animated emerald Checkmark
+    if (lastCompletionSummary) {
+        return (
+            <div
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-[#090d1a] p-6 select-none text-right font-sans"
+                dir="rtl"
+            >
+                <motion.div
+                    initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.94, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={SPRING_SNAPPY}
+                    className="w-full max-w-md squircle-xl bg-slate-900/95 border border-white/10 p-6 sm:p-8 flex flex-col items-center text-center gap-5 shadow-2xl"
+                >
+                    <PeakEndCheckmark size={76} />
+
+                    <div className="space-y-1.5">
+                        <h2 className="text-xl sm:text-2xl font-black text-white">
+                            پارت تمرکز با موفقیت ثبت شد!
+                        </h2>
+                        <p className="text-xs sm:text-sm text-gray-300 font-medium">
+                            {lastCompletionSummary.taskTitle
+                                ? `${lastCompletionSummary.subjectName} — ${lastCompletionSummary.taskTitle}`
+                                : lastCompletionSummary.subjectName}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                        <div className="squircle-md bg-white/5 border border-white/10 p-3.5 flex flex-col items-center">
+                            <span className="text-[11px] text-gray-400 font-bold">مدت تمرکز</span>
+                            <span className="text-xl font-black text-white tabular-nums mt-1">
+                                {formatToPersianDigits(lastCompletionSummary.addedMinutes)} دقیقه
+                            </span>
+                        </div>
+                        <div className="squircle-md bg-emerald-500/15 border border-emerald-500/30 p-3.5 flex flex-col items-center">
+                            <span className="text-[11px] text-emerald-300 font-bold">پاداش کسب‌شده</span>
+                            <span className="text-xl font-black text-emerald-400 tabular-nums mt-1" dir="ltr">
+                                +{formatToPersianDigits(lastCompletionSummary.xpEarned)} XP
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Principle 8 (Fitts's Law): Large bottom thumb CTAs */}
+                    <div className="flex flex-col sm:flex-row gap-2.5 w-full pt-2">
+                        <button
+                            type="button"
+                            data-haptic="custom"
+                            onClick={() => {
+                                haptics.medium();
+                                clearCompletionSummary();
+                                startTimer();
+                            }}
+                            className="flex-1 min-h-[52px] squircle-md bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
+                        >
+                            <Play size={18} fill="currentColor" />
+                            <span>شروع پارت جدید</span>
+                        </button>
+                        <button
+                            type="button"
+                            data-haptic="custom"
+                            onClick={() => {
+                                haptics.selection();
+                                clearCompletionSummary();
+                                setIsTimerOpen(false);
+                            }}
+                            className="sm:w-32 min-h-[52px] squircle-md bg-white/10 hover:bg-white/15 text-white font-bold text-sm transition active:scale-[0.98] cursor-pointer"
+                        >
+                            بستن
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-3xl select-none text-right font-sans transition-colors duration-500 ${
-                strictLockActive && isRunning ? 'bg-black' : 'bg-slate-950/98 dark:bg-gray-950/99'
+            className={`fixed inset-0 z-[60] flex items-center justify-center select-none text-right font-sans transition-colors duration-300 ${
+                strictLockActive && isRunning ? 'bg-black' : 'bg-[#090d1a]'
             }`}
             dir="rtl"
         >
@@ -384,19 +547,62 @@ const FocusTimer: React.FC = () => {
                 </div>
             </div>
 
-            {/* Ambient glow */}
+            {/* Lightweight static radial gradient lighting (zero GPU blur cost) */}
             {!strictLockActive && (
-                <>
-                    <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-indigo-600/10 rounded-full filter blur-[150px] pointer-events-none" />
-                    <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-purple-600/10 rounded-full filter blur-[150px] pointer-events-none" />
-                </>
+                <div
+                    aria-hidden="true"
+                    className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_18%_15%,rgba(79,70,229,0.16)_0%,transparent_50%),radial-gradient(circle_at_82%_85%,rgba(147,51,234,0.12)_0%,transparent_50%)]"
+                />
             )}
 
             <div className="flex flex-col md:flex-row items-center gap-10 w-full max-w-5xl px-6 md:px-10 pt-20 pb-8 overflow-y-auto max-h-full relative z-10">
                 {/* LEFT COLUMN: TIMER */}
                 <div className="flex flex-col items-center gap-5 flex-1 w-full">
+                    {/* Continuity Principle: 3-phase focus progression track */}
+                    <div aria-label="مراحل جلسه تمرکز" className="flex items-center w-full max-w-sm gap-2 px-1">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                                className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${
+                                    !isRunning && !isPaused
+                                        ? 'bg-indigo-500 text-white shadow-sm'
+                                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                }`}
+                            >
+                                ۱
+                            </span>
+                            <span className={`text-[11px] font-bold ${!isRunning && !isPaused ? 'text-white' : 'text-emerald-300'}`}>
+                                آماده‌سازی
+                            </span>
+                        </div>
+                        <span
+                            aria-hidden="true"
+                            className={`h-px flex-1 transition-colors ${isRunning || isPaused ? 'bg-indigo-400/70' : 'bg-white/15'}`}
+                        />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                                className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${
+                                    isRunning || isPaused
+                                        ? 'bg-indigo-500 text-white shadow-sm'
+                                        : 'bg-white/10 text-gray-400'
+                                }`}
+                            >
+                                ۲
+                            </span>
+                            <span className={`text-[11px] font-bold ${isRunning || isPaused ? 'text-white' : 'text-gray-400'}`}>
+                                تمرکز عمیق
+                            </span>
+                        </div>
+                        <span aria-hidden="true" className="h-px flex-1 bg-white/15" />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center bg-white/10 text-gray-400">
+                                ۳
+                            </span>
+                            <span className="text-[11px] font-bold text-gray-400">ثبت و پاداش</span>
+                        </div>
+                    </div>
+
                     {/* Mode Selector */}
-                    <div className="flex flex-wrap justify-center bg-white/5 p-1.5 rounded-2xl border border-white/10 backdrop-blur-md gap-1">
+                    <div className="flex flex-wrap justify-center bg-white/5 p-1.5 squircle-md border border-white/10 gap-1">
                         {(
                             [
                                 { id: 'stopwatch', label: 'کرنومتر' },
@@ -409,7 +615,7 @@ const FocusTimer: React.FC = () => {
                                 key={m.id}
                                 disabled={isRunning || isPaused}
                                 onClick={() => setMode(m.id)}
-                                className={`px-3.5 py-2 rounded-xl text-xs font-black transition disabled:opacity-60 ${
+                                className={`px-3.5 py-2 squircle-sm text-xs font-black transition disabled:opacity-60 ${
                                     mode === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
                                 }`}
                             >
@@ -531,46 +737,25 @@ const FocusTimer: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Grace Period / Interruption Alerts */}
-                    {isGracePeriodActive && (
-                        <div className="px-4 py-2 rounded-xl bg-rose-500/20 border border-rose-500 text-rose-200 text-xs font-bold animate-pulse">
-                            هشدار خروج! تا {graceRemainingSeconds} ثانیه دیگر برگردید
-                        </div>
-                    )}
-                    {interruptionCount > 0 && !isGracePeriodActive && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-bold">
-                            <AlertTriangle size={13} />
-                            <span>{interruptionCount} بار خروج از صفحه ثبت شده</span>
-                        </div>
-                    )}
+                    {/* Isolated Clock Face & Grace Alerts (1s ticker confined here) */}
+                    <FocusClockFace
+                        mode={mode}
+                        pomoPhase={pomoPhase}
+                        status={status}
+                        interruptionCount={interruptionCount}
+                    />
 
-                    {/* Flower & Clock */}
-                    <div className="relative">
-                        <FocusFlower progress={progressPercent} status={status} />
-                        <div className="absolute inset-0 flex flex-col items-center justify-end pb-6">
-                            <span className="text-4xl font-black text-white tracking-wider font-mono tabular-nums drop-shadow">
-                                {formatClockTime(displaySeconds)}
-                            </span>
-                            <span className="text-[10px] text-indigo-400 font-extrabold mt-1">
-                                {mode === 'stopwatch'
-                                    ? 'کرنومتر مونو‌تونیک'
-                                    : mode === 'exam'
-                                      ? 'شبیه‌ساز آزمون'
-                                      : mode === 'pomodoro'
-                                        ? pomoPhase === 'study'
-                                            ? 'پومودورو تمرکز'
-                                            : 'استراحت'
-                                        : 'شمارش معکوس'}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex items-center gap-4">
+                    {/* Controls (Principle 8: Fitts's Law wide thumb-zone targets) */}
+                    <div className="flex items-center justify-center gap-3 w-full max-w-sm">
                         {!isRunning && !isPaused && (
                             <button
-                                onClick={startTimer}
-                                className="px-7 py-3.5 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/25 transition active:scale-95"
+                                type="button"
+                                data-haptic="custom"
+                                onClick={() => {
+                                    haptics.medium();
+                                    startTimer();
+                                }}
+                                className="w-full min-h-[54px] px-7 py-3.5 squircle-md bg-gradient-to-tr from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition active:scale-[0.98] cursor-pointer"
                             >
                                 <Play size={18} fill="currentColor" />
                                 <span>شروع تمرکز</span>
@@ -580,21 +765,37 @@ const FocusTimer: React.FC = () => {
                         {isRunning && (
                             <>
                                 <button
-                                    onClick={recordLap}
-                                    className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-200 border border-white/10 text-xs font-bold flex items-center gap-1.5 transition"
+                                    type="button"
+                                    data-haptic="custom"
+                                    onClick={() => {
+                                        haptics.impact();
+                                        recordLap();
+                                    }}
+                                    className="min-h-[48px] px-4 py-3 squircle-md bg-white/5 hover:bg-white/10 text-gray-200 border border-white/10 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                                 >
                                     <Flag size={14} /> دور
                                 </button>
                                 <button
-                                    onClick={pauseTimer}
-                                    className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-lg transition active:scale-95"
+                                    type="button"
+                                    data-haptic="custom"
+                                    onClick={() => {
+                                        haptics.light();
+                                        pauseTimer();
+                                    }}
+                                    className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-lg transition active:scale-95 cursor-pointer"
                                     title="توقف موقت"
+                                    aria-label="توقف موقت"
                                 >
                                     <Pause size={22} fill="currentColor" />
                                 </button>
                                 <button
-                                    onClick={() => finishSession(false)}
-                                    className="px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 transition"
+                                    type="button"
+                                    data-haptic="custom"
+                                    onClick={() => {
+                                        haptics.success();
+                                        finishSession(false, true);
+                                    }}
+                                    className="min-h-[48px] px-5 py-3 squircle-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
                                     title="ذخیره و پایان"
                                 >
                                     <Square size={14} fill="currentColor" /> ثبت و پایان
@@ -605,20 +806,35 @@ const FocusTimer: React.FC = () => {
                         {isPaused && (
                             <>
                                 <button
-                                    onClick={resumeTimer}
-                                    className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1.5 transition"
+                                    type="button"
+                                    data-haptic="custom"
+                                    onClick={() => {
+                                        haptics.medium();
+                                        resumeTimer();
+                                    }}
+                                    className="flex-1 min-h-[52px] px-6 py-3 squircle-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
                                 >
                                     <Play size={16} fill="currentColor" /> ادامه
                                 </button>
                                 <button
-                                    onClick={() => finishSession(Boolean(pinnedTask))}
-                                    className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 transition"
+                                    type="button"
+                                    data-haptic="custom"
+                                    onClick={() => {
+                                        haptics.success();
+                                        finishSession(Boolean(pinnedTask), true);
+                                    }}
+                                    className="flex-1 min-h-[52px] px-5 py-3 squircle-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer"
                                 >
                                     <CheckCircle2 size={16} /> ذخیره
                                 </button>
                                 <button
-                                    onClick={discardSession}
-                                    className="px-4 py-3 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-bold transition"
+                                    type="button"
+                                    data-haptic="custom"
+                                    onClick={() => {
+                                        haptics.warning();
+                                        discardSession();
+                                    }}
+                                    className="min-h-[52px] px-4 py-3 squircle-md bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-xs font-bold transition cursor-pointer"
                                 >
                                     لغو
                                 </button>
@@ -629,8 +845,8 @@ const FocusTimer: React.FC = () => {
                     {/* Mark task complete quick action when pinned */}
                     {pinnedTask && isRunning && (
                         <button
-                            onClick={() => finishSession(true)}
-                            className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1.5 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20 transition"
+                            onClick={() => finishSession(true, true)}
+                            className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1.5 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20 transition cursor-pointer"
                         >
                             <CheckCircle2 size={14} />
                             <span>اتمام و تیک زدن تسک «{pinnedTask.topic}»</span>
@@ -638,22 +854,18 @@ const FocusTimer: React.FC = () => {
                     )}
 
                     {/* Laps */}
-                    {laps.length > 0 && (
-                        <div className="w-full max-w-xs bg-white/5 rounded-2xl p-3 border border-white/10 max-h-28 overflow-y-auto custom-scrollbar space-y-1">
-                            {laps.map((lapSec, i) => (
-                                <div key={i} className="flex justify-between text-[11px] font-mono text-gray-300">
-                                    <span>دور {i + 1}</span>
-                                    <span className="text-indigo-300 font-bold">{formatClockTime(lapSec)}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <FocusLapsList />
                 </div>
 
                 <div className="hidden md:block w-px h-96 bg-white/10" />
 
-                {/* RIGHT COLUMN: AUDIO CABIN & REAL LIVE ROOM */}
-                <div className="flex flex-col gap-5 flex-1 w-full max-w-sm">
+                {/* RIGHT COLUMN: AUDIO CABIN & REAL LIVE ROOM (Principle 11: Follow-through settle) */}
+                <motion.div
+                    variants={FOLLOW_THROUGH_VARIANTS}
+                    initial={prefersReducedMotion ? false : 'hidden'}
+                    animate="visible"
+                    className="flex flex-col gap-5 flex-1 w-full max-w-sm"
+                >
                     <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
                         <button
                             onClick={() => setRightPanelTab('audio')}
@@ -685,31 +897,57 @@ const FocusTimer: React.FC = () => {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                {SOUND_OPTIONS.map((sound) => {
-                                    const Icon = sound.icon;
-                                    const isSelected = activeSound === sound.id;
-                                    return (
+                            {(() => {
+                                const curatedSounds = SOUND_OPTIONS.filter((s) => PRIMARY_SOUND_IDS.includes(s.id));
+                                if (!curatedSounds.some((s) => s.id === activeSound)) {
+                                    const activeObj = SOUND_OPTIONS.find((s) => s.id === activeSound);
+                                    if (activeObj) curatedSounds.splice(curatedSounds.length - 1, 1, activeObj);
+                                }
+                                const visibleSounds = showAllSounds ? SOUND_OPTIONS : curatedSounds;
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {visibleSounds.map((sound) => {
+                                                const Icon = sound.icon;
+                                                const isSelected = activeSound === sound.id;
+                                                return (
+                                                    <button
+                                                        key={sound.id}
+                                                        type="button"
+                                                        onClick={() => setActiveSound(sound.id)}
+                                                        className={`flex flex-col items-start p-2.5 squircle-md border text-right transition cursor-pointer ${
+                                                            isSelected
+                                                                ? 'bg-indigo-500/15 border-indigo-500 shadow-md'
+                                                                : 'bg-white/5 border-white/10 hover:bg-white/10'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between w-full mb-0.5">
+                                                            <span className={`text-[11px] font-extrabold ${isSelected ? 'text-indigo-300' : 'text-gray-200'}`}>
+                                                                {sound.label}
+                                                            </span>
+                                                            <Icon size={13} className={isSelected ? 'text-indigo-400' : sound.color} />
+                                                        </div>
+                                                        <span className="text-[9px] text-gray-400 truncate w-full">{sound.desc}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                         <button
-                                            key={sound.id}
-                                            onClick={() => setActiveSound(sound.id)}
-                                            className={`flex flex-col items-start p-2.5 rounded-2xl border text-right transition ${
-                                                isSelected
-                                                    ? 'bg-indigo-500/15 border-indigo-500 shadow-md'
-                                                    : 'bg-white/5 border-white/10 hover:bg-white/10'
-                                            }`}
+                                            type="button"
+                                            aria-expanded={showAllSounds}
+                                            onClick={() => setShowAllSounds((prev) => !prev)}
+                                            className="w-full min-h-[38px] px-3 py-1.5 squircle-sm border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-bold text-indigo-300 flex items-center justify-center gap-1.5 transition cursor-pointer"
                                         >
-                                            <div className="flex items-center justify-between w-full mb-0.5">
-                                                <span className={`text-[11px] font-extrabold ${isSelected ? 'text-indigo-300' : 'text-gray-200'}`}>
-                                                    {sound.label}
-                                                </span>
-                                                <Icon size={13} className={isSelected ? 'text-indigo-400' : sound.color} />
-                                            </div>
-                                            <span className="text-[9px] text-gray-400 truncate w-full">{sound.desc}</span>
+                                            <span>
+                                                {showAllSounds
+                                                    ? 'نمایش صداهای منتخب'
+                                                    : `سایر صداهای محیطی (${formatToPersianDigits(SOUND_OPTIONS.length - visibleSounds.length)} مورد دیگر)`}
+                                            </span>
+                                            {showAllSounds ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                                         </button>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                );
+                            })()}
 
                             {activeSound !== 'none' && (
                                 <div className="bg-white/5 border border-white/10 p-3.5 rounded-2xl space-y-2">
@@ -804,7 +1042,7 @@ const FocusTimer: React.FC = () => {
                                                     <span
                                                         className={`w-2 h-2 rounded-full shrink-0 ${
                                                             peer.status === 'STUDYING'
-                                                                ? 'bg-emerald-400 animate-pulse'
+                                                                ? 'bg-emerald-400'
                                                                 : peer.status === 'RESTING'
                                                                   ? 'bg-amber-400'
                                                                   : 'bg-gray-500'
@@ -867,7 +1105,7 @@ const FocusTimer: React.FC = () => {
                             )}
                         </div>
                     )}
-                </div>
+                </motion.div>
             </div>
 
             <InSessionScratchpadDrawer

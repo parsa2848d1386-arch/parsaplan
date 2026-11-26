@@ -60,6 +60,11 @@ vi.mock('firebase/auth', () => ({
             return () => {};
         }),
     })),
+    GoogleAuthProvider: vi.fn(() => ({ setCustomParameters: vi.fn() })),
+    signInWithPopup: vi.fn(),
+    signInAnonymously: vi.fn(),
+    sendPasswordResetEmail: vi.fn(),
+    updateProfile: vi.fn(),
     signInWithEmailAndPassword: vi.fn(),
     createUserWithEmailAndPassword: vi.fn(),
     signOut: vi.fn(),
@@ -181,16 +186,18 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
         expect(within(desktopNav).getByText('اتاق‌های مطالعه')).toBeInTheDocument();
         expect(within(desktopNav).getByText('تنظیمات و راهنما')).toBeInTheDocument();
 
-        // 3. Verify Mobile Navigation has strictly 5 core tabs
+        // 3. Verify Mobile Navigation has strictly 4 core tabs + separate Settings link in top capsule + circular AI button
         const mobileNav = screen.getByRole('navigation', { name: 'منوی موبایل' });
         expect(mobileNav).toBeInTheDocument();
         const mobileLinks = mobileNav.querySelectorAll('a');
-        expect(mobileLinks).toHaveLength(5);
+        expect(mobileLinks).toHaveLength(4);
         expect(within(mobileNav).getByText('داشبورد')).toBeInTheDocument();
         expect(within(mobileNav).getByText('تایم‌لاین')).toBeInTheDocument();
         expect(within(mobileNav).getByText('تحلیل')).toBeInTheDocument();
         expect(within(mobileNav).getByText('لیگ')).toBeInTheDocument();
-        expect(within(mobileNav).getByText('تنظیمات')).toBeInTheDocument();
+        expect(mobileNav).not.toHaveTextContent('تنظیمات');
+        expect(screen.getByRole('link', { name: 'تنظیمات' })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /دستیار هوشمند/ }).length).toBeGreaterThanOrEqual(1);
 
         // 4. Verify Dashboard content renders
         expect(screen.getByText('تایمر فوکوس')).toBeInTheDocument();
@@ -282,9 +289,9 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
             expect(document.title).toContain('لیگ و اتاق‌های مطالعه');
         });
 
-        // 4. Mobile Settings tab
-        const mobileSettings = within(mobileNav).getByText('تنظیمات');
-        fireEvent.click(mobileSettings);
+        // 4. Top-Right Floating Capsule Settings Link
+        const topSettingsLink = screen.getByRole('link', { name: 'تنظیمات' });
+        fireEvent.click(topSettingsLink);
         await waitFor(() => {
             expect(document.title).toContain('تنظیمات');
         });

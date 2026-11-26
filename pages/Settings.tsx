@@ -1,17 +1,18 @@
 
 import React, { useRef, useState, useEffect } from 'react';
-import { useStore } from '../context/StoreContext';
+import { useStore, useStoreSyncStatus } from '../context/StoreContext';
+import { ModalSheet } from '../components/ui/ModalSheet';
 import {
-    Save, RefreshCw, User, ShieldAlert, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Sun, Bell, Volume2, Globe, Shield, RefreshCcw, LogOut, ChevronLeft,
-    Crown, Sparkles, Layout, Palette, Type, Smartphone, Check, Laptop, Trash2, FileText, GraduationCap, X, Settings2, Printer, Quote,
-    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Clock, Eye, History as HistoryIcon, BarChart2,
-    KeyRound, EyeOff, CheckCircle2, AlertCircle, Copy
+    Save, RefreshCw, User, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Sun,
+    Sparkles, Palette, Smartphone, Check, GraduationCap, Printer, Quote,
+    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Eye, History as HistoryIcon, BarChart2, X, AlertTriangle, Copy
 } from 'lucide-react';
 import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
 import { FirebaseConfig } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { ArchivedPlan } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { AnimatedSwitch } from '../components/ui/MotionPrimitives';
+import { isHapticsEnabled, setHapticsEnabled, haptics } from '../utils/haptics';
 
 // --- Components ---
 
@@ -30,7 +31,7 @@ const HelpSection = () => {
     ];
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-3 mb-4 text-cyan-600 dark:text-cyan-400">
                 <HelpCircle size={20} />
                 <h2 className="font-bold">راهنمای کامل و سوالات متداول</h2>
@@ -49,7 +50,7 @@ const HelpSection = () => {
                             {openIndex === index ? <ChevronUp size={16} className="text-gray-400 min-w-[16px]" /> : <ChevronDown size={16} className="text-gray-400 min-w-[16px]" />}
                         </button>
                         {openIndex === index && (
-                            <div className="p-3 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-700 animate-in slide-in-from-top-2">
+                            <div className="p-3 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-700">
                                 {item.a}
                             </div>
                         )}
@@ -65,53 +66,94 @@ const InlineAuthForm = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [formError, setFormError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (username.trim().length < 3) {
+            setFormError('نام کاربری یا ایمیل باید حداقل ۳ کاراکتر باشد.');
+            return;
+        }
+        if (password.length < 6) {
+            setFormError('رمز عبور باید حداقل ۶ کاراکتر باشد.');
+            return;
+        }
+        setFormError(null);
         setLoading(true);
         try {
-            if (isLogin) await login(username, password);
-            else await register(username, password, username); // Using username as default name for inline form
+            if (isLogin) await login(username.trim(), password);
+            else await register(username.trim(), password, username.trim());
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl">
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3 text-center">
+        <div className="bg-surface-container-low p-4 squircle-card border border-[var(--border-subtle)]">
+            <h3 className="text-sm font-bold text-on-surface mb-3 text-center">
                 {isLogin ? 'ورود به حساب کاربری' : 'ثبت‌نام حساب جدید'}
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
-                <input
-                    type="text"
-                    placeholder="نام کاربری"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-xs outline-none focus:border-indigo-500 transition text-right"
-                    dir="ltr"
-                />
-                <input
-                    type="password"
-                    placeholder="رمز عبور"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-xs outline-none focus:border-indigo-500 transition text-right"
-                    dir="ltr"
-                />
+            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+                <div>
+                    <label htmlFor="settings-inline-username" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">
+                        ایمیل یا نام کاربری
+                    </label>
+                    <input
+                        id="settings-inline-username"
+                        type="text"
+                        autoComplete="username"
+                        inputMode="email"
+                        placeholder="name@example.com یا نام کاربری"
+                        value={username}
+                        onChange={(e) => {
+                            if (formError) setFormError(null);
+                            setUsername(e.target.value);
+                        }}
+                        className="w-full min-h-[44px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-base sm:text-sm outline-none focus:border-primary transition text-on-surface"
+                        dir="ltr"
+                    />
+                </div>
+                <div>
+                    <label htmlFor="settings-inline-password" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">
+                        رمز عبور
+                    </label>
+                    <input
+                        id="settings-inline-password"
+                        type="password"
+                        autoComplete={isLogin ? 'current-password' : 'new-password'}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => {
+                            if (formError) setFormError(null);
+                            setPassword(e.target.value);
+                        }}
+                        className="w-full min-h-[44px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-base sm:text-sm outline-none focus:border-primary transition text-on-surface"
+                        dir="ltr"
+                    />
+                </div>
+                {formError && (
+                    <p role="alert" className="text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5">
+                        <AlertTriangle size={14} aria-hidden="true" />
+                        <span>{formError}</span>
+                    </p>
+                )}
                 <button
                     type="submit"
-                    disabled={loading || !username || !password}
-                    className="w-full bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition disabled:opacity-50"
+                    disabled={loading}
+                    className="w-full min-h-[44px] bg-primary text-on-primary py-2.5 rounded-xl text-xs font-bold hover:brightness-110 transition disabled:opacity-50 cursor-pointer"
                 >
-                    {loading ? '...' : (isLogin ? 'ورود' : 'ثبت‌نام')}
+                    {loading ? 'در حال بررسی...' : isLogin ? 'ورود' : 'ثبت‌نام'}
                 </button>
             </form>
             <div className="mt-3 text-center">
                 <button
-                    onClick={() => setIsLogin(!isLogin)}
-                    className="text-[10px] text-indigo-500 hover:text-indigo-600 underline"
+                    type="button"
+                    onClick={() => {
+                        setFormError(null);
+                        setIsLogin(!isLogin);
+                    }}
+                    className="min-h-[36px] px-2 text-xs text-primary hover:underline font-semibold cursor-pointer"
                 >
                     {isLogin ? 'حساب ندارید؟ ثبت‌نام کنید' : 'حساب دارید؟ وارد شوید'}
                 </button>
@@ -121,173 +163,146 @@ const InlineAuthForm = () => {
 };
 
 /* ──────────────────────────────────────────────
-   Gemini API Key Settings Component
+   Gemini AI Model Settings Component
    ────────────────────────────────────────────── */
-const GeminiApiKeySettings = () => {
-    const { geminiApiKey, setGeminiApiKey, settings, updateSettings } = useStore();
-    const [draft, setDraft] = useState(geminiApiKey || '');
-    const [show, setShow] = useState(false);
-    const [copied, setCopied] = useState(false);
-
-    useEffect(() => { setDraft(geminiApiKey || ''); }, [geminiApiKey]);
-
-    const isActive = !!geminiApiKey;
-    const isDirty = draft !== (geminiApiKey || '');
-
-    const handleSave = () => {
-        setGeminiApiKey(draft.trim());
-    };
-
-    const handleRemove = () => {
-        setDraft('');
-        setGeminiApiKey('');
-    };
-
-    const handleCopy = () => {
-        if (geminiApiKey) {
-            navigator.clipboard.writeText(geminiApiKey);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
-    const masked = geminiApiKey
-        ? geminiApiKey.slice(0, 6) + '••••••••••••' + geminiApiKey.slice(-4)
-        : '';
+const GeminiModelSettings = () => {
+    const { settings, updateSettings } = useStore();
+    const activeModel =
+        settings?.geminiModel === 'gemini-3.1-flash-lite'
+            ? 'gemini-3.1-flash-lite'
+            : 'gemini-4-hydrogen';
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            {/* Header */}
+        <div className="bg-white dark:bg-gray-800 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none">
-                        <KeyRound size={17} className="text-white" />
+                        <Sparkles size={17} className="text-white" />
                     </div>
                     <div>
-                        <h2 className="font-bold text-gray-800 dark:text-white text-sm">کلید API هوش مصنوعی</h2>
-                        <p className="text-[11px] text-gray-400 mt-0.5">Gemini API Key شخصی شما</p>
+                        <h2 className="font-bold text-gray-800 dark:text-white text-sm">تنظیمات دستیار هوشمند</h2>
+                        <p className="text-[11px] text-gray-400 mt-0.5">انتخاب مدل هوش مصنوعی Gemini</p>
                     </div>
-                </div>
-                {/* Status Badge */}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${isActive
-                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                    : 'bg-gray-50 dark:bg-gray-700/50 text-gray-400 border-gray-200 dark:border-gray-600'
-                    }`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
-                    {isActive ? 'فعال' : 'غیرفعال'}
                 </div>
             </div>
 
-            <div className="p-5 space-y-4">
-                {/* Info Banner */}
-                <div className="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-800">
-                    <Sparkles size={14} className="text-indigo-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                        با وارد کردن API Key شخصی‌ات، هوش مصنوعی از سهمیه خودت استفاده می‌کنه.
-                        از <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline font-bold">Google AI Studio</a> می‌تونی رایگان دریافت کنی.
-                    </p>
-                </div>
-
-                {/* Active Key Display */}
-                {isActive && !isDirty && (
-                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-3 border border-gray-200 dark:border-gray-600">
-                        <KeyRound size={13} className="text-gray-400 flex-shrink-0" />
-                        <code className="flex-1 text-xs font-mono text-gray-600 dark:text-gray-300 tracking-wider">
-                            {show ? geminiApiKey : masked}
-                        </code>
-                        <div className="flex gap-1">
-                            <button
-                                onClick={() => setShow(!show)}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 transition"
-                                title={show ? 'مخفی کردن' : 'نمایش'}
-                            >
-                                {show ? <EyeOff size={14} /> : <Eye size={14} />}
-                            </button>
-                            <button
-                                onClick={handleCopy}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 transition"
-                                title="کپی"
-                            >
-                                {copied ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Input Field */}
-                <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block">
-                        {isActive ? 'جایگزین کردن کلید' : 'وارد کردن کلید API'}
-                    </label>
-                    <div className="relative">
-                        <input
-                            type={show ? 'text' : 'password'}
-                            value={draft}
-                            onChange={(e) => setDraft(e.target.value)}
-                            placeholder="AIza••••••••••••••••••••••••••••••••••••"
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono outline-none focus:border-indigo-500 dark:focus:border-indigo-400 transition text-gray-800 dark:text-white placeholder:font-sans placeholder:text-gray-400"
-                            dir="ltr"
-                        />
-                        <button
-                            onClick={() => setShow(!show)}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-                        >
-                            {show ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
-                    </div>
-                    <p className="text-[10px] text-gray-400">
-                        کلید با فرمت <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-[10px]">AIza...</code> شروع می‌شه
-                    </p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-1">
+            <div className="p-5 space-y-3">
+                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block">مدل Gemini</label>
+                {/* Principle 13 (Von Restorff Effect): Highlighted recommended model option */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
-                        onClick={handleSave}
-                        disabled={!draft.trim() || !isDirty}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-200/50 dark:shadow-none"
+                        type="button"
+                        onClick={() => updateSettings({ geminiModel: 'gemini-4-hydrogen' })}
+                        className={`p-3 squircle-sm border text-right transition-all duration-200 cursor-pointer relative ${
+                            activeModel === 'gemini-4-hydrogen'
+                                ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-500 ring-2 ring-indigo-500/30 shadow-xs'
+                                : 'bg-gray-50 dark:bg-gray-700/40 border-gray-200 dark:border-gray-600 hover:border-indigo-400'
+                        }`}
                     >
-                        <Save size={14} />
-                        ذخیره کلید
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <span dir="ltr" className="text-xs font-extrabold font-mono text-gray-900 dark:text-white">
+                                gemini-4-hydrogen
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold">
+                                پیشنهادی
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">دقت تحلیلی بالا و برنامه‌ریزی هوشمند</p>
                     </button>
-                    {isActive && (
-                        <button
-                            onClick={handleRemove}
-                            className="px-4 py-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl text-xs font-bold border border-rose-100 dark:border-rose-800 transition"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                </div>
 
-                {/* Model Selector */}
-                <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
-                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-2">مدل Gemini</label>
-                    <input
-                        list="gemini-models-settings"
-                        value={settings?.geminiModel || 'gemini-2.0-flash'}
-                        onChange={(e) => updateSettings({ geminiModel: e.target.value })}
-                        className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 transition text-gray-800 dark:text-white"
-                        dir="ltr"
-                        placeholder="gemini-2.0-flash"
-                    />
-                    <datalist id="gemini-models-settings">
-                        <option value="gemini-2.0-flash" />
-                        <option value="gemini-1.5-flash" />
-                        <option value="gemini-1.5-pro" />
-                        <option value="gemini-pro" />
-                    </datalist>
-                    <p className="text-[10px] text-gray-400 mt-1.5">مدل 2.0 Flash جدیدترین، دقیق‌ترین و سریع‌ترین گزینه است</p>
+                    <button
+                        type="button"
+                        onClick={() => updateSettings({ geminiModel: 'gemini-3.1-flash-lite' })}
+                        className={`p-3 squircle-sm border text-right transition-all duration-200 cursor-pointer ${
+                            activeModel === 'gemini-3.1-flash-lite'
+                                ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-500 ring-2 ring-indigo-500/30 shadow-xs'
+                                : 'bg-gray-50 dark:bg-gray-700/40 border-gray-200 dark:border-gray-600 hover:border-indigo-400'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                            <span dir="ltr" className="text-xs font-extrabold font-mono text-gray-900 dark:text-white">
+                                gemini-3.1-flash-lite
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">پاسخ سریع و سبک برای کارهای روزمره</p>
+                    </button>
                 </div>
+                <select
+                    aria-label="انتخاب مدل هوش مصنوعی Gemini"
+                    value={activeModel}
+                    onChange={(e) => updateSettings({ geminiModel: e.target.value })}
+                    className="sr-only"
+                    tabIndex={-1}
+                >
+                    <option value="gemini-4-hydrogen">gemini-4-hydrogen (پیشنهادی)</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (سریع و سبک)</option>
+                </select>
+                <p className="text-[10px] text-gray-400">درخواست‌های هوش مصنوعی به‌صورت خودکار از طریق سرور برنامه پردازش می‌شوند.</p>
             </div>
         </div>
     );
 };
 
+const FIRESTORE_RULES_GUIDE = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { allow read, write: if false; }
+    function isAuthenticated() { return request.auth != null && request.auth.uid != null; }
+    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\\\-:]+$'); }
+    function isValidNonNegNumber(val, maxVal) { return val is number && val >= 0 && val <= maxVal; }
+    function isValidBoundedString(val, maxLen) { return val is string && val.size() <= maxLen; }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) && isValidId(userId);
+      allow create, update: if isOwner(userId) && isValidId(userId) &&
+        (!('settings' in request.resource.data) || !('geminiApiKey' in request.resource.data.settings)) &&
+        (!('xp' in request.resource.data) || isValidNonNegNumber(request.resource.data.xp, 10000000)) &&
+        (!('userName' in request.resource.data) || isValidBoundedString(request.resource.data.userName, 80));
+      allow delete: if isOwner(userId) && isValidId(userId);
+      match /tasks/{taskId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(taskId); }
+      match /sessions/{sessionId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(sessionId); }
+      match /flashcards/{cardId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(cardId); }
+      match /pages/{pageId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(pageId); }
+    }
+    match /publicProfiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(profileId) && isValidId(profileId);
+      allow delete: if isOwner(profileId) && isValidId(profileId);
+    }
+    match /publicProfileDetails/{profileId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(profileId) && isValidId(profileId);
+      allow delete: if isOwner(profileId) && isValidId(profileId);
+    }
+    match /liveSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isOwner(sessionId) && isValidId(sessionId);
+    }
+    match /study_rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidId(roomId) && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && isValidId(roomId) && resource.data.creatorId == request.auth.uid;
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow create, delete: if isOwner(memberId) && isValidId(roomId) && isValidId(memberId);
+        allow update: if isValidId(memberId) && (isOwner(memberId) || (isAuthenticated() && memberId != request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cheersReceived'])));
+      }
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isValidId(roomId) && isValidId(messageId) && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+  }
+}`;
+
 const FirebaseSettings = () => {
 
-    const { firebaseConfig, updateFirebaseConfig, removeFirebaseConfig, cloudStatus } = useStore();
+    const { firebaseConfig, updateFirebaseConfig, removeFirebaseConfig, cloudStatus, cloudError, syncData, showToast } = useStore();
     const [isEditing, setIsEditing] = useState(!firebaseConfig);
+    const [copiedRules, setCopiedRules] = useState(false);
+    const [showRulesBox, setShowRulesBox] = useState(false);
     const [form, setForm] = useState<FirebaseConfig>({
         apiKey: '', authDomain: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: ''
     });
@@ -323,23 +338,84 @@ const FirebaseSettings = () => {
         }
     };
 
+    const handleCopyRules = async () => {
+        try {
+            await navigator.clipboard.writeText(FIRESTORE_RULES_GUIDE);
+            setCopiedRules(true);
+            showToast('قوانین Firestore کپی شد — در بخش Rules کنسول فایربیس جای‌گذاری و Publish کنید', 'success');
+            setTimeout(() => setCopiedRules(false), 2500);
+        } catch {
+            showToast('کپی خودکار انجام نشد؛ متن قوانین را به‌صورت دستی کپی کنید.', 'warning');
+        }
+    };
+
     if (!isEditing && firebaseConfig) {
+        const statusBadge =
+            cloudStatus === 'connected'
+                ? { cls: 'bg-green-100 text-green-700', dot: 'bg-green-500', label: 'متصل' }
+                : cloudStatus === 'error'
+                  ? { cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', dot: 'bg-amber-500', label: 'خطای دسترسی Firestore' }
+                  : { cls: 'bg-red-100 text-red-700', dot: 'bg-red-500', label: 'قطع' };
+
         return (
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+            <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400">
                         <Cloud size={20} />
                         <h2 className="font-bold">اتصال ابری (Firebase)</h2>
                     </div>
-                    <div className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${cloudStatus === 'connected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${cloudStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        {cloudStatus === 'connected' ? 'متصل' : 'قطع'}
+                    <div className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${statusBadge.cls}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`}></div>
+                        {statusBadge.label}
                     </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
                     <p className="text-xs text-gray-500 mb-1">Project ID</p>
                     <p className="font-mono text-sm text-gray-800 dark:text-gray-200">{firebaseConfig.projectId}</p>
                 </div>
+
+                {(cloudStatus === 'error' || cloudError) && (
+                    <div className="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+                        <div className="flex items-start gap-2 font-bold">
+                            <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
+                            <span>{cloudError || 'قوانین امنیتی Firestore در پروژه فایربیس شما اجازه خواندن/نوشتن را مسدود کرده است.'}</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed opacity-90">
+                            در Firebase Console وارد <span dir="ltr" className="font-mono font-semibold">Firestore Database → Rules</span> شوید، قوانین را جای‌گذاری کرده و دکمه <strong>Publish</strong> را بزنید؛ سپس «بررسی مجدد اتصال» را کلیک کنید.
+                        </p>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            <button
+                                type="button"
+                                onClick={handleCopyRules}
+                                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-amber-700 transition"
+                            >
+                                {copiedRules ? <Check size={13} /> : <Copy size={13} />}
+                                {copiedRules ? 'کپی شد!' : 'کپی قوانین Firestore Rules'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowRulesBox((v) => !v)}
+                                className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 font-bold text-[11px]"
+                            >
+                                {showRulesBox ? 'بستن کد قوانین' : 'مشاهده کد قوانین'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => syncData?.()}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 hover:bg-emerald-700 transition"
+                            >
+                                <RefreshCw size={12} />
+                                بررسی مجدد اتصال
+                            </button>
+                        </div>
+                        {showRulesBox && (
+                            <pre dir="ltr" className="mt-2 p-2.5 rounded-lg bg-slate-900 text-slate-100 text-[10px] font-mono overflow-x-auto max-h-44">
+                                {FIRESTORE_RULES_GUIDE}
+                            </pre>
+                        )}
+                    </div>
+                )}
+
                 <div className="flex flex-col md:flex-row gap-2 mt-4">
                     <button onClick={() => setIsEditing(true)} className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition">ویرایش</button>
                     <button onClick={removeFirebaseConfig} className="flex-1 py-2 text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition">حذف اتصال</button>
@@ -349,7 +425,7 @@ const FirebaseSettings = () => {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-3 mb-4 text-orange-600 dark:text-orange-400">
                 <Cloud size={20} />
                 <h2 className="font-bold">تنظیمات فایربیس</h2>
@@ -400,20 +476,53 @@ const FirebaseSettings = () => {
     );
 };
 
+const isJalaaliLeapYear = (jy: number): boolean => {
+    const breaks = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
+    let jp = breaks[0];
+    let jump = 0;
+    for (let i = 1; i < breaks.length; i++) {
+        const jm = breaks[i];
+        jump = jm - jp;
+        if (jy < jm) break;
+        jp = jm;
+    }
+    let n = jy - jp;
+    if (jump - n < 6) n = n - jump + Math.floor((jump + 4) / 33) * 33;
+    let leap = (((n + 1) % 33) - 1) % 4;
+    if (leap === -1) leap = 4;
+    return leap === 0;
+};
+
+const getJalaaliMonthLength = (jy: number, jm: number): number => {
+    if (jm <= 6) return 31;
+    if (jm <= 11) return 30;
+    return isJalaaliLeapYear(jy) ? 30 : 29;
+};
+
 const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: string) => void }) => {
-    // Basic implementation using 3 selects
-    const d = new Date(date);
-    const [jDate, setJDate] = useState({ jy: 1403, jm: 1, jd: 1 });
+    const parsed = new Date(date);
+    const safeDate = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    const now = new Date();
+    const currentYear = toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate()).jy;
+
+    const [jDate, setJDate] = useState(() =>
+        toJalaali(safeDate.getFullYear(), safeDate.getMonth() + 1, safeDate.getDate())
+    );
 
     useEffect(() => {
+        const d = new Date(date);
+        if (Number.isNaN(d.getTime())) return;
         const { jy, jm, jd } = toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate());
         setJDate({ jy, jm, jd });
     }, [date]);
 
     const handleChange = (field: 'jy' | 'jm' | 'jd', value: number) => {
-        const newJDate = { ...jDate, [field]: value };
+        const nextYear = field === 'jy' ? value : jDate.jy;
+        const nextMonth = field === 'jm' ? value : jDate.jm;
+        const maxDay = getJalaaliMonthLength(nextYear, nextMonth);
+        const nextDay = Math.min(field === 'jd' ? value : jDate.jd, maxDay);
+        const newJDate = { jy: nextYear, jm: nextMonth, jd: nextDay };
         setJDate(newJDate);
-        // Convert back to Gregorian for storage
         const gDate = toGregorian(newJDate.jy, newJDate.jm, newJDate.jd);
         onChange(toIsoString(gDate));
     };
@@ -423,20 +532,23 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
         'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
     ];
 
-    const currentYear = 1403; // Base
-    const years = Array.from({ length: 10 }, (_, i) => currentYear - 2 + i); // 1401 to 1410
-    const days = Array.from({ length: 31 }, (_, i) => i + 1);
+    const baseYear = Math.min(currentYear, jDate.jy);
+    const years = Array.from({ length: 10 }, (_, i) => baseYear - 2 + i);
+    const maxDays = getJalaaliMonthLength(jDate.jy, jDate.jm);
+    const days = Array.from({ length: maxDays }, (_, i) => i + 1);
 
     return (
         <div className="flex items-center gap-2">
             <select
-                value={jDate.jd}
+                aria-label="روز"
+                value={Math.min(jDate.jd, maxDays)}
                 onChange={(e) => handleChange('jd', Number(e.target.value))}
                 className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white text-sm rounded-xl px-2 py-2 outline-none focus:border-indigo-500 appearance-none text-center cursor-pointer min-w-[50px]"
             >
                 {days.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             <select
+                aria-label="ماه"
                 value={jDate.jm}
                 onChange={(e) => handleChange('jm', Number(e.target.value))}
                 className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white text-sm rounded-xl px-2 py-2 outline-none focus:border-indigo-500 appearance-none text-center cursor-pointer min-w-[100px]"
@@ -444,6 +556,7 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
                 {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
             <select
+                aria-label="سال"
                 value={jDate.jy}
                 onChange={(e) => handleChange('jy', Number(e.target.value))}
                 className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white text-sm rounded-xl px-2 py-2 outline-none focus:border-indigo-500 appearance-none text-center cursor-pointer min-w-[70px]"
@@ -454,26 +567,36 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
     );
 };
 
-
-
 const Settings = () => {
     const {
-        user, login, register, logout, userName, setUserName, userId,
-        cloudStatus, syncData, loadFromCloud, firebaseConfig, updateFirebaseConfig, removeFirebaseConfig,
+        user, logout, userName, setUserName,
+        syncData, loadFromCloud, firebaseConfig,
+        retryDeadLetters,
         startDate, setStartDate, autoFixDate, totalDays, setTotalDays,
         exportData, importData, resetProgress,
         darkMode, toggleDarkMode, viewMode, setViewMode, showToast, showQuotes, toggleShowQuotes,
-        settings, updateSettings, archivedPlans, archiveCurrentPlan
+        settings, updateSettings, archiveCurrentPlan
     } = useStore();
+    const { deadLetterCount } = useStoreSyncStatus();
 
-    const { themePalette, setThemePalette } = useTheme();
-
+    const { themePalette, setThemePalette, themePreference, setThemePreference } = useTheme();
     const navigate = useNavigate();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
+    const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+    const [archiveTitleInput, setArchiveTitleInput] = useState('');
+    const [hapticsActive, setHapticsActive] = useState<boolean>(() => isHapticsEnabled());
 
+    useEffect(() => {
+        if (!isArchiveModalOpen) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsArchiveModalOpen(false);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isArchiveModalOpen]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -498,7 +621,7 @@ const Settings = () => {
 
 
     return (
-        <div className="max-w-5xl mx-auto p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 max-app-container pb-32 space-y-6 animate-in fade-in duration-300">
+        <div className="max-w-5xl mx-auto p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 max-app-container pb-32 space-y-6">
 
 
             {/* Header */}
@@ -518,7 +641,7 @@ const Settings = () => {
             </div>
 
             {/* --- 1. General Settings (Date & Duration) --- */}
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-3 mb-4 text-teal-600 dark:text-teal-400">
                     <Calendar size={20} />
                     <h2 className="font-bold">تنظیمات عمومی</h2>
@@ -641,17 +764,14 @@ const Settings = () => {
                 </div>
             </div>
 
-            {/* --- 2. Gemini AI API Key --- */}
-            <GeminiApiKeySettings />
-            <div className="bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/40 rounded-2xl px-4 py-2.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                🔒 امنیت کلید هوش مصنوعی: کلید Gemini API صرفاً به صورت محلی در مرورگر شما ذخیره می‌شود و هرگز در سرور ابری یا Firestore همگام‌سازی نمی‌شود.
-            </div>
+            {/* --- 2. Gemini AI Model Settings --- */}
+            <GeminiModelSettings />
 
             {/* --- 3. Account & Data --- */}
             <div className="grid md:grid-cols-2 gap-6">
 
                 {/* Profile */}
-                <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
                         <User size={20} />
                         <h2 className="font-bold">حساب کاربری</h2>
@@ -709,68 +829,112 @@ const Settings = () => {
                 {/* Personalization & Backup */}
                 <div className="space-y-6">
                     {/* Personalization */}
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-3 mb-4 text-purple-600 dark:text-purple-400">
                             <Eye size={20} />
                             <h2 className="font-bold">شخصی‌سازی</h2>
                         </div>
                         <div className="flex flex-col gap-3">
-                            <button onClick={toggleDarkMode} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Moon size={16} /> حالت شب</span>
-                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${darkMode ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
-                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${darkMode ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                                    <Moon size={16} aria-hidden="true" /> حالت نمایش
+                                </span>
+                                <div className="flex bg-gray-200 dark:bg-gray-600 p-0.5 rounded-xl gap-0.5" role="group" aria-label="انتخاب حالت نمایش">
+                                    {(
+                                        [
+                                            { id: 'system', label: 'سیستم' },
+                                            { id: 'light', label: 'روشن' },
+                                            { id: 'dark', label: 'تیره' },
+                                        ] as const
+                                    ).map((opt) => (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            aria-pressed={themePreference === opt.id}
+                                            onClick={() => setThemePreference(opt.id)}
+                                            className={`px-2.5 min-h-[32px] text-xs font-bold rounded-lg transition cursor-pointer ${
+                                                themePreference === opt.id
+                                                    ? 'bg-white dark:bg-slate-800 shadow-xs text-primary dark:text-white'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
                                 </div>
-                            </button>
+                            </div>
                             <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                                 <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><LayoutList size={16} /> فشرده</span>
                                 <div className="flex bg-gray-200 dark:bg-gray-600 p-0.5 rounded-lg">
-                                    <button onClick={() => setViewMode('normal')} className={`px-2 py-0.5 text-[10px] rounded-md transition ${viewMode === 'normal' ? 'bg-white shadow text-black' : 'text-gray-500'}`}>عادی</button>
-                                    <button onClick={() => setViewMode('compact')} className={`px-2 py-0.5 text-[10px] rounded-md transition ${viewMode === 'compact' ? 'bg-white shadow text-black' : 'text-gray-500'}`}>فشرده</button>
+                                    <button type="button" onClick={() => setViewMode('normal')} className={`px-2 py-0.5 text-[10px] rounded-md transition cursor-pointer ${viewMode === 'normal' ? 'bg-white shadow text-black' : 'text-gray-500 dark:text-gray-300'}`}>عادی</button>
+                                    <button type="button" onClick={() => setViewMode('compact')} className={`px-2 py-0.5 text-[10px] rounded-md transition cursor-pointer ${viewMode === 'compact' ? 'bg-white shadow text-black' : 'text-gray-500 dark:text-gray-300'}`}>فشرده</button>
                                 </div>
                             </div>
-                            <button onClick={toggleShowQuotes} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Quote size={16} /> نمایش جملات انگیزشی</span>
-                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${showQuotes ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
-                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${showQuotes ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                </div>
-                            </button>
-                            <button onClick={() => updateSettings({ bioTheme: !settings?.bioTheme })} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><Sun size={16} /> حالت هوشمند زمان‌بندی (BioTheme)</span>
-                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.bioTheme ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
-                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.bioTheme ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                </div>
-                            </button>
-                            <button onClick={() => updateSettings({ strictLockEnabled: !settings?.strictLockEnabled })} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">🔒 قفل سخت تمرکز (Fullscreen + تشخیص خروج)</span>
-                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.strictLockEnabled ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
-                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.strictLockEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                </div>
-                            </button>
-                            <button onClick={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">🕵️ نمایش ناشناس در جدول لیگ (حفظ حریم خصوصی)</span>
-                                <div className={`w-8 h-4 rounded-full p-0.5 transition-colors relative ${settings?.anonymizedLeaderboard ? 'bg-indigo-500' : 'bg-gray-300'}`} dir="ltr">
-                                    <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform absolute top-0.5 left-0.5 ${settings?.anonymizedLeaderboard ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                                </div>
-                            </button>
-                            
+                            <AnimatedSwitch
+                                checked={showQuotes}
+                                onChange={toggleShowQuotes}
+                                label={
+                                    <>
+                                        <Quote size={16} aria-hidden="true" />
+                                        <span>نمایش جملات انگیزشی</span>
+                                    </>
+                                }
+                            />
+                            <AnimatedSwitch
+                                checked={Boolean(settings?.bioTheme)}
+                                onChange={() => updateSettings({ bioTheme: !settings?.bioTheme })}
+                                label={
+                                    <>
+                                        <Sun size={16} aria-hidden="true" />
+                                        <span>حالت هوشمند زمان‌بندی (BioTheme)</span>
+                                    </>
+                                }
+                            />
+                            <AnimatedSwitch
+                                checked={Boolean(settings?.strictLockEnabled)}
+                                onChange={() => updateSettings({ strictLockEnabled: !settings?.strictLockEnabled })}
+                                label={<span>🔒 قفل سخت تمرکز (Fullscreen + تشخیص خروج)</span>}
+                            />
+                            <AnimatedSwitch
+                                checked={Boolean(settings?.anonymizedLeaderboard)}
+                                onChange={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })}
+                                label={<span>🕵️ نمایش ناشناس در جدول لیگ (حفظ حریم خصوصی)</span>}
+                            />
+                            <AnimatedSwitch
+                                checked={hapticsActive}
+                                onChange={() => {
+                                    const next = !hapticsActive;
+                                    setHapticsActive(next);
+                                    setHapticsEnabled(next);
+                                    if (next) haptics.medium();
+                                }}
+                                label={
+                                    <>
+                                        <Smartphone size={16} aria-hidden="true" />
+                                        <span>بازخورد لمسی (ویبره در لمس و ژست‌ها)</span>
+                                    </>
+                                }
+                            />
+
                             {/* انتخاب تم رنگی (Theme Palette Picker) */}
-                            <div className="p-3 bg-gray-50 dark:bg-gray-900/30 rounded-2xl border border-gray-150/10 dark:border-gray-800/20 mt-1">
+                            <div className="p-3 bg-gray-50 dark:bg-gray-900/30 squircle-card border border-gray-200/60 dark:border-gray-800/40 mt-1">
                                 <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3">
                                     <Palette size={16} className="text-purple-500" />
-                                    پالت رنگی برنامه (تم ۲۰۲۶)
+                                    پالت رنگی برنامه
                                 </span>
                                 <div className="grid grid-cols-3 gap-2.5">
                                     {[
-                                        { id: 'indigo', name: 'نیلی نئونی', color: 'from-indigo-500 to-indigo-650', border: 'border-indigo-500/20' },
+                                        { id: 'indigo', name: 'نیلی نئونی', color: 'from-indigo-500 to-indigo-700', border: 'border-indigo-500/20' },
                                         { id: 'forest', name: 'جنگل آرام', color: 'from-emerald-500 to-green-600', border: 'border-emerald-500/20' },
                                         { id: 'rosegold', name: 'رز گلد لوکس', color: 'from-rose-400 to-rose-600', border: 'border-rose-500/20' }
                                     ].map(theme => (
                                         <button
                                             key={theme.id}
+                                            type="button"
                                             onClick={() => setThemePalette(theme.id as any)}
-                                            className={`relative p-3.5 rounded-2xl border text-center transition-all duration-300 flex flex-col items-center gap-2 cursor-pointer btn-micro-interactive ${
-                                                themePalette === theme.id 
-                                                    ? 'bg-white dark:bg-gray-800 border-indigo-600 shadow-md ring-2 ring-indigo-500/20' 
+                                            className={`relative p-3.5 squircle-sm border text-center transition-all duration-300 flex flex-col items-center gap-2 cursor-pointer btn-micro-interactive ${
+                                                themePalette === theme.id
+                                                    ? 'bg-white dark:bg-gray-800 border-indigo-600 shadow-md ring-2 ring-indigo-500/20'
                                                     : 'bg-transparent border-gray-200 dark:border-gray-700 hover:bg-white/5 hover:border-gray-300 dark:hover:border-gray-600'
                                             }`}
                                         >
@@ -786,7 +950,7 @@ const Settings = () => {
                     </div>
 
                     {/* Backup */}
-                    <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                                 <HardDrive size={20} />
@@ -803,7 +967,7 @@ const Settings = () => {
             </div>
 
             {/* --- Print Settings --- */}
-            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="flex items-center gap-3 mb-4 text-sky-600 dark:text-sky-400">
                     <Printer size={20} />
                     <h2 className="font-bold">چاپ برنامه</h2>
@@ -830,22 +994,37 @@ const Settings = () => {
 
             {/* Sync Controls (Only if connected) */}
             {firebaseConfig && (
-                <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
+                    <div className="flex items-center justify-between">
                         <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
                             <RefreshCw size={18} className="text-blue-500" />
                             همگام‌سازی دستی
                         </h2>
                     </div>
+                    {(deadLetterCount ?? 0) > 0 && (
+                        <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                <AlertTriangle size={16} />
+                                {deadLetterCount} تغییر در صف ناموفق همگام‌سازی باقی مانده است.
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => retryDeadLetters()}
+                                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer shrink-0"
+                            >
+                                تلاش مجدد
+                            </button>
+                        </div>
+                    )}
                     <div className="flex flex-col md:flex-row gap-3">
-                        <button onClick={syncData} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition">آپلود تغییرات</button>
-                        <button onClick={loadFromCloud} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition">دانلود از سرور</button>
+                        <button type="button" onClick={syncData} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition cursor-pointer">آپلود تغییرات</button>
+                        <button type="button" onClick={loadFromCloud} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition cursor-pointer">دانلود از سرور</button>
                     </div>
                 </div>
             )}
 
-            {/* Danger Zone & Archive (سیستم خفن!) */}
-            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-3xl border border-amber-100 dark:border-amber-900/30 space-y-4">
+            {/* Danger Zone & Archive */}
+            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 squircle-lg border border-amber-100 dark:border-amber-900/30 space-y-4">
                 <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
                     <HistoryIcon size={20} />
                     <h2 className="font-bold">مدیریت دوره‌ها (آرشیو)</h2>
@@ -853,29 +1032,32 @@ const Settings = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
+                        type="button"
                         onClick={() => {
-                            const title = prompt('نامی برای برنامه فعلی خود انتخاب کنید:', `برنامه ${getFullShamsiDate(new Date(startDate))}`);
-                            if (title !== null) archiveCurrentPlan(title);
+                            setArchiveTitleInput(`برنامه ${getFullShamsiDate(new Date(startDate))}`);
+                            setIsArchiveModalOpen(true);
                         }}
-                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition text-sm shadow-md"
+                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition text-sm shadow-md cursor-pointer"
                     >
                         <Save size={18} />
                         آرشیو برنامه فعلی و شروع جدید
                     </button>
 
                     <button
+                        type="button"
                         onClick={() => navigate('/history')}
-                        className="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm"
+                        className="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm cursor-pointer"
                     >
                         <Eye size={18} />
-                        مشاهده آرشیو و تاریخچه (سیستم خفن)
+                        مشاهده آرشیو و تاریخچه دوره‌ها
                     </button>
                 </div>
 
                 <div className="pt-4 border-t border-amber-100 dark:border-amber-900/30">
                     <button
+                        type="button"
                         onClick={resetProgress}
-                        className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-700 py-2 font-bold text-xs"
+                        className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-700 py-2 font-bold text-xs cursor-pointer"
                     >
                         <RefreshCw size={14} />
                         پاک کردن کامل همه داده‌ها (انجام نشود مگر در مورد اضطراری)
@@ -885,6 +1067,60 @@ const Settings = () => {
 
             {/* Help Section (Moved to Bottom) */}
             <HelpSection />
+
+            {/* Controlled Archive Title ModalSheet */}
+            <ModalSheet
+                isOpen={isArchiveModalOpen}
+                onClose={() => setIsArchiveModalOpen(false)}
+                title="نام‌گذاری دوره برای آرشیو"
+                subtitle="برنامه فعلی در تاریخچه ذخیره شده و دوره جدید آغاز می‌شود"
+                historyKey="settings-archive-modal"
+                maxWidthClass="max-w-md"
+            >
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const trimmed = archiveTitleInput.trim();
+                        if (!trimmed) return;
+                        archiveCurrentPlan(trimmed);
+                        setIsArchiveModalOpen(false);
+                    }}
+                    className="p-5 space-y-4 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-5"
+                >
+                    <div>
+                        <label
+                            htmlFor="archive-title-input"
+                            className="text-xs font-bold text-[var(--text-secondary)] block mb-2"
+                        >
+                            نامی برای برنامه فعلی خود انتخاب کنید:
+                        </label>
+                        <input
+                            id="archive-title-input"
+                            data-autofocus="true"
+                            type="text"
+                            value={archiveTitleInput}
+                            onChange={(e) => setArchiveTitleInput(e.target.value)}
+                            className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-2.5 text-base sm:text-sm outline-none focus:border-primary text-on-surface"
+                        />
+                    </div>
+                    <div className="flex items-center justify-end gap-2.5 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsArchiveModalOpen(false)}
+                            className="min-h-[44px] px-4 py-2 rounded-xl bg-surface-container text-on-surface text-xs font-bold cursor-pointer"
+                        >
+                            انصراف
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!archiveTitleInput.trim()}
+                            className="min-h-[44px] px-5 py-2 rounded-xl bg-primary hover:brightness-110 text-on-primary text-xs font-bold disabled:opacity-50 cursor-pointer"
+                        >
+                            آرشیو و شروع جدید
+                        </button>
+                    </div>
+                </form>
+            </ModalSheet>
 
             <div className="text-center mt-8 pb-8">
                 <p className="text-[10px] text-gray-300 dark:text-gray-600">ParsaPlan v4.5 - Designed for Excellence</p>

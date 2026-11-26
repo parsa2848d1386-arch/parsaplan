@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useStore } from '../context/StoreContext';
 import {
     Plus, Clock, Zap, TrendingUp, CheckCircle2, Flame,
@@ -12,6 +13,15 @@ import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import { SubjectTask, isSpecializedSubject, MoodType } from '../types';
 import { WelcomeBanner } from '../components/WelcomeBanner';
+import { getTimeOfDayGreeting } from '../utils/designSystemHelpers';
+import { haptics } from '../utils/haptics';
+import {
+    SQUASH_STRETCH_KEYFRAMES,
+    STAGGER_CONTAINER_VARIANTS,
+    STAGGER_ITEM_VARIANTS,
+    TRANSITION_SQUASH,
+} from '../utils/motionPresets';
+import { PeakEndCheckmark, TactileDepthCard } from '../components/ui/MotionPrimitives';
 
 /* ===== 5 Custom Vector SVG Icons for Today's Mood (No Text Emojis) ===== */
 const IconMoodExcellent: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
@@ -120,13 +130,15 @@ const PERSIAN_SHORT_WEEKDAYS = ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', '�
 
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
+    const prefersReducedMotion = useReducedMotion();
     const {
         userName, currentDay, getTasksByDate, getDayDate,
         tasks: allTasks, setIsTimerOpen,
         toggleTask, updateTask, deleteTask, moveTaskToDate, viewMode,
         isNewUser, setIsNewUser, addTask, rebalancePlan,
         settings,
-        streakStats, studyMinutesByDate, moods, setMood
+        streakStats, studyMinutesByDate, moods, setMood,
+        isDemoActive, dismissDemoMode
     } = useStore();
 
     const [selectedDateOverride, setSelectedDateOverride] = useState<string | null>(null);
@@ -162,7 +174,7 @@ export const Dashboard: React.FC = () => {
     };
 
     // Current Mood for Active Date
-    const currentMood = (moods && moods[activeDateIso]) || 'high-energy';
+    const currentMood = (moods && moods[activeDateIso]) || undefined;
 
     const handleSelectMood = (moodId: MoodType) => {
         if (setMood) {
@@ -217,28 +229,61 @@ export const Dashboard: React.FC = () => {
     const completedDailyTasks = useMemo(() => dailyTasks.filter(t => t.isCompleted).length, [dailyTasks]);
     const dailyPct = dailyTasks.length > 0 ? Math.round((completedDailyTasks / dailyTasks.length) * 100) : 0;
 
-    // Study minutes today
-    const studyMinsToday = studyMinutesByDate?.[todayLogicalKey] || 0;
+    // Study minutes today (strictly computed from logged sessions/minutes; no fake 68% fallback)
+    const studyMinsToday =
+        studyMinutesByDate?.[activeDateIso] ??
+        (activeDateIso === todayIso ? studyMinutesByDate?.[todayLogicalKey] : undefined) ??
+        dailyTasks
+            .filter(t => t.isCompleted)
+            .reduce((sum, t) => sum + (t.actualDuration || 0), 0);
     const studyHoursToday = Math.floor(studyMinsToday / 60);
     const studyRemMinsToday = studyMinsToday % 60;
-    const focusTargetHours = 8;
-    const focusProgressPct = Math.min(100, Math.round((studyMinsToday / (focusTargetHours * 60)) * 100)) || 68;
+    const focusTargetHours = Math.max(1, Math.round(((settings?.dailyCapacityMinutes ?? 360) / 60) * 10) / 10);
+    const focusProgressPct = Math.min(100, Math.round((studyMinsToday / (focusTargetHours * 60)) * 100));
+
+    // Scheduled timeblocks for today derived from real tasks with startTime
+    const scheduledTimeblocks = useMemo(() => {
+        const withTime = dailyTasks
+            .filter(t => Boolean(t.startTime))
+            .slice()
+            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+        const formatEnd = (start: string, dur: number) => {
+            const [hh, mm] = start.split(':').map(Number);
+            if (isNaN(hh) || isNaN(mm)) return '';
+            const total = (hh * 60 + mm + dur) % (24 * 60);
+            return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+        };
+
+        return withTime.slice(0, 3).map((t, idx) => {
+            const dur = t.durationMinutes || 60;
+            const end = formatEnd(t.startTime!, dur);
+            return {
+                id: t.id,
+                badge: idx === 0 ? 'بلوک جاری' : idx === 1 ? 'بلوک بعدی' : 'بلوک پایانی',
+                timeRange: end ? `${t.startTime} - ${end}` : t.startTime!,
+                title: `${t.subject}${t.topic ? ` — ${t.topic}` : ''}`,
+                subtitle: t.details || `${formatToPersianDigits(dur)} دقیقه تمرکز`,
+                isCompleted: t.isCompleted,
+            };
+        });
+    }, [dailyTasks]);
 
     const overdueTasks = useMemo(
         () => allTasks.filter(t => t.date < todayIso && !t.isCompleted && t.date !== activeDateIso),
         [allTasks, todayIso, activeDateIso]
     );
 
-    const handleEdit = (e: React.MouseEvent, task: SubjectTask) => {
+    const handleEdit = useCallback((e: React.MouseEvent, task: SubjectTask) => {
         e.stopPropagation();
         setEditingTask(task);
         setIsModalOpen(true);
-    };
+    }, []);
 
-    const handleDelete = (e: React.MouseEvent, id: string) => {
+    const handleDelete = useCallback((e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         deleteTask(id);
-    };
+    }, [deleteTask]);
 
     const handleSaveTask = (taskData: Partial<SubjectTask>) => {
         if (editingTask) {
@@ -261,7 +306,7 @@ export const Dashboard: React.FC = () => {
         setEditingTask(null);
     };
 
-    const handleMoveToToday = (taskId: string) => moveTaskToDate(taskId, todayIso);
+    const handleMoveToToday = useCallback((taskId: string) => moveTaskToDate(taskId, todayIso), [moveTaskToDate, todayIso]);
 
     const handleBrainDumpSubmit = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -287,7 +332,7 @@ export const Dashboard: React.FC = () => {
         setTimeout(() => setBrainDumpFeedback(null), 3500);
     };
 
-    const streakCount = streakStats?.currentStreak ?? 14;
+    const streakCount = streakStats?.currentStreak ?? 0;
 
     return (
         <div className="p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6 w-full max-app-container">
@@ -297,57 +342,79 @@ export const Dashboard: React.FC = () => {
                 onDismiss={() => setIsNewUser(false)}
             />
 
-            {/* ===== 1. Hero Bento Banner (Merged Greeting + Deep Focus) ===== */}
-            <section className="bento-card-interactive relative overflow-hidden rounded-3xl p-5 sm:p-7 shadow-sm border border-outline-variant/30 bg-gradient-to-br from-surface-container-lowest via-surface-container-lowest to-primary/5 dark:from-slate-900 dark:via-slate-900/95 dark:to-indigo-950/30 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                {/* Decorative ambient gradient backdrop */}
-                <div className="absolute -left-12 -top-12 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute right-1/4 -bottom-10 w-44 h-44 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+            {/* Native Workspace Preview Notice (Calm, non-promotional surface — Banner Blindness fix) */}
+            {isDemoActive && (
+                <div className="flex flex-wrap items-center justify-between gap-3 squircle-card px-4 py-2.5 bg-[var(--surface-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+                        <span className="font-bold text-on-surface shrink-0">پیش‌نمایش نمونه</span>
+                        <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
+                        <span className="font-medium truncate sm:whitespace-normal">
+                            با ثبت اولین فعالیت یا جلسه تمرکز، داده‌های واقعی شما جایگزین می‌شوند.
+                        </span>
+                    </div>
+                    {dismissDemoMode && (
+                        <button
+                            type="button"
+                            onClick={dismissDemoMode}
+                            className="px-3 min-h-[34px] rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold transition-colors cursor-pointer shrink-0"
+                        >
+                            بستن پیش‌نمایش
+                        </button>
+                    )}
+                </div>
+            )}
 
+            {/* ===== 1. Hero Bento Banner (Principle 17: Solid Drawing Tactile 3D Depth + G2 Squircle) ===== */}
+            <TactileDepthCard className="squircle-lg">
+            <section className="relative overflow-hidden squircle-lg p-4 sm:p-6 border border-[var(--border-subtle)] bg-[var(--surface-elevated)] flex flex-col lg:flex-row lg:items-center justify-between gap-5">
                 {/* Right Side: Greeting & Study Summary */}
                 <div className="flex flex-col gap-2.5 min-w-0 z-10 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="font-headline-lg text-xl sm:text-2xl md:text-3xl text-on-surface dark:text-white font-bold tracking-tight">
-                            صبح بخیر، {userName || 'سارا'} 👋
+                        <h1 className="text-xl sm:text-2xl md:text-3xl text-on-surface font-extrabold leading-snug">
+                            {getTimeOfDayGreeting(new Date().getHours())}، {userName || 'دوست من'}
                         </h1>
-                        <span className="font-label-sm text-xs bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full font-semibold shadow-xs">
+                        <span className="text-xs bg-primary-fixed text-on-primary-fixed px-2.5 py-1 rounded-full font-semibold">
                             {getShamsiDate(activeDateIso)}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 font-label-sm text-xs text-secondary bg-secondary-container/40 dark:bg-secondary-container/20 px-3 py-1 rounded-full font-semibold">
-                            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                            سیستم آمادگی ذهنی فعال
                         </span>
                     </div>
 
-                    <p className="font-body-md text-xs sm:text-sm text-on-surface-variant dark:text-gray-300 leading-relaxed max-w-2xl">
-                        برنامه مطالعه روزانه: {formatToPersianDigits(studyHoursToday > 0 ? `${studyHoursToday} ساعت و ${studyRemMinsToday} دقیقه` : '۵.۵ ساعت')} تمرکز عمیق ثبت شده است. {formatToPersianDigits(dailyTasks.length - completedDailyTasks)} تسک از {formatToPersianDigits(dailyTasks.length)} تسک کلیدی باقی مانده.
-                    </p>
-
-                    <div className="flex items-center gap-3 text-xs text-on-surface-variant dark:text-gray-400 mt-1 flex-wrap">
-                        <span className="inline-flex items-center gap-1 bg-surface-container-low dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-outline-variant/15">
-                            <Clock size={14} className="text-primary shrink-0" />
-                            هدف روز: {formatToPersianDigits(focusTargetHours)} ساعت مطالعه فعال
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-secondary">
+                        <span className="whitespace-nowrap">سیستم آمادگی ذهنی فعال</span>
+                        <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
+                        <span className="text-[var(--text-secondary)] font-medium tabular-nums whitespace-nowrap">
+                            هدف روز: {formatToPersianDigits(focusTargetHours)} ساعت
                         </span>
-                        <span className="inline-flex items-center gap-1 bg-surface-container-low dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-outline-variant/15">
-                            <CheckCircle2 size={14} className="text-secondary shrink-0" />
+                        <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
+                        <span className="text-[var(--text-secondary)] font-medium tabular-nums whitespace-nowrap">
                             پیشرفت وظایف: {formatToPersianDigits(dailyPct)}٪
                         </span>
                     </div>
+
+                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-2xl">
+                        {studyMinsToday > 0
+                            ? `برنامه مطالعه روزانه: ${formatToPersianDigits(`${studyHoursToday} ساعت و ${studyRemMinsToday} دقیقه`)} تمرکز عمیق ثبت شده است.`
+                            : 'هنوز جلسه تمرکزی برای امروز ثبت نشده است؛ تایمر فوکوس را آغاز کنید.'}{' '}
+                        {dailyTasks.length > 0
+                            ? `${formatToPersianDigits(dailyTasks.length - completedDailyTasks)} تسک از ${formatToPersianDigits(dailyTasks.length)} تسک کلیدی باقی مانده.`
+                            : 'هنوز تسکی برای امروز برنامه‌ریزی نشده است.'}
+                    </p>
                 </div>
 
-                {/* Left Side: Modern Mini Focus Widget & Quick Actions */}
-                <div className="flex items-center gap-4 sm:gap-5 self-start lg:self-auto flex-wrap sm:flex-nowrap z-10 shrink-0">
-                    {/* Compact Interactive Progress Ring */}
-                    <div className="flex items-center gap-3 bg-surface-container-low/80 dark:bg-slate-800/80 p-2.5 px-3.5 rounded-2xl border border-outline-variant/20 shadow-xs">
-                        <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
-                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48">
+                {/* Left Side: Compact Focus Ring & Thumb-Friendly Actions */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 z-10 shrink-0 w-full lg:w-auto">
+                    {/* Compact Interactive Progress Ring (Concentric inner radius 12px) */}
+                    <div className="flex items-center gap-3 bg-surface-container-low p-2.5 px-3.5 rounded-xl border border-[var(--border-subtle)]">
+                        <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48" aria-hidden="true">
                                 <circle
-                                    className="text-surface-container-high dark:text-slate-700 fill-none"
+                                    className="text-surface-container-high fill-none"
                                     cx="24" cy="24" r="19"
                                     stroke="currentColor"
                                     strokeWidth="4"
                                 />
                                 <circle
-                                    className="text-primary fill-none transition-all duration-700 ease-out"
+                                    className="text-primary fill-none transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)]"
                                     cx="24" cy="24" r="19"
                                     stroke="currentColor"
                                     strokeDasharray="119.38"
@@ -356,43 +423,46 @@ export const Dashboard: React.FC = () => {
                                     strokeWidth="4"
                                 />
                             </svg>
-                            <span className="absolute text-[11px] font-bold font-mono text-on-surface dark:text-white">
+                            <span className="absolute text-[11px] font-bold tabular-nums text-on-surface">
                                 {formatToPersianDigits(focusProgressPct)}٪
                             </span>
                         </div>
                         <div className="flex flex-col text-right">
-                            <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">تمرکز عمیق</span>
-                            <span className="font-label-md text-xs font-bold text-on-surface dark:text-white">
-                                {formatToPersianDigits(studyHoursToday > 0 ? `${studyHoursToday}h ${studyRemMinsToday}m` : '۰۵:۳۰')}
+                            <span className="text-xs text-[var(--text-secondary)] font-medium">تمرکز عمیق</span>
+                            <span className="text-sm font-bold text-on-surface tabular-nums" dir="ltr">
+                                {formatToPersianDigits(
+                                    `${String(studyHoursToday).padStart(2, '0')}:${String(studyRemMinsToday).padStart(2, '0')}`
+                                )}
                             </span>
                         </div>
                     </div>
 
-                    {/* CTA Actions */}
-                    <div className="flex items-center gap-2.5">
+                    {/* Symmetric Full-Width Mobile CTAs */}
+                    <div className="grid grid-cols-2 sm:flex items-center gap-2.5">
                         <button
                             type="button"
                             onClick={() => setIsTimerOpen(true)}
-                            className="touch-target flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary-container text-on-primary px-4 py-2.5 rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-md font-bold text-xs cursor-pointer min-h-[44px]"
+                            className="touch-target flex items-center justify-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-sm font-bold text-xs cursor-pointer min-h-[46px] whitespace-nowrap"
                         >
-                            <Play size={16} fill="currentColor" />
+                            <Play size={16} fill="currentColor" aria-hidden="true" />
                             <span>تایمر فوکوس</span>
                         </button>
 
                         <button
                             type="button"
                             onClick={openNewTaskModal}
-                            className="touch-target flex items-center justify-center gap-1.5 bg-surface-container-low dark:bg-slate-800 text-on-surface dark:text-white hover:bg-surface-container px-4 py-2.5 rounded-xl border border-outline-variant/30 active:scale-95 transition-all font-bold text-xs cursor-pointer min-h-[44px]"
+                            className="touch-target flex items-center justify-center gap-1.5 bg-surface-container-low text-on-surface hover:bg-surface-container px-4 py-2.5 rounded-xl border border-[var(--border-subtle)] active:scale-[0.98] transition-all font-bold text-xs cursor-pointer min-h-[46px] whitespace-nowrap"
                         >
-                            <Plus size={16} />
+                            <Plus size={16} aria-hidden="true" />
                             <span>تسک جدید</span>
                         </button>
                     </div>
                 </div>
             </section>
+            </TactileDepthCard>
 
             {/* ===== 2. 7-Day Persian Weekly Calendar with Liquid Fill Effect ===== */}
-            <section className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-outline-variant/20">
+            <section className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 squircle-lg shadow-sm border border-outline-variant/20">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-outline-variant/20 gap-3">
                     <div className="flex items-center gap-2">
                         <Calendar size={20} className="text-primary shrink-0" />
@@ -430,36 +500,35 @@ export const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 7 Days Liquid Fill Grid */}
-                <div className="grid grid-cols-7 gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-1">
+                {/* 7 Days Liquid Fill Strip — Visual Completion (~32% next-card peek) on mobile, 7-col grid on md+ */}
+                <div className="flex md:grid md:grid-cols-7 gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1">
                     {weekDays.map((d) => (
                         <button
                             key={d.iso}
                             type="button"
                             onClick={() => setSelectedDateOverride(d.iso)}
-                            className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2.5 sm:p-3 rounded-2xl border transition-all duration-300 min-h-[96px] sm:min-h-[110px] cursor-pointer group ${
+                            className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2.5 sm:p-3 squircle-sm border transition-colors duration-150 w-[calc((100%-2rem)/4.35)] min-w-[68px] shrink-0 md:w-auto md:min-w-0 md:shrink snap-start min-h-[96px] sm:min-h-[110px] cursor-pointer group ${
                                 d.isSelected
-                                    ? 'border-primary ring-2 ring-primary/40 shadow-md scale-[1.02] bg-surface-container-lowest dark:bg-slate-900'
+                                    ? 'border-primary ring-2 ring-primary/30 bg-surface-container-lowest dark:bg-slate-900'
                                     : d.isToday
-                                        ? 'border-primary/60 bg-surface-container-low/70 dark:bg-slate-800/80 shadow-xs'
-                                        : 'border-outline-variant/20 bg-surface-container-lowest dark:bg-slate-900/90 hover:border-outline-variant/50'
+                                        ? 'border-primary/50 bg-surface-container-low/70 dark:bg-slate-800/80'
+                                        : 'border-[var(--border-subtle)] bg-surface-container-lowest dark:bg-slate-900/90 hover:border-outline-variant/60'
                             }`}
                         >
-                            {/* Liquid Fill Layer (Bottom-to-Top Glass Reservoir) */}
+                            {/* Liquid Fill Layer (Bottom-to-Top Reservoir) */}
                             <div
-                                className={`absolute inset-x-0 bottom-0 transition-all duration-700 ease-out pointer-events-none ${
+                                className={`absolute inset-x-0 bottom-0 transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)] pointer-events-none ${
                                     d.isCompleted
-                                        ? 'bg-gradient-to-t from-emerald-500/40 via-emerald-500/25 to-emerald-400/15 dark:from-emerald-600/50 dark:via-emerald-500/30 dark:to-emerald-400/20'
-                                        : 'bg-gradient-to-t from-primary/35 via-primary/20 to-secondary/15 dark:from-indigo-600/45 dark:via-indigo-500/25 dark:to-cyan-400/15'
+                                        ? 'bg-gradient-to-t from-emerald-500/35 via-emerald-500/20 to-emerald-400/10 dark:from-emerald-600/45 dark:via-emerald-500/25 dark:to-emerald-400/15'
+                                        : 'bg-gradient-to-t from-primary/30 via-primary/15 to-secondary/10 dark:from-indigo-600/40 dark:via-indigo-500/20 dark:to-cyan-400/10'
                                 }`}
                                 style={{ height: `${d.pct}%` }}
                             >
-                                {/* Liquid Meniscus / Wave Crest */}
                                 {d.pct > 0 && d.pct < 100 && (
-                                    <div className="absolute top-0 inset-x-0 h-1 bg-white/70 dark:bg-white/80 shadow-[0_0_8px_rgba(255,255,255,0.7)] animate-pulse" />
+                                    <div className="absolute top-0 inset-x-0 h-0.5 bg-primary/60 dark:bg-white/60" />
                                 )}
                                 {d.isCompleted && (
-                                    <div className="absolute top-0 inset-x-0 h-1 bg-emerald-300/80 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                    <div className="absolute top-0 inset-x-0 h-0.5 bg-emerald-400/80" />
                                 )}
                             </div>
 
@@ -492,54 +561,56 @@ export const Dashboard: React.FC = () => {
                 </div>
             </section>
 
-            {/* ===== 3. Balanced 2-Column Key Metrics (Attention Depth Block Completely Removed) ===== */}
+            {/* ===== 3. Balanced 2-Column Key Metrics (Clean Single-Elevation Surfaces) ===== */}
             <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {/* Tile 1: Streak / Chain Continuity */}
-                <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-outline-variant/20 flex items-center justify-between relative overflow-hidden group">
-                    <div className="flex flex-col gap-1 z-10">
-                        <span className="font-label-sm text-xs text-on-surface-variant dark:text-gray-400 font-medium">
+                {/* Tile 1: Streak / Chain Continuity (Principle 17: Solid Drawing) */}
+                <TactileDepthCard className="squircle-card">
+                <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-card border border-[var(--border-subtle)] flex items-center justify-between h-full">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">
                             استمرار مطالعاتی و زنجیره پیوستگی
                         </span>
                         <div className="flex items-baseline gap-1.5">
-                            <span className="font-display-lg text-2xl sm:text-3xl lg:text-4xl font-bold text-tertiary">
+                            <span className="text-2xl sm:text-3xl font-extrabold text-tertiary tabular-nums">
                                 {formatToPersianDigits(streakCount)}
                             </span>
-                            <span className="font-headline-md text-xs sm:text-sm font-bold text-on-surface dark:text-white">روز آتشین</span>
+                            <span className="text-xs sm:text-sm font-bold text-on-surface">روز پیوسته</span>
                         </div>
-                        <span className="font-label-sm text-[11px] text-tertiary font-semibold flex items-center gap-1 mt-1">
-                            <TrendingUp size={14} className="shrink-0" />
-                            بهترین رکورد امسال ثبت شد
+                        <span className="text-xs text-tertiary font-semibold flex items-center gap-1 mt-1 tabular-nums">
+                            <TrendingUp size={14} className="shrink-0" aria-hidden="true" />
+                            {streakCount > 0
+                                ? `بیشترین رکورد ثبت‌شده: ${formatToPersianDigits(streakStats?.longestStreak ?? streakCount)} روز`
+                                : 'با ثبت اولین فعالیت امروز زنجیره را روشن کنید'}
                         </span>
                     </div>
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-tertiary-fixed/60 flex items-center justify-center text-tertiary shadow-inner shrink-0">
-                        <Flame size={32} className="fill-current text-tertiary" />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 squircle-sm bg-tertiary-fixed/60 flex items-center justify-center text-tertiary shrink-0">
+                        <Flame size={26} className="fill-current text-tertiary" aria-hidden="true" />
                     </div>
-                    <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-tertiary-fixed-dim/20 rounded-full blur-xl pointer-events-none" />
                 </div>
+                </TactileDepthCard>
 
                 {/* Tile 2: Task Progress */}
-                <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-2xl shadow-sm border border-outline-variant/20 flex items-center justify-between relative overflow-hidden group">
-                    <div className="flex flex-col gap-1 z-10 flex-1 pl-4">
-                        <span className="font-label-sm text-xs text-on-surface-variant dark:text-gray-400 font-medium">وظایف کلیدی امروز</span>
+                <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-card shadow-xs border border-[var(--border-subtle)] flex items-center justify-between">
+                    <div className="flex flex-col gap-1 flex-1 pe-4">
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">وظایف کلیدی امروز</span>
                         <div className="flex items-baseline gap-1.5">
-                            <span className="font-display-lg text-2xl sm:text-3xl lg:text-4xl font-bold text-secondary">
+                            <span className="text-2xl sm:text-3xl font-extrabold text-secondary tabular-nums">
                                 {formatToPersianDigits(completedDailyTasks)}
                             </span>
-                            <span className="font-headline-md text-xs sm:text-sm font-bold text-on-surface dark:text-white">
+                            <span className="text-xs sm:text-sm font-bold text-on-surface tabular-nums">
                                 از {formatToPersianDigits(dailyTasks.length)} تسک
                             </span>
                         </div>
-                        <div className="w-full max-w-xs bg-surface-container dark:bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
+                        <div className="w-full max-w-xs bg-surface-container h-2 rounded-full overflow-hidden mt-2">
                             <div
-                                className="bg-secondary h-full rounded-full transition-all duration-500"
+                                className="bg-secondary h-full rounded-full transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)]"
                                 style={{ width: `${dailyPct}%` }}
                             />
                         </div>
                     </div>
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-secondary-fixed/50 flex items-center justify-center text-secondary shadow-inner shrink-0">
-                        <CheckCircle2 size={30} />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-secondary-fixed/50 flex items-center justify-center text-secondary shrink-0">
+                        <CheckCircle2 size={26} aria-hidden="true" />
                     </div>
-                    <div className="absolute -left-6 -bottom-6 w-24 h-24 bg-secondary-fixed-dim/20 rounded-full blur-xl pointer-events-none" />
                 </div>
             </section>
 
@@ -548,8 +619,8 @@ export const Dashboard: React.FC = () => {
                 {/* Main 8 Columns */}
                 <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
                     {/* ===== Today's Mood Widget (5 Strict Levels + Vector SVGs, No Emojis) ===== */}
-                    <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-outline-variant/20 flex flex-col gap-3.5">
-                        <div className="flex items-center justify-between">
+                    <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 squircle-lg shadow-sm border border-outline-variant/20 flex flex-col gap-3.5">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
                                 <Sparkles size={20} className="text-primary shrink-0" />
                                 <h3 className="font-headline-md text-sm sm:text-base font-bold text-on-surface dark:text-white">
@@ -570,12 +641,27 @@ export const Dashboard: React.FC = () => {
                                     <button
                                         key={m.id}
                                         type="button"
-                                        onClick={() => handleSelectMood(m.id)}
-                                        className={`touch-target flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer min-h-[76px] gap-1.5 ${
+                                        onClick={() => {
+                                            haptics.selection();
+                                            handleSelectMood(m.id);
+                                        }}
+                                        className={`touch-target flex flex-col items-center justify-center p-3 squircle-sm border transition-all duration-200 cursor-pointer min-h-[76px] gap-1.5 ${
                                             isSelected ? m.themeActive : m.themeDefault
                                         }`}
                                     >
-                                        <MoodIcon className={`w-6 h-6 ${isSelected ? 'scale-110' : m.iconColor} transition-transform`} />
+                                        <motion.span
+                                            animate={
+                                                prefersReducedMotion
+                                                    ? undefined
+                                                    : isSelected
+                                                      ? SQUASH_STRETCH_KEYFRAMES
+                                                      : { scaleX: 1, scaleY: 1 }
+                                            }
+                                            transition={TRANSITION_SQUASH}
+                                            className="inline-flex"
+                                        >
+                                            <MoodIcon className={`w-6 h-6 ${isSelected ? 'scale-110' : m.iconColor} transition-transform`} />
+                                        </motion.span>
                                         <span className="font-label-md text-xs font-bold">{m.label}</span>
                                         <span className="font-label-sm text-[10px] opacity-75">{m.subLabel}</span>
                                     </button>
@@ -585,68 +671,136 @@ export const Dashboard: React.FC = () => {
                     </div>
 
                     {/* ===== Unified Tasks & Integrated Timeblocks Hub ===== */}
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-6 rounded-3xl shadow-sm border border-outline-variant/20 flex flex-col gap-5">
+                    <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-6 squircle-lg shadow-sm border border-outline-variant/20 flex flex-col gap-5">
                         {/* 5.1 Integrated Timeblocks Preview Header */}
-                        <div className="bg-surface-container-low/60 dark:bg-slate-800/60 p-4 rounded-2xl border border-outline-variant/15 flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
+                        <div className="bg-surface-container-low/60 dark:bg-slate-800/60 p-4 squircle-card border border-outline-variant/15 flex flex-col gap-3">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div className="flex items-center gap-2">
                                     <Clock size={18} className="text-secondary shrink-0" />
                                     <h4 className="font-headline-md text-sm sm:text-base font-bold text-on-surface dark:text-white">
                                         بلوک‌های زمانی پیش‌رو
                                     </h4>
+                                    {scheduledTimeblocks.length === 0 && (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                                            الگوی پیشنهادی
+                                        </span>
+                                    )}
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => navigate('/planner')}
-                                    className="font-label-sm text-xs text-primary hover:underline font-bold"
+                                    className="font-label-sm text-xs text-primary hover:underline font-bold cursor-pointer"
                                 >
                                     برنامه کامل
                                 </button>
                             </div>
 
-                            {/* Horizontal Timeblock Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
-                                {/* Block 1: Active Now */}
-                                <div className="p-3 rounded-xl bg-primary-fixed/30 dark:bg-primary-container/20 border border-primary/20 flex flex-col gap-1.5 relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-label-sm text-[10px] bg-primary text-on-primary px-2 py-0.5 rounded font-bold">
-                                            بلوک جاری
+                            {/* Continuity Connector Track + Horizontal Timeblock Flow (Visual Completion mobile peek + Connected Steps) */}
+                            <div className="relative">
+                                {/* Connected Timeline Track on Desktop */}
+                                <div className="hidden md:flex items-center justify-between px-12 mb-2 relative" aria-hidden="true">
+                                    <div className="absolute inset-x-16 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-l from-primary/60 via-secondary/45 to-[var(--border-strong)]" />
+                                    {[1, 2, 3].map((stepNum) => (
+                                        <span
+                                            key={stepNum}
+                                            className={`relative z-10 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center border ${
+                                                stepNum === 1
+                                                    ? 'bg-primary text-on-primary border-primary shadow-xs'
+                                                    : stepNum === 2
+                                                      ? 'bg-secondary-fixed text-on-secondary-fixed border-secondary/40'
+                                                      : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border-[var(--border-strong)]'
+                                            }`}
+                                        >
+                                            {formatToPersianDigits(stepNum)}
                                         </span>
-                                        <span className="font-label-sm text-on-surface dark:text-gray-300 font-semibold dir-ltr">۱۴:۳۰ - ۱۶:۰۰</span>
-                                    </div>
-                                    <h5 className="font-label-md text-xs font-bold text-on-surface dark:text-white mt-1 line-clamp-1">
-                                        مطالعه ریاضی مهندسی
-                                    </h5>
-                                    <p className="font-body-sm text-[11px] text-on-surface-variant dark:text-gray-400 line-clamp-1">حل ۲۰ تست زمان‌دار</p>
+                                    ))}
                                 </div>
 
-                                {/* Block 2: Rest */}
-                                <div className="p-3 rounded-xl bg-surface-container-lowest dark:bg-slate-800/80 border border-outline-variant/10 flex flex-col gap-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-label-sm text-[10px] bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded font-medium">
-                                            استراحت هوشمند
-                                        </span>
-                                        <span className="font-label-sm text-on-surface-variant dark:text-gray-400 dir-ltr">۱۶:۰۰ - ۱۶:۲۰</span>
+                                {scheduledTimeblocks.length > 0 ? (
+                                    <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1 text-xs">
+                                        {scheduledTimeblocks.map((blk, i) => (
+                                            <div
+                                                key={blk.id}
+                                                className={`w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm border flex flex-col gap-1.5 relative ${
+                                                    i === 0
+                                                        ? 'bg-primary-fixed/35 dark:bg-primary-container/25 border-primary/40 ring-2 ring-primary/30 shadow-xs'
+                                                        : 'bg-surface-container-lowest dark:bg-slate-800/80 border-outline-variant/10'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <span
+                                                        className={`font-label-sm text-[10px] px-2 py-0.5 rounded font-bold ${
+                                                            i === 0
+                                                                ? 'bg-primary text-on-primary'
+                                                                : i === 1
+                                                                    ? 'bg-secondary-fixed text-on-secondary-fixed'
+                                                                    : 'bg-surface-container-highest dark:bg-slate-700 text-on-surface-variant dark:text-gray-300'
+                                                        }`}
+                                                    >
+                                                        {blk.badge}
+                                                    </span>
+                                                    <span className="text-xs text-on-surface font-semibold tabular-nums" dir="ltr">
+                                                        {formatToPersianDigits(blk.timeRange)}
+                                                    </span>
+                                                </div>
+                                                <h5 className={`text-xs font-bold text-on-surface mt-1 line-clamp-1 ${blk.isCompleted ? 'line-through opacity-60' : ''}`}>
+                                                    {blk.title}
+                                                </h5>
+                                                <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
+                                                    {blk.subtitle}
+                                                </p>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <h5 className="font-label-md text-xs font-bold text-on-surface dark:text-white mt-1 line-clamp-1">
-                                        پیاده‌روی و نوشیدن آب
-                                    </h5>
-                                    <p className="font-body-sm text-[11px] text-on-surface-variant dark:text-gray-400 line-clamp-1">دوری از نمایشگر</p>
-                                </div>
+                                ) : (
+                                    <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1 text-xs">
+                                        {/* Suggested Block 1 (Principle 13: Von Restorff focal prominence) */}
+                                        <div className="w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm bg-primary-fixed/35 border border-primary/40 ring-2 ring-primary/30 shadow-xs flex flex-col gap-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] bg-primary text-on-primary px-2 py-0.5 rounded font-bold">
+                                                    بلوک جاری
+                                                </span>
+                                                <span className="text-xs text-[var(--text-secondary)] font-semibold">پیشنهادی</span>
+                                            </div>
+                                            <h5 className="text-xs font-bold text-on-surface mt-1 line-clamp-1">
+                                                {dailyTasks[0]?.topic || 'مطالعه متمرکز کلیدی'}
+                                            </h5>
+                                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
+                                                {dailyTasks[0]?.subject || 'برای زمان‌بندی دقیق به تایم‌لاین بروید'}
+                                            </p>
+                                        </div>
 
-                                {/* Block 3: Evening */}
-                                <div className="p-3 rounded-xl bg-surface-container-lowest dark:bg-slate-800/80 border border-outline-variant/10 flex flex-col gap-1.5">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-label-sm text-[10px] bg-surface-container-highest dark:bg-slate-700 text-on-surface-variant dark:text-gray-300 px-2 py-0.5 rounded font-medium">
-                                            بلوک عصر
-                                        </span>
-                                        <span className="font-label-sm text-on-surface-variant dark:text-gray-400 dir-ltr">۱۶:۲۰ - ۱۸:۰۰</span>
+                                        {/* Suggested Block 2 */}
+                                        <div className="w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex flex-col gap-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded font-semibold">
+                                                    استراحت هوشمند
+                                                </span>
+                                                <span className="text-xs text-[var(--text-secondary)]">۱۵ دقیقه</span>
+                                            </div>
+                                            <h5 className="text-xs font-bold text-on-surface mt-1 line-clamp-1">
+                                                ریکاوری ذهن و نوشیدن آب
+                                            </h5>
+                                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1">فاصله گرفتن از نمایشگر بین بلوک‌ها</p>
+                                        </div>
+
+                                        {/* Suggested Block 3 */}
+                                        <div className="w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex flex-col gap-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] bg-surface-container-highest text-[var(--text-secondary)] px-2 py-0.5 rounded font-semibold">
+                                                    بلوک عصر
+                                                </span>
+                                                <span className="text-xs text-[var(--text-secondary)]">مرور</span>
+                                            </div>
+                                            <h5 className="text-xs font-bold text-on-surface mt-1 line-clamp-1">
+                                                {dailyTasks[1]?.topic || 'مرور و تثبیت یادداشت‌ها'}
+                                            </h5>
+                                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
+                                                {dailyTasks[1]?.subject || 'زمان‌بندی نشده در تایم‌لاین'}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <h5 className="font-label-md text-xs font-bold text-on-surface dark:text-white mt-1 line-clamp-1">
-                                        مرور فلش‌کارت‌ها
-                                    </h5>
-                                    <p className="font-body-sm text-[11px] text-on-surface-variant dark:text-gray-400 line-clamp-1">مرور ۱۲۰ لغت تخصصی</p>
-                                </div>
+                                )}
                             </div>
                         </div>
 
@@ -666,7 +820,7 @@ export const Dashboard: React.FC = () => {
                                         className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all border ${
                                             onlySpecialized
                                                 ? 'bg-primary/10 text-primary border-primary/30'
-                                                : 'bg-surface-container-low text-on-surface-variant border-outline-variant/30'
+                                                : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 border-outline-variant/30'
                                         }`}
                                     >
                                         {onlySpecialized ? 'فقط دروس تخصصی' : 'همه دروس'}
@@ -692,7 +846,7 @@ export const Dashboard: React.FC = () => {
                                     className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                                         selectedFilterSubject === null
                                             ? 'bg-primary text-on-primary shadow-xs'
-                                            : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant hover:bg-surface-container'
+                                            : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container'
                                     }`}
                                 >
                                     همه حوزه‌ها
@@ -705,7 +859,7 @@ export const Dashboard: React.FC = () => {
                                         className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                                             selectedFilterSubject === sub
                                                 ? 'bg-primary text-on-primary shadow-xs'
-                                                : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant hover:bg-surface-container'
+                                                : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container'
                                         }`}
                                     >
                                         {sub}
@@ -714,29 +868,71 @@ export const Dashboard: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Task List */}
+                        {/* Peak-End Celebration Banner when all today's tasks completed */}
+                        {dailyTasks.length > 0 && completedDailyTasks === dailyTasks.length && (
+                            <div className="p-3.5 squircle-card bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-3">
+                                <PeakEndCheckmark size={38} className="shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-300">
+                                        تمام تسک‌های امروز تکمیل شدند!
+                                    </p>
+                                    <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 font-medium">
+                                        روز پربار و درخشانی را به پایان رساندید.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Task List (Principle 3: Stagger Choreography) */}
                         {filteredDailyTasks.length > 0 ? (
-                            <div className="space-y-2.5">
+                            <motion.div
+                                variants={STAGGER_CONTAINER_VARIANTS}
+                                initial={prefersReducedMotion ? false : 'hidden'}
+                                animate="visible"
+                                className="space-y-2.5"
+                            >
                                 {filteredDailyTasks.map((task) => (
-                                    <TaskCard
-                                        key={task.id}
-                                        task={task}
-                                        viewMode={viewMode}
-                                        onToggle={toggleTask}
-                                        onEdit={handleEdit}
-                                        onDelete={handleDelete}
-                                    />
+                                    <motion.div key={task.id} variants={STAGGER_ITEM_VARIANTS}>
+                                        <TaskCard
+                                            task={task}
+                                            viewMode={viewMode}
+                                            onToggle={toggleTask}
+                                            onEdit={handleEdit}
+                                            onDelete={handleDelete}
+                                        />
+                                    </motion.div>
                                 ))}
+                            </motion.div>
+                        ) : dailyTasks.length > 0 && (selectedFilterSubject || onlySpecialized) ? (
+                            <div className="text-center py-8 px-4 bg-surface-container-low squircle-card border border-dashed border-[var(--border-strong)] space-y-2.5">
+                                <p className="text-sm text-on-surface font-semibold">
+                                    با فیلتر فعال تسکی برای نمایش وجود ندارد.
+                                </p>
+                                <p className="text-xs text-[var(--text-secondary)]">
+                                    {selectedFilterSubject ? `فیلتر حوزه: «${selectedFilterSubject}»` : 'فیلتر دروس تخصصی فعال است'}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedFilterSubject(null);
+                                        setOnlySpecialized(false);
+                                    }}
+                                    className="mt-1 inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-xl bg-primary-fixed text-on-primary-fixed text-xs font-bold hover:brightness-95 transition cursor-pointer"
+                                >
+                                    پاک کردن فیلتر
+                                </button>
                             </div>
                         ) : (
-                            <div className="text-center py-10 bg-surface-container-low dark:bg-slate-800/50 rounded-2xl border border-dashed border-outline-variant/40">
-                                <p className="text-sm text-on-surface-variant dark:text-gray-400 font-medium">تسکی برای این روز یافت نشد.</p>
+                            <div className="text-center py-10 px-4 bg-surface-container-low squircle-card border border-dashed border-[var(--border-strong)] space-y-2">
+                                <p className="text-sm text-on-surface font-semibold">تسکی برای این روز ثبت نشده است.</p>
+                                <p className="text-xs text-[var(--text-secondary)]">اولین کار کلیدی امروز را اضافه کنید یا در تایم‌لاین بچینید.</p>
                                 <button
                                     type="button"
                                     onClick={openNewTaskModal}
-                                    className="mt-3 text-xs text-primary font-bold hover:underline cursor-pointer"
+                                    className="mt-2 inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold hover:brightness-110 transition cursor-pointer"
                                 >
-                                    + ایجاد تسک جدید
+                                    <Plus size={15} aria-hidden="true" />
+                                    ایجاد تسک جدید
                                 </button>
                             </div>
                         )}
@@ -744,7 +940,7 @@ export const Dashboard: React.FC = () => {
 
                     {/* Overdue Tasks Section if any */}
                     {overdueTasks.length > 0 && (
-                        <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-error/20 flex flex-col gap-3">
+                        <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 squircle-lg shadow-sm border border-error/20 flex flex-col gap-3">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-sm font-bold text-error flex items-center gap-1.5">
                                     <AlertCircle size={16} />
@@ -779,79 +975,73 @@ export const Dashboard: React.FC = () => {
 
                 {/* Side 4 Columns (Live Study Pod & Focus Soundscape) */}
                 <div className="lg:col-span-4 flex flex-col gap-4 sm:gap-6">
-                    {/* Live Virtual Study Pod (Community Peer-Focus) */}
-                    <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-outline-variant/20 flex flex-col gap-3.5">
-                        <div className="flex items-center justify-between">
+                    {/* Live Virtual Study Pod (Links to Real Firestore Rooms) */}
+                    <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-xs border border-[var(--border-subtle)] flex flex-col gap-3.5">
+                        <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <Users size={20} className="text-primary shrink-0" />
-                                <h3 className="font-label-md text-xs sm:text-sm font-bold text-on-surface dark:text-white">
-                                    اتاق هم‌مطالعه کنکور ارشد
+                                <Users size={20} className="text-primary shrink-0" aria-hidden="true" />
+                                <h3 className="text-sm font-bold text-on-surface">
+                                    اتاق‌های هم‌مطالعه زنده (<bdi>YPT</bdi>)
                                 </h3>
                             </div>
-                            <span className="font-label-sm text-xs text-secondary font-bold flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-secondary animate-ping shrink-0" />
-                                ۲۴ نفر آنلاین
+                            <span className="text-xs text-secondary font-bold">
+                                آماده اتصال
                             </span>
                         </div>
 
-                        {/* Avatars Cluster */}
-                        <div className="flex items-center -space-x-2 -space-x-reverse py-1">
-                            <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container text-xs flex items-center justify-center font-bold ring-2 ring-surface">ام</div>
-                            <div className="w-8 h-8 rounded-full bg-secondary text-on-secondary text-xs flex items-center justify-center font-bold ring-2 ring-surface">رض</div>
-                            <div className="w-8 h-8 rounded-full bg-tertiary text-on-tertiary text-xs flex items-center justify-center font-bold ring-2 ring-surface">نی</div>
-                            <div className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface text-xs flex items-center justify-center font-bold ring-2 ring-surface">+۲۱</div>
-                            <span className="font-body-sm text-xs text-on-surface-variant dark:text-gray-400 pr-3">در حال مطالعه بی‌صدا</span>
-                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            به اتاق‌های مطالعه آنلاین بپیوندید، تایمر گروهی را همگام کنید و پیشرفت هم‌تیمی‌ها را به صورت زنده دنبال کنید.
+                        </p>
 
                         <button
                             type="button"
                             onClick={() => navigate('/leaderboard')}
-                            className="touch-target w-full py-2.5 bg-surface-container-low dark:bg-slate-800 hover:bg-surface-container text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-outline-variant/10 min-h-[44px]"
+                            className="touch-target w-full py-2.5 bg-surface-container-low hover:bg-surface-container text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-[var(--border-subtle)] min-h-[44px]"
                         >
-                            <Users size={16} />
+                            <Users size={16} aria-hidden="true" />
                             <span>پیوستن به میز مطالعه مجازی</span>
                         </button>
                     </div>
 
                     {/* Ambient Focus Audio Card */}
-                    <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 rounded-3xl shadow-sm border border-outline-variant/20 flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
+                    <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-xs border border-[var(--border-subtle)] flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                                <Headphones size={20} className="text-secondary shrink-0" />
-                                <h3 className="font-label-md text-xs sm:text-sm font-bold text-on-surface dark:text-white">
+                                <Headphones size={20} className="text-secondary shrink-0" aria-hidden="true" />
+                                <h3 className="text-sm font-bold text-on-surface">
                                     محیط صوتی تمرکز عمیق
                                 </h3>
                             </div>
-                            <span className="font-label-sm text-[10px] text-secondary bg-secondary-container/30 px-2 py-0.5 rounded-full font-bold">
+                            <span className="text-xs text-secondary font-semibold">
                                 امواج تتا
                             </span>
                         </div>
-                        <p className="font-body-sm text-xs text-on-surface-variant dark:text-gray-400 leading-relaxed">
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                             افزایش ماندگاری حافظه و هماهنگی نیم‌کره‌های مغزی در جلسات پرفشار مطالعه.
                         </p>
                         <button
                             type="button"
                             onClick={() => setIsTimerOpen(true)}
-                            className="touch-target w-full py-2.5 bg-surface-container-low dark:bg-slate-800 hover:bg-surface-container text-on-surface dark:text-gray-200 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-outline-variant/15 min-h-[44px]"
+                            className="touch-target w-full py-2.5 bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer border border-[var(--border-subtle)] min-h-[44px]"
                         >
-                            <Zap size={16} className="text-secondary" />
+                            <Zap size={16} className="text-secondary" aria-hidden="true" />
                             <span>پخش نویز قهوه‌ای و امواج تتا</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* ===== Bottom Bento: Brain Dump & AI Copilot Action Bar ===== */}
-            <section className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 rounded-3xl shadow-sm border border-outline-variant/20 flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* ===== Bottom Bento: Brain Dump & Quick Capture Bar ===== */}
+            <section className="bg-[var(--surface-elevated)] p-4 squircle-lg shadow-xs border border-[var(--border-subtle)] flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="w-10 h-10 rounded-2xl bg-primary-fixed flex items-center justify-center text-primary shrink-0 shadow-xs">
-                        <Sparkles size={20} />
+                    <div className="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-on-primary-fixed shrink-0">
+                        <Sparkles size={20} aria-hidden="true" />
                     </div>
                     <div className="flex flex-col text-right">
-                        <span className="font-label-md text-xs sm:text-sm font-bold text-on-surface dark:text-white">
-                            تخلیه ذهن و دستیار هوشمند مطالعه (Brain Dump)
+                        <span className="text-xs sm:text-sm font-bold text-on-surface">
+                            تخلیه ذهن و ثبت سریع (<bdi>Brain Dump</bdi>)
                         </span>
-                        <span className="font-body-sm text-[11px] text-on-surface-variant dark:text-gray-400">
+                        <span className="text-xs text-[var(--text-secondary)]">
                             {brainDumpFeedback || 'ثبت هرگونه ایده، استرس لحظه‌ای یا وظیفه سریع بدون خروج از تمرکز'}
                         </span>
                     </div>
@@ -862,12 +1052,13 @@ export const Dashboard: React.FC = () => {
                         type="text"
                         value={brainDumpText}
                         onChange={(e) => setBrainDumpText(e.target.value)}
-                        placeholder="ایده یا تسک جدید را سریع تایپ کنید و Enter بزنید..."
-                        className="w-full h-11 pr-4 pl-24 bg-surface-container-low dark:bg-slate-800 rounded-xl text-on-surface dark:text-white font-body-sm text-xs placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-lowest border border-outline-variant/20 shadow-inner transition-all"
+                        placeholder="ایده یا تسک جدید را سریع تایپ کنید..."
+                        aria-label="ثبت سریع ایده یا تسک"
+                        className="w-full min-h-[44px] ps-4 pe-24 bg-surface-container-low rounded-xl text-on-surface text-base sm:text-sm placeholder:text-[var(--text-secondary)] focus:outline-none focus:bg-[var(--surface-elevated)] focus:border-primary border border-[var(--border-subtle)] transition-all"
                     />
                     <button
                         type="submit"
-                        className="touch-target absolute left-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:bg-primary-container transition-colors cursor-pointer min-h-[36px]"
+                        className="touch-target absolute end-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:brightness-110 transition-all cursor-pointer min-h-[36px]"
                     >
                         ثبت سریع
                     </button>

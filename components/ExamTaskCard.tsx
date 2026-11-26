@@ -12,7 +12,7 @@ interface Props {
     onToggleComplete: (task: SubjectTask) => void;
 }
 
-export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggleComplete }) => {
+export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelete, onToggleComplete }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const { startFocusForTask } = useFocus();
 
@@ -29,11 +29,10 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
 
     return (
         <motion.div
-            layout
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.14 }}
             className={`relative group rounded-3xl p-4 border ${borderColor} ${bgGradient} ${task.isCompleted ? 'opacity-90' : ''}`}
         >
             {/* Header */}
@@ -172,4 +171,5 @@ export const ExamTaskCard: React.FC<Props> = ({ task, onEdit, onDelete, onToggle
             )}
         </motion.div>
     );
-};
+});
+ExamTaskCard.displayName = 'ExamTaskCard';

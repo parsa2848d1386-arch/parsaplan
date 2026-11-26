@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { addDays, toIsoString, getShamsiDate, toJalaali, toGregorian } from '../utils';
+import { toIsoString, getShamsiDate, toJalaali, toGregorian } from '../utils';
+import { AnnualStudyHeatmap } from './AnnualStudyHeatmap';
 
 const ActivityHeatmap = () => {
-    const { tasks, getTasksByDate, moods, studyHoursLog, routineTemplate, isRoutineSlotCompleted, currentDay } = useStore();
+    const { getTasksByDate, moods, studyHoursLog, studyMinutesByDate } = useStore();
 
-    // Custom Tooltip State
     const [hoveredDay, setHoveredDay] = useState<{
         shamsi: string;
         hours: number;
@@ -14,24 +14,39 @@ const ActivityHeatmap = () => {
     } | null>(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-    // Mood Colors mapping
     const moodColors: Record<string, string> = {
+        'excellent': 'ring-emerald-400 dark:ring-emerald-400',
+        'high-energy': 'ring-violet-400 dark:ring-violet-400',
+        'normal': 'ring-gray-300 dark:ring-gray-500',
+        'tired': 'ring-orange-400 dark:ring-orange-400',
+        'exhausted': 'ring-rose-400 dark:ring-rose-400',
+        // Legacy mood keys
         'happy': 'ring-emerald-400 dark:ring-emerald-400',
         'energetic': 'ring-violet-400 dark:ring-violet-400',
         'neutral': 'ring-gray-300 dark:ring-gray-500',
-        'tired': 'ring-orange-400 dark:ring-orange-400',
         'sad': 'ring-rose-400 dark:ring-rose-400',
     };
 
     const moodLabels: Record<string, string> = {
+        'excellent': 'عالی',
+        'high-energy': 'پرانرژی',
+        'normal': 'معمولی',
+        'tired': 'خسته',
+        'exhausted': 'فرسوده',
         'happy': 'خوشحال',
         'energetic': 'پرانرژی',
         'neutral': 'معمولی',
-        'tired': 'خسته',
         'sad': 'ناراحت',
     };
 
-    // Generate Current Shamsi Month Days
+    const legendMoods: Array<[string, string]> = [
+        ['excellent', 'عالی'],
+        ['high-energy', 'پرانرژی'],
+        ['normal', 'معمولی'],
+        ['tired', 'خسته'],
+        ['exhausted', 'فرسوده'],
+    ];
+
     const today = new Date();
     const { jy, jm } = toJalaali(today.getFullYear(), today.getMonth() + 1, today.getDate());
     const daysInMonth = jm <= 6 ? 31 : (jm <= 11 ? 30 : (jy % 4 === 3 ? 30 : 29));
@@ -42,25 +57,34 @@ const ActivityHeatmap = () => {
         days.push(gDate);
     }
 
-    // === محاسبه ساعات مطالعه ===
-    const getStudyHours = (iso: string): number => {
-        // ساعات واقعی ثبت‌شده
+    const getStudyHours = (iso: string): { hours: number; isLogged: boolean } => {
+        const mins = studyMinutesByDate?.[iso];
+        if (typeof mins === 'number' && mins > 0) {
+            return { hours: Math.round((mins / 60) * 10) / 10, isLogged: true };
+        }
         const loggedHours = studyHoursLog?.[iso];
-        if (loggedHours !== undefined && loggedHours >= 0) return loggedHours;
+        if (loggedHours !== undefined && loggedHours > 0) {
+            return { hours: loggedHours, isLogged: true };
+        }
 
-        // fallback: تخمین از تسک‌ها
-        const dailyTasks = getTasksByDate(iso);
-        let hours = 0;
-        dailyTasks.forEach(t => {
+        const dailyTasks = getTasksByDate ? getTasksByDate(iso) : [];
+        let fallbackHours = 0;
+        dailyTasks.forEach((t) => {
             if (t.isCompleted) {
-                if (t.studyType === 'exam' || t.studyType === 'analysis') hours += 1.5;
-                else hours += 1;
+                if (t.actualDuration && t.actualDuration > 0) {
+                    fallbackHours += t.actualDuration / 60;
+                } else if (t.durationMinutes && t.durationMinutes > 0) {
+                    fallbackHours += t.durationMinutes / 60;
+                } else if (t.studyType === 'exam' || t.studyType === 'analysis') {
+                    fallbackHours += 1.5;
+                } else {
+                    fallbackHours += 1;
+                }
             }
         });
-        return hours;
+        return { hours: Math.round(fallbackHours * 10) / 10, isLogged: fallbackHours > 0 };
     };
 
-    // === رنگ‌بندی بر اساس ساعات مطالعه ===
     const getColor = (hours: number) => {
         if (hours === 0) return 'bg-gray-100 dark:bg-gray-800';
         if (hours <= 2) return 'bg-indigo-200 dark:bg-indigo-900/40';
@@ -70,21 +94,18 @@ const ActivityHeatmap = () => {
         return 'bg-indigo-700 dark:bg-indigo-400';
     };
 
-    // === توضیح ساعات برای tooltip ===
-    const getLabel = (hours: number, iso: string): string => {
-        const isLogged = studyHoursLog?.[iso] !== undefined && studyHoursLog?.[iso] >= 0;
+    const getLabel = (hours: number, isLogged: boolean): string => {
         const prefix = isLogged ? 'ثبت‌شده' : 'تخمینی';
-        if (hours === 0) return `${prefix}: بدون فعالیت`;
+        if (hours === 0) return 'بدون فعالیت';
         if (hours <= 2) return `${prefix}: کم`;
         if (hours <= 4) return `${prefix}: متوسط`;
         if (hours <= 6) return `${prefix}: خوب`;
         if (hours <= 8) return `${prefix}: خیلی خوب`;
-        return `${prefix}: عالی 🔥`;
+        return `${prefix}: عالی`;
     };
 
     const handleMouseEnter = (e: React.MouseEvent, shamsi: string, hours: number, label: string, mood?: string) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        // پیدا کردن پوزیشن والد برای موقعیت‌یابی مطلق صحیح تول‌تیپ محلی
         const element = e.currentTarget as HTMLElement;
         const parent = element.offsetParent as HTMLElement;
         if (parent) {
@@ -103,38 +124,39 @@ const ActivityHeatmap = () => {
 
     return (
         <div className="relative w-full">
-            <h3 className="font-headline-md font-bold text-on-surface dark:text-white mb-4 text-sm sm:text-base">فعالیت ماه جاری</h3>
+            <h3 className="font-headline-md font-bold text-slate-800 dark:text-white mb-4 text-sm sm:text-base">فعالیت ماه جاری</h3>
             
             <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                 {days.map((date, idx) => {
                     const iso = toIsoString(date);
                     const shamsi = getShamsiDate(iso);
-                    const hours = getStudyHours(iso);
-                    const mood = moods[iso];
-                    const moodRing = mood ? `ring-2 ${moodColors[mood] || 'ring-gray-200'}` : '';
-                    const label = getLabel(hours, iso);
+                    const { hours, isLogged } = getStudyHours(iso);
+                    const mood = moods?.[iso];
+                    const moodRing = mood ? `ring-2 ${moodColors[mood] || 'ring-gray-200 dark:ring-gray-600'}` : '';
+                    const label = getLabel(hours, isLogged);
 
                     return (
-                        <div
+                        <button
                             key={idx}
+                            type="button"
                             onMouseEnter={(e) => handleMouseEnter(e, shamsi, hours, label, mood)}
                             onMouseLeave={handleMouseLeave}
+                            aria-label={`${shamsi}: ${hours.toFixed(1)} ساعت`}
                             className={`w-4 h-4 rounded-sm ${getColor(hours)} ${moodRing} transition-all hover:scale-125 hover:z-10 cursor-pointer`}
-                        ></div>
-                    )
+                        />
+                    );
                 })}
             </div>
 
-            {/* Custom Tooltip Container inside Relative Parent */}
             {hoveredDay && (
                 <div 
-                    className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full bg-slate-900/95 dark:bg-gray-950/95 backdrop-blur-md text-white text-[10px] font-bold p-2.5 rounded-xl border border-white/10 shadow-2xl flex flex-col gap-1 transition-all duration-150 animate-in fade-in zoom-in-95"
+                    className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full bg-slate-900/95 dark:bg-gray-950/95 backdrop-blur-md text-white text-[10px] font-bold p-2.5 rounded-xl border border-white/10 shadow-2xl flex flex-col gap-1 transition-all duration-150"
                     style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y}px` }}
                     dir="rtl"
                 >
                     <div className="flex justify-between items-center border-b border-white/10 pb-1 gap-4">
                         <span className="text-amber-400 font-extrabold">{hoveredDay.shamsi}</span>
-                        <span className="text-gray-300 font-medium text-[8px]">{hoveredDay.label}</span>
+                        <span className="text-gray-300 font-medium text-[9px]">{hoveredDay.label}</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-gray-400 font-semibold">مطالعه:</span>
@@ -143,20 +165,19 @@ const ActivityHeatmap = () => {
                     {hoveredDay.mood && (
                         <div className="flex items-center gap-1.5">
                             <span className="text-gray-400 font-semibold">احساس:</span>
-                            <span className="text-teal-300 font-extrabold">{moodLabels[hoveredDay.mood]}</span>
+                            <span className="text-teal-300 font-extrabold">{moodLabels[hoveredDay.mood] || hoveredDay.mood}</span>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Legends */}
             <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center mt-4 gap-3">
                 <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 flex-wrap">
                     <span className="ml-1">حس روز:</span>
-                    {Object.entries(moodColors).map(([m, color]) => (
+                    {legendMoods.map(([m, label]) => (
                         <div key={m} className="flex items-center gap-1">
-                            <div className={`w-2 h-2 rounded-full ring-1 ${color}`}></div>
-                            <span>{moodLabels[m]}</span>
+                            <div className={`w-2 h-2 rounded-full ring-1 ${moodColors[m]}`}></div>
+                            <span>{label}</span>
                         </div>
                     ))}
                 </div>
@@ -180,7 +201,5 @@ const ActivityHeatmap = () => {
         </div>
     );
 };
-
-import { AnnualStudyHeatmap } from './AnnualStudyHeatmap';
 
 export default ActivityHeatmap;

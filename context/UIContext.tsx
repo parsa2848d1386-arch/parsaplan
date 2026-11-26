@@ -1,9 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { ToastMessage, ToastType, ConfirmDialogState } from '../types';
+import React, { createContext, useContext, useState, ReactNode, useRef, useCallback } from 'react';
+import { ToastMessage, ToastType, ToastAction, ConfirmDialogState } from '../types';
+
+export interface ShowToastOptions {
+    action?: ToastAction;
+    durationMs?: number;
+}
 
 interface UIContextType {
     toasts: ToastMessage[];
-    showToast: (message: string, type?: ToastType) => void;
+    showToast: (message: string, type?: ToastType, options?: ShowToastOptions) => void;
     removeToast: (id: string) => void;
     confirmState: ConfirmDialogState;
     askConfirm: (title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info') => void;
@@ -21,14 +26,24 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // --- TOASTS ---
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
+    const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-    const showToast = (message: string, type: ToastType = 'info') => {
+    const removeToast = useCallback((id: string) => {
+        const timer = timersRef.current.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            timersRef.current.delete(id);
+        }
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    const showToast = useCallback((message: string, type: ToastType = 'info', options?: ShowToastOptions) => {
         const id = crypto.randomUUID();
-        setToasts(prev => [...prev, { id, message, type }]);
-        setTimeout(() => removeToast(id), 3000);
-    };
-
-    const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
+        const duration = options?.durationMs ?? (options?.action ? 5200 : 3200);
+        setToasts(prev => [...prev.slice(-2), { id, message, type, action: options?.action, durationMs: duration }]);
+        const timer = setTimeout(() => removeToast(id), duration);
+        timersRef.current.set(id, timer);
+    }, [removeToast]);
 
     // --- CONFIRM DIALOG ---
     const [confirmState, setConfirmState] = useState<ConfirmDialogState>({

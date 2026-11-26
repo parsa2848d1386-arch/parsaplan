@@ -1,46 +1,73 @@
-
 import React, { useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../context/StoreContext';
-import { X, CheckCircle2, AlertTriangle, Info, AlertOctagon, Trash2 } from 'lucide-react';
+import { X, CheckCircle2, AlertTriangle, Info, AlertOctagon, Trash2, Sparkles, RotateCcw } from 'lucide-react';
+import { soundFX } from '../utils';
+import { toPersianNum } from '../utils/designSystemHelpers';
+import { modalScaleVariants, toastVariants, TRANSITION_FAST } from '../utils/motionPresets';
+import { haptics } from '../utils/haptics';
 
 export const ToastContainer = () => {
     const { toasts, removeToast } = useStore();
+    const visibleToasts = toasts.slice(-2);
 
     return (
         <div
             role="region"
             aria-live="polite"
             aria-label="اعلان‌های سیستم"
-            className="fixed top-20 md:top-4 left-0 right-0 flex flex-col items-center gap-2 pointer-events-none px-4 transition-all duration-500"
-            style={{ zIndex: 2147483647 }}
+            className="fixed top-[calc(3.75rem+env(safe-area-inset-top,0px))] md:top-5 inset-x-0 z-[80] flex flex-col items-center gap-2 pointer-events-none px-3.5"
         >
-            {toasts.map(toast => (
-                <div
-                    key={toast.id}
-                    className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border animate-in slide-in-from-top-5 fade-in duration-300 max-w-sm w-full backdrop-blur-md transition-all
-                        ${toast.type === 'success' ? 'bg-emerald-50/90 border-emerald-200 text-emerald-800 dark:bg-emerald-900/90 dark:border-emerald-700 dark:text-emerald-100' : ''}
-                        ${toast.type === 'error' ? 'bg-rose-50/90 border-rose-200 text-rose-800 dark:bg-rose-900/90 dark:border-rose-700 dark:text-rose-100' : ''}
-                        ${toast.type === 'warning' ? 'bg-amber-50/90 border-amber-200 text-amber-800 dark:bg-amber-900/90 dark:border-amber-700 dark:text-amber-100' : ''}
-                        ${toast.type === 'info' ? 'bg-blue-50/90 border-blue-200 text-blue-800 dark:bg-blue-900/90 dark:border-blue-700 dark:text-blue-100' : ''}
-                    `}
-                >
-                    {toast.type === 'success' && <CheckCircle2 size={20} />}
-                    {toast.type === 'error' && <AlertOctagon size={20} />}
-                    {toast.type === 'warning' && <AlertTriangle size={20} />}
-                    {toast.type === 'info' && <Info size={20} />}
-
-                    <p className="text-sm font-bold flex-1 pretty-text">{toast.message}</p>
-
-                    <button
-                        type="button"
-                        onClick={() => removeToast(toast.id)}
-                        aria-label="بستن اعلان"
-                        className="p-1 rounded-lg opacity-60 hover:opacity-100 transition"
+            <AnimatePresence initial={false}>
+                {visibleToasts.map((toast) => (
+                    <motion.div
+                        key={toast.id}
+                        variants={toastVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className={`pointer-events-auto flex items-center gap-2.5 px-3.5 py-2.5 squircle-sm shadow-lg border max-w-md w-full backdrop-blur-xl
+                            ${toast.type === 'success' ? 'bg-emerald-50/95 border-emerald-200/80 text-emerald-900 dark:bg-emerald-950/95 dark:border-emerald-800/80 dark:text-emerald-100' : ''}
+                            ${toast.type === 'error' ? 'bg-rose-50/95 border-rose-200/80 text-rose-900 dark:bg-rose-950/95 dark:border-rose-800/80 dark:text-rose-100' : ''}
+                            ${toast.type === 'warning' ? 'bg-amber-50/95 border-amber-200/80 text-amber-950 dark:bg-amber-950/95 dark:border-amber-800/80 dark:text-amber-100' : ''}
+                            ${toast.type === 'info' ? 'bg-slate-50/95 border-slate-200/80 text-slate-900 dark:bg-slate-900/95 dark:border-slate-700/80 dark:text-slate-100' : ''}
+                        `}
                     >
-                        <X size={16} />
-                    </button>
-                </div>
-            ))}
+                        <span className="shrink-0" aria-hidden="true">
+                            {toast.type === 'success' && <CheckCircle2 size={18} />}
+                            {toast.type === 'error' && <AlertOctagon size={18} />}
+                            {toast.type === 'warning' && <AlertTriangle size={18} />}
+                            {toast.type === 'info' && <Info size={18} />}
+                        </span>
+
+                        <p className="text-sm font-semibold flex-1 leading-snug pretty-text">{toast.message}</p>
+
+                        {toast.action && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    haptics.light();
+                                    toast.action?.onClick();
+                                    removeToast(toast.id);
+                                }}
+                                className="shrink-0 inline-flex items-center gap-1 px-3 min-h-[36px] rounded-xl text-xs font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 active:scale-95 transition cursor-pointer"
+                            >
+                                <RotateCcw size={13} aria-hidden="true" />
+                                <span>{toast.action.label}</span>
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => removeToast(toast.id)}
+                            aria-label="بستن اعلان"
+                            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+                        >
+                            <X size={16} />
+                        </button>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </div>
     );
 };
@@ -88,42 +115,70 @@ export const ConfirmModal = () => {
             className="m-auto p-0 bg-transparent border-0 max-w-xs w-[calc(100%-2rem)] overflow-visible shadow-none"
         >
             {confirmState.isOpen && (
-                <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700">
-                    <div className={`p-6 text-center ${confirmState.type === 'danger' ? 'bg-rose-50 dark:bg-rose-900/20' : 'bg-gray-50 dark:bg-gray-700'}`}>
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${confirmState.type === 'danger' ? 'bg-rose-100 text-rose-600 dark:bg-rose-800 dark:text-rose-200' : 'bg-indigo-100 text-indigo-600'}`}>
-                            {confirmState.type === 'danger' ? <Trash2 size={32} /> : <Info size={32} />}
+                <motion.div
+                    variants={modalScaleVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="bg-[var(--surface-elevated)] squircle-lg shadow-2xl w-full overflow-hidden border border-[var(--border-subtle)]"
+                >
+                    <div
+                        className={`p-6 text-center ${
+                            confirmState.type === 'danger'
+                                ? 'bg-rose-50/70 dark:bg-rose-950/30'
+                                : 'bg-slate-50/70 dark:bg-slate-800/40'
+                        }`}
+                    >
+                        <div
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3.5 ${
+                                confirmState.type === 'danger'
+                                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/60 dark:text-rose-200'
+                                    : 'bg-primary/10 text-primary'
+                            }`}
+                        >
+                            {confirmState.type === 'danger' ? <Trash2 size={26} /> : <Info size={26} />}
                         </div>
-                        <h3 id="confirm-modal-title" className="text-lg font-black text-gray-800 dark:text-white mb-2">{confirmState.title}</h3>
-                        <p id="confirm-modal-message" className="text-sm text-gray-500 dark:text-gray-300 leading-relaxed pretty-text">{confirmState.message}</p>
+                        <h3 id="confirm-modal-title" className="text-lg font-extrabold text-[var(--text-primary)] mb-2">
+                            {confirmState.title}
+                        </h3>
+                        <p id="confirm-modal-message" className="text-sm text-[var(--text-secondary)] leading-relaxed pretty-text">
+                            {confirmState.message}
+                        </p>
                     </div>
-                    <div className="p-4 flex gap-3 bg-white dark:bg-gray-800">
+                    <div className="p-4 flex gap-2.5 bg-[var(--surface-elevated)]">
                         <button
                             type="button"
                             autoFocus
                             onClick={closeConfirm}
-                            className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition"
+                            className="flex-1 min-h-[44px] py-2.5 rounded-xl font-bold text-sm text-[var(--text-secondary)] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition cursor-pointer"
                         >
                             انصراف
                         </button>
                         <button
                             type="button"
-                            onClick={() => { confirmState.onConfirm(); closeConfirm(); }}
-                            className={`flex-1 py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 ${confirmState.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-200 dark:shadow-none' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none'}`}
+                            data-haptic="custom"
+                            onClick={() => {
+                                if (confirmState.type === 'danger') {
+                                    haptics.heavy();
+                                } else {
+                                    haptics.light();
+                                }
+                                confirmState.onConfirm();
+                                closeConfirm();
+                            }}
+                            className={`flex-1 min-h-[44px] py-2.5 rounded-xl font-bold text-sm text-white transition active:scale-[0.98] cursor-pointer ${
+                                confirmState.type === 'danger'
+                                    ? 'bg-rose-600 hover:bg-rose-700'
+                                    : 'bg-[var(--md-primary)] hover:opacity-95'
+                            }`}
                         >
                             تایید می‌کنم
                         </button>
                     </div>
-                </div>
+                </motion.div>
             )}
         </dialog>
     );
 };
-
-// ==========================================
-// 2026 LUXURIOUS LEVEL-UP & CONFETTI CELEBRATIONS
-// ==========================================
-import { Sparkles, Palette } from 'lucide-react';
-import { soundFX } from '../utils';
 
 export const LevelUpShowcase = () => {
     const { level } = useStore();
@@ -134,47 +189,59 @@ export const LevelUpShowcase = () => {
         if (level > prevLevelRef.current && prevLevelRef.current > 0) {
             setShow(true);
             soundFX.playLevelUp();
+            haptics.success();
         }
         prevLevelRef.current = level;
     }, [level]);
 
-    if (!show) return null;
-
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300 p-4" dir="rtl">
-            {/* Glowing backdrop effect */}
-            <div className="absolute w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl animate-pulse" />
-            <div className="absolute w-72 h-72 rounded-full bg-purple-500/20 blur-3xl animate-pulse [animation-delay:1s]" />
-
-            <div className="relative bg-white/90 dark:bg-gray-900/90 border border-white/20 dark:border-white/5 backdrop-blur-2xl rounded-[2.5rem] p-8 max-w-sm w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
-                
-                {/* Floating particle effect in SVG */}
-                <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
-                    <div className="absolute top-10 left-10 w-2 h-2 rounded-full bg-indigo-400 opacity-60 animate-float" />
-                    <div className="absolute bottom-12 right-12 w-3 h-3 rounded-full bg-rose-400 opacity-40 animate-float-slow" />
-                </div>
-
-                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30 border border-white/20 relative animate-bounce" style={{ animationDuration: '3s' }}>
-                    <Sparkles className="text-white animate-spin-slow" size={42} />
-                    {/* Level Number Emblem */}
-                    <div className="absolute -bottom-2 right-[-10px] bg-yellow-450 text-slate-950 font-black text-sm px-2.5 py-1 rounded-full border-2 border-white shadow">
-                        سطح {level}
-                    </div>
-                </div>
-
-                <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2 leading-tight">صعود به سطح جدید! 🚀</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-300 mb-6 leading-relaxed">
-                    تلاش و استمرار تو نتیجه داد! تو اکنون به سطح <span className="font-extrabold text-indigo-500 dark:text-indigo-400">{level}</span> رسیدی. پر قدرت به مسیرت ادامه بده!
-                </p>
-
-                <button
-                    onClick={() => setShow(false)}
-                    className="w-full py-4 bg-gradient-to-l from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl font-bold text-xs transition duration-200 shadow-xl shadow-indigo-500/20 active:scale-98 cursor-pointer"
+        <AnimatePresence>
+            {show && (
+                <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="levelup-title"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={TRANSITION_FAST}
+                    className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/72 dark:bg-black/80 backdrop-blur-md p-4"
+                    dir="rtl"
                 >
-                    دمت گرم، ادامه میدم! 🔥
-                </button>
-            </div>
-        </div>
+                    <motion.div
+                        variants={modalScaleVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        className="relative bg-[var(--surface-elevated)] border border-[var(--border-subtle)] squircle-xl p-7 max-w-sm w-full text-center shadow-2xl"
+                    >
+                        <div className="w-20 h-20 rounded-[1.5rem] bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] flex items-center justify-center mx-auto mb-5 relative">
+                            <Sparkles size={34} aria-hidden="true" />
+                            <div className="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-black text-xs px-2.5 py-1 rounded-full border-2 border-[var(--surface-elevated)] tabular-nums">
+                                سطح {toPersianNum(level)}
+                            </div>
+                        </div>
+
+                        <h2 id="levelup-title" className="text-xl font-extrabold text-[var(--text-primary)] mb-2 leading-snug">
+                            صعود به سطح جدید
+                        </h2>
+                        <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+                            استمرار و تمرکزت نتیجه داد. اکنون به سطح{' '}
+                            <span className="font-extrabold text-[var(--md-primary)] tabular-nums">{toPersianNum(level)}</span>{' '}
+                            رسیدی.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() => setShow(false)}
+                            className="w-full min-h-[48px] bg-[var(--md-primary)] text-[var(--md-on-primary)] rounded-2xl font-bold text-sm transition active:scale-[0.98] cursor-pointer hover:opacity-95"
+                        >
+                            ادامه مسیر
+                        </button>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 
@@ -182,19 +249,27 @@ export const ConfettiCelebration = ({ active, onComplete }: { active: boolean; o
     const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
-        if (!active || !canvasRef.current) return;
+        if (!active) return;
+
+        // Honor WCAG / iOS Reduce Motion setting
+        if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                onComplete?.();
+                return;
+            }
+        }
+
         const canvas = canvasRef.current;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
         let animationFrameId: number;
-        
-        // Resize canvas to cover window
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
-        
+        const colors = ['#4f46e5', '#0f766e', '#10b981', '#f59e0b', '#be185d'];
+
         interface Particle {
             x: number;
             y: number;
@@ -207,16 +282,16 @@ export const ConfettiCelebration = ({ active, onComplete }: { active: boolean; o
         }
 
         const particles: Particle[] = [];
-        for (let i = 0; i < 150; i++) {
+        for (let i = 0; i < 90; i++) {
             particles.push({
                 x: Math.random() * canvas.width,
-                y: -10 - Math.random() * 150,
-                size: Math.random() * 8 + 6,
+                y: -10 - Math.random() * 120,
+                size: Math.random() * 7 + 5,
                 color: colors[Math.floor(Math.random() * colors.length)],
-                speedX: Math.random() * 4 - 2,
-                speedY: Math.random() * 5 + 4,
+                speedX: Math.random() * 3.5 - 1.75,
+                speedY: Math.random() * 4.5 + 3.5,
                 rotation: Math.random() * 360,
-                rotationSpeed: Math.random() * 4 - 2
+                rotationSpeed: Math.random() * 4 - 2,
             });
         }
 
@@ -224,7 +299,7 @@ export const ConfettiCelebration = ({ active, onComplete }: { active: boolean; o
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             let activeParticles = 0;
 
-            particles.forEach(p => {
+            particles.forEach((p) => {
                 p.y += p.speedY;
                 p.x += p.speedX;
                 p.rotation += p.rotationSpeed;
@@ -262,14 +337,15 @@ export const ConfettiCelebration = ({ active, onComplete }: { active: boolean; o
             cancelAnimationFrame(animationFrameId);
             window.removeEventListener('resize', handleResize);
         };
-    }, [active]);
+    }, [active, onComplete]);
 
     if (!active) return null;
 
     return (
         <canvas
             ref={canvasRef}
-            className="fixed inset-0 pointer-events-none z-[99] w-full h-full"
+            aria-hidden="true"
+            className="fixed inset-0 pointer-events-none z-[79] w-full h-full"
         />
     );
 };

@@ -48,7 +48,7 @@ export const InSessionScratchpadDrawer: React.FC<InSessionScratchpadDrawerProps>
     };
 
     return (
-        <div className="fixed inset-y-0 left-0 z-[80] w-full max-w-md bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col animate-in slide-in-from-left duration-200" dir="rtl">
+        <div className="fixed inset-y-0 left-0 z-[80] w-full max-w-md bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col transition-transform duration-200" dir="rtl">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/70 dark:bg-gray-900/80">
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center shrink-0">

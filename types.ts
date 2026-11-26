@@ -247,6 +247,11 @@ export interface SubjectTask {
 export type TimerMode = 'stopwatch' | 'pomodoro' | 'exam' | 'countdown';
 export type AmbientSoundType = 'none' | 'white' | 'pink' | 'brown' | 'ocean' | 'rain' | 'fireplace' | 'binaural';
 
+export interface StudySessionSegment {
+    startedAt: string; // ISO datetime
+    endedAt: string; // ISO datetime
+}
+
 export interface StudySession {
     id: string;
     subjectId: string;
@@ -256,6 +261,7 @@ export interface StudySession {
     durationSeconds: number;
     startedAt: string; // ISO datetime
     endedAt: string; // ISO datetime
+    activeSegments?: StudySessionSegment[];
     logicalDate: string; // YYYY-MM-DD using dayCutoffHour (default 05:00 AM)
     mode: TimerMode;
     laps?: number[];
@@ -422,10 +428,16 @@ export interface RoutineTemplate {
 
 // New Feature: Smart Notifications
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
+export interface ToastAction {
+    label: string;
+    onClick: () => void;
+}
 export interface ToastMessage {
     id: string;
     message: string;
     type: ToastType;
+    action?: ToastAction;
+    durationMs?: number;
 }
 
 export interface ConfirmDialogState {
@@ -466,6 +478,7 @@ export interface AppSettings {
     anonymizedLeaderboard?: boolean;
     targetExamTitle?: string;
     targetExamDate?: string; // YYYY-MM-DD
+    chronotype?: 'early_bird' | 'balanced' | 'night_owl';
 }
 
 export interface AppState {

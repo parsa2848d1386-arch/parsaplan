@@ -1,0 +1,330 @@
+/* ============================================================================
+   ParsaPlan Design Tokens — W3C DTCG 3-Tier Architecture (2026 Apple-Caliber)
+   Tier 1: Primitives | Tier 2: Semantic Light/Dark | Tier 3: Component Roles
+   ============================================================================ */
+
+:root {
+  /* --- Typography & Rhythm --- */
+  --font-vazir: 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono-tabular: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+
+  /* --- Concentric Radius Scale & Apple G2 Squircle Tokens --- */
+  --radius-sheet: 1.75rem;   /* 28px */
+  --radius-card: 1.25rem;    /* 20px */
+  --radius-inner: 0.75rem;   /* 12px (20 - 8 or 28 - 16) */
+  --radius-control: 0.75rem; /* 12px */
+  --radius-pill: 9999px;
+  --squircle-sm: 16px;
+  --squircle-md: 22px;
+  --squircle-lg: 28px;
+  --squircle-xl: 32px;
+  --scrim-backdrop: rgba(6, 8, 15, 0.72);
+
+  /* --- Motion Curves (Fluid Interfaces + Slow-in Slow-out) --- */
+  --transition-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+
+  /* --- Unified Z-Index Layer Scale --- */
+  --z-base: 0;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-accessory: 35;
+  --z-drawer: 45;
+  --z-modal: 55;
+  --z-popover: 65;
+  --z-toast: 80;
+
+  /* --- Default Brand Palette: Refined Indigo (Tier 1 + Accent Bridge) --- */
+  --color-primary: 70 72 212;
+  --color-indigo-50: #eef2ff;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-200: #c7d2fe;
+  --color-indigo-300: #a5b4fc;
+  --color-indigo-400: #818cf8;
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-indigo-800: #3730a3;
+  --color-indigo-900: #312e81;
+  --color-indigo-950: #1e1b4b;
+
+  --color-violet-50: #f5f3ff;
+  --color-violet-100: #ede9fe;
+  --color-violet-200: #ddd6fe;
+  --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+  --color-violet-700: #6d28d9;
+  --color-violet-800: #5b21b6;
+  --color-violet-900: #4c1d95;
+  --color-violet-950: #2e1065;
+
+  /* --- Tier 2: Semantic Light Surface & Typography Tokens (WCAG AA + APCA Lc >= 75) --- */
+  color-scheme: light dark;
+  accent-color: var(--md-primary);
+  --scrollbar-track: #e2e8f0;
+  --scrollbar-thumb: #64748b;
+
+  --bg-canvas: #f5f6fa;
+  --bg-surface-1: #ffffff;
+  --bg-surface-2: #eef1f7;
+  --surface-canvas: var(--bg-canvas);
+  --surface-elevated: var(--bg-surface-1);
+  --text-primary: #0f172a;
+  --text-secondary: #475569; /* 7.1:1 on #fff */
+  --text-tertiary: #5a6577;  /* 5.5:1 on #fff */
+  --text-muted: var(--text-tertiary);
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --glass-nav-bg: rgba(255, 255, 255, 0.24);
+  --glass-nav-border: rgba(255, 255, 255, 0.65);
+
+  /* --- Semantic MD3 / App Surface Bridge (Light) --- */
+  --md-primary: #4648d4;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #5b5ee8;
+  --md-on-primary-container: #ffffff;
+  --md-primary-fixed: #e6e7ff;
+  --md-primary-fixed-dim: #c5c7ff;
+  --md-on-primary-fixed: #18146b;
+  --md-on-primary-fixed-variant: #2f2ebe;
+  --md-inverse-primary: #c0c1ff;
+
+  --md-secondary: #047857;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #d1fae5;
+  --md-on-secondary-container: #065f46;
+  --md-secondary-fixed: #a7f3d0;
+  --md-secondary-fixed-dim: #6ee7b7;
+  --md-on-secondary-fixed: #022c22;
+  --md-on-secondary-fixed-variant: #065f46;
+
+  --md-tertiary: #b45309;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #fef3c7;
+  --md-on-tertiary-container: #78350f;
+  --md-tertiary-fixed: #fde68a;
+  --md-tertiary-fixed-dim: #fcd34d;
+  --md-on-tertiary-fixed: #451a03;
+  --md-on-tertiary-fixed-variant: #78350f;
+
+  --md-surface: #f5f6fa;
+  --md-on-surface: #0f172a;
+  --md-surface-variant: #e6ebf5;
+  --md-on-surface-variant: #475569;
+  --md-surface-dim: #e2e8f0;
+  --md-surface-bright: #ffffff;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #f1f4fa;
+  --md-surface-container: #e8edf6;
+  --md-surface-container-high: #dfe6f2;
+  --md-surface-container-highest: #d5dfef;
+  --md-outline: #64748b;
+  --md-outline-variant: #cbd5e1;
+  --md-inverse-surface: #1e293b;
+  --md-inverse-on-surface: #f8fafc;
+  --md-error: #dc2626;
+  --md-on-error: #ffffff;
+  --md-error-container: #fee2e2;
+  --md-on-error-container: #991b1b;
+}
+
+/* ============================================================================
+   SEMANTIC DARK MODE (Cool Obsidian Surfaces — Zero Neon-Purple Slop)
+   ============================================================================ */
+:root.dark {
+  color-scheme: dark;
+  --scrollbar-track: #181c28;
+  --scrollbar-thumb: #64748b;
+
+  --bg-canvas: #0b0d14;
+  --bg-surface-1: #131722;
+  --bg-surface-2: #1b2131;
+  --surface-canvas: var(--bg-canvas);
+  --surface-elevated: var(--bg-surface-1);
+  --text-primary: #f8fafc;
+  --text-secondary: #a8b3c7; /* 8.2:1 on #131722 */
+  --text-tertiary: #8b97ad;  /* 5.9:1 on #131722 */
+  --text-muted: var(--text-tertiary);
+  --border-subtle: rgba(248, 250, 252, 0.09);
+  --border-strong: rgba(248, 250, 252, 0.18);
+  --glass-nav-bg: rgba(16, 20, 32, 0.28);
+  --glass-nav-border: rgba(255, 255, 255, 0.16);
+
+  --md-primary: #818cf8;
+  --md-on-primary: #0b0d14;
+  --md-primary-container: #4f46e5;
+  --md-on-primary-container: #eef2ff;
+  --md-primary-fixed: #26295c;
+  --md-primary-fixed-dim: #34387d;
+  --md-on-primary-fixed: #e0e7ff;
+  --md-on-primary-fixed-variant: #c7d2fe;
+  --md-inverse-primary: #4f46e5;
+
+  --md-secondary: #34d399;
+  --md-on-secondary: #022c22;
+  --md-secondary-container: #064e3b;
+  --md-on-secondary-container: #a7f3d0;
+  --md-secondary-fixed: #064e3b;
+  --md-secondary-fixed-dim: #065f46;
+  --md-on-secondary-fixed: #d1fae5;
+  --md-on-secondary-fixed-variant: #a7f3d0;
+
+  --md-tertiary: #fbbf24;
+  --md-on-tertiary: #1c1102;
+  --md-tertiary-container: #451a03;
+  --md-on-tertiary-container: #fde68a;
+  --md-tertiary-fixed: #451a03;
+  --md-tertiary-fixed-dim: #78350f;
+  --md-on-tertiary-fixed: #fef3c7;
+  --md-on-tertiary-fixed-variant: #fde68a;
+
+  --md-surface: #0b0d14;
+  --md-on-surface: #f1f5f9;
+  --md-surface-variant: #1e2436;
+  --md-on-surface-variant: #a8b3c7;
+  --md-surface-dim: #080a10;
+  --md-surface-bright: #181e2d;
+  --md-surface-container-lowest: #131722;
+  --md-surface-container-low: #171c29;
+  --md-surface-container: #1c2233;
+  --md-surface-container-high: #232a3e;
+  --md-surface-container-highest: #2b344c;
+  --md-outline: #64748b;
+  --md-outline-variant: #2a3347;
+  --md-inverse-surface: #e2e8f0;
+  --md-inverse-on-surface: #0f172a;
+  --md-error: #f87171;
+  --md-on-error: #450a0a;
+  --md-error-container: #7f1d1d;
+  --md-on-error-container: #fecaca;
+}
+
+/* ============================================================================
+   REAL WORKING THEME PALETTES (Connected to both --md-primary & --color-indigo)
+   ============================================================================ */
+
+/* 1. Indigo (Default) */
+:root.theme-indigo {
+  --color-primary: 70 72 212;
+  --md-primary: #4648d4;
+  --md-primary-container: #5b5ee8;
+}
+:root.dark.theme-indigo {
+  --md-primary: #818cf8;
+  --md-primary-container: #4f46e5;
+}
+
+/* 2. Forest (Calm Emerald) */
+:root.theme-forest {
+  --color-primary: 5 150 105;
+  --md-primary: #047857;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #059669;
+  --md-on-primary-container: #ffffff;
+  --md-primary-fixed: #d1fae5;
+  --md-on-primary-fixed: #022c22;
+  --md-on-primary-fixed-variant: #065f46;
+
+  --color-indigo-50: #ecfdf5;
+  --color-indigo-100: #d1fae5;
+  --color-indigo-200: #a7f3d0;
+  --color-indigo-300: #6ee7b7;
+  --color-indigo-400: #34d399;
+  --color-indigo-500: #10b981;
+  --color-indigo-600: #059669;
+  --color-indigo-700: #047857;
+  --color-indigo-800: #065f46;
+  --color-indigo-900: #064e3b;
+  --color-indigo-950: #022c22;
+
+  --color-violet-50: #f0fdf4;
+  --color-violet-100: #dcfce7;
+  --color-violet-200: #bbf7d0;
+  --color-violet-300: #86efac;
+  --color-violet-400: #4ade80;
+  --color-violet-500: #22c55e;
+  --color-violet-600: #16a34a;
+  --color-violet-700: #15803d;
+  --color-violet-800: #166534;
+  --color-violet-900: #14532d;
+  --color-violet-950: #052e16;
+}
+:root.dark.theme-forest {
+  --md-primary: #34d399;
+  --md-on-primary: #022c22;
+  --md-primary-container: #059669;
+  --md-on-primary-container: #ecfdf5;
+  --md-primary-fixed: #064e3b;
+  --md-on-primary-fixed: #d1fae5;
+  --md-on-primary-fixed-variant: #a7f3d0;
+}
+
+/* 3. Rose Gold (Warm Rose) */
+:root.theme-rosegold {
+  --color-primary: 225 29 72;
+  --md-primary: #be123c;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #e11d48;
+  --md-on-primary-container: #ffffff;
+  --md-primary-fixed: #ffe4e6;
+  --md-on-primary-fixed: #4c0519;
+  --md-on-primary-fixed-variant: #9f1239;
+
+  --color-indigo-50: #fff1f2;
+  --color-indigo-100: #ffe4e6;
+  --color-indigo-200: #fecdd3;
+  --color-indigo-300: #fda4af;
+  --color-indigo-400: #fb7185;
+  --color-indigo-500: #f43f5e;
+  --color-indigo-600: #e11d48;
+  --color-indigo-700: #be123c;
+  --color-indigo-800: #9f1239;
+  --color-indigo-900: #881337;
+  --color-indigo-950: #4c0519;
+
+  --color-violet-50: #fff7ed;
+  --color-violet-100: #ffedd5;
+  --color-violet-200: #fed7aa;
+  --color-violet-300: #fdba74;
+  --color-violet-400: #fb923c;
+  --color-violet-500: #f97316;
+  --color-violet-600: #ea580c;
+  --color-violet-700: #c2410c;
+  --color-violet-800: #9a3412;
+  --color-violet-900: #7c2d12;
+  --color-violet-950: #431407;
+}
+:root.dark.theme-rosegold {
+  --md-primary: #fb7185;
+  --md-on-primary: #2d0410;
+  --md-primary-container: #be123c;
+  --md-on-primary-container: #fff1f2;
+  --md-primary-fixed: #4c0519;
+  --md-on-primary-fixed: #ffe4e6;
+  --md-on-primary-fixed-variant: #fecdd3;
+}
+
+/* ============================================================================
+   BIO-CIRCADIAN TEMPERATURE TINTS (Zero `filter` on body — preserves `fixed`!)
+   ============================================================================ */
+html[data-bio-phase='morning']:not(.dark) {
+  --bg-canvas: #f4f7fc;
+  --md-surface: #f4f7fc;
+}
+
+html[data-bio-phase='evening'].dark {
+  --bg-canvas: #100e14;
+  --md-surface: #100e14;
+  --bg-surface-1: #18151f;
+  --md-surface-container-lowest: #18151f;
+}
+
+html[data-bio-phase='night'].dark {
+  --bg-canvas: #0e0c0f;
+  --md-surface: #0e0c0f;
+  --bg-surface-1: #161318;
+  --md-surface-container-lowest: #161318;
+}

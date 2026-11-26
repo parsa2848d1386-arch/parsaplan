@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // ===============================================================
-// ParsaPlan 2.1 - Standardized Cloud Firestore Security Rules
+// ParsaPlan 2.1 - Hardened Cloud Firestore Security Rules
 // Local-First Subcollections + Scalable Leaderboard + YPT Study Rooms
 // ===============================================================
 
@@ -21,29 +21,44 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-:]+$');
+    }
+
+    function isValidNonNegNumber(val, maxVal) {
+      return val is number && val >= 0 && val <= maxVal;
+    }
+
+    function isValidBoundedString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
     // ---------------------------------------------------------------
     // Private User Profile & Subcollections (Never allow geminiApiKey)
     // ---------------------------------------------------------------
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) && isValidId(userId);
       allow create, update: if isOwner(userId) &&
-        (!('settings' in request.resource.data) || !('geminiApiKey' in request.resource.data.settings));
-      allow delete: if isOwner(userId);
+        isValidId(userId) &&
+        (!('settings' in request.resource.data) || !('geminiApiKey' in request.resource.data.settings)) &&
+        (!('xp' in request.resource.data) || isValidNonNegNumber(request.resource.data.xp, 10000000)) &&
+        (!('userName' in request.resource.data) || isValidBoundedString(request.resource.data.userName, 80));
+      allow delete: if isOwner(userId) && isValidId(userId);
 
       match /tasks/{taskId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(taskId);
       }
 
       match /sessions/{sessionId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
       }
 
       match /flashcards/{cardId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(cardId);
       }
 
       match /pages/{pageId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(pageId);
       }
     }
 
@@ -53,14 +68,24 @@ service cloud.firestore {
     match /publicProfiles/{profileId} {
       allow read: if isAuthenticated();
       allow create, update: if isOwner(profileId) &&
-        request.resource.data.xp is number &&
-        request.resource.data.xp >= 0;
-      allow delete: if isOwner(profileId);
+        isValidId(profileId) &&
+        isValidNonNegNumber(request.resource.data.xp, 10000000) &&
+        (!('level' in request.resource.data) || (request.resource.data.level is number && request.resource.data.level >= 1 && request.resource.data.level <= 500)) &&
+        (!('progress' in request.resource.data) || isValidNonNegNumber(request.resource.data.progress, 100)) &&
+        (!('tasksCompleted' in request.resource.data) || isValidNonNegNumber(request.resource.data.tasksCompleted, 100000)) &&
+        (!('totalTasks' in request.resource.data) || isValidNonNegNumber(request.resource.data.totalTasks, 100000)) &&
+        (!('examAverage' in request.resource.data) || isValidNonNegNumber(request.resource.data.examAverage, 100)) &&
+        (!('userName' in request.resource.data) || isValidBoundedString(request.resource.data.userName, 80));
+      allow delete: if isOwner(profileId) && isValidId(profileId);
     }
 
     match /publicProfileDetails/{profileId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isOwner(profileId);
+      allow create, update: if isOwner(profileId) &&
+        isValidId(profileId) &&
+        (!('xp' in request.resource.data) || isValidNonNegNumber(request.resource.data.xp, 10000000)) &&
+        (!('tasks' in request.resource.data) || (request.resource.data.tasks is list && request.resource.data.tasks.size() <= 50));
+      allow delete: if isOwner(profileId) && isValidId(profileId);
     }
 
     // ---------------------------------------------------------------
@@ -68,7 +93,12 @@ service cloud.firestore {
     // ---------------------------------------------------------------
     match /liveSessions/{sessionId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isOwner(sessionId);
+      allow create, update: if isOwner(sessionId) &&
+        isValidId(sessionId) &&
+        (!('userName' in request.resource.data) || isValidBoundedString(request.resource.data.userName, 80)) &&
+        (!('subject' in request.resource.data) || isValidBoundedString(request.resource.data.subject, 120)) &&
+        (!('topic' in request.resource.data) || isValidBoundedString(request.resource.data.topic, 200));
+      allow delete: if isOwner(sessionId) && isValidId(sessionId);
     }
 
     // ---------------------------------------------------------------
@@ -77,30 +107,61 @@ service cloud.firestore {
     match /study_rooms/{roomId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() &&
+        isValidId(roomId) &&
         request.resource.data.creatorId == request.auth.uid &&
         request.resource.data.name is string &&
         request.resource.data.name.size() >= 2 &&
         request.resource.data.name.size() <= 80 &&
+        (!('creatorName' in request.resource.data) || isValidBoundedString(request.resource.data.creatorName, 60)) &&
+        (!('description' in request.resource.data) || isValidBoundedString(request.resource.data.description, 200)) &&
         (!('maxMembers' in request.resource.data) || (request.resource.data.maxMembers is int && request.resource.data.maxMembers >= 2 && request.resource.data.maxMembers <= 200)) &&
         (!('targetHours' in request.resource.data) || (request.resource.data.targetHours is number && request.resource.data.targetHours >= 1 && request.resource.data.targetHours <= 16));
-      allow update, delete: if isAuthenticated() &&
+      allow update: if isAuthenticated() &&
+        isValidId(roomId) &&
+        resource.data.creatorId == request.auth.uid &&
+        request.resource.data.creatorId == resource.data.creatorId;
+      allow delete: if isAuthenticated() &&
+        isValidId(roomId) &&
         resource.data.creatorId == request.auth.uid;
 
       match /members/{memberId} {
         allow read: if isAuthenticated();
-        allow create, delete: if isOwner(memberId);
-        // Member manages own row; room peers may only increment cheersReceived by 1
-        allow update: if isOwner(memberId) || (
-          isAuthenticated() &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cheersReceived']) &&
-          request.resource.data.cheersReceived is number &&
-          request.resource.data.cheersReceived == resource.data.cheersReceived + 1
+        allow create: if isOwner(memberId) &&
+          isValidId(roomId) &&
+          isValidId(memberId) &&
+          exists(/databases/$(database)/documents/study_rooms/$(roomId)) &&
+          (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid) &&
+          (!('displayName' in request.resource.data) || isValidBoundedString(request.resource.data.displayName, 60)) &&
+          (!('dailyStudySeconds' in request.resource.data) || isValidNonNegNumber(request.resource.data.dailyStudySeconds, 86400)) &&
+          (!('cheersReceived' in request.resource.data) || isValidNonNegNumber(request.resource.data.cheersReceived, 100000));
+        allow delete: if isOwner(memberId) && isValidId(memberId);
+        // Member manages own row; active room peers may only increment cheersReceived by 1
+        allow update: if isValidId(memberId) && (
+          (
+            isOwner(memberId) &&
+            (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid) &&
+            (!('displayName' in request.resource.data) || isValidBoundedString(request.resource.data.displayName, 60)) &&
+            (!('dailyStudySeconds' in request.resource.data) || isValidNonNegNumber(request.resource.data.dailyStudySeconds, 86400))
+          ) || (
+            isAuthenticated() &&
+            memberId != request.auth.uid &&
+            exists(/databases/$(database)/documents/study_rooms/$(roomId)/members/$(request.auth.uid)) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cheersReceived']) &&
+            request.resource.data.cheersReceived is number &&
+            request.resource.data.cheersReceived == resource.data.cheersReceived + 1
+          )
         );
       }
 
       match /messages/{messageId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated() &&
+          isValidId(roomId) &&
+          isValidId(messageId) &&
+          (
+            exists(/databases/$(database)/documents/study_rooms/$(roomId)/members/$(request.auth.uid)) ||
+            get(/databases/$(database)/documents/study_rooms/$(roomId)).data.creatorId == request.auth.uid
+          ) &&
           request.resource.data.senderId == request.auth.uid &&
           request.resource.data.text is string &&
           request.resource.data.text.size() >= 1 &&

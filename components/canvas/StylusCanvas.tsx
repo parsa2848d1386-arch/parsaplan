@@ -28,86 +28,183 @@ const WIDTHS = [
 
 type BgPattern = 'grid' | 'lined' | 'blank';
 
-function renderStrokeList(ctx: CanvasRenderingContext2D, list: StylusStroke[]) {
-    ctx.clearRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
-    list.forEach((stroke) => {
-        if (stroke.points.length === 0) return;
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+function drawSingleStroke(ctx: CanvasRenderingContext2D, stroke: StylusStroke) {
+    if (!stroke.points || stroke.points.length === 0) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-        if (stroke.tool === 'eraser') {
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.strokeStyle = 'rgba(0,0,0,1)';
-            ctx.lineWidth = stroke.width * 3.2;
-        } else if (stroke.tool === 'highlighter') {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = 0.32;
-            ctx.strokeStyle = stroke.color;
-            ctx.lineWidth = stroke.width * 3;
-        } else {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = 1;
-            ctx.strokeStyle = stroke.color;
-            ctx.lineWidth = stroke.width;
-        }
+    if (stroke.tool === 'eraser') {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = stroke.width * 3.2;
+    } else if (stroke.tool === 'highlighter') {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.32;
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.width * 3;
+    } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth = stroke.width;
+    }
 
-        ctx.beginPath();
-        const pts = stroke.points;
-        ctx.moveTo(pts[0].x, pts[0].y);
-        if (pts.length === 1) {
-            ctx.lineTo(pts[0].x + 0.1, pts[0].y + 0.1);
-        } else {
-            for (let i = 1; i < pts.length; i++) {
-                const midX = (pts[i - 1].x + pts[i].x) / 2;
-                const midY = (pts[i - 1].y + pts[i].y) / 2;
-                ctx.quadraticCurveTo(pts[i - 1].x, pts[i - 1].y, midX, midY);
-            }
-            const last = pts[pts.length - 1];
-            ctx.lineTo(last.x, last.y);
+    ctx.beginPath();
+    const pts = stroke.points;
+    ctx.moveTo(pts[0].x, pts[0].y);
+    if (pts.length === 1) {
+        ctx.lineTo(pts[0].x + 0.1, pts[0].y + 0.1);
+    } else {
+        for (let i = 1; i < pts.length; i++) {
+            const midX = (pts[i - 1].x + pts[i].x) / 2;
+            const midY = (pts[i - 1].y + pts[i].y) / 2;
+            ctx.quadraticCurveTo(pts[i - 1].x, pts[i - 1].y, midX, midY);
         }
-        ctx.stroke();
-        ctx.restore();
-    });
+        const last = pts[pts.length - 1];
+        ctx.lineTo(last.x, last.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+function renderStrokeList(
+    ctx: CanvasRenderingContext2D,
+    list: StylusStroke[],
+    physicalWidth: number,
+    physicalHeight: number
+) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, physicalWidth, physicalHeight);
+    ctx.setTransform(physicalWidth / LOGICAL_WIDTH, 0, 0, physicalHeight / LOGICAL_HEIGHT, 0, 0);
+    list.forEach((stroke) => drawSingleStroke(ctx, stroke));
+    ctx.restore();
 }
 
 export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, height = 520 }) => {
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const committedCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const activeCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const activeStrokeRef = useRef<StylusStroke | null>(null);
     const isDrawingRef = useRef(false);
+    const canvasSizeRef = useRef<{ width: number; height: number }>({
+        width: LOGICAL_WIDTH,
+        height: LOGICAL_HEIGHT,
+    });
 
     const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
     const [color, setColor] = useState('#4f46e5');
     const [strokeWidth, setStrokeWidth] = useState(4.5);
     const [bgPattern, setBgPattern] = useState<BgPattern>('grid');
 
-    const redraw = useCallback(
-        (previewStroke?: StylusStroke | null) => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
+    const redrawCommitted = useCallback(() => {
+        const canvas = committedCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        renderStrokeList(ctx, strokes, canvas.width, canvas.height);
+    }, [strokes]);
+
+    const clearActiveLayer = useCallback(() => {
+        const canvas = activeCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }, []);
+
+    const drawActiveLayer = useCallback((stroke: StylusStroke) => {
+        if (stroke.tool === 'eraser') {
+            // Erase immediately on committed layer for real-time feedback
+            const committed = committedCanvasRef.current;
+            if (!committed) return;
+            const ctx = committed.getContext('2d');
             if (!ctx) return;
-            const all = previewStroke ? [...strokes, previewStroke] : strokes;
-            renderStrokeList(ctx, all);
-        },
-        [strokes]
-    );
+            ctx.save();
+            ctx.setTransform(
+                committed.width / LOGICAL_WIDTH,
+                0,
+                0,
+                committed.height / LOGICAL_HEIGHT,
+                0,
+                0
+            );
+            drawSingleStroke(ctx, stroke);
+            ctx.restore();
+            return;
+        }
+        const active = activeCanvasRef.current;
+        if (!active) return;
+        const ctx = active.getContext('2d');
+        if (!ctx) return;
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, active.width, active.height);
+        ctx.setTransform(active.width / LOGICAL_WIDTH, 0, 0, active.height / LOGICAL_HEIGHT, 0, 0);
+        drawSingleStroke(ctx, stroke);
+        ctx.restore();
+    }, []);
+
+    // ResizeObserver for crisp HiDPI sizing
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const syncSize = () => {
+            const rect = container.getBoundingClientRect();
+            const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+            const physW = Math.max(LOGICAL_WIDTH, Math.round((rect.width || LOGICAL_WIDTH) * dpr));
+            const physH = Math.max(LOGICAL_HEIGHT, Math.round((rect.height || height) * dpr));
+
+            if (canvasSizeRef.current.width !== physW || canvasSizeRef.current.height !== physH) {
+                canvasSizeRef.current = { width: physW, height: physH };
+                if (committedCanvasRef.current) {
+                    committedCanvasRef.current.width = physW;
+                    committedCanvasRef.current.height = physH;
+                }
+                if (activeCanvasRef.current) {
+                    activeCanvasRef.current.width = physW;
+                    activeCanvasRef.current.height = physH;
+                }
+                redrawCommitted();
+            }
+        };
+
+        syncSize();
+
+        if (typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(syncSize);
+            observer.observe(container);
+            return () => observer.disconnect();
+        }
+    }, [height, redrawCommitted]);
 
     useEffect(() => {
-        redraw(null);
-    }, [redraw]);
+        redrawCommitted();
+        clearActiveLayer();
+    }, [redrawCommitted, clearActiveLayer]);
 
     const toLogicalPoint = (e: React.PointerEvent<HTMLCanvasElement>): StylusPoint => {
-        const canvas = canvasRef.current;
+        const canvas = activeCanvasRef.current || committedCanvasRef.current;
         if (!canvas) return { x: 0, y: 0 };
         const rect = canvas.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * LOGICAL_WIDTH;
-        const y = ((e.clientY - rect.top) / rect.height) * LOGICAL_HEIGHT;
+        const safeW = rect.width || LOGICAL_WIDTH;
+        const safeH = rect.height || LOGICAL_HEIGHT;
+        const x = ((e.clientX - rect.left) / safeW) * LOGICAL_WIDTH;
+        const y = ((e.clientY - rect.top) / safeH) * LOGICAL_HEIGHT;
         return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
     };
 
     const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
+        try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+            // ignore unsupported pointer capture in synthetic environments
+        }
         isDrawingRef.current = true;
         const pt = toLogicalPoint(e);
         const newStroke: StylusStroke = {
@@ -118,7 +215,7 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
             points: [pt],
         };
         activeStrokeRef.current = newStroke;
-        redraw(newStroke);
+        drawActiveLayer(newStroke);
     };
 
     const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -128,14 +225,24 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
         const last = pts[pts.length - 1];
         if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < 1.5) return;
         pts.push(pt);
-        redraw(activeStrokeRef.current);
+        drawActiveLayer(activeStrokeRef.current);
     };
 
-    const finishStroke = () => {
+    const finishStroke = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+        if (e) {
+            try {
+                if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                }
+            } catch {
+                // ignore
+            }
+        }
         if (!isDrawingRef.current || !activeStrokeRef.current) return;
         isDrawingRef.current = false;
         const completed = activeStrokeRef.current;
         activeStrokeRef.current = null;
+        clearActiveLayer();
         if (completed.points.length > 0) {
             onChange([...strokes, completed]);
         }
@@ -187,8 +294,8 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
             }
         }
 
-        if (canvasRef.current) {
-            ctx.drawImage(canvasRef.current, 0, 0);
+        if (committedCanvasRef.current) {
+            ctx.drawImage(committedCanvasRef.current, 0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT);
         }
 
         const link = document.createElement('a');
@@ -263,6 +370,7 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
                                     if (tool === 'eraser') setTool('pen');
                                 }}
                                 title={c.label}
+                                aria-label={c.label}
                                 className={`w-6 h-6 rounded-full border-2 transition-transform ${
                                     color === c.value && tool !== 'eraser'
                                         ? 'border-gray-900 dark:border-white scale-110'
@@ -310,6 +418,7 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
                         type="button"
                         onClick={handleUndo}
                         disabled={strokes.length === 0}
+                        aria-label="بازگشت"
                         className="p-2 rounded-xl bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border border-gray-200 dark:border-gray-600 disabled:opacity-40"
                         title="بازگشت (Undo)"
                     >
@@ -319,6 +428,7 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
                         type="button"
                         onClick={handleClear}
                         disabled={strokes.length === 0}
+                        aria-label="پاک کردن کل تخته"
                         className="p-2 rounded-xl bg-white dark:bg-gray-700 text-rose-500 border border-gray-200 dark:border-gray-600 disabled:opacity-40"
                         title="پاک کردن کل تخته"
                     >
@@ -336,20 +446,27 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
                 </div>
             </div>
 
-            {/* Drawing surface */}
+            {/* Dual-Layer Drawing surface */}
             <div
+                ref={containerRef}
                 className="relative w-full bg-white dark:bg-slate-900 select-none overflow-hidden"
                 style={{ ...bgStyle, height }}
             >
                 <canvas
-                    ref={canvasRef}
+                    ref={committedCanvasRef}
+                    width={LOGICAL_WIDTH}
+                    height={LOGICAL_HEIGHT}
+                    className="absolute inset-0 w-full h-full pointer-events-none block"
+                />
+                <canvas
+                    ref={activeCanvasRef}
                     width={LOGICAL_WIDTH}
                     height={LOGICAL_HEIGHT}
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}
                     onPointerUp={finishStroke}
                     onPointerCancel={finishStroke}
-                    className="w-full h-full touch-none cursor-crosshair block"
+                    className="relative w-full h-full touch-none cursor-crosshair block"
                 />
                 {strokes.length === 0 && (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-400/70">

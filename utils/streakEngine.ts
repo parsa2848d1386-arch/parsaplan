@@ -196,29 +196,36 @@ export const projectSessionsTo144Slots = (
     const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000;
 
     for (const s of sessions) {
-        const sStartMs = new Date(s.startedAt).getTime();
-        const sEndMs = new Date(s.endedAt).getTime();
-        if (isNaN(sStartMs) || isNaN(sEndMs)) continue;
+        const segments =
+            s.activeSegments && s.activeSegments.length > 0
+                ? s.activeSegments
+                : [{ startedAt: s.startedAt, endedAt: s.endedAt }];
 
-        const overlapStart = Math.max(sStartMs, dayStartMs);
-        const overlapEnd = Math.min(sEndMs, dayEndMs);
-        if (overlapEnd <= overlapStart) continue;
+        for (const seg of segments) {
+            const sStartMs = new Date(seg.startedAt).getTime();
+            const sEndMs = new Date(seg.endedAt).getTime();
+            if (isNaN(sStartMs) || isNaN(sEndMs)) continue;
 
-        const startSlot = Math.floor((overlapStart - dayStartMs) / (10 * 60 * 1000));
-        const endSlot = Math.min(143, Math.floor((overlapEnd - dayStartMs - 1) / (10 * 60 * 1000)));
+            const overlapStart = Math.max(sStartMs, dayStartMs);
+            const overlapEnd = Math.min(sEndMs, dayEndMs);
+            if (overlapEnd <= overlapStart) continue;
 
-        for (let idx = Math.max(0, startSlot); idx <= endSlot; idx++) {
-            const h = (cutoffHour + Math.floor(idx / 6)) % 24;
-            const m = (idx % 6) * 10;
-            grid[idx] = {
-                slotIndex: idx,
-                hour: h,
-                minute: m,
-                label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
-                subjectName: s.subjectName,
-                taskTitle: s.taskTitle,
-                color: subjectColorMap[s.subjectName] || '#6366f1',
-            };
+            const startSlot = Math.floor((overlapStart - dayStartMs) / (10 * 60 * 1000));
+            const endSlot = Math.min(143, Math.floor((overlapEnd - dayStartMs - 1) / (10 * 60 * 1000)));
+
+            for (let idx = Math.max(0, startSlot); idx <= endSlot; idx++) {
+                const h = (cutoffHour + Math.floor(idx / 6)) % 24;
+                const m = (idx % 6) * 10;
+                grid[idx] = {
+                    slotIndex: idx,
+                    hour: h,
+                    minute: m,
+                    label: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+                    subjectName: s.subjectName,
+                    taskTitle: s.taskTitle,
+                    color: subjectColorMap[s.subjectName] || '#6366f1',
+                };
+            }
         }
     }
 

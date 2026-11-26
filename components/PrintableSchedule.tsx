@@ -1,13 +1,25 @@
 
 import React from 'react';
 import { useStore } from '../context/StoreContext';
-import { TOTAL_DAYS } from '../constants';
 import { getShamsiDate } from '../utils';
 
 const PrintableSchedule = () => {
-    const { getTasksForDay, getDayDate, userName, startDate, getProgress, totalDays } = useStore();
+    const { getTasksForDay, getTasksByDate, getDayDate, userName, startDate, getProgress, totalDays } = useStore();
 
     const days = Array.from({ length: totalDays }, (_, i) => i + 1);
+
+    const getMergedDayTasks = (dayId: number) => {
+        const dayIso = getDayDate(dayId);
+        const byDate = getTasksByDate ? getTasksByDate(dayIso) : [];
+        const byDay = getTasksForDay(dayId);
+        const seen = new Set<string>();
+        const merged = [...byDate, ...byDay].filter((t) => {
+            if (!t?.id || seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        });
+        return merged;
+    };
 
     const getSubjectColor = (subject: string) => {
         if (subject.includes('زیست') || subject.includes('سلامت') || subject.includes('ورزش')) return '#10b981';
@@ -20,7 +32,7 @@ const PrintableSchedule = () => {
 
     const usedSubjects = Array.from(
         new Set(
-            days.flatMap((d) => getTasksForDay(d).map((t) => t.subject).filter(Boolean))
+            days.flatMap((d) => getMergedDayTasks(d).map((t) => t.subject).filter(Boolean))
         )
     ).slice(0, 6);
 
@@ -74,14 +86,14 @@ const PrintableSchedule = () => {
 
             {/* Each Day on a Separate Page */}
             {days.map(dayId => {
-                const tasks = getTasksForDay(dayId);
+                const tasks = getMergedDayTasks(dayId);
                 const date = getShamsiDate(getDayDate(dayId));
                 if (tasks.length === 0) return null;
 
                 const completedCount = tasks.filter(t => t.isCompleted).length;
 
                 return (
-                    <div key={dayId} className="p-8 page-break-after min-h-screen">
+                    <div key={dayId} className="p-8 page-break-after min-h-screen flex flex-col">
                         {/* Day Header */}
                         <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-800">
                             <div className="flex items-center gap-4">
@@ -150,7 +162,7 @@ const PrintableSchedule = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="mt-auto pt-6 text-center text-xs text-gray-400 absolute bottom-8 left-0 right-0">
+                        <div className="mt-auto pt-8 text-center text-xs text-gray-400">
                             ParsaPlan | روز {dayId} از {totalDays}
                         </div>
                     </div>

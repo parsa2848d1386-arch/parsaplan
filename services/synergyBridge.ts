@@ -1,4 +1,4 @@
-import { StudySession, SubjectTask, TimerMode } from '../types';
+import { StudySession, StudySessionSegment, SubjectTask, TimerMode } from '../types';
 import { getLogicalDateKey } from '../utils/streakEngine';
 import { calculateSessionXp } from '../utils/xpSystem';
 
@@ -10,6 +10,7 @@ export interface CompleteSessionInput {
     durationSeconds: number;
     startedAt: number;
     endedAt: number;
+    activeSegments?: StudySessionSegment[];
     mode: TimerMode;
     laps?: number[];
     interruptionCount?: number;
@@ -50,6 +51,7 @@ export function buildSynergyCompletion(
         durationSeconds: input.durationSeconds,
         startedAt: startIso,
         endedAt: endIso,
+        ...(input.activeSegments && input.activeSegments.length > 0 ? { activeSegments: input.activeSegments } : {}),
         logicalDate,
         mode: input.mode,
         laps: input.laps,

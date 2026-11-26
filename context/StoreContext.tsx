@@ -25,16 +25,21 @@ import {
 import { TOTAL_DAYS, MOTIVATIONAL_QUOTES, DAILY_ROUTINE } from '../constants';
 import { addDays, toIsoString, getDiffDays, getFullShamsiDate, soundFX } from '../utils';
 import { StorageManager, AppDataV1 } from '../utils/StorageManager';
-import { LoadingSpinner } from '../components/LoadingSpinner';
+import { AppShellSkeleton } from '../components/Skeleton';
 import { calculateLevelInfo, getXpReward, XP_REWARDS } from '../utils/xpSystem';
 import { buildStudyMinutesByDate, calculateStreak, getLogicalDateKey } from '../utils/streakEngine';
-import { CLIENT_INSTANCE_ID, isCloudSyncAllowed, syncEngine } from '../services/syncEngine';
+import {
+    CLIENT_INSTANCE_ID,
+    isCloudSyncAllowed,
+    isFirestorePermissionDenied,
+    syncEngine,
+} from '../services/syncEngine';
 import { SynergyCompletionResult } from '../services/synergyBridge';
 
 import { doc, onSnapshot, Firestore } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ThemeProvider, useTheme } from './ThemeContext';
-import { UIProvider, useUI } from './UIContext';
+import { UIProvider, useUI, ShowToastOptions } from './UIContext';
 import { User } from 'firebase/auth';
 
 interface StoreContextType {
@@ -101,12 +106,26 @@ interface StoreContextType {
     isSyncing: boolean;
     lastSyncTime: number | null;
     syncQueueCount: number;
+    deadLetterCount: number;
+    retryDeadLetters: () => Promise<void>;
     cloudStatus: 'disconnected' | 'connected' | 'error';
+    cloudError?: string | null;
     userId: string;
 
+    // Demo Mode Management
+    hasRealActivity: boolean;
+    isDemoActive: boolean;
+    dismissDemoMode: () => void;
+
     // Auth Methods
+    authError?: string | null;
+    clearAuthError?: () => void;
     login: (u: string, p: string) => Promise<boolean>;
     register: (u: string, p: string, name: string) => Promise<boolean>;
+    loginWithGoogle: () => Promise<boolean>;
+    resetPassword: (email: string) => Promise<boolean>;
+    loginAsGuest: () => Promise<boolean>;
+    loginOffline: () => void;
     logout: () => Promise<void>;
 
     // Firebase Config Management
@@ -174,7 +193,7 @@ interface StoreContextType {
 
     // Feedback System
     toasts: ToastMessage[];
-    showToast: (message: string, type?: ToastType) => void;
+    showToast: (message: string, type?: ToastType, options?: ShowToastOptions) => void;
     removeToast: (id: string) => void;
     confirmState: ConfirmDialogState;
     askConfirm: (title: string, message: string, onConfirm: () => void, type?: 'danger' | 'info') => void;
@@ -196,7 +215,16 @@ interface StoreContextType {
     deleteFlashcard: (id: string) => void;
 }
 
+export interface StoreSyncStatusContextType {
+    saveStatus: 'saved' | 'saving' | 'error';
+    isSyncing: boolean;
+    syncQueueCount: number;
+    deadLetterCount: number;
+    lastSyncTime: number | null;
+}
+
 const DataContext = createContext<Partial<StoreContextType> | undefined>(undefined);
+const StoreSyncStatusContext = createContext<StoreSyncStatusContextType | undefined>(undefined);
 
 const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const {
@@ -205,8 +233,16 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         db,
         firebaseConfig,
         cloudStatus,
+        cloudError,
+        reportCloudStatus,
+        authError,
+        clearAuthError,
         login,
         register,
+        loginWithGoogle,
+        resetPassword,
+        loginAsGuest,
+        loginOffline,
         logout,
         updateFirebaseConfig,
         removeFirebaseConfig,
@@ -242,7 +278,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     // --- SETTINGS ---
     const [stream, setStream] = useState<StreamType>('life');
-    const [geminiModel, setGeminiModel] = useState<string>('gemini-2.0-flash');
+    const [geminiModel, setGeminiModel] = useState<string>('gemini-4-hydrogen');
     const [geminiApiKey, setGeminiApiKeyState] = useState<string>(() => StorageManager.loadLocalGeminiKey());
     const [bioTheme, setBioTheme] = useState<boolean>(false);
     const [hasUnreadAiMessage, setHasUnreadAiMessage] = useState<boolean>(false);
@@ -261,6 +297,14 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
     const lastSyncTimeRef = useRef<number>(0);
     const [syncQueueCount, setSyncQueueCount] = useState<number>(0);
+    const [deadLetterCount, setDeadLetterCount] = useState<number>(0);
+    const [demoDismissed, setDemoDismissed] = useState<boolean>(() => {
+        try {
+            return localStorage.getItem(`parsaplan_demo_dismissed_${userId || 'parsaplan_local_user'}`) === '1';
+        } catch {
+            return false;
+        }
+    });
 
     const [isTimerOpen, setIsTimerOpen] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
@@ -269,6 +313,33 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [dailyQuote, setDailyQuote] = useState('');
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+    const hasRealActivity = useMemo(
+        () =>
+            tasks.length > 0 ||
+            sessions.length > 0 ||
+            Object.values(studyHoursLog).some((h) => h > 0) ||
+            xp > 0,
+        [tasks.length, sessions.length, studyHoursLog, xp]
+    );
+
+    const isDemoActive = useMemo(() => !hasRealActivity && !demoDismissed, [hasRealActivity, demoDismissed]);
+
+    const dismissDemoMode = useCallback(() => {
+        setDemoDismissed(true);
+        try {
+            localStorage.setItem(`parsaplan_demo_dismissed_${userId || 'parsaplan_local_user'}`, '1');
+        } catch {}
+    }, [userId]);
+
+    // Sync demoDismissed flag when active account changes
+    useEffect(() => {
+        try {
+            setDemoDismissed(localStorage.getItem(`parsaplan_demo_dismissed_${userId || 'parsaplan_local_user'}`) === '1');
+        } catch {
+            setDemoDismissed(false);
+        }
+    }, [userId]);
 
     // Derived Streak, Heatmap Minutes, Level
     const studyMinutesByDate = useMemo(
@@ -380,9 +451,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             setIsInitialized(false);
             try {
                 const backupUserId = userId || 'parsaplan_local_user';
-                let [data, pending] = await Promise.all([
+                let [data, pending, deadLetters] = await Promise.all([
                     StorageManager.load(backupUserId),
                     syncEngine.getQueue(backupUserId),
+                    syncEngine.getDeadLetters(backupUserId),
                 ]);
 
                 if (!data && backupUserId !== 'parsaplan_local_user') {
@@ -395,7 +467,24 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     ) {
                         data = guestData;
                         await StorageManager.save(guestData, backupUserId);
-                        showToast('اطلاعات محلی شما با موفقیت به حساب کاربری منتقل شد', 'success');
+                        const opsToQueue: Array<{ type: any; entityId: string; payload?: unknown }> = [];
+                        (guestData.tasks || []).forEach((t) => {
+                            if (t.id) opsToQueue.push({ type: 'upsert_task', entityId: t.id, payload: t });
+                        });
+                        (guestData.sessions || []).forEach((s) => {
+                            if (s.id) opsToQueue.push({ type: 'upsert_session', entityId: s.id, payload: s });
+                        });
+                        (guestData.flashcards || []).forEach((c) => {
+                            if (c.id) opsToQueue.push({ type: 'upsert_flashcard', entityId: c.id, payload: c });
+                        });
+                        (guestData.notebookPages || []).forEach((p) => {
+                            if (p.id) opsToQueue.push({ type: 'upsert_page', entityId: p.id, payload: p });
+                        });
+                        if (opsToQueue.length > 0) {
+                            await syncEngine.enqueueMany(backupUserId, opsToQueue);
+                            pending = await syncEngine.getQueue(backupUserId);
+                        }
+                        showToast('اطلاعات محلی شما با موفقیت به حساب کاربری منتقل و در صف همگام‌سازی قرار گرفت', 'success');
                     }
                 }
 
@@ -415,6 +504,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (data.sessions) setSessions(data.sessions);
                     if (data.notebookPages) setNotebookPages(data.notebookPages);
                     if (data.stylusStrokes) setStylusStrokes(data.stylusStrokes);
+                    if (data.perfectDates) setPerfectDates(data.perfectDates);
 
                     if (data.subjects && data.subjects.length > 0) {
                         setSubjects(data.subjects);
@@ -440,6 +530,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 }
 
                 setSyncQueueCount(pending.length);
+                setDeadLetterCount(deadLetters.length);
             } catch (error) {
                 console.error('Error during app initialization, loading defaults:', error);
                 loadDefaultPlan();
@@ -490,6 +581,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             sessions,
             notebookPages,
             stylusStrokes,
+            perfectDates,
             settings: buildSettingsObject(includeLocalKey),
             lastUpdated: Date.now(),
         }),
@@ -511,6 +603,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             sessions,
             notebookPages,
             stylusStrokes,
+            perfectDates,
             buildSettingsObject,
         ]
     );
@@ -536,6 +629,35 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // --- AUTO-SYNC PROFILE METADATA + INCREMENTAL OUTBOX FLUSH (HIGH-SCALE ARCHITECTURE) ---
     const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const ignoreSyncUntilRef = useRef(0);
+    const cloudPermissionBlockedRef = useRef(false);
+    const permissionToastShownRef = useRef(false);
+
+    const handleCloudPermissionError = useCallback(
+        (source: string, error?: unknown) => {
+            const wasBlocked = cloudPermissionBlockedRef.current;
+            cloudPermissionBlockedRef.current = true;
+            const diagnosticMsg =
+                'قوانین امنیتی Firestore در پروژه فایربیس شما هنوز منتشر نشده است (permission-denied). فایل firestore.rules را در کنسول فایربیس Publish کنید.';
+            reportCloudStatus('error', diagnosticMsg);
+            if (!wasBlocked) {
+                console.warn(`[${source}] Firestore permission-denied — staying in local mode until rules are published.`, error);
+            }
+            if (!permissionToastShownRef.current) {
+                permissionToastShownRef.current = true;
+                showToast(
+                    'همگام‌سازی ابری به دلیل محدودیت قوانین Firestore متوقف شد. قوانین firestore.rules را در کنسول فایربیس منتشر کنید؛ فعلاً اطلاعات شما محلی ذخیره می‌شود.',
+                    'warning'
+                );
+            }
+        },
+        [reportCloudStatus, showToast]
+    );
+
+    useEffect(() => {
+        cloudPermissionBlockedRef.current = false;
+        permissionToastShownRef.current = false;
+    }, [userId]);
+
     const profileSignature = useMemo(
         () =>
             JSON.stringify({
@@ -543,13 +665,14 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 xp,
                 moods,
                 studyHoursLog,
+                perfectDates,
                 startDate,
                 totalDays,
                 subjects,
                 archivedPlans,
                 settings: buildSettingsObject(false),
             }),
-        [userName, xp, moods, studyHoursLog, startDate, totalDays, subjects, archivedPlans, buildSettingsObject]
+        [userName, xp, moods, studyHoursLog, perfectDates, startDate, totalDays, subjects, archivedPlans, buildSettingsObject]
     );
 
     useEffect(() => {
@@ -568,6 +691,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     logs: auditLog.slice(0, 50),
                     moods,
                     studyHoursLog,
+                    perfectDates,
                     startDate,
                     totalDays,
                     subjects,
@@ -578,7 +702,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 },
             });
 
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            if (cloudPermissionBlockedRef.current || (typeof navigator !== 'undefined' && !navigator.onLine)) {
                 const q = await syncEngine.getQueue(userId);
                 setSyncQueueCount(q.length);
                 return;
@@ -586,7 +710,15 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
             const res = await syncEngine.flushOutbox(db, userId, user);
             setSyncQueueCount(res.remaining);
+            const dead = await syncEngine.getDeadLetters(userId);
+            setDeadLetterCount(dead.length);
+            if (res.permissionDenied) {
+                handleCloudPermissionError('AutoSync');
+                return;
+            }
             if (res.flushed > 0) {
+                cloudPermissionBlockedRef.current = false;
+                reportCloudStatus('connected');
                 const ts = Date.now();
                 lastSyncTimeRef.current = ts;
                 setLastSyncTime(ts);
@@ -596,21 +728,28 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         return () => {
             if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
         };
-    }, [profileSignature, tasks.length, sessions.length, isInitialized, db, userId, user]);
+    }, [profileSignature, tasks.length, sessions.length, isInitialized, db, userId, user, handleCloudPermissionError, reportCloudStatus]);
 
     // --- ONLINE RECONNECT FLUSH ---
     useEffect(() => {
         const handleOnline = async () => {
-            if (!isCloudSyncAllowed(db, userId, user) || !db) return;
+            if (!isCloudSyncAllowed(db, userId, user) || !db || cloudPermissionBlockedRef.current) return;
             const res = await syncEngine.flushOutbox(db, userId, user);
             setSyncQueueCount(res.remaining);
+            const dead = await syncEngine.getDeadLetters(userId);
+            setDeadLetterCount(dead.length);
+            if (res.permissionDenied) {
+                handleCloudPermissionError('OnlineReconnect');
+                return;
+            }
             if (res.flushed > 0) {
+                reportCloudStatus('connected');
                 showToast(`${res.flushed} تغییر آفلاین با ابر همگام‌سازی شد ☁️`, 'success');
             }
         };
         window.addEventListener('online', handleOnline);
         return () => window.removeEventListener('online', handleOnline);
-    }, [db, userId, user, showToast]);
+    }, [db, userId, user, showToast, handleCloudPermissionError, reportCloudStatus]);
 
     // --- REAL-TIME FIRESTORE LISTENER (Using Ref to avoid Stale Closure) ---
     useEffect(() => {
@@ -619,6 +758,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         const unsubscribe = onSnapshot(
             doc(db, 'users', userId),
             async (docSnap) => {
+                cloudPermissionBlockedRef.current = false;
+                reportCloudStatus('connected');
                 if (!docSnap.exists()) return;
                 const data = docSnap.data();
                 if (data.lastClientId === CLIENT_INSTANCE_ID) return;
@@ -633,10 +774,16 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     setLastSyncTime(remoteLastUpdated);
                 }
             },
-            (error) => console.error('[Firestore Listener]:', error)
+            (error) => {
+                if (isFirestorePermissionDenied(error)) {
+                    handleCloudPermissionError('Firestore Listener', error);
+                    return;
+                }
+                console.warn('[Firestore Listener]:', error);
+            }
         );
         return () => unsubscribe();
-    }, [db, userId, user]);
+    }, [db, userId, user, handleCloudPermissionError, reportCloudStatus]);
 
     const applyCloudData = (data: Partial<AppDataV1>) => {
         if (data.tasks) setTasks(data.tasks);
@@ -653,6 +800,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (data.studyHoursLog) setStudyHoursLog(data.studyHoursLog);
         if (data.sessions) setSessions(data.sessions);
         if (data.notebookPages) setNotebookPages(data.notebookPages);
+        if (data.perfectDates) setPerfectDates(data.perfectDates);
         if (data.startDate) {
             setStartDateState(data.startDate);
             recalcToday(data.startDate, data.totalDays || totalDays);
@@ -666,17 +814,56 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             return;
         }
         setIsSyncing(true);
+        cloudPermissionBlockedRef.current = false;
+        permissionToastShownRef.current = false;
         try {
-            await syncEngine.flushOutbox(db, userId, user);
+            const flushRes = await syncEngine.flushOutbox(db, userId, user);
+            if (flushRes.permissionDenied) {
+                handleCloudPermissionError('ManualSync');
+                return;
+            }
             const snapshot = buildDataSnapshot(false);
             const syncedTs = await syncEngine.syncFullState(db, userId, snapshot);
+            reportCloudStatus('connected');
             lastSyncTimeRef.current = syncedTs;
             setLastSyncTime(syncedTs);
             setSyncQueueCount(0);
+            const dead = await syncEngine.getDeadLetters(userId);
+            setDeadLetterCount(dead.length);
             showToast('اطلاعات با موفقیت در فضای ابری ذخیره شد ☁️', 'success');
         } catch (e) {
-            console.error(e);
-            showToast('خطا در اتصال به سرور — تغییرات در صف آفلاین ذخیره ماندند', 'error');
+            if (isFirestorePermissionDenied(e)) {
+                handleCloudPermissionError('ManualSync', e);
+            } else {
+                console.warn('[ManualSync] Cloud sync error:', e);
+                showToast('خطا در اتصال به سرور — تغییرات در صف آفلاین ذخیره ماندند', 'error');
+            }
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const retryDeadLetters = async () => {
+        if (!isCloudSyncAllowed(db, userId, user) || !db) {
+            showToast('ابتدا وارد حساب آنلاین خود شوید', 'warning');
+            return;
+        }
+        setIsSyncing(true);
+        cloudPermissionBlockedRef.current = false;
+        permissionToastShownRef.current = false;
+        try {
+            const res = await syncEngine.retryDeadLetters(db, userId, user);
+            setSyncQueueCount(res.remaining);
+            const dead = await syncEngine.getDeadLetters(userId);
+            setDeadLetterCount(dead.length);
+            if (res.permissionDenied) {
+                handleCloudPermissionError('RetryDeadLetters');
+            } else if (dead.length === 0) {
+                reportCloudStatus('connected');
+                showToast('تمامی موارد ناموفق همگام‌سازی مجدد و ارسال شدند ✅', 'success');
+            } else {
+                showToast(`همگام‌سازی انجام شد؛ ${dead.length} مورد همچنان خطا دارد`, 'warning');
+            }
         } finally {
             setIsSyncing(false);
         }
@@ -688,8 +875,11 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             return;
         }
         setIsSyncing(true);
+        cloudPermissionBlockedRef.current = false;
+        permissionToastShownRef.current = false;
         try {
             const data = await syncEngine.loadFullState(db, userId);
+            reportCloudStatus('connected');
             if (data) {
                 ignoreSyncUntilRef.current = Date.now() + 2500;
                 applyCloudData(data);
@@ -701,8 +891,12 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 showToast('هیچ اطلاعاتی در سرور یافت نشد', 'warning');
             }
         } catch (e) {
-            console.error(e);
-            showToast('خطا در دریافت اطلاعات', 'error');
+            if (isFirestorePermissionDenied(e)) {
+                handleCloudPermissionError('LoadFromCloud', e);
+            } else {
+                console.warn('[LoadFromCloud] Cloud fetch error:', e);
+                showToast('خطا در دریافت اطلاعات', 'error');
+            }
         } finally {
             setIsSyncing(false);
         }
@@ -726,12 +920,24 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const setStartDate = (newStartDate: string) => {
         setStartDateState(newStartDate);
-        setTasks((prev) =>
-            prev.map((t) => {
-                if (t.dayId > 0 && !t.isCustom) return { ...t, date: toIsoString(addDays(newStartDate, t.dayId - 1)) };
-                return t;
-            })
-        );
+        const updatedTasks: SubjectTask[] = [];
+        const nextTasks = tasks.map((t) => {
+            if (t.dayId > 0 && !t.isCustom) {
+                const updated = { ...t, date: toIsoString(addDays(newStartDate, t.dayId - 1)) };
+                updatedTasks.push(updated);
+                return updated;
+            }
+            return t;
+        });
+        setTasks(nextTasks);
+        if (updatedTasks.length > 0 && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine
+                .enqueueMany(
+                    userId,
+                    updatedTasks.map((t) => ({ type: 'upsert_task' as const, entityId: t.id, payload: t }))
+                )
+                .then(setSyncQueueCount);
+        }
         recalcToday(newStartDate);
         showToast('تاریخ شروع تغییر کرد', 'success');
     };
@@ -762,6 +968,9 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const deleteStudySession = (sessionId: string) => {
         setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'delete_session', entityId: sessionId }).then(setSyncQueueCount);
+        }
     };
 
     const completeFocusSynergy = useCallback(
@@ -814,30 +1023,44 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             updatedAt: now,
         };
         setNotebookPages((prev) => [...prev, page]);
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_page', entityId: page.id, payload: page }).then(setSyncQueueCount);
+        }
         return page;
     };
 
     const updateNotebookPage = (id: string, updates: Partial<NotebookPage>) => {
-        setNotebookPages((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p))
+        const nextPages = notebookPages.map((p) =>
+            p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
         );
+        setNotebookPages(nextPages);
+        const target = nextPages.find((p) => p.id === id);
+        if (target && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_page', entityId: id, payload: target }).then(setSyncQueueCount);
+        }
     };
 
     const deleteNotebookPage = (id: string) => {
-        setNotebookPages((prev) => {
-            const toRemove = new Set<string>([id]);
-            let changed = true;
-            while (changed) {
-                changed = false;
-                for (const p of prev) {
-                    if (p.parentId && toRemove.has(p.parentId) && !toRemove.has(p.id)) {
-                        toRemove.add(p.id);
-                        changed = true;
-                    }
+        const toRemove = new Set<string>([id]);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const p of notebookPages) {
+                if (p.parentId && toRemove.has(p.parentId) && !toRemove.has(p.id)) {
+                    toRemove.add(p.id);
+                    changed = true;
                 }
             }
-            return prev.filter((p) => !toRemove.has(p.id));
-        });
+        }
+        setNotebookPages((prev) => prev.filter((p) => !toRemove.has(p.id)));
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine
+                .enqueueMany(
+                    userId,
+                    Array.from(toRemove).map((pageId) => ({ type: 'delete_page' as const, entityId: pageId }))
+                )
+                .then(setSyncQueueCount);
+        }
     };
 
     // --- ARCHIVE ---
@@ -877,43 +1100,53 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             nextReviewDate: toIsoString(addDays(new Date(), 1)),
         };
         setFlashcards((prev) => [...prev, newCard]);
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_flashcard', entityId: newCard.id, payload: newCard }).then(setSyncQueueCount);
+        }
         showToast('به جعبه لایتنر اضافه شد (جعبه ۱)', 'success');
         addXp(10);
     };
 
     const reviewFlashcard = (id: string, success: boolean) => {
-        setFlashcards((prev) =>
-            prev.map((c) => {
-                if (c.id === id) {
-                    let newBox = c.boxId;
-                    let daysToNext = 1;
+        let updatedCard: Flashcard | undefined;
+        const nextCards = flashcards.map((c) => {
+            if (c.id === id) {
+                let newBox = c.boxId;
+                let daysToNext = 1;
 
-                    if (success) {
-                        newBox = c.boxId < 5 ? c.boxId + 1 : 5;
-                        const intervals: Record<number, number> = { 1: 1, 2: 2, 3: 4, 4: 8, 5: 15 };
-                        daysToNext = intervals[newBox] || 1;
-                        addXp(15);
-                        showToast(`کارت به جعبه ${newBox} منتقل شد`, 'success');
-                    } else {
-                        newBox = 1;
-                        daysToNext = 1;
-                        showToast('کارت به جعبه ۱ برگشت', 'warning');
-                    }
-
-                    return {
-                        ...c,
-                        boxId: newBox,
-                        lastReviewedDate: toIsoString(new Date()),
-                        nextReviewDate: toIsoString(addDays(new Date(), daysToNext)),
-                    };
+                if (success) {
+                    newBox = c.boxId < 5 ? c.boxId + 1 : 5;
+                    const intervals: Record<number, number> = { 1: 1, 2: 2, 3: 4, 4: 8, 5: 15 };
+                    daysToNext = intervals[newBox] || 1;
+                    addXp(15);
+                    showToast(`کارت به جعبه ${newBox} منتقل شد`, 'success');
+                } else {
+                    newBox = 1;
+                    daysToNext = 1;
+                    showToast('کارت به جعبه ۱ برگشت', 'warning');
                 }
-                return c;
-            })
-        );
+
+                updatedCard = {
+                    ...c,
+                    boxId: newBox,
+                    lastReviewedDate: toIsoString(new Date()),
+                    nextReviewDate: toIsoString(addDays(new Date(), daysToNext)),
+                };
+                return updatedCard;
+            }
+            return c;
+        });
+        setFlashcards(nextCards);
+        if (updatedCard && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_flashcard', entityId: id, payload: updatedCard }).then(setSyncQueueCount);
+        }
     };
 
     const deleteFlashcard = (id: string) => {
         setFlashcards((prev) => prev.filter((c) => c.id !== id));
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'delete_flashcard', entityId: id }).then(setSyncQueueCount);
+        }
         showToast('کارت مرور حذف شد', 'info');
     };
 
@@ -999,21 +1232,38 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     const deleteTask = (taskId: string) => {
-        const task = tasks.find((t) => t.id === taskId);
-        if (!task) return;
-        askConfirm(
-            'حذف تسک',
-            'آیا مطمئن هستید؟',
-            () => {
-                setTasks((prev) => prev.filter((t) => t.id !== taskId));
-                if (isCloudSyncAllowed(db, userId, user)) {
-                    syncEngine.enqueue(userId, { type: 'delete_task', entityId: taskId }).then(setSyncQueueCount);
-                }
-                logAction('delete_task', `حذف: ${task.subject}`);
-                showToast('حذف شد', 'warning');
+        const taskIndex = tasks.findIndex((t) => t.id === taskId);
+        if (taskIndex === -1) return;
+        const deletedTask = tasks[taskIndex];
+
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        if (isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'delete_task', entityId: taskId }).then(setSyncQueueCount);
+        }
+        logAction('delete_task', `حذف: ${deletedTask.subject}`);
+
+        showToast(`«${deletedTask.topic || deletedTask.subject}» حذف شد`, 'warning', {
+            durationMs: 5200,
+            action: {
+                label: 'بازگردانی',
+                onClick: () => {
+                    setTasks((prev) => {
+                        if (prev.some((t) => t.id === deletedTask.id)) return prev;
+                        const next = [...prev];
+                        const insertAt = Math.min(taskIndex, next.length);
+                        next.splice(insertAt, 0, deletedTask);
+                        return next;
+                    });
+                    if (isCloudSyncAllowed(db, userId, user)) {
+                        syncEngine
+                            .enqueue(userId, { type: 'upsert_task', entityId: deletedTask.id, payload: deletedTask })
+                            .then(setSyncQueueCount);
+                    }
+                    logAction('restore_task', `بازگردانی: ${deletedTask.subject}`);
+                    showToast('تسک بازگردانی شد', 'success', { durationMs: 2400 });
+                },
             },
-            'danger'
-        );
+        });
     };
 
     const toggleTask = (taskId: string) => {
@@ -1032,7 +1282,23 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 const reward = getXpReward(rewardType, streakStats.currentStreak);
                 newState ? addXp(reward) : addXp(-reward);
                 if (newState) {
-                    showToast(`+${reward} XP`, 'success');
+                    showToast(`+${reward} XP · به زنجیره اضافه شد`, 'success', {
+                        durationMs: 4200,
+                        action: {
+                            label: 'بازگردانی',
+                            onClick: () => {
+                                addXp(-reward);
+                                setTasks((prev) =>
+                                    prev.map((item) =>
+                                        item.id === taskId
+                                            ? { ...item, isCompleted: false, status: 'todo' as TaskStatus }
+                                            : item
+                                    )
+                                );
+                                soundFX.playClick();
+                            },
+                        },
+                    });
                     soundFX.playSuccess();
                 } else {
                     soundFX.playClick();
@@ -1135,12 +1401,24 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         askConfirm('انتقال به فردا', 'تسک‌های انجام نشده امروز به فردا منتقل شوند؟', () => {
             const todayStr = getDayDate(currentDay);
             const tomorrowStr = toIsoString(addDays(todayStr, 1));
-            setTasks((prev) =>
-                prev.map((t) => {
-                    if (t.date === todayStr && !t.isCompleted) return { ...t, date: tomorrowStr, dayId: 0, isCustom: true };
-                    return t;
-                })
-            );
+            const moved: SubjectTask[] = [];
+            const nextTasks = tasks.map((t) => {
+                if (t.date === todayStr && !t.isCompleted) {
+                    const updated = { ...t, date: tomorrowStr, dayId: 0, isCustom: true };
+                    moved.push(updated);
+                    return updated;
+                }
+                return t;
+            });
+            setTasks(nextTasks);
+            if (moved.length > 0 && isCloudSyncAllowed(db, userId, user)) {
+                syncEngine
+                    .enqueueMany(
+                        userId,
+                        moved.map((t) => ({ type: 'upsert_task' as const, entityId: t.id, payload: t }))
+                    )
+                    .then(setSyncQueueCount);
+            }
             showToast('تسک‌ها منتقل شدند', 'success');
         });
     };
@@ -1158,18 +1436,27 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             'تعادل دوباره (Rebalance)',
             `${overdueTasks.length} تسک عقب‌افتاده پیدا شد. آیا می‌خواهید آنها را روی ${remainingDays} روز آینده پخش کنید؟`,
             () => {
-                setTasks((prev) => {
-                    const newTasks = [...prev];
-                    overdueTasks.forEach((overdueT, idx) => {
-                        const offset = idx % remainingDays;
-                        const newDateStr = toIsoString(addDays(todayStr, offset));
-                        const taskIndex = newTasks.findIndex((t) => t.id === overdueT.id);
-                        if (taskIndex !== -1) {
-                            newTasks[taskIndex] = { ...newTasks[taskIndex], date: newDateStr, dayId: 0, isCustom: true };
-                        }
-                    });
-                    return newTasks;
+                const newTasks = [...tasks];
+                const rebalanced: SubjectTask[] = [];
+                overdueTasks.forEach((overdueT, idx) => {
+                    const offset = idx % remainingDays;
+                    const newDateStr = toIsoString(addDays(todayStr, offset));
+                    const taskIndex = newTasks.findIndex((t) => t.id === overdueT.id);
+                    if (taskIndex !== -1) {
+                        const updated = { ...newTasks[taskIndex], date: newDateStr, dayId: 0, isCustom: true };
+                        newTasks[taskIndex] = updated;
+                        rebalanced.push(updated);
+                    }
                 });
+                setTasks(newTasks);
+                if (rebalanced.length > 0 && isCloudSyncAllowed(db, userId, user)) {
+                    syncEngine
+                        .enqueueMany(
+                            userId,
+                            rebalanced.map((t) => ({ type: 'upsert_task' as const, entityId: t.id, payload: t }))
+                        )
+                        .then(setSyncQueueCount);
+                }
                 showToast('تسک‌های عقب‌افتاده با موفقیت پخش شدند', 'success');
                 logAction('rebalance', 'پخش دوباره تسک‌های عقب‌افتاده');
             }
@@ -1213,11 +1500,35 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setDailyNotes((prev) => ({ ...prev, [date]: note }));
         showToast('یادداشت ذخیره شد', 'success');
     };
-    const getDayDate = (dayId: number) => toIsoString(addDays(startDate, dayId - 1));
-    const getTasksForDay = (dayId: number) => tasks.filter((t) => t.date === getDayDate(dayId));
-    const getTasksByDate = (date: string) => tasks.filter((t) => t.date === date);
-    const getProgress = () => (tasks.length > 0 ? Math.round((tasks.filter((t) => t.isCompleted).length / tasks.length) * 100) : 0);
-    const getDailyNote = (date: string) => dailyNotes[date] || '';
+    const getDayDate = useCallback(
+        (dayId: number) => toIsoString(addDays(startDate, dayId - 1)),
+        [startDate]
+    );
+
+    const tasksByDateMap = useMemo(() => {
+        const map = new Map<string, SubjectTask[]>();
+        for (const t of tasks) {
+            const list = map.get(t.date);
+            if (list) list.push(t);
+            else map.set(t.date, [t]);
+        }
+        return map;
+    }, [tasks]);
+
+    const EMPTY_TASKS: SubjectTask[] = useMemo(() => [], []);
+    const getTasksByDate = useCallback(
+        (date: string) => tasksByDateMap.get(date) ?? EMPTY_TASKS,
+        [tasksByDateMap, EMPTY_TASKS]
+    );
+    const getTasksForDay = useCallback(
+        (dayId: number) => getTasksByDate(getDayDate(dayId)),
+        [getTasksByDate, getDayDate]
+    );
+    const getProgress = useCallback(
+        () => (tasks.length > 0 ? Math.round((tasks.filter((t) => t.isCompleted).length / tasks.length) * 100) : 0),
+        [tasks]
+    );
+    const getDailyNote = useCallback((date: string) => dailyNotes[date] || '', [dailyNotes]);
 
     const exportData = () => {
         const blob = new Blob([JSON.stringify(buildDataSnapshot(false), null, 2)], { type: 'application/json' });
@@ -1335,142 +1646,254 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         showToast(key ? 'API Key به‌صورت محلی در دستگاه ذخیره شد ✓' : 'API Key حذف شد', key ? 'success' : 'info');
     };
 
-    const currentSettings = buildSettingsObject(true);
+    const currentSettings = useMemo(() => buildSettingsObject(true), [buildSettingsObject]);
 
-    const contextValue: StoreContextType = {
-        user,
-        db,
-        login,
-        register,
-        logout,
-        userName,
-        setUserName,
-        userId,
-        cloudStatus,
-        firebaseConfig,
-        updateFirebaseConfig,
-        removeFirebaseConfig,
-        darkMode,
-        toggleDarkMode,
-        viewMode,
-        setViewMode,
-        showQuotes,
-        toggleShowQuotes,
-        toasts,
-        showToast,
-        removeToast,
-        confirmState,
-        askConfirm,
-        closeConfirm,
-
-        tasks,
-        toggleTask,
-        addTask,
-        addTasksBatch,
-        updateTask,
-        deleteTask,
-        moveTaskToDate,
-        scheduleReview,
-        updateTaskBlocks,
-        toggleTaskMIT,
-        updateTaskStatus,
-        currentDay,
-        setCurrentDay,
-        startDate,
-        setStartDate,
-        routineTemplate,
-        setRoutineTemplate,
-        toggleRoutineSlot,
-        isRoutineSlotCompleted,
-        updateRoutineIcon,
-        resetRoutineToDefault,
-        addRoutineSlot,
-        updateRoutineSlot,
-        deleteRoutineSlot,
-        getTasksForDay,
-        getDayDate,
-        getTasksByDate,
-        getProgress,
-        resetProgress,
-        goToToday,
-        todayDayId,
-        autoFixDate,
-        shiftIncompleteTasks,
-        rebalancePlan,
-        totalDays,
-        setTotalDays,
-
-        sessions,
-        addStudySession,
-        deleteStudySession,
-        completeFocusSynergy,
-        streakStats,
-        studyMinutesByDate,
-
-        notebookPages,
-        createNotebookPage,
-        updateNotebookPage,
-        deleteNotebookPage,
-        stylusStrokes,
-        setStylusStrokes,
-
-        dailyNotes,
-        saveDailyNote,
-        getDailyNote,
-        exportData,
-        importData,
-        syncData,
-        loadFromCloud,
-        isSyncing,
-        lastSyncTime,
-        syncQueueCount,
-        xp,
-        addXp,
-        level,
-        currentLevelXp,
-        xpForNextLevel,
-        progressPercent,
-        dailyQuote,
-        subjects,
-        addSubject,
-        updateSubject,
-        deleteSubject,
-        reorderSubjects,
-        auditLog,
-        moods,
-        setMood,
-        studyHoursLog,
-        logStudyHours,
-        getStudyHoursForDate,
-        isTimerOpen,
-        setIsTimerOpen,
-        showConfetti,
-        setShowConfetti,
-        isCommandPaletteOpen,
-        setIsCommandPaletteOpen,
-        isAiPanelOpen,
-        setIsAiPanelOpen,
+    const syncStatusRef = useRef<StoreSyncStatusContextType>({
         saveStatus,
-        sidebarCollapsed,
-        setSidebarCollapsed,
-        settings: currentSettings,
-        updateSettings,
-        geminiApiKey,
-        setGeminiApiKey,
-        archivedPlans,
-        archiveCurrentPlan,
-        deleteArchivedPlan,
-        flashcards,
-        addFlashcard,
-        reviewFlashcard,
-        deleteFlashcard,
-        isNewUser,
-        setIsNewUser,
+        isSyncing,
+        syncQueueCount,
+        deadLetterCount,
+        lastSyncTime,
+    });
+    syncStatusRef.current = {
+        saveStatus,
+        isSyncing,
+        syncQueueCount,
+        deadLetterCount,
+        lastSyncTime,
     };
 
-    if (!isInitialized) return <LoadingSpinner fullScreen message="درحال بارگذاری..." />;
+    const syncStatusValue = useMemo<StoreSyncStatusContextType>(
+        () => ({
+            saveStatus,
+            isSyncing,
+            syncQueueCount,
+            deadLetterCount,
+            lastSyncTime,
+        }),
+        [saveStatus, isSyncing, syncQueueCount, deadLetterCount, lastSyncTime]
+    );
 
-    return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
+    // Memoized core store value: excludes high-frequency persistence/sync status updates
+    // (saveStatus, isSyncing, syncQueueCount, deadLetterCount, lastSyncTime) from invalidating
+    // the core context reference while preserving 100% backward-compatible property access via getters.
+    const contextValue = useMemo<StoreContextType>(
+        () => ({
+            user,
+            db,
+            authError,
+            clearAuthError,
+            login,
+            register,
+            loginWithGoogle,
+            resetPassword,
+            loginAsGuest,
+            loginOffline,
+            logout,
+            userName,
+            setUserName,
+            userId,
+            cloudStatus,
+            cloudError,
+            hasRealActivity,
+            isDemoActive,
+            dismissDemoMode,
+            firebaseConfig,
+            updateFirebaseConfig,
+            removeFirebaseConfig,
+            darkMode,
+            toggleDarkMode,
+            viewMode,
+            setViewMode,
+            showQuotes,
+            toggleShowQuotes,
+            toasts,
+            showToast,
+            removeToast,
+            confirmState,
+            askConfirm,
+            closeConfirm,
+
+            tasks,
+            toggleTask,
+            addTask,
+            addTasksBatch,
+            updateTask,
+            deleteTask,
+            moveTaskToDate,
+            scheduleReview,
+            updateTaskBlocks,
+            toggleTaskMIT,
+            updateTaskStatus,
+            currentDay,
+            setCurrentDay,
+            startDate,
+            setStartDate,
+            routineTemplate,
+            setRoutineTemplate,
+            toggleRoutineSlot,
+            isRoutineSlotCompleted,
+            updateRoutineIcon,
+            resetRoutineToDefault,
+            addRoutineSlot,
+            updateRoutineSlot,
+            deleteRoutineSlot,
+            getTasksForDay,
+            getDayDate,
+            getTasksByDate,
+            getProgress,
+            resetProgress,
+            goToToday,
+            todayDayId,
+            autoFixDate,
+            shiftIncompleteTasks,
+            rebalancePlan,
+            totalDays,
+            setTotalDays,
+
+            sessions,
+            addStudySession,
+            deleteStudySession,
+            completeFocusSynergy,
+            streakStats,
+            studyMinutesByDate,
+
+            notebookPages,
+            createNotebookPage,
+            updateNotebookPage,
+            deleteNotebookPage,
+            stylusStrokes,
+            setStylusStrokes,
+
+            dailyNotes,
+            saveDailyNote,
+            getDailyNote,
+            exportData,
+            importData,
+            syncData,
+            loadFromCloud,
+            get isSyncing() {
+                return syncStatusRef.current.isSyncing;
+            },
+            get lastSyncTime() {
+                return syncStatusRef.current.lastSyncTime;
+            },
+            get syncQueueCount() {
+                return syncStatusRef.current.syncQueueCount;
+            },
+            get deadLetterCount() {
+                return syncStatusRef.current.deadLetterCount;
+            },
+            retryDeadLetters,
+            xp,
+            addXp,
+            level,
+            currentLevelXp,
+            xpForNextLevel,
+            progressPercent,
+            dailyQuote,
+            subjects,
+            addSubject,
+            updateSubject,
+            deleteSubject,
+            reorderSubjects,
+            auditLog,
+            moods,
+            setMood,
+            studyHoursLog,
+            logStudyHours,
+            getStudyHoursForDate,
+            isTimerOpen,
+            setIsTimerOpen,
+            showConfetti,
+            setShowConfetti,
+            isCommandPaletteOpen,
+            setIsCommandPaletteOpen,
+            isAiPanelOpen,
+            setIsAiPanelOpen,
+            get saveStatus() {
+                return syncStatusRef.current.saveStatus;
+            },
+            sidebarCollapsed,
+            setSidebarCollapsed,
+            settings: currentSettings,
+            updateSettings,
+            geminiApiKey,
+            setGeminiApiKey,
+            archivedPlans,
+            archiveCurrentPlan,
+            deleteArchivedPlan,
+            flashcards,
+            addFlashcard,
+            reviewFlashcard,
+            deleteFlashcard,
+            isNewUser,
+            setIsNewUser,
+        }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            user,
+            db,
+            authError,
+            userName,
+            userId,
+            cloudStatus,
+            cloudError,
+            hasRealActivity,
+            isDemoActive,
+            dismissDemoMode,
+            firebaseConfig,
+            darkMode,
+            viewMode,
+            showQuotes,
+            toasts,
+            confirmState,
+            tasks,
+            currentDay,
+            startDate,
+            routineTemplate,
+            completedRoutine,
+            todayDayId,
+            totalDays,
+            sessions,
+            completeFocusSynergy,
+            streakStats,
+            studyMinutesByDate,
+            notebookPages,
+            stylusStrokes,
+            dailyNotes,
+            xp,
+            addXp,
+            level,
+            currentLevelXp,
+            xpForNextLevel,
+            progressPercent,
+            dailyQuote,
+            subjects,
+            auditLog,
+            moods,
+            studyHoursLog,
+            perfectDates,
+            isTimerOpen,
+            showConfetti,
+            isCommandPaletteOpen,
+            isAiPanelOpen,
+            sidebarCollapsed,
+            currentSettings,
+            geminiApiKey,
+            archivedPlans,
+            flashcards,
+            isNewUser,
+        ]
+    );
+
+    if (!isInitialized) return <AppShellSkeleton />;
+
+    return (
+        <DataContext.Provider value={contextValue}>
+            <StoreSyncStatusContext.Provider value={syncStatusValue}>{children}</StoreSyncStatusContext.Provider>
+        </DataContext.Provider>
+    );
 };
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -1489,4 +1912,20 @@ export const useStore = () => {
     const context = useContext(DataContext);
     if (!context) throw new Error('useStore must be used within StoreProvider');
     return context as StoreContextType;
+};
+
+export const useStoreSyncStatus = (): StoreSyncStatusContextType => {
+    const syncCtx = useContext(StoreSyncStatusContext);
+    const fallback = useContext(DataContext);
+    if (syncCtx) return syncCtx;
+    if (fallback) {
+        return {
+            saveStatus: fallback.saveStatus ?? 'saved',
+            isSyncing: fallback.isSyncing ?? false,
+            syncQueueCount: fallback.syncQueueCount ?? 0,
+            deadLetterCount: fallback.deadLetterCount ?? 0,
+            lastSyncTime: fallback.lastSyncTime ?? null,
+        };
+    }
+    throw new Error('useStoreSyncStatus must be used within StoreProvider');
 };

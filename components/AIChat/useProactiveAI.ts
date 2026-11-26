@@ -1,24 +1,20 @@
 import { useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
-// @ts-ignore
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { get, set } from 'idb-keyval';
-import { toIsoString, getShamsiDate } from '../../utils';
+import { toIsoString } from '../../utils';
 
 export const useProactiveAI = () => {
-    const { settings, tasks, updateSettings, userName, currentDay, getProgress, userId, geminiApiKey } = useStore();
+    const { settings, tasks, updateSettings, userName, getProgress, userId } = useStore();
 
     useEffect(() => {
         const checkProactive = async () => {
             const todayIso = toIsoString(new Date());
-            const lastCheck = localStorage.getItem('parsaplan_last_proactive_check');
+            const checkStorageKey = `parsaplan_last_proactive_check_${userId || 'parsaplan_local_user'}`;
+            const lastCheck = localStorage.getItem(checkStorageKey);
 
             if (lastCheck === todayIso) return; // Already checked today
 
-            const activeApiKey = geminiApiKey || settings.geminiApiKey || localStorage.getItem('gemini_api_key') || '';
-            const activeModel = settings.geminiModel || 'gemini-2.0-flash';
-
-            if (!activeApiKey) return;
+            const activeModel = settings.geminiModel || 'gemini-4-hydrogen';
 
             // Only run if user is active and has done something
             if (tasks.filter(t => t.isCompleted).length === 0) return;
@@ -61,17 +57,23 @@ export const useProactiveAI = () => {
             `;
 
             try {
-                const genAI = new GoogleGenerativeAI(activeApiKey);
-                const model = genAI.getGenerativeModel({ model: activeModel });
-                const result = await model.generateContent(sysPrompt);
-                const responseText = result.response.text().trim();
+                const res = await fetch('/api/gemini/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: sysPrompt, model: activeModel }),
+                });
+
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const responseText = (data?.text || '').trim();
 
                 if (responseText !== 'IGNORE' && responseText.length > 5) {
                     await sendProactiveMessage(responseText, userId);
                     updateSettings({ hasUnreadAiMessage: true });
                 }
 
-                localStorage.setItem('parsaplan_last_proactive_check', todayIso);
+                localStorage.setItem(checkStorageKey, todayIso);
             } catch (error) {
                 console.error("Proactive AI Check Failed:", error);
             }
@@ -79,7 +81,7 @@ export const useProactiveAI = () => {
 
         const t = setTimeout(checkProactive, 5000); // Wait 5s before running so we don't block initial load
         return () => clearTimeout(t);
-    }, [geminiApiKey, settings.geminiApiKey, tasks, userId]);
+    }, [settings.geminiModel, tasks, userId]);
 };
 
 async function sendProactiveMessage(text: string, userId?: string) {

@@ -14,11 +14,11 @@ const LEVEL_CLASSES: Record<0 | 1 | 2 | 3 | 4, string> = {
 
 export const AnnualStudyHeatmap: React.FC = () => {
     const { studyMinutesByDate, streakStats, settings } = useStore();
-    const cutoffHour = settings.dayCutoffHour ?? 5;
+    const cutoffHour = settings?.dayCutoffHour ?? 5;
     const [hoveredInfo, setHoveredInfo] = useState<{ date: string; minutes: number } | null>(null);
 
     const series = useMemo(
-        () => generateHeatmapSeries(studyMinutesByDate, 364, new Date(), cutoffHour),
+        () => generateHeatmapSeries(studyMinutesByDate || {}, 364, new Date(), cutoffHour),
         [studyMinutesByDate, cutoffHour]
     );
 

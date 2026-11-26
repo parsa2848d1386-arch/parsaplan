@@ -1,17 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-// @ts-ignore
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { get, set } from 'idb-keyval';
-import { SubjectTask, SUBJECT_LISTS, TaskPriority } from '../types';
+import { SubjectTask, TaskPriority } from '../types';
 import { getDiffDays, toIsoString } from '../utils';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
 import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
 import { ChatMessage } from '../components/AIChat/ChatMessage';
-import { ChatInput } from '../components/AIChat/ChatInput';
+import { ChatInput, ChatAttachmentPayload } from '../components/AIChat/ChatInput';
 import { WelcomeScreen } from '../components/AIChat/WelcomeScreen';
-import { Menu, Settings as SettingsIcon, ChevronLeft, X, Sparkles, History as HistoryIcon, Trash2, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Check, X, Sparkles, History as HistoryIcon, Trash2, Plus, Loader2 } from 'lucide-react';
 
 // --- TYPES (Internal) ---
 interface Message {
@@ -20,9 +18,10 @@ interface Message {
     sender: 'user' | 'ai';
     timestamp: Date;
     isError?: boolean;
+    retryText?: string;
     pendingTasks?: ParsedTask[];
     tasksApplied?: boolean;
-    attachments?: { type: 'image' | 'video' | 'file'; url: string; name: string }[];
+    attachments?: { type: 'image' | 'video' | 'file'; url?: string; name: string }[];
 }
 
 export interface AIChatProps {
@@ -31,14 +30,13 @@ export interface AIChatProps {
 }
 
 const AI_MODELS = [
-    { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-    { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-    { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen' },
+    { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
 ];
 
 export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTasksBatch, askConfirm, startDate, currentDay, totalDays, tasks, xp, level, moods, auditLog, progressPercent, getProgress, userName, dailyNotes, showToast, geminiApiKey, userId } = useStore();
+    const { settings, updateSettings, subjects, addTasksBatch, askConfirm, startDate, currentDay, totalDays, userName, showToast, userId } = useStore();
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -51,14 +49,9 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     // UI State
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    // Settings (Persisted)
-    const activeApiKey =
-        (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-        (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY as string)) ||
-        geminiApiKey ||
-        localStorage.getItem('gemini_api_key') ||
-        '';
-    const selectedModel = settings.geminiModel || 'gemini-2.0-flash';
+    const selectedModel = AI_MODELS.some((m) => m.id === settings.geminiModel)
+        ? settings.geminiModel
+        : 'gemini-4-hydrogen';
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 
@@ -67,9 +60,9 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Derived State
-    const activeSession = sessions.find(s => s.id === activeSessionId);
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
     const messages = activeSession?.messages || [];
-    const filteredMessages = messages.filter(m => 
+    const filteredMessages = messages.filter((m) =>
         m.text.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -80,7 +73,6 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
             try {
                 let savedSessions = await get(storageKey);
                 if (!savedSessions && (userId === 'parsaplan_local_user' || !userId)) {
-                    // Fallback to legacy un-scoped local storage if offline
                     const localRaw = localStorage.getItem('gemini_chat_sessions');
                     if (localRaw) {
                         savedSessions = JSON.parse(localRaw);
@@ -90,7 +82,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 if (savedSessions && Array.isArray(savedSessions)) {
                     const fixed = savedSessions.map((s: any) => ({
                         ...s,
-                        messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+                        messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })),
                     }));
                     setSessions(fixed);
                     if (fixed.length > 0) setActiveSessionId(fixed[0].id);
@@ -98,7 +90,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                     createNewChat();
                 }
             } catch (e) {
-                console.error("Failed to load sessions", e);
+                console.error('Failed to load sessions', e);
                 createNewChat();
             }
         };
@@ -111,7 +103,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     useEffect(() => {
         if (sessions.length > 0 && userId !== undefined) {
             const storageKey = `gemini_chat_sessions_${userId || 'parsaplan_local_user'}`;
-            set(storageKey, sessions).catch(e => console.error("Failed saving sessions", e));
+            set(storageKey, sessions).catch((e) => console.error('Failed saving sessions', e));
         }
     }, [sessions, userId]);
 
@@ -125,9 +117,9 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
             id: crypto.randomUUID(),
             title: 'چت جدید',
             messages: [],
-            timestamp: Date.now()
+            timestamp: Date.now(),
         };
-        setSessions(prev => [newSession, ...prev]);
+        setSessions((prev) => [newSession, ...prev]);
         setActiveSessionId(newSession.id);
         if (window.innerWidth < 768) setIsSidebarOpen(false);
     };
@@ -138,8 +130,8 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
             'حذف گفتگو',
             'آیا این گفتگو برای همیشه حذف شود؟',
             () => {
-                setSessions(prev => {
-                    const filtered = prev.filter(s => s.id !== id);
+                setSessions((prev) => {
+                    const filtered = prev.filter((s) => s.id !== id);
                     if (activeSessionId === id) {
                         setActiveSessionId(filtered.length > 0 ? filtered[0].id : null);
                     }
@@ -154,24 +146,26 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     };
 
     const renameSession = (id: string, newTitle: string) => {
-        setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+        setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: newTitle } : s)));
     };
 
     const updateActiveSessionMessages = (newMessages: Message[]) => {
         if (!activeSessionId) return;
-        setSessions(prev => prev.map(s => {
-            if (s.id === activeSessionId) {
-                let title = s.title;
-                if (s.title === 'چت جدید' && newMessages.length > 0) {
-                    const firstUserMsg = newMessages.find(m => m.sender === 'user');
-                    if (firstUserMsg) {
-                        title = firstUserMsg.text.slice(0, 25) + (firstUserMsg.text.length > 25 ? '...' : '');
+        setSessions((prev) =>
+            prev.map((s) => {
+                if (s.id === activeSessionId) {
+                    let title = s.title;
+                    if (s.title === 'چت جدید' && newMessages.length > 0) {
+                        const firstUserMsg = newMessages.find((m) => m.sender === 'user');
+                        if (firstUserMsg) {
+                            title = firstUserMsg.text.slice(0, 25) + (firstUserMsg.text.length > 25 ? '...' : '');
+                        }
                     }
+                    return { ...s, messages: newMessages, title, timestamp: Date.now() };
                 }
-                return { ...s, messages: newMessages, title, timestamp: Date.now() };
-            }
-            return s;
-        }));
+                return s;
+            })
+        );
     };
 
     const mapParsedTasksToSubjectTasks = (parsed: ParsedTask[]): SubjectTask[] => {
@@ -193,7 +187,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 id: p.id || crypto.randomUUID(),
                 dayId: calculatedDay,
                 day: calculatedDay,
-                subject: targetSubject ? targetSubject.name : (p.subject || 'عمومی'),
+                subject: targetSubject ? targetSubject.name : p.subject || 'عمومی',
                 title: p.title || p.topic || 'تسک هوشمند',
                 topic: p.topic || '',
                 studyType: (p.studyType as any) || 'study',
@@ -208,55 +202,37 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         });
     };
 
-    const handleSend = async (overrideText?: string, attachments?: File[]) => {
-        const textToSend = overrideText || input;
+    const handleSend = async (overrideText?: string, attachments?: ChatAttachmentPayload[]) => {
+        const textToSend = overrideText !== undefined ? overrideText : input;
         if (!textToSend.trim() && (!attachments || attachments.length === 0)) return;
 
-        let processedAttachments: { type: 'image' | 'video' | 'file'; url: string; name: string }[] = [];
-        if (attachments && attachments.length > 0) {
-            processedAttachments = attachments.map(file => ({
-                url: URL.createObjectURL(file),
-                type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'file',
-                name: file.name
-            }));
-        }
+        const displayAttachments: { type: 'image' | 'video' | 'file'; url?: string; name: string }[] =
+            attachments && attachments.length > 0
+                ? attachments.map((att) => ({
+                      type: att.kind === 'image' ? 'image' : 'file',
+                      url: att.kind === 'image' && att.sizeBytes <= 1_500_000 ? att.previewUrl : undefined,
+                      name: att.name,
+                  }))
+                : [];
 
         const userMsg: Message = {
             id: Date.now().toString(),
-            text: textToSend,
+            text: textToSend || 'تحلیل فایل پیوست‌شده',
             sender: 'user',
             timestamp: new Date(),
-            attachments: processedAttachments.length > 0 ? processedAttachments : undefined
+            attachments: displayAttachments.length > 0 ? displayAttachments : undefined,
         };
 
         const updatedMsgs = [...messages, userMsg];
         updateActiveSessionMessages(updatedMsgs);
-        if (!overrideText) setInput('');
+        if (overrideText === undefined) setInput('');
         setIsTyping(true);
 
         try {
             abortControllerRef.current = new AbortController();
 
-            // Fallback response if no custom API key is present
-            if (!activeApiKey) {
-                setTimeout(() => {
-                    const fallbackAI: Message = {
-                        id: (Date.now() + 1).toString(),
-                        text: `درود ${userName || 'سارا'} عزیز! درخواست شما دریافت شد:\n«${textToSend}»\n\nبرای اتصال زنده به موتور قدرتمند هوش مصنوعی Gemini و ایجاد خودکار تسک‌ها در تایم‌لاین، لطفاً کلید API رایگان خود را در تنظیمات وارد کنید.`,
-                        sender: 'ai',
-                        timestamp: new Date(),
-                    };
-                    updateActiveSessionMessages([...updatedMsgs, fallbackAI]);
-                    setIsTyping(false);
-                }, 1000);
-                return;
-            }
-
-            const genAI = new GoogleGenerativeAI(activeApiKey);
-            const model = genAI.getGenerativeModel({ model: selectedModel });
-
             const systemContext = `
-شما دستیار هوشمند و اختصاصی برنامه‌ریزی تحصیلی «پارساپلان» هستید. نام کاربر: ${userName || 'سارا'}.
+شما دستیار هوشمند و اختصاصی برنامه‌ریزی تحصیلی «پارساپلان» هستید. نام کاربر: ${userName || 'دوست من'}.
 پاسخ‌های شما باید کاملاً فارسی، پرانرژی، راهبردی و ساختاریافته باشد.
 اگر کاربر درخواست برنامه‌ریزی یا ساخت تسک دارد، می‌توانید یک بلوک JSON معتبر از دستورات زیر تولید کنید:
 \`\`\`json
@@ -268,7 +244,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         "title": "مرور زیست",
         "subject": "زیست‌شناسی",
         "topic": "ژنتیک",
-        "date": "${new Date().toISOString().split('T')[0]}",
+        "date": "${toIsoString(new Date())}",
         "startTime": "09:00",
         "durationMinutes": 60,
         "studyType": "study",
@@ -280,65 +256,97 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
 \`\`\`
             `;
 
-            const chat = model.startChat({
-                history: [
-                    { role: 'user', parts: [{ text: systemContext }] },
-                    { role: 'model', parts: [{ text: 'درود! من دستیار هوشمند پارساپلان هستم و آماده‌ام به شما در مدیریت زمان، برنامه‌ریزی دقیق و ارتقای بازدهی کمک کنم.' }] }
-                ]
+            const history = messages
+                .filter((m) => !m.isError && m.text.trim().length > 0)
+                .slice(-12)
+                .map((m) => ({
+                    role: m.sender === 'user' ? ('user' as const) : ('model' as const),
+                    text: m.text,
+                }));
+
+            const serverAttachments = attachments?.map((att) => ({
+                name: att.name,
+                mimeType: att.mimeType,
+                ...(att.base64Data ? { base64Data: att.base64Data } : {}),
+                ...(att.textContent !== undefined ? { textContent: att.textContent } : {}),
+            }));
+
+            const response = await fetch('/api/gemini/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: textToSend,
+                    history,
+                    systemInstruction: systemContext,
+                    model: selectedModel,
+                    attachments: serverAttachments,
+                }),
+                signal: abortControllerRef.current.signal,
             });
 
-            const result = await chat.sendMessage(textToSend);
-            const text = result.response.text();
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(
+                    data?.error ||
+                        (response.status === 429
+                            ? 'سقف درخواست‌های هوش مصنوعی موقتاً پر شده است.'
+                            : 'AI request failed')
+                );
+            }
+
+            const text: string = data.text || '';
 
             let parsedTasks: ParsedTask[] | undefined;
-            let shouldAutoAdd = false;
-            let jsonString = "";
 
             const jsonMatch = text.match(/```json([\s\S]*?)```/);
             if (jsonMatch && jsonMatch[1]) {
                 try {
-                    jsonString = jsonMatch[0];
                     const rawJson = JSON.parse(jsonMatch[1].trim());
                     const action = rawJson.action || rawJson;
                     if (action.type === 'preview_tasks' || action.type === 'auto_add_tasks') {
-                        shouldAutoAdd = action.type === 'auto_add_tasks';
                         parsedTasks = action.tasks?.map((t: any) => ({
                             ...t,
-                            id: crypto.randomUUID()
+                            id: crypto.randomUUID(),
                         }));
                     }
                 } catch (e) {
-                    console.error("JSON Error", e);
+                    console.error('JSON Error', e);
                 }
             }
 
-            let autoApplied = false;
-            if (shouldAutoAdd && parsedTasks && parsedTasks.length > 0) {
-                addTasksBatch(mapParsedTasksToSubjectTasks(parsedTasks), 'دستیار هوشمند AI');
-                autoApplied = true;
+            // User Agency (WWDC26): Always preview AI-proposed tasks before mutating the user's schedule
+            if (parsedTasks && parsedTasks.length > 0) {
+                setReviewTasks(parsedTasks);
             }
 
-            let cleanText = text.replace(/```json[\s\S]*?```/g, '').trim();
+            const cleanText = text.replace(/```json[\s\S]*?```/g, '').trim();
 
             const aiMsg: Message = {
                 id: Date.now().toString(),
-                text: cleanText || (autoApplied ? `${parsedTasks?.length} تسک به‌صورت خودکار به برنامه و تایم‌لاین اضافه شد. ✅` : 'برنامه آماده بررسی است:'),
+                text: cleanText || 'برنامه پیشنهادی آماده بررسی و تایید شماست:',
                 sender: 'ai',
                 timestamp: new Date(),
                 pendingTasks: parsedTasks,
-                tasksApplied: autoApplied,
+                tasksApplied: false,
             };
 
             updateActiveSessionMessages([...updatedMsgs, aiMsg]);
             setIsTyping(false);
         } catch (error: any) {
-            console.error("AI Error:", error);
+            if (error?.name === 'AbortError') {
+                setIsTyping(false);
+                return;
+            }
+            console.error('AI Error:', error);
             const errorMsg: Message = {
                 id: Date.now().toString(),
-                text: 'متاسفانه در پردازش درخواست خطایی رخ داد. لطفاً اتصال اینترنت یا کلید API را بررسی فرمایید.',
+                text:
+                    error?.message ||
+                    'متاسفانه در پردازش درخواست خطایی رخ داد. لطفاً اتصال اینترنت را بررسی فرمایید.',
                 sender: 'ai',
                 timestamp: new Date(),
-                isError: true
+                isError: true,
+                retryText: textToSend,
             };
             updateActiveSessionMessages([...updatedMsgs, errorMsg]);
             setIsTyping(false);
@@ -371,7 +379,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         const nextMsgs = messages.map((m) => (m.id === messageId ? { ...m, tasksApplied: true } : m));
         const confirmMsg: Message = {
             id: Date.now().toString(),
-            text: `${list.length} تسک با موفقیت به داشبورد و تایم‌لاین اضافه شد. ✅`,
+            text: `${list.length} تسک با موفقیت به داشبورد و تایم‌لاین اضافه شد.`,
             sender: 'ai',
             timestamp: new Date(),
         };
@@ -383,7 +391,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
             addTasksBatch(mapParsedTasksToSubjectTasks(reviewTasks), 'دستیار هوشمند AI');
             const successMsg: Message = {
                 id: Date.now().toString(),
-                text: `${reviewTasks.length} تسک با موفقیت به برنامه و تایم‌لاین اضافه شد. ✅`,
+                text: `${reviewTasks.length} تسک با موفقیت به برنامه و تایم‌لاین اضافه شد.`,
                 sender: 'ai',
                 timestamp: new Date(),
             };
@@ -392,14 +400,16 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         }
     };
 
-    const currentModelObj = AI_MODELS.find(m => m.id === selectedModel) || AI_MODELS[0];
+    const currentModelObj = AI_MODELS.find((m) => m.id === selectedModel) || AI_MODELS[0];
 
     return (
-        <div className="flex h-full bg-surface text-on-surface overflow-hidden relative font-sans">
-            {/* Ambient Background Glowing Orbs */}
-            <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full filter blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-secondary-container/20 rounded-full filter blur-[120px] pointer-events-none" />
-
+        <div
+            className={`flex bg-[var(--surface-canvas)] text-on-surface overflow-hidden relative font-sans ${
+                isWidget
+                    ? 'h-full'
+                    : 'h-[calc(100dvh-120px-env(safe-area-inset-top)-env(safe-area-inset-bottom))] md:h-[calc(100dvh-64px)]'
+            }`}
+        >
             <ChatSidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
@@ -414,49 +424,54 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
             />
 
             {/* Main Area */}
-            <main className="flex-1 flex flex-col h-full relative w-full transition-all duration-300 z-10">
-                {/* Header (Bento / Modern Capsule Bar) */}
-                <header className="p-3.5 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 flex items-center justify-between sticky top-0 z-20 shadow-xs">
-                    <div className="flex items-center gap-2.5">
+            <main className="flex-1 flex flex-col h-full relative w-full transition-all duration-200 z-10 min-w-0">
+                {/* Opaque Semantic Header (Zero Glass-on-Glass) */}
+                <header
+                    className={`px-3.5 py-2 bg-[var(--surface-elevated)] border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 z-20 ${
+                        isWidget ? 'pt-safe' : ''
+                    }`}
+                >
+                    <div className="flex items-center gap-2">
                         <button
+                            type="button"
                             onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container transition cursor-pointer"
                             title="تاریخچه گفتگوها"
+                            aria-label="تاریخچه گفتگوها"
                         >
-                            <HistoryIcon size={20} />
+                            <HistoryIcon size={19} />
                         </button>
 
-                        {/* Model Selector Capsule */}
+                        {/* Model Selector */}
                         <div className="relative">
                             <button
+                                type="button"
                                 onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-low text-primary shadow-xs hover:bg-surface-container transition-all border border-outline-variant/30"
+                                aria-expanded={isModelDropdownOpen}
+                                aria-label="انتخاب مدل هوش مصنوعی"
+                                className="min-h-[40px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low text-primary hover:bg-surface-container transition border border-[var(--border-subtle)] cursor-pointer"
                             >
-                                <span className="material-symbols-outlined text-[16px]">expand_more</span>
-                                <span className="font-label-sm text-label-sm font-bold tracking-wide">
-                                    {currentModelObj.label}
-                                </span>
-                                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                                <ChevronDown size={15} />
+                                <span className="text-xs font-bold">{currentModelObj.label}</span>
+                                <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
                             </button>
 
-                            {/* Dropdown Popover */}
                             {isModelDropdownOpen && (
-                                <div className="absolute top-full start-0 mt-2 w-48 bg-surface-container-lowest rounded-2xl shadow-xl p-1.5 z-30 flex flex-col gap-1 border border-outline-variant/30">
+                                <div className="absolute top-full start-0 mt-2 w-52 bg-[var(--surface-elevated)] rounded-2xl shadow-lg p-1.5 z-30 flex flex-col gap-1 border border-[var(--border-subtle)]">
                                     {AI_MODELS.map((m) => (
                                         <button
                                             key={m.id}
+                                            type="button"
                                             onClick={() => {
                                                 updateSettings({ geminiModel: m.id });
                                                 setIsModelDropdownOpen(false);
                                             }}
-                                            className="flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-surface-container text-right transition-colors text-label-sm font-label-sm"
+                                            className="min-h-[40px] flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-surface-container text-right transition-colors text-xs cursor-pointer"
                                         >
                                             <span className={selectedModel === m.id ? 'text-primary font-bold' : 'text-on-surface'}>
                                                 {m.label}
                                             </span>
-                                            {selectedModel === m.id && (
-                                                <span className="material-symbols-outlined text-primary text-[18px]">check</span>
-                                            )}
+                                            {selectedModel === m.id && <Check size={15} className="text-primary" />}
                                         </button>
                                     ))}
                                 </div>
@@ -464,51 +479,66 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                         <button
+                            type="button"
                             onClick={createNewChat}
-                            className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-container-low text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                             title="چت جدید"
+                            aria-label="گفتگوی جدید"
                         >
                             <Plus size={18} />
                         </button>
 
                         {activeSession && activeSession.messages.length > 0 && (
                             <button
+                                type="button"
                                 onClick={handleClearSession}
-                                className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-container-low text-error hover:bg-error-container hover:text-on-error-container transition-colors"
+                                className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-container-low text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                                 title="پاک‌سازی این گفتگو"
+                                aria-label="پاک‌سازی این گفتگو"
                             >
                                 <Trash2 size={17} />
                             </button>
                         )}
 
                         {isWidget ? (
-                            <button onClick={onClose} className="p-2 hover:bg-surface-container rounded-xl transition text-on-surface-variant">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                aria-label="بستن دستیار هوشمند"
+                                className="w-10 h-10 flex items-center justify-center hover:bg-surface-container rounded-xl transition text-[var(--text-secondary)] cursor-pointer"
+                            >
                                 <X size={20} />
                             </button>
                         ) : (
-                            <button onClick={() => navigate('/')} className="p-2 hover:bg-surface-container rounded-xl transition text-on-surface-variant">
-                                <ChevronLeft size={20} />
+                            <button
+                                type="button"
+                                onClick={() => navigate('/')}
+                                aria-label="بازگشت به داشبورد"
+                                className="w-10 h-10 flex items-center justify-center hover:bg-surface-container rounded-xl transition text-[var(--text-secondary)] cursor-pointer"
+                            >
+                                <ChevronRight size={20} />
                             </button>
                         )}
                     </div>
                 </header>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar scroll-smooth min-h-0 relative">
+                <div className="flex-1 overflow-y-auto px-3.5 py-4 md:p-6 custom-scrollbar scroll-smooth min-h-0 relative">
                     {messages.length === 0 ? (
-                        <WelcomeScreen onPromptSelect={(text) => handleSend(text)} userName={userName || 'سارا'} />
+                        <WelcomeScreen onPromptSelect={(text) => handleSend(text)} userName={userName || 'دوست من'} />
                     ) : (
-                        <div className="max-w-4xl mx-auto pb-4">
+                        <div className="max-w-3xl mx-auto pb-4">
                             {/* Search bar */}
                             <div className="mb-4">
                                 <input
-                                    type="text"
+                                    type="search"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="🔍 جستجو در پیام‌های این گفتگو..."
-                                    className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl px-4 py-2 text-xs outline-none focus:border-primary text-on-surface shadow-xs"
+                                    placeholder="جستجو در پیام‌های این گفتگو..."
+                                    aria-label="جستجو در پیام‌ها"
+                                    className="w-full bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-2xl px-4 py-2.5 text-base sm:text-sm outline-none focus:border-primary text-on-surface"
                                     dir="rtl"
                                 />
                             </div>
@@ -517,7 +547,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                                 <ChatMessage
                                     key={msg.id}
                                     message={msg}
-                                    onRetry={(text) => handleSend(text)}
+                                    onRetry={(retryTxt) => handleSend(retryTxt)}
                                     onRegenerate={() => handleSend(msg.text)}
                                     onReviewTasks={setReviewTasks}
                                     onAutoAddTasks={handleAutoAddMessageTasks}
@@ -526,16 +556,13 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                             ))}
 
                             {isTyping && (
-                                <div className="flex flex-row-reverse items-end gap-3.5 mb-6 opacity-90">
-                                    <div className="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shadow-md">
-                                        <Sparkles size={18} className="animate-spin" />
+                                <div className="flex flex-row-reverse items-center gap-3 mb-6">
+                                    <div className="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0">
+                                        <Sparkles size={17} />
                                     </div>
-                                    <div className="bg-surface-container-low p-4 rounded-2xl rounded-tl-sm border border-outline-variant/30 text-body-sm text-on-surface-variant shadow-xs">
-                                        <div className="flex items-center gap-1.5 py-1">
-                                            <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                            <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                            <span className="w-2.5 h-2.5 bg-primary rounded-full animate-bounce"></span>
-                                        </div>
+                                    <div className="bg-[var(--surface-elevated)] px-4 py-3 rounded-[20px] rounded-tl-md border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] flex items-center gap-2">
+                                        <Loader2 size={15} className="animate-spin text-primary" />
+                                        <span>در حال آماده‌سازی پاسخ...</span>
                                     </div>
                                 </div>
                             )}
@@ -544,8 +571,12 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                     )}
                 </div>
 
-                {/* Input Area */}
-                <div className="sticky bottom-0 z-20 w-full p-3 bg-surface/80 backdrop-blur-xl border-t border-outline-variant/20">
+                {/* Opaque Semantic Input Footer */}
+                <div
+                    className={`shrink-0 z-20 w-full px-3 pt-2.5 pb-2 bg-[var(--surface-elevated)] border-t border-[var(--border-subtle)] ${
+                        isWidget ? 'pb-safe' : ''
+                    }`}
+                >
                     <ChatInput
                         input={input}
                         setInput={setInput}
@@ -553,12 +584,6 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                         onSend={(files) => handleSend(undefined, files)}
                         onStop={handleStop}
                     />
-                    <div className="flex items-center justify-center gap-1.5 mt-2 text-on-surface-variant">
-                        <span className="material-symbols-outlined text-[14px] text-primary">auto_awesome</span>
-                        <span className="font-label-sm text-label-sm text-on-surface-variant/80">
-                            قدرت‌گرفته از هوش مصنوعی ParsaPlan / Gemini
-                        </span>
-                    </div>
                 </div>
             </main>
 

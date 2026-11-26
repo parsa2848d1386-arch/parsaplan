@@ -5,14 +5,14 @@ import { useUI } from '../../context/UIContext';
 import { getLogicalDateKey } from '../../utils/streakEngine';
 import { getFullShamsiDate, formatToPersianDigits } from '../../utils';
 import { MoodType } from '../../types';
-import { MoonStar, X, Flame, CheckCircle2, Clock, ArrowRightLeft } from 'lucide-react';
+import { MoonStar, X, Flame, CheckCircle2, Clock, ArrowRightLeft, Sparkles, Zap, Smile, Coffee, BatteryLow } from 'lucide-react';
 
-const MOODS: { id: MoodType; emoji: string; label: string }[] = [
-    { id: 'energetic', emoji: '⚡', label: 'پرانرژی' },
-    { id: 'happy', emoji: '😊', label: 'عالی' },
-    { id: 'neutral', emoji: '😐', label: 'متوسط' },
-    { id: 'tired', emoji: '😴', label: 'خسته' },
-    { id: 'sad', emoji: '😔', label: 'بی‌حوصله' },
+const MOODS: { id: MoodType; Icon: React.ElementType; label: string; color: string }[] = [
+    { id: 'excellent', Icon: Sparkles, label: 'عالی', color: 'text-amber-500' },
+    { id: 'high-energy', Icon: Zap, label: 'پرانرژی', color: 'text-emerald-500' },
+    { id: 'normal', Icon: Smile, label: 'معمولی', color: 'text-sky-500' },
+    { id: 'tired', Icon: Coffee, label: 'خسته', color: 'text-orange-500' },
+    { id: 'exhausted', Icon: BatteryLow, label: 'فرسوده', color: 'text-rose-500' },
 ];
 
 export const EveningReflectionModal: React.FC = () => {
@@ -40,6 +40,15 @@ export const EveningReflectionModal: React.FC = () => {
             setNote(getDailyNote(todayLogical) || '');
         }
     }, [isEveningModalOpen, todayLogical, getDailyNote]);
+
+    useEffect(() => {
+        if (!isEveningModalOpen) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setEveningModalOpen(false);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isEveningModalOpen, setEveningModalOpen]);
 
     const stats = useMemo(() => {
         const dayTasks = tasks.filter((t) => t.date === todayLogical);
@@ -71,28 +80,35 @@ export const EveningReflectionModal: React.FC = () => {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/72 dark:bg-black/80 backdrop-blur-[8px] p-4"
             onClick={() => setEveningModalOpen(false)}
+            dir="rtl"
         >
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="بازبینی شبانه و جمع‌بندی روز"
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-gray-900 rounded-3xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-purple-200/70 dark:border-gray-700 shadow-2xl"
+                className="bg-[var(--surface-elevated)] squircle-lg max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-[var(--border-subtle)] shadow-2xl"
             >
-                {/* Header */}
-                <div className="p-5 bg-gradient-to-l from-purple-600 to-indigo-700 text-white flex items-center justify-between">
+                {/* Calm Native Header (Banner Blindness fix) */}
+                <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
-                            <MoonStar size={24} />
+                        <div className="w-11 h-11 squircle-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <MoonStar size={22} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-black">بازبینی شبانه و جمع‌بندی روز</h2>
-                            <p className="text-xs text-purple-100">{getFullShamsiDate(todayLogical)}</p>
+                            <h2 className="text-base sm:text-lg font-extrabold text-[var(--text-primary)]">
+                                بازبینی شبانه و جمع‌بندی روز
+                            </h2>
+                            <p className="text-xs text-[var(--text-secondary)] mt-0.5">{getFullShamsiDate(todayLogical)}</p>
                         </div>
                     </div>
                     <button
                         type="button"
                         onClick={() => setEveningModalOpen(false)}
-                        className="p-2 rounded-xl hover:bg-white/20 transition"
+                        aria-label="بستن"
+                        className="w-11 h-11 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container transition cursor-pointer"
                     >
                         <X size={20} />
                     </button>
@@ -131,21 +147,25 @@ export const EveningReflectionModal: React.FC = () => {
                     <div className="bg-gray-50 dark:bg-gray-800/70 rounded-2xl p-4 border border-gray-100 dark:border-gray-700">
                         <p className="text-xs font-black text-gray-700 dark:text-gray-200 mb-3">حس‌وحال پایان روز شما چطور بود؟</p>
                         <div className="grid grid-cols-5 gap-2">
-                            {MOODS.map((m) => (
-                                <button
-                                    key={m.id}
-                                    type="button"
-                                    onClick={() => setMood(todayLogical, m.id)}
-                                    className={`py-2.5 rounded-xl flex flex-col items-center gap-1 transition border ${
-                                        currentMood === m.id
-                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm scale-[1.03]'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                                    }`}
-                                >
-                                    <span className="text-xl">{m.emoji}</span>
-                                    <span className="text-[10px] font-bold">{m.label}</span>
-                                </button>
-                            ))}
+                            {MOODS.map((m) => {
+                                const MoodIcon = m.Icon;
+                                const active = currentMood === m.id;
+                                return (
+                                    <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => setMood(todayLogical, m.id)}
+                                        className={`py-2.5 min-h-[54px] rounded-xl flex flex-col items-center justify-center gap-1 transition border cursor-pointer ${
+                                            active
+                                                ? 'bg-primary text-on-primary border-primary shadow-sm scale-[1.03]'
+                                                : 'bg-[var(--surface-elevated)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-primary/40'
+                                        }`}
+                                    >
+                                        <MoodIcon size={18} className={active ? 'text-on-primary' : m.color} aria-hidden="true" />
+                                        <span className="text-[10px] font-bold">{m.label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -195,11 +215,11 @@ export const EveningReflectionModal: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex justify-end gap-2">
+                <div className="p-4 border-t border-[var(--border-subtle)] bg-surface-container-low flex justify-end gap-2">
                     <button
                         type="button"
                         onClick={handleSaveAndClose}
-                        className="px-6 py-2.5 rounded-xl bg-gradient-to-l from-purple-600 to-indigo-600 text-white text-xs font-black shadow-md hover:opacity-95 transition"
+                        className="px-6 min-h-[44px] py-2.5 rounded-xl bg-primary text-on-primary text-xs font-black shadow-sm hover:opacity-95 transition cursor-pointer"
                     >
                         ثبت گزارش و پایان روز
                     </button>

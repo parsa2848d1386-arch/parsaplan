@@ -1,0 +1,194 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private root document storing user preferences, progress metadata, moods, and subjects without exposing secrets.",
+      "type": "object",
+      "properties": {
+        "userName": { "type": "string", "maxLength": 80 },
+        "xp": { "type": "number" },
+        "startDate": { "type": "string" },
+        "totalDays": { "type": "number" },
+        "lastUpdated": { "type": "number" },
+        "schemaVersion": { "type": "number" }
+      }
+    },
+    "UserTask": {
+      "title": "UserTask",
+      "description": "Task or study block inside user's private tasks subcollection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "dayId": { "type": "number" },
+        "date": { "type": "string" },
+        "subject": { "type": "string", "maxLength": 80 },
+        "topic": { "type": "string", "maxLength": 200 },
+        "isCompleted": { "type": "boolean" }
+      },
+      "required": ["id", "date", "subject", "topic"]
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "Completed focus session stored under the user's sessions subcollection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "subjectName": { "type": "string", "maxLength": 80 },
+        "durationSeconds": { "type": "number" },
+        "logicalDate": { "type": "string" }
+      },
+      "required": ["id", "durationSeconds", "logicalDate"]
+    },
+    "Flashcard": {
+      "title": "Flashcard",
+      "description": "Leitner flashcard item inside user's flashcards subcollection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "question": { "type": "string", "maxLength": 1000 },
+        "answer": { "type": "string", "maxLength": 2000 },
+        "boxId": { "type": "number" }
+      },
+      "required": ["id", "question", "answer", "boxId"]
+    },
+    "NotebookPage": {
+      "title": "NotebookPage",
+      "description": "Block note or stylus canvas page inside user's pages subcollection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 160 }
+      },
+      "required": ["id", "title"]
+    },
+    "PublicProfileSummary": {
+      "title": "PublicProfileSummary",
+      "description": "Non-PII public leaderboard index summary.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 80 },
+        "xp": { "type": "number" },
+        "level": { "type": "number" },
+        "progress": { "type": "number" },
+        "tasksCompleted": { "type": "number" },
+        "totalTasks": { "type": "number" },
+        "lastActive": { "type": "number" },
+        "examAverage": { "type": "number" }
+      },
+      "required": ["id", "userName", "xp"]
+    },
+    "PublicProfileDetail": {
+      "title": "PublicProfileDetail",
+      "description": "Detailed leaderboard view fetched on demand with recent task titles.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 80 },
+        "xp": { "type": "number" },
+        "tasks": { "type": "array" }
+      },
+      "required": ["id", "userName", "xp"]
+    },
+    "LiveCabinSession": {
+      "title": "LiveCabinSession",
+      "description": "Public live focus cabin heartbeat status.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 80 },
+        "subject": { "type": "string", "maxLength": 120 },
+        "topic": { "type": "string", "maxLength": 200 },
+        "lastPing": { "type": "number" }
+      },
+      "required": ["id", "userName", "lastPing"]
+    },
+    "StudyRoom": {
+      "title": "StudyRoom",
+      "description": "Collaborative focus group room identified by 6-char room code.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 32 },
+        "code": { "type": "string", "maxLength": 16 },
+        "name": { "type": "string", "maxLength": 80 },
+        "creatorId": { "type": "string", "maxLength": 128 },
+        "maxMembers": { "type": "number" },
+        "targetHours": { "type": "number" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["id", "name", "creatorId"]
+    },
+    "StudyRoomMember": {
+      "title": "StudyRoomMember",
+      "description": "Member live status and study counter inside a group room.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["STUDYING", "RESTING", "OFFLINE"] },
+        "dailyStudySeconds": { "type": "number" },
+        "cheersReceived": { "type": "number" },
+        "lastPing": { "type": "number" }
+      },
+      "required": ["uid", "status"]
+    },
+    "StudyRoomMessage": {
+      "title": "StudyRoomMessage",
+      "description": "Short encouragement message inside a study room.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "maxLength": 60 },
+        "text": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["senderId", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private owner-only user profile and settings."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/UserTask" },
+      "description": "Owner-only tasks subcollection."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/StudySession" },
+      "description": "Owner-only focus sessions subcollection."
+    },
+    "/users/{userId}/flashcards/{cardId}": {
+      "schema": { "$ref": "#/entities/Flashcard" },
+      "description": "Owner-only flashcards subcollection."
+    },
+    "/users/{userId}/pages/{pageId}": {
+      "schema": { "$ref": "#/entities/NotebookPage" },
+      "description": "Owner-only notebook and canvas pages subcollection."
+    },
+    "/publicProfiles/{profileId}": {
+      "schema": { "$ref": "#/entities/PublicProfileSummary" },
+      "description": "Public leaderboard summaries without PII."
+    },
+    "/publicProfileDetails/{profileId}": {
+      "schema": { "$ref": "#/entities/PublicProfileDetail" },
+      "description": "Lazy-loaded public profile details."
+    },
+    "/liveSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/LiveCabinSession" },
+      "description": "Active focus cabin sessions."
+    },
+    "/study_rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/StudyRoom" },
+      "description": "Group focus rooms directory."
+    },
+    "/study_rooms/{roomId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/StudyRoomMember" },
+      "description": "Live member presence inside a study room."
+    },
+    "/study_rooms/{roomId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/StudyRoomMessage" },
+      "description": "Immutable chat feed inside a study room."
+    }
+  }
+}

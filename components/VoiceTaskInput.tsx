@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { useUI } from '../context/UIContext';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SubjectTask } from '../types';
 import { addDays, toIsoString } from '../utils';
 
 export const VoiceTaskInput: React.FC = () => {
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const { settings, addTask, startDate, currentDay, geminiApiKey } = useStore();
+    const { settings, addTask, startDate, currentDay } = useStore();
     const { showToast } = useUI();
     const [recognition, setRecognition] = useState<any>(null);
+    const processCommandRef = useRef<(text: string) => Promise<void>>(async () => {});
+    const showToastRef = useRef(showToast);
+    showToastRef.current = showToast;
 
     useEffect(() => {
         if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
@@ -26,33 +28,32 @@ export const VoiceTaskInput: React.FC = () => {
             rec.onerror = (e: any) => {
                 setIsListening(false);
                 if (e.error !== 'no-speech') {
-                    showToast('خطا در تشخیص صدا: ' + e.error, 'error');
+                    showToastRef.current('خطا در تشخیص صدا: ' + e.error, 'error');
                 }
             };
             rec.onresult = async (e: any) => {
                 const text = e.results[0][0].transcript;
-                await processVoiceCommand(text);
+                await processCommandRef.current(text);
             };
             setRecognition(rec);
+            return () => {
+                try {
+                    rec.abort();
+                } catch {
+                    // ignore cleanup error
+                }
+            };
         }
-    }, [startDate, currentDay, geminiApiKey, settings]);
+    }, []);
 
     const processVoiceCommand = async (text: string) => {
         if (!text) return;
-
-        const apiKey = geminiApiKey || (import.meta as any).env.VITE_GEMINI_API_KEY;
-        if (!apiKey) {
-            showToast('کد دسترسی Gemini (API Key) در تنظیمات وارد نشده است.', 'error');
-            return;
-        }
 
         setIsProcessing(true);
         showToast('در حال پردازش فرمان صوتی...', 'info');
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const modelName = settings?.geminiModel || "gemini-1.5-flash";
-            const model = genAI.getGenerativeModel({ model: modelName });
+            const modelName = settings?.geminiModel || 'gemini-4-hydrogen';
 
             const prompt = `
             کاربر یک فرمان صوتی برای برنامه ریزی درسی داده است. متن: "${text}"
@@ -69,10 +70,19 @@ export const VoiceTaskInput: React.FC = () => {
             *فقط* خروجی JSON با کروشه [] بده و هیچ توضیحات دیگری ننویس.
             `;
 
-            const result = await model.generateContent(prompt);
-            const responseText = result.response.text();
+            const res = await fetch('/api/gemini/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, model: modelName }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.error || 'Server error');
+            }
 
-            let jsonStr = responseText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+            const responseText = data.text || '';
+
+            let jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
             const startIndex = jsonStr.indexOf('[');
             const endIndex = jsonStr.lastIndexOf(']');
             if (startIndex !== -1 && endIndex !== -1) {
@@ -92,6 +102,9 @@ export const VoiceTaskInput: React.FC = () => {
                         subject: item.subject || 'عمومی',
                         topic: item.topic || 'بدون مبحث',
                         details: item.details || 'مطالعه',
+                        durationMinutes: Math.max(10, Math.min(480, Number(item.estimatedMinutes) || 60)),
+                        status: 'todo',
+                        priority: 'medium',
                         isCompleted: false,
                         isCustom: true,
                         studyType: 'study',
@@ -109,6 +122,8 @@ export const VoiceTaskInput: React.FC = () => {
             setIsProcessing(false);
         }
     };
+
+    processCommandRef.current = processVoiceCommand;
 
     const toggleListen = () => {
         if (!recognition) {
@@ -129,7 +144,7 @@ export const VoiceTaskInput: React.FC = () => {
     return (
         <div className="fixed bottom-[5.5rem] md:bottom-6 left-6 z-50 flex items-center gap-2.5 select-none" dir="ltr">
             {isListening && (
-                <div className="bg-slate-900/90 dark:bg-gray-950/90 backdrop-blur-xl border border-white/10 dark:border-gray-800/50 px-4 py-2.5 rounded-2xl flex items-center gap-3 animate-in slide-in-from-left-3 fade-in duration-300 shadow-xl shadow-rose-500/5">
+                <div className="bg-slate-900/90 dark:bg-gray-950/90 backdrop-blur-xl border border-white/10 dark:border-gray-800/50 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-xl shadow-rose-500/5">
                     <span className="text-[10px] font-black text-gray-300 mr-1" dir="rtl">در حال شنیدن...</span>
                     {/* Animated sound wave bars */}
                     <div className="flex items-end gap-0.5 h-3.5 w-10 overflow-hidden">
@@ -143,10 +158,12 @@ export const VoiceTaskInput: React.FC = () => {
             )}
             
             <button
+                type="button"
                 onClick={toggleListen}
+                aria-label="فرمان صوتی هوشمند"
                 className={`p-3.5 rounded-full shadow-lg transition-all cursor-pointer btn-micro-interactive ${
                     isListening 
-                        ? 'bg-rose-500 text-white shadow-rose-500/40 animate-pulse' 
+                        ? 'bg-rose-500 text-white shadow-rose-500/40 ring-4 ring-rose-500/25' 
                         : isProcessing 
                             ? 'bg-amber-500 text-white shadow-amber-500/40' 
                             : 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg hover:shadow-indigo-500/25 border border-white/10 dark:border-white/5'

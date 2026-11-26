@@ -129,6 +129,13 @@ const mockStore = {
 
 vi.mock('../../context/StoreContext', () => ({
     useStore: () => mockStore,
+    useStoreSyncStatus: () => ({
+        saveStatus: mockStore.saveStatus,
+        isSyncing: false,
+        syncQueueCount: mockStore.syncQueueCount,
+        deadLetterCount: 0,
+        lastSyncTime: null,
+    }),
 }));
 
 vi.mock('../../context/FocusContext', () => ({
@@ -155,6 +162,7 @@ import Analysis from '../../pages/Analysis';
 import Dashboard from '../../pages/Dashboard';
 import Layout from '../../components/Layout';
 import WeeklyView from '../../components/WeeklyView';
+import { CommandPalette } from '../../components/CommandPalette';
 import { UIProvider } from '../../context/UIContext';
 
 beforeAll(() => {
@@ -265,7 +273,7 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         });
     });
 
-    it('unifies Search+Ctrl+K and restricts mobile bottom nav strictly to 5 core tabs without دفترچه/روتین/لایتنر', () => {
+    it('unifies Search+Ctrl+K, places Settings in top capsule, and renders 4 core bottom tabs + circular AI button', () => {
         render(
             <UIProvider>
                 <MemoryRouter>
@@ -275,12 +283,17 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         );
 
         const mobileNav = screen.getByRole('navigation', { name: 'منوی موبایل' });
-        expect(mobileNav.querySelectorAll('a')).toHaveLength(5);
+        expect(mobileNav.querySelectorAll('a')).toHaveLength(4);
         expect(mobileNav).toHaveTextContent('داشبورد');
         expect(mobileNav).toHaveTextContent('تایم‌لاین');
         expect(mobileNav).toHaveTextContent('تحلیل');
         expect(mobileNav).toHaveTextContent('لیگ');
-        expect(mobileNav).toHaveTextContent('تنظیمات');
+        expect(mobileNav).not.toHaveTextContent('تنظیمات');
+        expect(screen.queryByRole('link', { name: /حوزه‌ها و نماها/ })).not.toBeInTheDocument();
+
+        // Top-right Settings circular link + Separate Circular AI Assistant button
+        expect(screen.getByRole('link', { name: 'تنظیمات' })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /دستیار هوشمند/ }).length).toBeGreaterThanOrEqual(1);
 
         expect(screen.queryByText('دفترچه')).not.toBeInTheDocument();
         expect(screen.queryByText('روتین')).not.toBeInTheDocument();
@@ -310,6 +323,38 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
             expect(res.data.targetHours).toBe(6);
             expect(res.data.maxMembers).toBe(50);
             expect(res.data.isPublic).toBe(true);
+        }
+    });
+
+    it('renders CommandPalette immediately (Frequency 0ms) with curated Hick choices when query is empty', () => {
+        const prevOpen = mockStore.isCommandPaletteOpen;
+        mockStore.isCommandPaletteOpen = true;
+        try {
+            render(
+                <UIProvider>
+                    <MemoryRouter>
+                        <CommandPalette />
+                    </MemoryRouter>
+                </UIProvider>
+            );
+
+            // Immediately open with role="dialog"
+            const dialog = screen.getByRole('dialog', { name: 'جستجوی سریع و دستورات' });
+            expect(dialog).toBeInTheDocument();
+
+            // Hick's Law curated initial actions: top 4 quick actions shown, secondary pages hidden until search/scope
+            expect(screen.getByText('باز کردن کرنومتر و اتاق مطالعه')).toBeInTheDocument();
+            expect(screen.getByText(/تخلیه ذهن سریع/)).toBeInTheDocument();
+            expect(screen.getByText(/آیین برنامه‌ریزی صبحگاهی/)).toBeInTheDocument();
+            expect(screen.getByText(/جمع‌بندی شبانه/)).toBeInTheDocument();
+            expect(screen.queryByText('تنظیمات و پروفایل')).not.toBeInTheDocument();
+
+            // Typing a query reveals full matching results immediately
+            const input = screen.getByLabelText('جستجوی سریع');
+            fireEvent.change(input, { target: { value: 'تنظیمات' } });
+            expect(screen.getByText('تنظیمات و پروفایل')).toBeInTheDocument();
+        } finally {
+            mockStore.isCommandPaletteOpen = prevOpen;
         }
     });
 });

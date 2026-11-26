@@ -38,6 +38,15 @@ export const MorningPlanningModal: React.FC = () => {
     const isOverloaded = totalPlannedMinutes > dailyCapacity;
     const firstMit = todayTasks.find((t) => t.isMIT) || todayTasks[0];
 
+    React.useEffect(() => {
+        if (!isMorningModalOpen) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setMorningModalOpen(false);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [isMorningModalOpen, setMorningModalOpen]);
+
     if (!isMorningModalOpen) return null;
 
     const handleToggleMit = (taskId: string, currentlyMit?: boolean) => {
@@ -50,28 +59,35 @@ export const MorningPlanningModal: React.FC = () => {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/72 dark:bg-black/80 backdrop-blur-[8px] p-4"
             onClick={() => setMorningModalOpen(false)}
+            dir="rtl"
         >
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="آیین شروع صبح و انتخاب ۳ اولویت طلایی"
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-gray-900 rounded-3xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-sky-200/70 dark:border-gray-700 shadow-2xl"
+                className="bg-[var(--surface-elevated)] squircle-lg max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden border border-[var(--border-subtle)] shadow-2xl"
             >
-                {/* Header */}
-                <div className="p-5 bg-gradient-to-l from-sky-500 to-indigo-600 text-white flex items-center justify-between">
+                {/* Calm Native Header (Banner Blindness + Continuity) */}
+                <div className="px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center">
-                            <Sunrise size={24} />
+                        <div className="w-11 h-11 squircle-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Sunrise size={22} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-black">آیین شروع صبح و انتخاب ۳ اولویت طلایی</h2>
-                            <p className="text-xs text-sky-100">{getFullShamsiDate(todayLogical)}</p>
+                            <h2 className="text-base sm:text-lg font-extrabold text-[var(--text-primary)]">
+                                آیین شروع صبح و انتخاب ۳ اولویت طلایی
+                            </h2>
+                            <p className="text-xs text-[var(--text-secondary)] mt-0.5">{getFullShamsiDate(todayLogical)}</p>
                         </div>
                     </div>
                     <button
                         type="button"
                         onClick={() => setMorningModalOpen(false)}
-                        className="p-2 rounded-xl hover:bg-white/20 transition"
+                        aria-label="بستن"
+                        className="w-11 h-11 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container transition cursor-pointer"
                     >
                         <X size={20} />
                     </button>

@@ -1,22 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Bell, RefreshCw, DownloadCloud } from 'lucide-react';
 import { useUI } from '../context/UIContext';
 import { forceUpdatePwa } from '../services/pwaManager';
+import { formatToPersianDigits } from '../utils';
+import { popoverVariants, SPRING_SNAPPY } from '../utils/motionPresets';
+import { haptics } from '../utils/haptics';
 
-export const NotificationBell: React.FC = () => {
+interface NotificationBellProps {
+    buttonClassName?: string;
+}
+
+export const NotificationBell: React.FC<NotificationBellProps> = ({ buttonClassName = '' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [hasUpdate, setHasUpdate] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const prefersReducedMotion = useReducedMotion();
     const { showToast } = useUI();
 
-    // استعلام وضعیت Service Worker جهت نمایش اعلان آماده بودن نسخه جدید
     useEffect(() => {
         if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-        navigator.serviceWorker.getRegistration().then((reg) => {
-            if (reg && reg.waiting) {
-                setHasUpdate(true);
-            }
-        }).catch(() => {});
+        navigator.serviceWorker
+            .getRegistration()
+            .then((reg) => {
+                if (reg && reg.waiting) {
+                    setHasUpdate(true);
+                }
+            })
+            .catch(() => {});
     }, []);
 
     const notifications = [];
@@ -27,28 +38,33 @@ export const NotificationBell: React.FC = () => {
             title: 'نسخه جدید آماده نصب است!',
             message: 'برای اجرای نسخه جدید برنامه، باید حافظه پنهان پاک و آپدیت اعمال شود.',
             icon: DownloadCloud,
-            color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-500/20'
+            color: 'text-primary bg-primary/10',
         });
     }
 
     const unreadCount = notifications.length;
 
-    // بستن منو با کلیک به بیرون
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setIsOpen(false);
+        };
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('keydown', handleEscape);
         }
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
         };
     }, [isOpen]);
 
     const handleUpdate = async () => {
+        haptics.medium();
         setIsOpen(false);
         showToast('در حال پاکسازی کش و نصب آپدیت...', 'info');
         await forceUpdatePwa();
@@ -56,76 +72,100 @@ export const NotificationBell: React.FC = () => {
 
     return (
         <div className="relative" ref={dropdownRef}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-10 h-10 md:w-8 md:h-8 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 md:text-gray-400 transition flex items-center justify-center relative"
+            <motion.button
+                type="button"
+                onClick={() => {
+                    haptics.selection();
+                    setIsOpen((prev) => !prev);
+                }}
+                animate={prefersReducedMotion ? undefined : { scale: isOpen ? 1.16 : 1 }}
+                whileHover={prefersReducedMotion ? undefined : { scale: isOpen ? 1.16 : 1.06 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
+                transition={SPRING_SNAPPY}
+                aria-expanded={isOpen}
+                className={`w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center relative cursor-pointer transition-colors ${
+                    isOpen
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface'
+                } ${buttonClassName}`}
                 aria-label="اعلان‌ها"
+                title="اعلان‌ها"
             >
                 {unreadCount > 0 && (
                     <span className="absolute top-2 right-2 md:top-1.5 md:right-1.5 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white dark:border-gray-900 md:border-none"></span>
+                        <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
                     </span>
                 )}
-                <Bell size={18} className="md:w-4 md:h-4 lg:w-4 lg:h-4 w-5 h-5" />
-            </button>
+                <Bell size={18} />
+            </motion.button>
 
-            {isOpen && (
-                <div className="fixed top-14 left-4 right-4 z-[100] md:absolute md:top-12 md:left-0 md:right-auto md:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-100 dark:border-gray-700 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                    <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-                        <h3 className="font-bold text-gray-800 dark:text-white">اعلان‌ها</h3>
-                        {unreadCount > 0 && (
-                            <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                {unreadCount} اعلان جدید
-                            </span>
-                        )}
-                    </div>
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        variants={popoverVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        style={{ transformOrigin: 'top left' }}
+                        className="absolute top-[calc(100%+0.75rem)] -left-1 right-auto w-[min(calc(100vw-1.5rem),21.5rem)] z-[100] md:top-12 md:left-0 md:w-80 bg-[var(--surface-elevated)] squircle-lg shadow-xl border border-[var(--border-subtle)] overflow-hidden"
+                    >
+                        <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low">
+                            <h3 className="font-extrabold text-sm text-on-surface">اعلان‌ها</h3>
+                            {unreadCount > 0 && (
+                                <span className="bg-primary/10 text-primary text-[11px] font-bold px-2.5 py-0.5 rounded-full tabular-nums">
+                                    {formatToPersianDigits(unreadCount)} اعلان جدید
+                                </span>
+                            )}
+                        </div>
 
-                    <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
-                        {notifications.length === 0 ? (
-                            <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
-                                <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center mb-1">
-                                    <Bell size={20} className="text-gray-300 dark:text-gray-600" />
+                        <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
+                            {notifications.length === 0 ? (
+                                <div className="p-7 text-center flex flex-col items-center justify-center gap-2">
+                                    <div className="w-12 h-12 squircle-sm bg-surface-container flex items-center justify-center mb-1">
+                                        <Bell size={20} className="text-[var(--text-tertiary)]" />
+                                    </div>
+                                    <p className="text-xs font-bold text-[var(--text-secondary)]">هیچ اعلان جدیدی ندارید!</p>
+                                    <button
+                                        type="button"
+                                        onClick={handleUpdate}
+                                        className="mt-2 min-h-[40px] text-xs text-primary flex items-center gap-1.5 font-bold py-2 px-3 squircle-sm hover:bg-primary/10 transition cursor-pointer"
+                                    >
+                                        <RefreshCw size={13} />
+                                        بروزرسانی و تازه‌سازی کش برنامه
+                                    </button>
                                 </div>
-                                <p className="text-xs font-bold text-gray-500 dark:text-gray-400">هیچ اعلان جدیدی ندارید!</p>
-                                <button
-                                    onClick={handleUpdate}
-                                    className="mt-3 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 font-medium py-1 px-2.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition"
-                                >
-                                    <RefreshCw size={12} />
-                                    بروزرسانی و تازه‌سازی کش برنامه
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="p-2 space-y-1">
-                                {notifications.map((n) => (
-                                    <div key={n.id} className="p-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-2xl transition">
-                                        <div className="flex gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${n.color}`}>
-                                                <n.icon size={18} />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-xs font-bold text-gray-800 dark:text-white mb-1 leading-relaxed">{n.title}</h4>
-                                                <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed mb-3">{n.message}</p>
+                            ) : (
+                                <div className="p-2.5 space-y-1.5">
+                                    {notifications.map((n) => (
+                                        <div key={n.id} className="p-3 bg-surface-container-low squircle-md border border-[var(--border-subtle)]">
+                                            <div className="flex gap-3">
+                                                <div className={`w-10 h-10 squircle-sm flex items-center justify-center shrink-0 ${n.color}`}>
+                                                    <n.icon size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-xs font-extrabold text-on-surface mb-1 leading-relaxed">{n.title}</h4>
+                                                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed mb-3">{n.message}</p>
 
-                                                {n.id === 'pwa-update' && (
-                                                    <button
-                                                        onClick={handleUpdate}
-                                                        className="w-full bg-indigo-600 text-white rounded-xl py-2 text-xs font-bold hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                                                    >
-                                                        <RefreshCw size={14} className="animate-spin-slow" />
-                                                        دریافت و نصب فایل‌های جدید
-                                                    </button>
-                                                )}
+                                                    {n.id === 'pwa-update' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleUpdate}
+                                                            className="w-full min-h-[42px] bg-primary text-on-primary squircle-sm py-2 text-xs font-bold hover:opacity-95 active:scale-[0.98] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                                        >
+                                                            <RefreshCw size={14} />
+                                                            دریافت و نصب فایل‌های جدید
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Target, BrainCircuit, Activity, BookOpen, Star, Sparkles, Moon, Loader2 } from 'lucide-react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { useUI } from '../context/UIContext';
+import { Target, BrainCircuit, Activity, BookOpen, Star, Sparkles, Moon } from 'lucide-react';
+import { MacroPlannerSkeleton } from './Skeleton';
 
 const tryParseJson = (str: string) => {
     try {
@@ -12,7 +13,8 @@ const tryParseJson = (str: string) => {
 };
 
 export default function SmartMacroPlanner() {
-    const { tasks, getProgress, studyHoursLog, subjects, geminiApiKey, settings } = useStore();
+    const { tasks, getProgress, settings } = useStore();
+    const { showToast } = useUI();
 
     const [step, setStep] = useState(0);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -44,20 +46,8 @@ export default function SmartMacroPlanner() {
     ];
 
     const handleAnalyze = async () => {
-        const activeApiKey = geminiApiKey || (import.meta as any).env.VITE_GEMINI_API_KEY;
-        if (!activeApiKey) {
-            alert('ابتدا باید API Key جمینای را در تنظیمات وارد کنید.');
-            return;
-        }
         setStep(3); // Analyzing step
         setIsAnalyzing(true);
-
-        const ai = new GoogleGenerativeAI(activeApiKey);
-        if (!ai) {
-            setIsAnalyzing(false);
-            setStep(0);
-            return;
-        }
 
         const completed = tasks.filter(t => t.isCompleted);
         const totalDuration = completed.reduce((acc, t) => acc + (t.actualDuration || 0), 0) / 60;
@@ -95,9 +85,20 @@ export default function SmartMacroPlanner() {
         `;
 
         try {
-            const model = ai.getGenerativeModel({ model: settings?.geminiModel || 'gemini-1.5-flash' });
-            const result = await model.generateContent(prompt);
-            const response = result.response.text();
+            const res = await fetch('/api/gemini/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt,
+                    model: settings?.geminiModel || 'gemini-4-hydrogen',
+                    responseMimeType: 'application/json',
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.error || 'AI request failed');
+            }
+            const response = data.text || '';
 
             const parsed = tryParseJson(response.replace(/```json/g, '').replace(/```/g, ''));
             if (parsed && parsed.overview) {
@@ -106,9 +107,9 @@ export default function SmartMacroPlanner() {
             } else {
                 throw new Error("Invalid output format from AI");
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
-            alert('متاسفانه در تحلیل مشکلی پیش آمد. دوباره تلاش کنید.');
+            showToast(e?.message || 'متاسفانه در تحلیل مشکلی پیش آمد. دوباره تلاش کنید.', 'error');
             setStep(0);
         } finally {
             setIsAnalyzing(false);
@@ -133,7 +134,7 @@ export default function SmartMacroPlanner() {
             )}
 
             {step === 1 && (
-                <div className="p-6 md:p-8 animate-in slide-in-from-left-4">
+                <div className="p-6 md:p-8">
                     <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
                         <Target className="text-indigo-500" /> اطلاعات پایه و هدف‌گذاری
                     </h3>
@@ -176,7 +177,7 @@ export default function SmartMacroPlanner() {
             )}
 
             {step === 2 && (
-                <div className="p-6 md:p-8 animate-in slide-in-from-right-4">
+                <div className="p-6 md:p-8">
                     <h3 className="font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
                         <BookOpen className="text-emerald-500" /> سطح منابع تستی شما
                     </h3>
@@ -222,16 +223,10 @@ export default function SmartMacroPlanner() {
                 </div>
             )}
 
-            {step === 3 && (
-                <div className="p-12 text-center animate-in zoom-in-95">
-                    <Loader2 size={48} className="animate-spin text-indigo-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-2">هوش مصنوعی در حال بررسی است...</h3>
-                    <p className="text-sm text-gray-500">در حال تطبیق عملکرد شما با رتبه هدف و سطح منابع تستی.</p>
-                </div>
-            )}
+            {step === 3 && <MacroPlannerSkeleton />}
 
             {step === 4 && aiReport && (
-                <div className="p-6 md:p-8 animate-in fade-in">
+                <div className="p-6 md:p-8">
                     <div className="flex justify-between items-start mb-6 pb-6 border-b border-gray-100 dark:border-gray-700">
                         <div>
                             <h3 className="text-xl font-black text-indigo-700 dark:text-indigo-400 flex items-center gap-2 mb-1">
