@@ -2,6 +2,7 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { getShamsiDate } from '../utils';
+import { BrandLogo } from './BrandLogo';
 
 const PrintableSchedule = () => {
     const { getTasksForDay, getTasksByDate, getDayDate, userName, startDate, getProgress, totalDays } = useStore();
@@ -162,8 +163,9 @@ const PrintableSchedule = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="mt-auto pt-8 text-center text-xs text-gray-400">
-                            ParsaPlan | روز {dayId} از {totalDays}
+                        <div className="mt-auto pt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
+                            <BrandLogo size={14} />
+                            <span>ParsaPlan | روز {dayId} از {totalDays}</span>
                         </div>
                     </div>
                 );

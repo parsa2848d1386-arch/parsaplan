@@ -13,6 +13,7 @@ import { useProactiveAI } from './AIChat/useProactiveAI';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
 const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { NotificationBell } from './NotificationBell';
+import { BrandLogo } from './BrandLogo';
 import { ErrorBoundary } from './ErrorBoundary';
 import { RouteSkeleton, AIChatSkeleton } from './Skeleton';
 import { ArcFlightOverlay, RubberBandScrollContainer } from './ui/MotionPrimitives';
@@ -290,7 +291,7 @@ const Layout = () => {
                         <div className="flex items-center justify-between px-space-xs">
                             <div className="flex items-center gap-space-sm">
                                 <div className="w-10 h-10 squircle-sm bg-primary flex items-center justify-center text-on-primary shadow-sm flex-shrink-0">
-                                    <Sparkles size={20} aria-hidden="true" />
+                                    <BrandLogo size={22} />
                                 </div>
                                 {!sidebarCollapsed && (
                                     <div className="flex flex-col min-w-0">

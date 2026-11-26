@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { StreamType } from '../types';
 import { AuthModal } from '../components/AuthModal';
+import { BrandLogo } from '../components/BrandLogo';
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Cloud, CloudOff, ShieldCheck, Sparkles, UserCheck } from 'lucide-react';
 
 const STREAM_OPTIONS: Array<{ id: StreamType; label: string }> = [
@@ -85,8 +86,8 @@ const Welcome: React.FC = () => {
             <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
                 {/* Right Column: Onboarding Setup */}
                 <div className="space-y-6">
-                    <div className="w-14 h-14 bg-primary text-on-primary rounded-[20px] flex items-center justify-center shadow-sm">
-                        <span className="font-black text-2xl">P</span>
+                    <div className="w-14 h-14 bg-primary text-on-primary squircle-md flex items-center justify-center shadow-sm">
+                        <BrandLogo size={30} title="ParsaPlan" />
                     </div>
 
                     <div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MessageSquare, Plus, X } from 'lucide-react';
+import { MessageSquare, Plus, X } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 
@@ -26,7 +27,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 squircle-sm bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                <Sparkles size={19} aria-hidden="true" />
+                                <BrandLogo size={21} />
                             </div>
                             <div className="min-w-0">
                                 <h2 className="text-sm sm:text-base font-extrabold text-[var(--text-primary)]">

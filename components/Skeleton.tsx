@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrandLogo } from './BrandLogo';
 
 interface SkeletonProps {
     className?: string;
@@ -508,7 +509,9 @@ export const AppShellSkeleton: React.FC = () => {
             {/* Desktop Sidebar Placeholder */}
             <div className="hidden md:flex flex-col w-72 shrink-0 border-l border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-5 gap-4">
                 <div className="flex items-center gap-3">
-                    <Skeleton variant="rectangular" className="w-10 h-10 rounded-xl" />
+                    <div className="w-10 h-10 squircle-sm bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                        <BrandLogo size={22} />
+                    </div>
                     <Skeleton className="h-5 w-28 rounded-md" />
                 </div>
                 <div className="space-y-2.5 pt-4">
