@@ -167,18 +167,18 @@
   content: '';
   position: absolute;
   inset: 0;
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .scroll-edge-fade-top::before {
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.4) 38%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.4) 38%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.35) 38%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.35) 38%, transparent 100%);
 }
 
 .scroll-edge-fade-bottom::before {
-  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.4) 38%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.4) 38%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.35) 38%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.35) 38%, transparent 100%);
 }
 
 .scroll-edge-fade-top::after,
@@ -191,9 +191,8 @@
 .scroll-edge-fade-top::after {
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--surface-canvas) 62%, transparent) 0%,
-    color-mix(in srgb, var(--surface-canvas) 24%, transparent) 34%,
-    color-mix(in srgb, var(--surface-canvas) 6%, transparent) 68%,
+    color-mix(in srgb, var(--surface-canvas) 28%, transparent) 0%,
+    color-mix(in srgb, var(--surface-canvas) 10%, transparent) 40%,
     transparent 100%
   );
 }
@@ -201,9 +200,8 @@
 .scroll-edge-fade-bottom::after {
   background: linear-gradient(
     to top,
-    color-mix(in srgb, var(--surface-canvas) 64%, transparent) 0%,
-    color-mix(in srgb, var(--surface-canvas) 26%, transparent) 34%,
-    color-mix(in srgb, var(--surface-canvas) 6%, transparent) 68%,
+    color-mix(in srgb, var(--surface-canvas) 30%, transparent) 0%,
+    color-mix(in srgb, var(--surface-canvas) 10%, transparent) 40%,
     transparent 100%
   );
 }
@@ -215,24 +213,24 @@
   background-color: var(--glass-nav-bg);
   background-image: linear-gradient(
     165deg,
-    rgba(255, 255, 255, 0.28) 0%,
-    rgba(255, 255, 255, 0.04) 45%,
-    rgba(255, 255, 255, 0.14) 100%
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.02) 45%,
+    rgba(255, 255, 255, 0.1) 100%
   );
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(185%);
+  -webkit-backdrop-filter: blur(16px) saturate(185%);
   border-color: var(--glass-nav-border);
 }
 
 .dark .liquid-glass-nav {
   background-image: linear-gradient(
     165deg,
-    rgba(255, 255, 255, 0.09) 0%,
+    rgba(255, 255, 255, 0.1) 0%,
     rgba(255, 255, 255, 0.01) 45%,
-    rgba(255, 255, 255, 0.05) 100%
+    rgba(255, 255, 255, 0.04) 100%
   );
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(185%);
+  -webkit-backdrop-filter: blur(16px) saturate(185%);
 }
 
 .squircle-sm {
