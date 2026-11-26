@@ -9,10 +9,24 @@ import { haptics } from '../utils/haptics';
 
 interface NotificationBellProps {
     buttonClassName?: string;
+    /** When true, expands the trigger button into an inline Dynamic-Island style tab pill when open */
+    morphMode?: boolean;
+    onOpenChange?: (isOpen: boolean) => void;
 }
 
-export const NotificationBell: React.FC<NotificationBellProps> = ({ buttonClassName = '' }) => {
-    const [isOpen, setIsOpen] = useState(false);
+export const NotificationBell: React.FC<NotificationBellProps> = ({
+    buttonClassName = '',
+    morphMode = false,
+    onOpenChange,
+}) => {
+    const [isOpen, setIsOpenState] = useState(false);
+    const setIsOpen = (val: boolean | ((prev: boolean) => boolean)) => {
+        setIsOpenState((prev) => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            if (next !== prev) onOpenChange?.(next);
+            return next;
+        });
+    };
     const [hasUpdate, setHasUpdate] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const prefersReducedMotion = useReducedMotion();
@@ -70,20 +84,148 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ buttonClassN
         await forceUpdatePwa();
     };
 
+    if (morphMode) {
+        return (
+            <motion.div
+                ref={dropdownRef}
+                layout
+                transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                className={`relative overflow-hidden ${
+                    isOpen
+                        ? 'w-[min(calc(100vw-2rem),21.5rem)] rounded-[24px] bg-[var(--surface-elevated)]/95 border border-[var(--border-subtle)] shadow-2xl'
+                        : 'rounded-full'
+                }`}
+            >
+                <div className={`flex items-center justify-between ${isOpen ? 'px-3 py-2 border-b border-[var(--border-subtle)] bg-surface-container-low/80' : ''}`}>
+                    <motion.button
+                        layout="position"
+                        type="button"
+                        onClick={() => {
+                            haptics.selection();
+                            setIsOpen((prev) => !prev);
+                        }}
+                        whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
+                        transition={SPRING_SNAPPY}
+                        aria-expanded={isOpen}
+                        className={`${
+                            isOpen
+                                ? 'h-9 px-2.5 rounded-full gap-2 bg-primary/12 text-primary'
+                                : 'w-11 h-11 rounded-full hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface'
+                        } flex items-center justify-center relative cursor-pointer transition-colors ${buttonClassName}`}
+                        aria-label="اعلان‌ها"
+                        title="اعلان‌ها"
+                    >
+                        {unreadCount > 0 && (
+                            <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+                                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
+                            </span>
+                        )}
+                        <Bell size={18} className="shrink-0" />
+                        {isOpen && (
+                            <span className="text-xs font-extrabold whitespace-nowrap">اعلان‌ها</span>
+                        )}
+                    </motion.button>
+
+                    {isOpen && (
+                        <div className="flex items-center gap-1.5">
+                            {unreadCount > 0 && (
+                                <span className="bg-primary/10 text-primary text-[11px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                    {formatToPersianDigits(unreadCount)} جدید
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    haptics.selection();
+                                    setIsOpen(false);
+                                }}
+                                aria-label="بستن اعلان‌ها"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-secondary)] hover:bg-surface-container transition cursor-pointer"
+                            >
+                                <span className="text-sm font-bold leading-none">×</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <AnimatePresence initial={false}>
+                    {isOpen && (
+                        <motion.div
+                            initial={prefersReducedMotion ? false : { opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={SPRING_SNAPPY}
+                            className="max-h-[58vh] overflow-y-auto custom-scrollbar"
+                        >
+                            {notifications.length === 0 ? (
+                                <div className="p-6 text-center flex flex-col items-center justify-center gap-2">
+                                    <div className="w-11 h-11 squircle-sm bg-surface-container flex items-center justify-center mb-1">
+                                        <Bell size={19} className="text-[var(--text-tertiary)]" />
+                                    </div>
+                                    <p className="text-xs font-bold text-[var(--text-secondary)]">هیچ اعلان جدیدی ندارید!</p>
+                                    <button
+                                        type="button"
+                                        onClick={handleUpdate}
+                                        className="mt-1 min-h-[40px] text-xs text-primary flex items-center gap-1.5 font-bold py-2 px-3 squircle-sm hover:bg-primary/10 transition cursor-pointer"
+                                    >
+                                        <RefreshCw size={13} />
+                                        بروزرسانی و تازه‌سازی کش برنامه
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="p-2.5 space-y-1.5">
+                                    {notifications.map((n) => (
+                                        <div key={n.id} className="p-3 bg-surface-container-low squircle-md border border-[var(--border-subtle)]">
+                                            <div className="flex gap-3">
+                                                <div className={`w-10 h-10 squircle-sm flex items-center justify-center shrink-0 ${n.color}`}>
+                                                    <n.icon size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-xs font-extrabold text-on-surface mb-1 leading-relaxed">{n.title}</h4>
+                                                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed mb-3">{n.message}</p>
+
+                                                    {n.id === 'pwa-update' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleUpdate}
+                                                            className="w-full min-h-[42px] bg-primary text-on-primary squircle-sm py-2 text-xs font-bold hover:opacity-95 active:scale-[0.98] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                                        >
+                                                            <RefreshCw size={14} />
+                                                            دریافت و نصب فایل‌های جدید
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+        );
+    }
+
     return (
         <div className="relative" ref={dropdownRef}>
             <motion.button
+                layout={morphMode}
                 type="button"
                 onClick={() => {
                     haptics.selection();
                     setIsOpen((prev) => !prev);
                 }}
-                animate={prefersReducedMotion ? undefined : { scale: isOpen ? 1.16 : 1 }}
-                whileHover={prefersReducedMotion ? undefined : { scale: isOpen ? 1.16 : 1.06 }}
+                animate={prefersReducedMotion ? undefined : { scale: isOpen && !morphMode ? 1.16 : 1 }}
+                whileHover={prefersReducedMotion ? undefined : { scale: isOpen && !morphMode ? 1.16 : 1.05 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
                 transition={SPRING_SNAPPY}
                 aria-expanded={isOpen}
-                className={`w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center relative cursor-pointer transition-colors ${
+                className={`${
+                    morphMode && isOpen
+                        ? 'h-11 px-3.5 rounded-full gap-2'
+                        : 'w-11 h-11 md:w-9 md:h-9 rounded-full'
+                } flex items-center justify-center relative cursor-pointer transition-colors ${
                     isOpen
                         ? 'bg-primary text-on-primary shadow-sm'
                         : 'hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface'
@@ -96,7 +238,18 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ buttonClassN
                         <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
                     </span>
                 )}
-                <Bell size={18} />
+                <Bell size={18} className="shrink-0" />
+                {morphMode && isOpen && (
+                    <motion.span
+                        initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        exit={{ opacity: 0, width: 0 }}
+                        transition={SPRING_SNAPPY}
+                        className="text-xs font-bold whitespace-nowrap overflow-hidden"
+                    >
+                        اعلان‌ها
+                    </motion.span>
+                )}
             </motion.button>
 
             <AnimatePresence>

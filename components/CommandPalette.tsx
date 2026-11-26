@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { SPRING_SNAPPY } from '../utils/motionPresets';
 import { useStore } from '../context/StoreContext';
 import { useFocus } from '../context/FocusContext';
 import { useUI } from '../context/UIContext';
@@ -235,6 +237,8 @@ export const CommandPalette: React.FC = () => {
         setSelectedIdx(0);
     }, [query, scope, isCommandPaletteOpen]);
 
+    const prefersReducedMotion = useReducedMotion();
+
     if (!isCommandPaletteOpen) return null;
 
     const handleInputKeyDown = (e: React.KeyboardEvent) => {
@@ -259,19 +263,36 @@ export const CommandPalette: React.FC = () => {
     ];
 
     return createPortal(
-        <div
+        <motion.div
             role="dialog"
             aria-modal="true"
             aria-label="جستجوی سریع و دستورات"
             dir="rtl"
-            className="fixed inset-0 z-[60] flex items-start justify-center pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/70 dark:bg-black/80 backdrop-blur-[8px] p-3 sm:p-4"
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/55 dark:bg-black/70 backdrop-blur-[6px] px-3 sm:p-4"
             onClick={closePalette}
         >
-            <div
+            <motion.div
                 ref={dialogRef}
                 tabIndex={-1}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[var(--surface-elevated)] squircle-lg max-w-xl w-full overflow-hidden border border-[var(--border-subtle)] shadow-2xl outline-none"
+                initial={
+                    prefersReducedMotion
+                        ? false
+                        : { opacity: 0.4, scaleX: 0.24, scaleY: 0.16, borderRadius: 9999 }
+                }
+                animate={{ opacity: 1, scaleX: 1, scaleY: 1, borderRadius: 26 }}
+                exit={
+                    prefersReducedMotion
+                        ? { opacity: 0 }
+                        : { opacity: 0, scaleX: 0.24, scaleY: 0.16, borderRadius: 9999 }
+                }
+                transition={SPRING_SNAPPY}
+                style={{ transformOrigin: 'top left' }}
+                className="bg-[var(--surface-elevated)] squircle-lg max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
             >
                 {/* Search Input Row */}
                 <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border-subtle)]">
@@ -449,8 +470,8 @@ export const CommandPalette: React.FC = () => {
                         })
                     )}
                 </div>
-            </div>
-        </div>,
+            </motion.div>
+        </motion.div>,
         document.body
     );
 };

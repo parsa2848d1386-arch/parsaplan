@@ -149,6 +149,50 @@ const Layout = () => {
     } = useStore();
 
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [isProfileChipExpanded, setIsProfileChipExpanded] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [isBottomNavCompact, setIsBottomNavCompact] = useState(false);
+    const profileCapsuleRef = useRef<HTMLDivElement>(null);
+    const bottomNavIdleTimerRef = useRef<number | null>(null);
+    const lastScrollTopRef = useRef(0);
+
+    const scheduleBottomNavCompact = useCallback(() => {
+        if (bottomNavIdleTimerRef.current) {
+            window.clearTimeout(bottomNavIdleTimerRef.current);
+        }
+        bottomNavIdleTimerRef.current = window.setTimeout(() => {
+            setIsBottomNavCompact(true);
+        }, 3200);
+    }, []);
+
+    const expandBottomNav = useCallback(() => {
+        setIsBottomNavCompact(false);
+        scheduleBottomNavCompact();
+    }, [scheduleBottomNavCompact]);
+
+    useEffect(() => {
+        if (!isMobile) {
+            setIsBottomNavCompact(false);
+            return;
+        }
+        scheduleBottomNavCompact();
+        return () => {
+            if (bottomNavIdleTimerRef.current) {
+                window.clearTimeout(bottomNavIdleTimerRef.current);
+            }
+        };
+    }, [isMobile, scheduleBottomNavCompact]);
+
+    useEffect(() => {
+        if (!isProfileChipExpanded) return;
+        const handleOutside = (e: MouseEvent) => {
+            if (profileCapsuleRef.current && !profileCapsuleRef.current.contains(e.target as Node)) {
+                setIsProfileChipExpanded(false);
+            }
+        };
+        document.addEventListener('mousedown', handleOutside);
+        return () => document.removeEventListener('mousedown', handleOutside);
+    }, [isProfileChipExpanded]);
 
     // Preload core route bundles during browser idle so tab switches have zero JS-fetch lag
     useEffect(() => prefetchCoreRoutesOnIdle(), []);
@@ -477,12 +521,18 @@ const Layout = () => {
                         </div>
                     </header>
 
-                    {/* Mobile Top Floating Capsules — Two Liquid Glass Pills (Right: Profile + Settings, Left: Search + Notifications) */}
+                    {/* Mobile Top Floating Capsules — Two Morphing Liquid Glass Pills (Right: Profile + Settings, Left: Search + Notifications) */}
                     <header className="md:hidden fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-40 pointer-events-none flex items-center justify-between gap-2">
-                        {/* Top-Right Floating Capsule: Optional Back + User Profile + Settings */}
-                        <div className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]">
+                        {/* Top-Right Floating Capsule: Morphs & expands when Profile or Settings is active */}
+                        <motion.div
+                            ref={profileCapsuleRef}
+                            layout
+                            transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                            className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] max-w-[calc(100vw-8.5rem)]"
+                        >
                             {currentPage.isSubRoute && (
                                 <motion.button
+                                    layout="position"
                                     type="button"
                                     onClick={() => {
                                         haptics.selection();
@@ -491,84 +541,173 @@ const Layout = () => {
                                     whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
                                     transition={SPRING_SNAPPY}
                                     aria-label="بازگشت"
-                                    className="w-11 h-11 flex items-center justify-center rounded-full text-on-surface dark:text-white hover:bg-surface-container/80 transition cursor-pointer"
+                                    className="w-11 h-11 flex items-center justify-center rounded-full text-on-surface dark:text-white hover:bg-surface-container/80 transition cursor-pointer shrink-0"
                                 >
                                     <ChevronRight size={20} />
                                 </motion.button>
                             )}
 
                             <motion.button
+                                layout
                                 type="button"
                                 data-arc-target="xp-badge"
                                 onClick={() => {
                                     haptics.selection();
-                                    if (!user) setIsAuthModalOpen(true);
-                                    else navigate('/settings');
+                                    setIsProfileChipExpanded((prev) => !prev);
                                 }}
-                                whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
-                                whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
+                                whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
+                                whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
                                 transition={SPRING_SNAPPY}
+                                aria-expanded={isProfileChipExpanded}
                                 aria-label={user ? `پروفایل ${getDisplayName()}` : 'پروفایل کاربر و ورود'}
-                                title={user ? 'تنظیمات حساب' : 'ورود یا همگام‌سازی ابری'}
-                                className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center font-extrabold text-xs shadow-xs cursor-pointer"
+                                title={user ? 'حساب کاربری' : 'ورود یا همگام‌سازی ابری'}
+                                className={`h-11 rounded-full flex items-center justify-center font-extrabold text-xs shadow-xs cursor-pointer transition-colors shrink-0 ${
+                                    isProfileChipExpanded
+                                        ? 'bg-primary text-on-primary pl-3 pr-1.5 gap-2'
+                                        : 'w-11 bg-primary text-on-primary'
+                                }`}
                             >
-                                {userInitial}
+                                <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                                    {userInitial}
+                                </span>
+                                <AnimatePresence initial={false}>
+                                    {isProfileChipExpanded && (
+                                        <motion.span
+                                            initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
+                                            animate={{ opacity: 1, width: 'auto' }}
+                                            exit={{ opacity: 0, width: 0 }}
+                                            transition={SPRING_SNAPPY}
+                                            className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden"
+                                        >
+                                            <span className="max-w-[90px] truncate font-bold">{getDisplayName()}</span>
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    haptics.selection();
+                                                    setIsProfileChipExpanded(false);
+                                                    if (!user) setIsAuthModalOpen(true);
+                                                    else navigate('/settings');
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setIsProfileChipExpanded(false);
+                                                        if (!user) setIsAuthModalOpen(true);
+                                                        else navigate('/settings');
+                                                    }
+                                                }}
+                                                className="px-2 py-0.5 rounded-full bg-white/22 text-[11px] font-bold hover:bg-white/30"
+                                            >
+                                                {user ? 'پروفایل' : 'ورود'}
+                                            </span>
+                                        </motion.span>
+                                    )}
+                                </AnimatePresence>
                             </motion.button>
 
                             <NavLink
                                 to="/settings"
-                                onClick={() => haptics.selection()}
+                                onClick={() => {
+                                    haptics.selection();
+                                    setIsProfileChipExpanded(false);
+                                }}
                                 onPointerEnter={() => prefetchRoute('/settings')}
                                 onTouchStart={() => prefetchRoute('/settings')}
                                 onFocus={() => prefetchRoute('/settings')}
                                 aria-label="تنظیمات"
                                 title="تنظیمات"
                                 className={({ isActive }) =>
-                                    `w-11 h-11 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${
+                                    `h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 shrink-0 ${
                                         isActive
-                                            ? 'bg-primary-fixed text-on-primary-fixed shadow-xs'
-                                            : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
+                                            ? 'bg-primary-fixed text-on-primary-fixed shadow-xs px-3.5 gap-1.5'
+                                            : 'w-11 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
                                     }`
                                 }
                             >
-                                {({ isActive }) => <Settings size={18} strokeWidth={isActive ? 2.3 : 1.95} />}
+                                {({ isActive }) => (
+                                    <>
+                                        <Settings size={18} strokeWidth={isActive ? 2.3 : 1.95} className="shrink-0" />
+                                        {isActive && (
+                                            <motion.span
+                                                initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
+                                                animate={{ opacity: 1, width: 'auto' }}
+                                                transition={SPRING_SNAPPY}
+                                                className="text-xs font-extrabold whitespace-nowrap overflow-hidden"
+                                            >
+                                                تنظیمات
+                                            </motion.span>
+                                        )}
+                                    </>
+                                )}
                             </NavLink>
 
                             <SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="mobile" />
-                        </div>
+                        </motion.div>
 
-                        {/* Top-Left Floating Capsule: Search + Notifications (Both enlarge smoothly on tap) */}
-                        <div className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]">
-                            <motion.button
-                                type="button"
-                                onClick={handleTriggerSearch}
-                                animate={
-                                    prefersReducedMotion
-                                        ? undefined
-                                        : { scale: isSearchExpanded || isCommandPaletteOpen ? 1.18 : 1 }
-                                }
-                                whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
-                                whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
-                                transition={SPRING_SNAPPY}
-                                aria-label="جستجو و دستورات"
-                                title="جستجو و دستورات"
-                                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-                                    isSearchExpanded || isCommandPaletteOpen
-                                        ? 'bg-primary text-on-primary shadow-sm'
-                                        : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
-                                }`}
-                            >
-                                <Search size={18} />
-                            </motion.button>
+                        {/* Top-Left Floating Capsule: Morphs & stretches into active Search or Notification panel */}
+                        <motion.div
+                            layout
+                            transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                            className={`pointer-events-auto flex items-center gap-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] ${
+                                isNotificationOpen ? 'p-0 border-0 bg-transparent shadow-none' : 'p-1'
+                            }`}
+                        >
+                            {!isNotificationOpen && (
+                                <motion.button
+                                    layout
+                                    type="button"
+                                    onClick={handleTriggerSearch}
+                                    whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
+                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
+                                    transition={SPRING_SNAPPY}
+                                    aria-label="جستجو و دستورات"
+                                    title="جستجو و دستورات"
+                                    className={`h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                                        isSearchExpanded || isCommandPaletteOpen
+                                            ? 'bg-primary text-on-primary shadow-sm px-3.5 gap-2'
+                                            : 'w-11 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
+                                    }`}
+                                >
+                                    <Search size={18} className="shrink-0" />
+                                    <AnimatePresence initial={false}>
+                                        {(isSearchExpanded || isCommandPaletteOpen) && (
+                                            <motion.span
+                                                initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
+                                                animate={{ opacity: 1, width: 'auto' }}
+                                                exit={{ opacity: 0, width: 0 }}
+                                                transition={SPRING_SNAPPY}
+                                                className="text-xs font-bold whitespace-nowrap overflow-hidden"
+                                            >
+                                                جستجو...
+                                            </motion.span>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.button>
+                            )}
 
-                            <NotificationBell />
-                        </div>
+                            {!(isSearchExpanded || isCommandPaletteOpen) && (
+                                <NotificationBell morphMode onOpenChange={setIsNotificationOpen} />
+                            )}
+                        </motion.div>
                     </header>
 
                     {/* Page Content — Never hidden when mobile AI drawer opens so scroll position is preserved */}
                     <div
                         id="main-content"
                         tabIndex={-1}
+                        onScroll={(e) => {
+                            if (!isMobile) return;
+                            const st = e.currentTarget.scrollTop;
+                            if (st > lastScrollTopRef.current + 18 && st > 40) {
+                                setIsBottomNavCompact(true);
+                            } else if (st < lastScrollTopRef.current - 20 || st < 20) {
+                                expandBottomNav();
+                            }
+                            lastScrollTopRef.current = st;
+                        }}
                         className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden outline-none bg-[var(--surface-canvas)] scroll-pt-24 scroll-pb-28 md:scroll-pt-20 md:scroll-pb-6"
                     >
                         <div className="top-nav-spacer" />
@@ -596,11 +735,16 @@ const Layout = () => {
                     <div aria-hidden="true" className="scroll-edge-fade-top" />
                     <div aria-hidden="true" className="scroll-edge-fade-bottom" />
 
-                    {/* Bottom Nav — Floating Rounded Liquid Glass 4-Tab Capsule + Separate Circular AI Button */}
-                    <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 max-w-[430px] mx-auto flex items-center gap-2.5 pointer-events-none md:hidden">
-                        <nav
+                    {/* Bottom Nav — Auto-Compacting Liquid Glass Capsule (Collapses right on idle/scroll, expands on tap) + Inviting AI Button */}
+                    <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 max-w-[430px] mx-auto flex items-center justify-between gap-2.5 pointer-events-none md:hidden">
+                        <motion.nav
+                            layout
+                            transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                            onClick={expandBottomNav}
                             aria-label="منوی موبایل"
-                            className="pointer-events-auto flex-1 min-w-0 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5"
+                            className={`pointer-events-auto rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5 transition-[width] ${
+                                isBottomNavCompact ? 'w-auto' : 'flex-1 min-w-0'
+                            }`}
                         >
                             <LayoutGroup id="mobile-bottom-nav">
                                 <div className="flex justify-between items-center gap-1">
@@ -616,15 +760,22 @@ const Layout = () => {
                                                 key={tab.to}
                                                 to={tab.to}
                                                 end={tab.end}
-                                                onClick={() => haptics.selection()}
+                                                onClick={() => {
+                                                    haptics.selection();
+                                                    expandBottomNav();
+                                                }}
                                                 onPointerEnter={() => prefetchRoute(tab.to)}
                                                 onTouchStart={() => prefetchRoute(tab.to)}
                                                 onFocus={() => prefetchRoute(tab.to)}
                                                 className={({ isActive }) =>
-                                                    `relative flex-1 flex flex-col items-center justify-center min-h-[48px] h-[50px] px-1 rounded-full transition-colors duration-150 active:scale-[0.95] ${
-                                                        isActive
-                                                            ? 'text-on-primary-fixed font-bold'
-                                                            : 'text-on-surface/85 dark:text-slate-100 hover:text-on-surface dark:hover:text-white font-medium'
+                                                    `relative flex items-center justify-center rounded-full transition-all duration-200 active:scale-[0.95] ${
+                                                        isBottomNavCompact
+                                                            ? isActive
+                                                                ? 'min-h-[46px] h-[48px] px-3.5 text-on-primary-fixed font-extrabold'
+                                                                : 'w-9 h-[46px] px-0 text-on-surface/70 dark:text-slate-300'
+                                                            : isActive
+                                                                ? 'flex-[1.45] flex-col min-h-[48px] h-[52px] px-2 text-on-primary-fixed font-extrabold'
+                                                                : 'flex-[0.85] flex-col min-h-[48px] h-[50px] px-1 text-on-surface/75 dark:text-slate-300 hover:text-on-surface dark:hover:text-white font-medium'
                                                     }`
                                                 }
                                             >
@@ -635,12 +786,35 @@ const Layout = () => {
                                                                 layoutId="mobileBottomNavActivePill"
                                                                 transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
                                                                 aria-hidden="true"
-                                                                className="absolute inset-0 rounded-full bg-primary-fixed/80 dark:bg-[#2a2f6c]/80 shadow-xs ring-1 ring-primary/18 dark:ring-primary/35"
+                                                                className="absolute inset-0 rounded-full bg-primary-fixed/85 dark:bg-[#2a2f6c]/90 shadow-xs ring-1 ring-primary/20 dark:ring-primary/40"
                                                             />
                                                         )}
-                                                        <span className="relative z-10 flex flex-col items-center justify-center gap-0.5 max-w-full">
-                                                            <Icon size={18} strokeWidth={isActive ? 2.35 : 1.9} aria-hidden="true" />
-                                                            <span className="text-[11px] leading-tight truncate max-w-full">{tab.label}</span>
+                                                        <span
+                                                            className={`relative z-10 flex items-center justify-center max-w-full ${
+                                                                isBottomNavCompact && isActive
+                                                                    ? 'flex-row gap-1.5'
+                                                                    : 'flex-col gap-0.5'
+                                                            }`}
+                                                        >
+                                                            <Icon
+                                                                size={isActive ? 20 : 16}
+                                                                strokeWidth={isActive ? 2.4 : 1.85}
+                                                                aria-hidden="true"
+                                                                className="shrink-0 transition-transform duration-200"
+                                                            />
+                                                            <span
+                                                                className={
+                                                                    isBottomNavCompact && !isActive
+                                                                        ? 'sr-only'
+                                                                        : `leading-tight truncate max-w-full ${
+                                                                              isActive
+                                                                                  ? 'text-[12px] font-extrabold'
+                                                                                  : 'text-[10.5px] opacity-80'
+                                                                          }`
+                                                                }
+                                                            >
+                                                                {tab.label}
+                                                            </span>
                                                         </span>
                                                     </>
                                                 )}
@@ -649,29 +823,30 @@ const Layout = () => {
                                     })}
                                 </div>
                             </LayoutGroup>
-                        </nav>
+                        </motion.nav>
 
-                        {/* Separate Circular AI Assistant Button */}
+                        {/* Separate Circular AI Assistant Button — Distinct inviting accent tint */}
                         <motion.button
+                            layout
                             type="button"
                             onClick={handleToggleAiPanel}
                             onPointerEnter={() => prefetchRoute('/ai-chat')}
                             onTouchStart={() => prefetchRoute('/ai-chat')}
                             animate={prefersReducedMotion ? undefined : { scale: isAiPanelOpen ? 1.06 : 1 }}
-                            whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
+                            whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
                             whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
                             transition={SPRING_SNAPPY}
                             aria-label={isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
                             title="دستیار هوشمند"
-                            className={`pointer-events-auto relative w-[62px] h-[62px] rounded-full liquid-glass-nav border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                            className={`pointer-events-auto relative w-[62px] h-[62px] rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-all ${
                                 isAiPanelOpen
-                                    ? 'bg-primary text-on-primary border-primary/50 shadow-[0_12px_30px_-6px_rgba(70,72,212,0.5)]'
-                                    : 'glass-pill-shadow border-[var(--glass-nav-border)] text-primary dark:text-indigo-300'
+                                    ? 'bg-primary text-on-primary border-primary/60 shadow-[0_12px_30px_-6px_rgba(70,72,212,0.6)]'
+                                    : 'bg-gradient-to-br from-indigo-500 via-primary to-violet-600 text-white border-white/40 dark:border-indigo-300/35 shadow-[0_12px_28px_-6px_rgba(79,70,229,0.52)] dark:shadow-[0_12px_30px_-6px_rgba(129,140,248,0.45)]'
                             }`}
                         >
-                            <Sparkles size={22} aria-hidden="true" />
+                            <Sparkles size={23} aria-hidden="true" />
                             {!isAiPanelOpen && settings?.hasUnreadAiMessage && (
-                                <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
+                                <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
                             )}
                         </motion.button>
                     </div>
