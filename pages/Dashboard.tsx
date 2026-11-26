@@ -357,7 +357,7 @@ export const Dashboard: React.FC = () => {
                         <button
                             type="button"
                             onClick={dismissDemoMode}
-                            className="px-3 min-h-[34px] rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold transition-colors cursor-pointer shrink-0"
+                            className="px-3 min-h-[44px] sm:min-h-[36px] rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold transition-colors cursor-pointer shrink-0"
                         >
                             بستن پیش‌نمایش
                         </button>
@@ -462,29 +462,29 @@ export const Dashboard: React.FC = () => {
             </TactileDepthCard>
 
             {/* ===== 2. 7-Day Persian Weekly Calendar with Liquid Fill Effect ===== */}
-            <section className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 squircle-lg shadow-sm border border-outline-variant/20">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-outline-variant/20 gap-3">
+            <section className="bento-card-interactive bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-[var(--border-subtle)] gap-3">
                     <div className="flex items-center gap-2">
                         <Calendar size={20} className="text-primary shrink-0" />
-                        <h2 className="font-headline-md text-sm sm:text-base font-bold text-on-surface dark:text-white">
+                        <h2 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
                             تقویم هفته جاری | {getShamsiDate(activeDateIso)}
                         </h2>
                     </div>
 
                     <div className="flex items-center gap-2 self-end sm:self-auto">
-                        <div className="flex items-center gap-1 bg-surface-container-low dark:bg-slate-800 p-1 rounded-xl border border-outline-variant/20">
+                        <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-[var(--border-subtle)]">
                             <button
                                 type="button"
                                 aria-label="هفته قبل"
                                 onClick={() => setWeekOffset(prev => prev - 1)}
-                                className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant dark:text-gray-300 transition-colors cursor-pointer"
+                                className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
                             >
                                 <ChevronRight size={18} />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => { setWeekOffset(0); setSelectedDateOverride(todayIso); }}
-                                className="px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                                className="min-h-[40px] sm:min-h-[32px] px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                             >
                                 امروز
                             </button>
@@ -492,7 +492,7 @@ export const Dashboard: React.FC = () => {
                                 type="button"
                                 aria-label="هفته بعد"
                                 onClick={() => setWeekOffset(prev => prev + 1)}
-                                className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant dark:text-gray-300 transition-colors cursor-pointer"
+                                className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
                             >
                                 <ChevronLeft size={18} />
                             </button>
@@ -509,10 +509,10 @@ export const Dashboard: React.FC = () => {
                             onClick={() => setSelectedDateOverride(d.iso)}
                             className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2.5 sm:p-3 squircle-sm border transition-colors duration-150 w-[calc((100%-2rem)/4.35)] min-w-[68px] shrink-0 md:w-auto md:min-w-0 md:shrink snap-start min-h-[96px] sm:min-h-[110px] cursor-pointer group ${
                                 d.isSelected
-                                    ? 'border-primary ring-2 ring-primary/30 bg-surface-container-lowest dark:bg-slate-900'
+                                    ? 'border-primary ring-2 ring-primary/30 bg-[var(--surface-elevated)]'
                                     : d.isToday
-                                        ? 'border-primary/50 bg-surface-container-low/70 dark:bg-slate-800/80'
-                                        : 'border-[var(--border-subtle)] bg-surface-container-lowest dark:bg-slate-900/90 hover:border-outline-variant/60'
+                                        ? 'border-primary/50 bg-surface-container-low/70'
+                                        : 'border-[var(--border-subtle)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
                             }`}
                         >
                             {/* Liquid Fill Layer (Bottom-to-Top Reservoir) */}
@@ -548,8 +548,8 @@ export const Dashboard: React.FC = () => {
                             </div>
 
                             {/* Bottom Reservoir Metric */}
-                            <div className="relative z-10 w-full flex items-center justify-between text-[10px] pt-1 border-t border-outline-variant/10">
-                                <span className="text-on-surface-variant dark:text-gray-400 font-medium">
+                            <div className="relative z-10 w-full flex items-center justify-between text-xs pt-1 border-t border-[var(--border-subtle)]">
+                                <span className="text-[var(--text-secondary)] font-medium">
                                     {formatToPersianDigits(d.done)}/{formatToPersianDigits(d.total)}
                                 </span>
                                 <span className={`font-bold font-mono ${d.isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`}>
@@ -619,15 +619,15 @@ export const Dashboard: React.FC = () => {
                 {/* Main 8 Columns */}
                 <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
                     {/* ===== Today's Mood Widget (5 Strict Levels + Vector SVGs, No Emojis) ===== */}
-                    <div className="bento-card-interactive bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 squircle-lg shadow-sm border border-outline-variant/20 flex flex-col gap-3.5">
+                    <div className="bento-card-interactive bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-3.5">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
                                 <Sparkles size={20} className="text-primary shrink-0" />
-                                <h3 className="font-headline-md text-sm sm:text-base font-bold text-on-surface dark:text-white">
+                                <h3 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
                                     مود امروز
                                 </h3>
                             </div>
-                            <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">
+                            <span className="font-label-sm text-xs text-[var(--text-secondary)]">
                                 ثبت وضعیت زیستی و روانی برای تطبیق هوشمند فشار مطالعه
                             </span>
                         </div>
@@ -671,17 +671,17 @@ export const Dashboard: React.FC = () => {
                     </div>
 
                     {/* ===== Unified Tasks & Integrated Timeblocks Hub ===== */}
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-6 squircle-lg shadow-sm border border-outline-variant/20 flex flex-col gap-5">
+                    <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-5">
                         {/* 5.1 Integrated Timeblocks Preview Header */}
-                        <div className="bg-surface-container-low/60 dark:bg-slate-800/60 p-4 squircle-card border border-outline-variant/15 flex flex-col gap-3">
+                        <div className="bg-surface-container-low/70 p-4 squircle-card border border-[var(--border-subtle)] flex flex-col gap-3">
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div className="flex items-center gap-2">
                                     <Clock size={18} className="text-secondary shrink-0" />
-                                    <h4 className="font-headline-md text-sm sm:text-base font-bold text-on-surface dark:text-white">
+                                    <h4 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
                                         بلوک‌های زمانی پیش‌رو
                                     </h4>
                                     {scheduledTimeblocks.length === 0 && (
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300">
                                             الگوی پیشنهادی
                                         </span>
                                     )}
@@ -689,7 +689,7 @@ export const Dashboard: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => navigate('/planner')}
-                                    className="font-label-sm text-xs text-primary hover:underline font-bold cursor-pointer"
+                                    className="min-h-[40px] sm:min-h-[32px] px-2 font-label-sm text-xs text-primary hover:underline font-bold cursor-pointer"
                                 >
                                     برنامه کامل
                                 </button>
@@ -805,22 +805,22 @@ export const Dashboard: React.FC = () => {
                         </div>
 
                         {/* 5.2 Tasks List Header */}
-                        <div className="flex items-center justify-between pb-2 border-b border-outline-variant/20">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 size={20} className="text-primary" />
-                                <h3 className="font-headline-md text-base font-bold text-on-surface dark:text-white">
+                                <h3 className="font-headline-md text-base font-bold text-on-surface">
                                     تسک‌های امروز ({formatToPersianDigits(completedDailyTasks)} از {formatToPersianDigits(dailyTasks.length)})
                                 </h3>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                                 {isAcademicStream && (
                                     <button
                                         type="button"
                                         onClick={() => setOnlySpecialized(!onlySpecialized)}
-                                        className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all border ${
+                                        className={`min-h-[40px] sm:min-h-[34px] text-xs px-2.5 py-1 rounded-lg font-bold transition-all border cursor-pointer ${
                                             onlySpecialized
                                                 ? 'bg-primary/10 text-primary border-primary/30'
-                                                : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 border-outline-variant/30'
+                                                : 'bg-surface-container-low text-[var(--text-secondary)] border-[var(--border-subtle)]'
                                         }`}
                                     >
                                         {onlySpecialized ? 'فقط دروس تخصصی' : 'همه دروس'}
@@ -828,8 +828,15 @@ export const Dashboard: React.FC = () => {
                                 )}
                                 <button
                                     type="button"
+                                    onClick={() => navigate('/subjects')}
+                                    className="md:hidden min-h-[40px] text-xs text-[var(--text-secondary)] hover:text-on-surface font-bold hover:bg-surface-container px-2.5 py-1 rounded-lg transition cursor-pointer"
+                                >
+                                    مدیریت حوزه‌ها
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={openNewTaskModal}
-                                    className="text-xs text-primary font-bold hover:bg-primary/10 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                    className="min-h-[40px] sm:min-h-[34px] text-xs text-primary font-bold hover:bg-primary/10 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
                                 >
                                     <Plus size={14} />
                                     افزودن تسک
@@ -843,10 +850,10 @@ export const Dashboard: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setSelectedFilterSubject(null)}
-                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                    className={`min-h-[40px] sm:min-h-[34px] px-3.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                                         selectedFilterSubject === null
                                             ? 'bg-primary text-on-primary shadow-xs'
-                                            : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container'
+                                            : 'bg-surface-container-low text-[var(--text-secondary)] hover:bg-surface-container'
                                     }`}
                                 >
                                     همه حوزه‌ها
@@ -856,10 +863,10 @@ export const Dashboard: React.FC = () => {
                                         key={sub}
                                         type="button"
                                         onClick={() => setSelectedFilterSubject(selectedFilterSubject === sub ? null : sub)}
-                                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                        className={`min-h-[40px] sm:min-h-[34px] px-3.5 py-1 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer ${
                                             selectedFilterSubject === sub
                                                 ? 'bg-primary text-on-primary shadow-xs'
-                                                : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-surface-container'
+                                                : 'bg-surface-container-low text-[var(--text-secondary)] hover:bg-surface-container'
                                         }`}
                                     >
                                         {sub}
@@ -940,8 +947,8 @@ export const Dashboard: React.FC = () => {
 
                     {/* Overdue Tasks Section if any */}
                     {overdueTasks.length > 0 && (
-                        <div className="bg-surface-container-lowest dark:bg-slate-900 p-4 sm:p-5 squircle-lg shadow-sm border border-error/20 flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
+                        <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-sm border border-error/25 flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-2">
                                 <h3 className="text-sm font-bold text-error flex items-center gap-1.5">
                                     <AlertCircle size={16} />
                                     تسک‌های به تعویق افتاده ({formatToPersianDigits(overdueTasks.length)})
@@ -949,10 +956,10 @@ export const Dashboard: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={rebalancePlan}
-                                    className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold rounded-lg hover:bg-amber-500/20 transition cursor-pointer"
+                                    className="min-h-[40px] sm:min-h-[34px] flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-bold rounded-lg hover:bg-amber-500/20 transition cursor-pointer"
                                 >
                                     <GitCompare size={14} />
-                                    بالانس خودکار (Rebalance)
+                                    چینش خودکار برنامه
                                 </button>
                             </div>
                             <div className="space-y-2">
@@ -1039,7 +1046,7 @@ export const Dashboard: React.FC = () => {
                     </div>
                     <div className="flex flex-col text-right">
                         <span className="text-xs sm:text-sm font-bold text-on-surface">
-                            تخلیه ذهن و ثبت سریع (<bdi>Brain Dump</bdi>)
+                            تخلیه ذهن و ثبت سریع
                         </span>
                         <span className="text-xs text-[var(--text-secondary)]">
                             {brainDumpFeedback || 'ثبت هرگونه ایده، استرس لحظه‌ای یا وظیفه سریع بدون خروج از تمرکز'}
@@ -1052,13 +1059,13 @@ export const Dashboard: React.FC = () => {
                         type="text"
                         value={brainDumpText}
                         onChange={(e) => setBrainDumpText(e.target.value)}
-                        placeholder="ایده یا تسک جدید را سریع تایپ کنید..."
+                        placeholder="ثبت ایده یا تسک جدید..."
                         aria-label="ثبت سریع ایده یا تسک"
-                        className="w-full min-h-[44px] ps-4 pe-24 bg-surface-container-low rounded-xl text-on-surface text-base sm:text-sm placeholder:text-[var(--text-secondary)] focus:outline-none focus:bg-[var(--surface-elevated)] focus:border-primary border border-[var(--border-subtle)] transition-all"
+                        className="w-full min-h-[48px] ps-4 pe-24 bg-surface-container-low rounded-xl text-on-surface text-base sm:text-sm placeholder:text-[var(--text-secondary)] focus:outline-none focus:bg-[var(--surface-elevated)] focus:border-primary border border-[var(--border-subtle)] transition-all"
                     />
                     <button
                         type="submit"
-                        className="touch-target absolute end-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:brightness-110 transition-all cursor-pointer min-h-[36px]"
+                        className="touch-target absolute end-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:brightness-110 transition-all cursor-pointer min-h-[40px]"
                     >
                         ثبت سریع
                     </button>

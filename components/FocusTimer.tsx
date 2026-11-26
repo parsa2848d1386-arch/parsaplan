@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useStore } from '../context/StoreContext';
 import { FocusStatus, useFocus, useFocusTick } from '../context/FocusContext';
@@ -6,6 +6,11 @@ import { liveRoomService } from '../services/liveRoomService';
 import { AmbientSoundType, LiveRoomInfo, LiveRoomMessage, LiveRoomPeer, TimerMode } from '../types';
 import { formatClockTime, formatToPersianDigits } from '../utils';
 import { haptics } from '../utils/haptics';
+import {
+    runOptimisticMutation,
+    applyPendingCheersToPeers,
+    mergeOptimisticRoomMessages,
+} from '../utils/optimisticMutation';
 import { FOLLOW_THROUGH_VARIANTS, SPRING_SNAPPY } from '../utils/motionPresets';
 import { PeakEndCheckmark } from './ui/MotionPrimitives';
 import { InSessionScratchpadDrawer } from './focus/InSessionScratchpadDrawer';
@@ -278,6 +283,8 @@ const FocusTimer: React.FC = () => {
     const [tempCodeInput, setTempCodeInput] = useState('');
     const [chatText, setChatText] = useState('');
     const [roomLoading, setRoomLoading] = useState(false);
+    const pendingCheerDeltasRef = useRef(new Map<string, number>());
+    const pendingRoomMessagesRef = useRef<LiveRoomMessage[]>([]);
 
     const activeDateIso = getDayDate(currentDay);
     const todayTasks = getTasksByDate(activeDateIso) || [];
@@ -305,7 +312,7 @@ const FocusTimer: React.FC = () => {
             db,
             activeRoomCode,
             (peers) => {
-                setRoomPeers(peers);
+                setRoomPeers(applyPendingCheersToPeers(peers, pendingCheerDeltasRef.current));
             },
             () => {}
         );
@@ -313,7 +320,7 @@ const FocusTimer: React.FC = () => {
             db,
             activeRoomCode,
             (msgs) => {
-                setRoomMessages(msgs);
+                setRoomMessages(mergeOptimisticRoomMessages(msgs, pendingRoomMessagesRef.current));
             },
             (err) => console.warn('[FocusTimer] Room messages listener:', err)
         );
@@ -403,15 +410,96 @@ const FocusTimer: React.FC = () => {
         showToast('از اتاق مطالعه خارج شدید', 'info');
     };
 
+    const handleCheerPeer = async (peer: LiveRoomPeer) => {
+        if (!db || !activeRoomCode || !peer.uid || peer.uid === userId) return;
+        const roomCode = activeRoomCode;
+        const targetUid = peer.uid;
+
+        await runOptimisticMutation({
+            mutationKey: `focus_cheer_${roomCode}_${targetUid}`,
+            onMutate: () => {
+                const prevPeers = roomPeers;
+                pendingCheerDeltasRef.current.set(
+                    targetUid,
+                    (pendingCheerDeltasRef.current.get(targetUid) || 0) + 1
+                );
+                setRoomPeers((prev) =>
+                    prev.map((p) => (p.uid === targetUid ? { ...p, cheersReceived: (p.cheersReceived || 0) + 1 } : p))
+                );
+                haptics.selection();
+                return { prevPeers };
+            },
+            mutationFn: async () => {
+                const res = await liveRoomService.sendCheer(db, roomCode, targetUid);
+                if (res.throttled) {
+                    throw new Error('لطفاً کمی صبر کنید و دوباره تشویق بفرستید');
+                }
+                return res;
+            },
+            onError: (err, snapshot) => {
+                const currentDelta = pendingCheerDeltasRef.current.get(targetUid) || 0;
+                if (currentDelta <= 1) pendingCheerDeltasRef.current.delete(targetUid);
+                else pendingCheerDeltasRef.current.set(targetUid, currentDelta - 1);
+                setRoomPeers(snapshot.prevPeers);
+                showToast(err instanceof Error ? err.message : 'خطا در ارسال تشویق', 'error');
+            },
+            onSettled: async () => {
+                const currentDelta = pendingCheerDeltasRef.current.get(targetUid) || 0;
+                if (currentDelta <= 1) pendingCheerDeltasRef.current.delete(targetUid);
+                else pendingCheerDeltasRef.current.set(targetUid, currentDelta - 1);
+                const serverPeers = await liveRoomService.fetchRoomMembersOnce(db, roomCode).catch(() => null);
+                if (serverPeers) {
+                    setRoomPeers(applyPendingCheersToPeers(serverPeers, pendingCheerDeltasRef.current));
+                }
+            },
+        });
+    };
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!chatText.trim() || !db || !activeRoomCode || !userId) return;
-        try {
-            await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'کاربر', chatText);
-            setChatText('');
-        } catch {
-            showToast('خطا در ارسال پیام', 'error');
-        }
+        const text = chatText.trim().slice(0, 300);
+        const roomCode = activeRoomCode;
+        const optimisticId = `optimistic_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const optimisticMsg: LiveRoomMessage = {
+            id: optimisticId,
+            senderId: userId,
+            senderName: userName || 'کاربر',
+            text,
+            createdAt: Date.now(),
+        };
+
+        await runOptimisticMutation({
+            mutationKey: `focus_msg_${roomCode}_${optimisticId}`,
+            onMutate: () => {
+                const prevMessages = roomMessages;
+                const prevText = chatText;
+                setChatText('');
+                pendingRoomMessagesRef.current = [...pendingRoomMessagesRef.current, optimisticMsg];
+                setRoomMessages((prev) => [...prev, optimisticMsg]);
+                return { prevMessages, prevText };
+            },
+            mutationFn: async () => {
+                const res = await liveRoomService.sendRoomMessage(db, roomCode, userId, userName || 'کاربر', text);
+                if (res.throttled) {
+                    throw new Error('لطفاً لحظه‌ای صبر کنید');
+                }
+                return res;
+            },
+            onError: (err, snapshot) => {
+                pendingRoomMessagesRef.current = pendingRoomMessagesRef.current.filter((m) => m.id !== optimisticId);
+                setRoomMessages(snapshot.prevMessages);
+                setChatText(snapshot.prevText);
+                showToast(err instanceof Error ? err.message : 'خطا در ارسال پیام', 'error');
+            },
+            onSettled: async () => {
+                pendingRoomMessagesRef.current = pendingRoomMessagesRef.current.filter((m) => m.id !== optimisticId);
+                const serverMsgs = await liveRoomService.fetchRoomMessagesOnce(db, roomCode).catch(() => null);
+                if (serverMsgs) {
+                    setRoomMessages(mergeOptimisticRoomMessages(serverMsgs, pendingRoomMessagesRef.current));
+                }
+            },
+        });
     };
 
     if (!isTimerOpen) return null;
@@ -1058,10 +1146,9 @@ const FocusTimer: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 <button
-                                                    onClick={() =>
-                                                        db && liveRoomService.sendCheer(db, activeRoomCode, peer.uid)
-                                                    }
-                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-[10px] font-bold shrink-0"
+                                                    type="button"
+                                                    onClick={() => handleCheerPeer(peer)}
+                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-[10px] font-bold shrink-0 cursor-pointer"
                                                     title="تشویق"
                                                 >
                                                     <Heart size={11} />

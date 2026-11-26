@@ -578,9 +578,9 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 {/* Column Header */}
                 <div className="flex border-b border-[var(--border-subtle)] bg-surface-container-low text-xs font-bold text-[var(--text-secondary)]">
                     <div className="w-16 shrink-0 py-2.5 text-center border-e border-[var(--border-subtle)]">ساعت</div>
-                    <div className="flex-1 py-2.5 px-3 sm:px-4 flex justify-between items-center gap-2">
-                        <span className="truncate">برنامه زمان‌بندی‌شده</span>
-                        <span className="text-[11px] font-medium text-[var(--text-secondary)] hidden sm:inline">
+                    <div className="flex-1 py-2.5 px-3 sm:px-4 flex justify-between items-center gap-2 min-w-0">
+                        <span className="whitespace-nowrap">برنامه زمان‌بندی‌شده</span>
+                        <span className="text-xs font-medium text-[var(--text-secondary)] hidden lg:inline truncate">
                             لمس بلوک = تنظیم زمان • لمس فضای خالی = افزودن
                         </span>
                     </div>
@@ -595,14 +595,14 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 <div className="max-h-[680px] overflow-y-auto custom-scrollbar">
                     <div className="flex relative" style={{ height: totalCanvasHeight }}>
                         {/* Hour Axis Gutter */}
-                        <div className="w-16 shrink-0 border-l border-gray-100 dark:border-gray-700 relative bg-gray-50/30 dark:bg-gray-900/20 select-none">
+                        <div className="w-16 shrink-0 border-l border-[var(--border-subtle)] relative bg-surface-container-low/40 select-none">
                             {hoursOrder.map((h, idx) => (
                                 <div
                                     key={h}
                                     style={{ top: idx * hourHeight, height: hourHeight }}
-                                    className="absolute right-0 left-0 border-b border-gray-100 dark:border-gray-700/60 flex items-start justify-center pt-1"
+                                    className="absolute right-0 left-0 border-b border-[var(--border-subtle)] flex items-start justify-center pt-1"
                                 >
-                                    <span className="text-[11px] font-mono font-bold text-gray-400">
+                                    <span className="text-xs font-mono font-bold text-[var(--text-secondary)]">
                                         {String(h).padStart(2, '0')}:00
                                     </span>
                                 </div>
@@ -856,7 +856,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                 })}
 
                                 {positionedSessions.length === 0 && (
-                                    <div className="p-4 text-center text-[10px] text-gray-400 leading-relaxed mt-8">
+                                    <div className="p-4 text-center text-xs text-[var(--text-secondary)] leading-relaxed mt-8">
                                         جلسات تمرکز ثبت‌شده در این روز کنار برنامه شما اینجا نمایش داده می‌شوند.
                                     </div>
                                 )}

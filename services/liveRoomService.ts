@@ -261,12 +261,50 @@ class LiveRoomService {
         await deleteDoc(doc(db, 'study_rooms', code, 'members', uid));
     }
 
-    async sendCheer(db: Firestore, roomCode: string, targetUid: string): Promise<void> {
+    async sendCheer(db: Firestore, roomCode: string, targetUid: string): Promise<{ throttled: boolean }> {
         const code = roomCode.trim().toUpperCase();
-        if (!backendCache.canProceed(`cheer_${code}_${targetUid}`, 1200)) return;
+        if (!backendCache.canProceed(`cheer_${code}_${targetUid}`, 1200)) {
+            return { throttled: true };
+        }
         await updateDoc(doc(db, 'study_rooms', code, 'members', targetUid), {
             cheersReceived: increment(1),
         });
+        return { throttled: false };
+    }
+
+    async fetchRoomMembersOnce(db: Firestore, roomCode: string): Promise<LiveRoomPeer[]> {
+        const code = roomCode.trim().toUpperCase();
+        const q = query(
+            collection(db, 'study_rooms', code, 'members'),
+            orderBy('dailyStudySeconds', 'desc'),
+            limit(100)
+        );
+        const snap = await getDocs(q);
+        const now = Date.now();
+        const peers: LiveRoomPeer[] = [];
+        snap.forEach((d) => {
+            const p = d.data() as LiveRoomPeer;
+            if (now - (p.lastPing || 0) > 720_000) {
+                peers.push({ ...p, status: 'OFFLINE' });
+            } else {
+                peers.push(p);
+            }
+        });
+        peers.sort((a, b) => b.dailyStudySeconds - a.dailyStudySeconds);
+        return peers;
+    }
+
+    async fetchRoomMessagesOnce(db: Firestore, roomCode: string): Promise<LiveRoomMessage[]> {
+        const code = roomCode.trim().toUpperCase();
+        const q = query(
+            collection(db, 'study_rooms', code, 'messages'),
+            orderBy('createdAt', 'asc'),
+            limit(50)
+        );
+        const snap = await getDocs(q);
+        const msgs: LiveRoomMessage[] = [];
+        snap.forEach((d) => msgs.push({ ...(d.data() as LiveRoomMessage), id: d.id }));
+        return msgs;
     }
 
     subscribeRoomMembers(
@@ -333,17 +371,20 @@ class LiveRoomService {
         senderId: string,
         senderName: string,
         text: string
-    ): Promise<void> {
+    ): Promise<{ throttled: boolean }> {
         const cleaned = text.trim().slice(0, 300);
-        if (!cleaned) return;
+        if (!cleaned) return { throttled: false };
         const code = roomCode.trim().toUpperCase();
-        if (!backendCache.canProceed(`msg_${code}_${senderId}`, 800)) return;
+        if (!backendCache.canProceed(`msg_${code}_${senderId}`, 800)) {
+            return { throttled: true };
+        }
         await addDoc(collection(db, 'study_rooms', code, 'messages'), {
             senderId,
             senderName: (senderName || 'کاربر').trim().slice(0, 40),
             text: cleaned,
             createdAt: Date.now(),
         });
+        return { throttled: false };
     }
 }
 

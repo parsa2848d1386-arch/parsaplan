@@ -83,7 +83,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ buttonClassN
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
                 transition={SPRING_SNAPPY}
                 aria-expanded={isOpen}
-                className={`w-10 h-10 md:w-9 md:h-9 rounded-full flex items-center justify-center relative cursor-pointer transition-colors ${
+                className={`w-11 h-11 md:w-9 md:h-9 rounded-full flex items-center justify-center relative cursor-pointer transition-colors ${
                     isOpen
                         ? 'bg-primary text-on-primary shadow-sm'
                         : 'hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface'

@@ -31,26 +31,27 @@ const HelpSection = () => {
     ];
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-3 mb-4 text-cyan-600 dark:text-cyan-400">
+        <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-3 mb-4 text-cyan-700 dark:text-cyan-400">
                 <HelpCircle size={20} />
                 <h2 className="font-bold">راهنمای کامل و سوالات متداول</h2>
             </div>
             <div className="space-y-2">
                 {faqs.map((item, index) => (
-                    <div key={index} className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <div key={index} className="border border-[var(--border-subtle)] rounded-xl overflow-hidden">
                         <button
+                            type="button"
                             onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                            className="w-full flex justify-between items-center p-3 text-right bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                            className="w-full min-h-[44px] flex justify-between items-center p-3 text-right bg-surface-container-low hover:bg-surface-container transition cursor-pointer"
                         >
                             <div className="flex items-center gap-2">
-                                <item.icon size={16} className="text-gray-400" />
-                                <span className="text-xs font-bold text-gray-700 dark:text-gray-200 leading-5">{item.q}</span>
+                                <item.icon size={16} className="text-[var(--text-secondary)] shrink-0" />
+                                <span className="text-xs font-bold text-on-surface leading-5">{item.q}</span>
                             </div>
-                            {openIndex === index ? <ChevronUp size={16} className="text-gray-400 min-w-[16px]" /> : <ChevronDown size={16} className="text-gray-400 min-w-[16px]" />}
+                            {openIndex === index ? <ChevronUp size={16} className="text-[var(--text-secondary)] min-w-[16px]" /> : <ChevronDown size={16} className="text-[var(--text-secondary)] min-w-[16px]" />}
                         </button>
                         {openIndex === index && (
-                            <div className="p-3 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-700">
+                            <div className="p-3 bg-[var(--surface-elevated)] text-xs text-[var(--text-secondary)] leading-relaxed border-t border-[var(--border-subtle)]">
                                 {item.a}
                             </div>
                         )}
@@ -153,7 +154,7 @@ const InlineAuthForm = () => {
                         setFormError(null);
                         setIsLogin(!isLogin);
                     }}
-                    className="min-h-[36px] px-2 text-xs text-primary hover:underline font-semibold cursor-pointer"
+                    className="min-h-[44px] px-3 text-xs text-primary hover:underline font-semibold cursor-pointer"
                 >
                     {isLogin ? 'حساب ندارید؟ ثبت‌نام کنید' : 'حساب دارید؟ وارد شوید'}
                 </button>
@@ -173,58 +174,64 @@ const GeminiModelSettings = () => {
             : 'gemini-4-hydrogen';
 
     return (
-        <div className="bg-white dark:bg-gray-800 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
+        <div className="bg-[var(--surface-elevated)] squircle-lg shadow-sm border border-[var(--border-subtle)] overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none">
                         <Sparkles size={17} className="text-white" />
                     </div>
                     <div>
-                        <h2 className="font-bold text-gray-800 dark:text-white text-sm">تنظیمات دستیار هوشمند</h2>
-                        <p className="text-[11px] text-gray-400 mt-0.5">انتخاب مدل هوش مصنوعی Gemini</p>
+                        <h2 className="font-bold text-on-surface text-sm">تنظیمات دستیار هوشمند</h2>
+                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">انتخاب مدل هوش مصنوعی جمینای</p>
                     </div>
                 </div>
             </div>
 
             <div className="p-5 space-y-3">
-                <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block">مدل Gemini</label>
+                <label className="text-xs font-bold text-[var(--text-secondary)] block">مدل هوش مصنوعی</label>
                 {/* Principle 13 (Von Restorff Effect): Highlighted recommended model option */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                         type="button"
                         onClick={() => updateSettings({ geminiModel: 'gemini-4-hydrogen' })}
-                        className={`p-3 squircle-sm border text-right transition-all duration-200 cursor-pointer relative ${
+                        className={`p-3.5 min-h-[44px] squircle-sm border text-right transition-all duration-200 cursor-pointer relative ${
                             activeModel === 'gemini-4-hydrogen'
-                                ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-500 ring-2 ring-indigo-500/30 shadow-xs'
-                                : 'bg-gray-50 dark:bg-gray-700/40 border-gray-200 dark:border-gray-600 hover:border-indigo-400'
+                                ? 'bg-primary-fixed/40 dark:bg-primary-fixed/30 border-primary ring-2 ring-primary/30 shadow-xs'
+                                : 'bg-surface-container-low border-[var(--border-subtle)] hover:border-primary/50'
                         }`}
                     >
                         <div className="flex items-center justify-between gap-2 mb-1">
-                            <span dir="ltr" className="text-xs font-extrabold font-mono text-gray-900 dark:text-white">
-                                gemini-4-hydrogen
+                            <span className="text-xs font-extrabold text-on-surface">
+                                جمینای ۴ پیشرفته
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded-md bg-primary text-on-primary text-xs font-bold">
                                 پیشنهادی
                             </span>
                         </div>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">دقت تحلیلی بالا و برنامه‌ریزی هوشمند</p>
+                        <p className="text-xs text-[var(--text-secondary)]">دقت تحلیلی بالا و برنامه‌ریزی هوشمند</p>
+                        <span dir="ltr" className="mt-1 inline-block text-xs font-mono text-[var(--text-tertiary)]">
+                            gemini-4-hydrogen
+                        </span>
                     </button>
 
                     <button
                         type="button"
                         onClick={() => updateSettings({ geminiModel: 'gemini-3.1-flash-lite' })}
-                        className={`p-3 squircle-sm border text-right transition-all duration-200 cursor-pointer ${
+                        className={`p-3.5 min-h-[44px] squircle-sm border text-right transition-all duration-200 cursor-pointer ${
                             activeModel === 'gemini-3.1-flash-lite'
-                                ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-500 ring-2 ring-indigo-500/30 shadow-xs'
-                                : 'bg-gray-50 dark:bg-gray-700/40 border-gray-200 dark:border-gray-600 hover:border-indigo-400'
+                                ? 'bg-primary-fixed/40 dark:bg-primary-fixed/30 border-primary ring-2 ring-primary/30 shadow-xs'
+                                : 'bg-surface-container-low border-[var(--border-subtle)] hover:border-primary/50'
                         }`}
                     >
                         <div className="flex items-center justify-between gap-2 mb-1">
-                            <span dir="ltr" className="text-xs font-extrabold font-mono text-gray-900 dark:text-white">
-                                gemini-3.1-flash-lite
+                            <span className="text-xs font-extrabold text-on-surface">
+                                جمینای ۳.۱ سریع
                             </span>
                         </div>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">پاسخ سریع و سبک برای کارهای روزمره</p>
+                        <p className="text-xs text-[var(--text-secondary)]">پاسخ سریع و سبک برای کارهای روزمره</p>
+                        <span dir="ltr" className="mt-1 inline-block text-xs font-mono text-[var(--text-tertiary)]">
+                            gemini-3.1-flash-lite
+                        </span>
                     </button>
                 </div>
                 <select
@@ -237,7 +244,7 @@ const GeminiModelSettings = () => {
                     <option value="gemini-4-hydrogen">gemini-4-hydrogen (پیشنهادی)</option>
                     <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (سریع و سبک)</option>
                 </select>
-                <p className="text-[10px] text-gray-400">درخواست‌های هوش مصنوعی به‌صورت خودکار از طریق سرور برنامه پردازش می‌شوند.</p>
+                <p className="text-xs text-[var(--text-secondary)]">درخواست‌های هوش مصنوعی به‌صورت خودکار از طریق سرور برنامه پردازش می‌شوند.</p>
             </div>
         </div>
     );
@@ -358,20 +365,20 @@ const FirebaseSettings = () => {
                   : { cls: 'bg-red-100 text-red-700', dot: 'bg-red-500', label: 'قطع' };
 
         return (
-            <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+            <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)] relative overflow-hidden group">
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400">
                         <Cloud size={20} />
                         <h2 className="font-bold">اتصال ابری (Firebase)</h2>
                     </div>
-                    <div className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 ${statusBadge.cls}`}>
+                    <div className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${statusBadge.cls}`}>
                         <div className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`}></div>
                         {statusBadge.label}
                     </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
-                    <p className="text-xs text-gray-500 mb-1">Project ID</p>
-                    <p className="font-mono text-sm text-gray-800 dark:text-gray-200">{firebaseConfig.projectId}</p>
+                <div className="bg-surface-container-low p-3 rounded-xl border border-[var(--border-subtle)]">
+                    <p className="text-xs text-[var(--text-secondary)] mb-1">Project ID</p>
+                    <p className="font-mono text-sm text-on-surface">{firebaseConfig.projectId}</p>
                 </div>
 
                 {(cloudStatus === 'error' || cloudError) && (
@@ -425,7 +432,7 @@ const FirebaseSettings = () => {
     }
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
+        <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
             <div className="flex items-center gap-3 mb-4 text-orange-600 dark:text-orange-400">
                 <Cloud size={20} />
                 <h2 className="font-bold">تنظیمات فایربیس</h2>
@@ -433,14 +440,14 @@ const FirebaseSettings = () => {
 
             <div className="mb-4">
                 <textarea
-                    placeholder="کد کانفیگ Firebase را اینجا پیست کنید (Smart Paste)..."
+                    placeholder="کد کانفیگ Firebase را اینجا پیست کنید..."
                     value={pasteArea}
                     onChange={(e) => setPasteArea(e.target.value)}
-                    className="w-full h-20 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-3 text-xs font-mono outline-none focus:border-orange-500 transition resize-none text-left"
+                    className="w-full h-20 bg-surface-container-low border border-[var(--border-subtle)] rounded-xl p-3 text-xs font-mono outline-none focus:border-primary transition resize-none text-left text-on-surface"
                     dir="ltr"
                 />
                 {pasteArea && (
-                    <button onClick={handleSmartPaste} className="mt-2 w-full py-2 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-orange-200 transition">
+                    <button type="button" onClick={handleSmartPaste} className="mt-2 w-full min-h-[44px] py-2 bg-orange-100 text-orange-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-orange-200 transition cursor-pointer">
                         <Zap size={14} />
                         استخراج اطلاعات
                     </button>
@@ -450,12 +457,12 @@ const FirebaseSettings = () => {
             <div className="grid grid-cols-2 gap-3">
                 {Object.keys(form).map((key) => (
                     <div key={key} className="col-span-2 sm:col-span-1">
-                        <label className="text-[10px] text-gray-400 mb-1 block uppercase">{key}</label>
+                        <label className="text-xs text-[var(--text-secondary)] mb-1 block uppercase">{key}</label>
                         <input
                             type="text"
                             value={(form as any)[key]}
                             onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-orange-500 transition text-left text-gray-800 dark:text-white"
+                            className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-primary transition text-left text-on-surface"
                             dir="ltr"
                         />
                     </div>
@@ -463,11 +470,12 @@ const FirebaseSettings = () => {
             </div>
 
             <div className="flex flex-col md:flex-row gap-2 mt-4">
-                {firebaseConfig && <button onClick={() => setIsEditing(false)} className="md:px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition">انصراف</button>}
+                {firebaseConfig && <button type="button" onClick={() => setIsEditing(false)} className="md:px-4 min-h-[44px] py-2 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:bg-surface-container transition cursor-pointer">انصراف</button>}
                 <button
+                    type="button"
                     onClick={handleSave}
                     disabled={!Object.values(form).every(v => v)}
-                    className="flex-1 bg-orange-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 min-h-[44px] bg-orange-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                     ذخیره تنظیمات
                 </button>
@@ -631,8 +639,8 @@ const Settings = () => {
                         <User className="text-white" size={22} />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-black text-gray-800 dark:text-white tracking-tight">تنظیمات</h1>
-                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">مدیریت حساب، ظاهر و داده‌ها</p>
+                        <h1 className="text-xl md:text-2xl font-black text-on-surface tracking-tight">تنظیمات</h1>
+                        <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">مدیریت حساب، ظاهر و داده‌ها</p>
                     </div>
                 </div>
 
@@ -641,7 +649,7 @@ const Settings = () => {
             </div>
 
             {/* --- 1. General Settings (Date & Duration) --- */}
-            <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
                 <div className="flex items-center gap-3 mb-4 text-teal-600 dark:text-teal-400">
                     <Calendar size={20} />
                     <h2 className="font-bold">تنظیمات عمومی</h2>
@@ -649,19 +657,25 @@ const Settings = () => {
                 <div className="grid md:grid-cols-2 gap-6">
                     {/* Date Picker */}
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">تاریخ شروع برنامه (شمسی)</label>
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">تاریخ شروع برنامه (شمسی)</label>
                         <div className="flex items-center gap-2">
                             <ShamsiDatePicker date={startDate} onChange={setStartDate} />
-                            <button onClick={autoFixDate} className="bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 p-2 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-100 dark:border-teal-800" title="تنظیم تاریخ شروع از امروز">
+                            <button
+                                type="button"
+                                onClick={autoFixDate}
+                                aria-label="تنظیم تاریخ شروع از امروز"
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-teal-50 dark:bg-teal-900/25 text-teal-700 dark:text-teal-300 p-2 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-200/70 dark:border-teal-800 cursor-pointer"
+                                title="تنظیم تاریخ شروع از امروز"
+                            >
                                 <Wand2 size={18} />
                             </button>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1.5">{getFullShamsiDate(new Date(startDate))}</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1.5">{getFullShamsiDate(new Date(startDate))}</p>
                     </div>
 
                     {/* Duration */}
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">طول دوره (روز)</label>
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">طول دوره (روز)</label>
                         <div className="flex items-center gap-4">
                             <input
                                 type="range"
@@ -671,9 +685,9 @@ const Settings = () => {
                                 onChange={(e) => setTotalDays(Number(e.target.value))}
                                 onMouseUp={() => showToast(`طول دوره به ${totalDays} روز تغییر کرد`, 'success')}
                                 onTouchEnd={() => showToast(`طول دوره به ${totalDays} روز تغییر کرد`, 'success')}
-                                className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                className="flex-1 h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-primary"
                             />
-                            <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded-lg font-bold text-sm min-w-[50px] text-center">
+                            <div className="bg-primary-fixed text-on-primary-fixed px-3 py-1.5 rounded-lg font-bold text-sm min-w-[50px] text-center">
                                 {totalDays}
                             </div>
                         </div>
@@ -681,18 +695,18 @@ const Settings = () => {
 
                     {/* Target Goal D-Day */}
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">عنوان هدف یا رویداد مهم (شمارش معکوس D-Day)</label>
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">عنوان هدف یا رویداد مهم (شمارش معکوس D-Day)</label>
                         <input
                             type="text"
                             value={settings?.targetExamTitle ?? ''}
                             onChange={(e) => updateSettings({ targetExamTitle: e.target.value })}
                             placeholder="مثلاً: اتمام پروژه، دوی ۱۰ کیلومتر، سفر یا آزمون..."
-                            className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 text-gray-800 dark:text-white"
+                            className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-on-surface"
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 block">تاریخ هدف</label>
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">تاریخ هدف</label>
                         <ShamsiDatePicker
                             date={settings?.targetExamDate || startDate}
                             onChange={(val) => updateSettings({ targetExamDate: val })}
@@ -701,9 +715,9 @@ const Settings = () => {
                 </div>
 
                 {/* Focus & Study Day Cycle Preferences */}
-                <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="mt-6 pt-5 border-t border-[var(--border-subtle)] grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
                             ساعت شروع روز مطالعاتی ({settings?.dayCutoffHour ?? 5}:۰۰ بامداد)
                         </label>
                         <input
@@ -712,13 +726,13 @@ const Settings = () => {
                             max={8}
                             value={settings?.dayCutoffHour ?? 5}
                             onChange={(e) => updateSettings({ dayCutoffHour: Number(e.target.value) })}
-                            className="w-full accent-indigo-600"
+                            className="w-full accent-primary"
                         />
-                        <p className="text-[10px] text-gray-400 mt-1">پیش‌فرض ۵ صبح (مشابه YPT برای شب‌زنده‌داری)</p>
+                        <p className="text-xs text-[var(--text-tertiary)] mt-1">پیش‌فرض ۵ صبح (مشابه YPT برای شب‌زنده‌داری)</p>
                     </div>
 
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
                             مدت پومودورو تمرکز ({settings?.pomodoroWorkMinutes ?? 25} دقیقه)
                         </label>
                         <input
@@ -728,12 +742,12 @@ const Settings = () => {
                             step={5}
                             value={settings?.pomodoroWorkMinutes ?? 25}
                             onChange={(e) => updateSettings({ pomodoroWorkMinutes: Number(e.target.value) })}
-                            className="w-full accent-indigo-600"
+                            className="w-full accent-primary"
                         />
                     </div>
 
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
                             مدت استراحت پومودورو ({settings?.pomodoroBreakMinutes ?? 5} دقیقه)
                         </label>
                         <input
@@ -748,7 +762,7 @@ const Settings = () => {
                     </div>
 
                     <div>
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">
+                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
                             ظرفیت مطالعه روزانه ({Math.round((settings?.dailyCapacityMinutes ?? 360) / 60 * 10) / 10} ساعت)
                         </label>
                         <input
@@ -771,8 +785,8 @@ const Settings = () => {
             <div className="grid md:grid-cols-2 gap-6">
 
                 {/* Profile */}
-                <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
+                <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
+                    <div className="flex items-center gap-3 mb-4 text-primary">
                         <User size={20} />
                         <h2 className="font-bold">حساب کاربری</h2>
                     </div>
@@ -783,22 +797,27 @@ const Settings = () => {
                             defaultValue={userName}
                             type="text"
                             placeholder="نام نمایشی..."
-                            className="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500 transition"
+                            className="flex-1 min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-on-surface transition"
                         />
-                        <button onClick={handleSaveName} className="bg-indigo-600 text-white p-2 rounded-xl">
+                        <button
+                            type="button"
+                            onClick={handleSaveName}
+                            aria-label="ذخیره نام نمایشی"
+                            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary text-on-primary p-2 rounded-xl cursor-pointer hover:brightness-110 transition"
+                        >
                             <Save size={18} />
                         </button>
                     </div>
 
                     {/* Workspace Profile / Mode Selection */}
                     <div className="mb-4">
-                        <label className="text-[11px] font-bold text-gray-400 block mb-1.5">سبک کاری و دسته‌بندی پیش‌فرض</label>
+                        <label className="text-xs font-bold text-[var(--text-secondary)] block mb-1.5">سبک کاری و دسته‌بندی پیش‌فرض</label>
                         <div className="relative">
-                            <GraduationCap size={18} className="absolute right-4 top-3 text-gray-400" />
+                            <GraduationCap size={18} className="absolute right-4 top-3.5 text-[var(--text-secondary)]" />
                             <select
                                 value={settings?.stream || 'life'}
                                 onChange={(e) => updateSettings({ stream: e.target.value as any })}
-                                className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl pr-12 pl-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition appearance-none cursor-pointer text-gray-800 dark:text-white"
+                                className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl pr-12 pl-4 py-2.5 text-sm outline-none focus:border-primary transition appearance-none cursor-pointer text-on-surface"
                             >
                                 <option value="life">زندگی، عادت‌ها و بهره‌وری کل (پیشنهادی)</option>
                                 <option value="work">کار، پروژه و فریلنسینگ</option>
@@ -829,17 +848,17 @@ const Settings = () => {
                 {/* Personalization & Backup */}
                 <div className="space-y-6">
                     {/* Personalization */}
-                    <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
                         <div className="flex items-center gap-3 mb-4 text-purple-600 dark:text-purple-400">
                             <Eye size={20} />
                             <h2 className="font-bold">شخصی‌سازی</h2>
                         </div>
                         <div className="flex flex-col gap-3">
-                            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 bg-surface-container-low rounded-xl">
+                                <span className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-2">
                                     <Moon size={16} aria-hidden="true" /> حالت نمایش
                                 </span>
-                                <div className="flex bg-gray-200 dark:bg-gray-600 p-0.5 rounded-xl gap-0.5" role="group" aria-label="انتخاب حالت نمایش">
+                                <div className="flex bg-surface-container p-1 rounded-xl gap-1" role="group" aria-label="انتخاب حالت نمایش">
                                     {(
                                         [
                                             { id: 'system', label: 'سیستم' },
@@ -852,10 +871,10 @@ const Settings = () => {
                                             type="button"
                                             aria-pressed={themePreference === opt.id}
                                             onClick={() => setThemePreference(opt.id)}
-                                            className={`px-2.5 min-h-[32px] text-xs font-bold rounded-lg transition cursor-pointer ${
+                                            className={`px-3 min-h-[44px] sm:min-h-[36px] text-xs font-bold rounded-lg transition cursor-pointer ${
                                                 themePreference === opt.id
-                                                    ? 'bg-white dark:bg-slate-800 shadow-xs text-primary dark:text-white'
-                                                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                                                    ? 'bg-[var(--surface-elevated)] shadow-xs text-primary dark:text-white'
+                                                    : 'text-[var(--text-secondary)] hover:text-on-surface'
                                             }`}
                                         >
                                             {opt.label}
@@ -863,11 +882,11 @@ const Settings = () => {
                                     ))}
                                 </div>
                             </div>
-                            <div className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 flex items-center gap-2"><LayoutList size={16} /> فشرده</span>
-                                <div className="flex bg-gray-200 dark:bg-gray-600 p-0.5 rounded-lg">
-                                    <button type="button" onClick={() => setViewMode('normal')} className={`px-2 py-0.5 text-[10px] rounded-md transition cursor-pointer ${viewMode === 'normal' ? 'bg-white shadow text-black' : 'text-gray-500 dark:text-gray-300'}`}>عادی</button>
-                                    <button type="button" onClick={() => setViewMode('compact')} className={`px-2 py-0.5 text-[10px] rounded-md transition cursor-pointer ${viewMode === 'compact' ? 'bg-white shadow text-black' : 'text-gray-500 dark:text-gray-300'}`}>فشرده</button>
+                            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 bg-surface-container-low rounded-xl">
+                                <span className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-2"><LayoutList size={16} /> تراکم کارت‌ها</span>
+                                <div className="flex bg-surface-container p-1 rounded-xl gap-1">
+                                    <button type="button" onClick={() => setViewMode('normal')} className={`px-3 min-h-[44px] sm:min-h-[36px] text-xs font-bold rounded-lg transition cursor-pointer ${viewMode === 'normal' ? 'bg-[var(--surface-elevated)] shadow-xs text-primary dark:text-white' : 'text-[var(--text-secondary)] hover:text-on-surface'}`}>عادی</button>
+                                    <button type="button" onClick={() => setViewMode('compact')} className={`px-3 min-h-[44px] sm:min-h-[36px] text-xs font-bold rounded-lg transition cursor-pointer ${viewMode === 'compact' ? 'bg-[var(--surface-elevated)] shadow-xs text-primary dark:text-white' : 'text-[var(--text-secondary)] hover:text-on-surface'}`}>فشرده</button>
                                 </div>
                             </div>
                             <AnimatedSwitch
@@ -893,7 +912,7 @@ const Settings = () => {
                             <AnimatedSwitch
                                 checked={Boolean(settings?.strictLockEnabled)}
                                 onChange={() => updateSettings({ strictLockEnabled: !settings?.strictLockEnabled })}
-                                label={<span>🔒 قفل سخت تمرکز (Fullscreen + تشخیص خروج)</span>}
+                                label={<span>🔒 قفل تمرکز (تمام‌صفحه و تشخیص خروج)</span>}
                             />
                             <AnimatedSwitch
                                 checked={Boolean(settings?.anonymizedLeaderboard)}
@@ -941,7 +960,7 @@ const Settings = () => {
                                             <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${theme.color} shadow-inner flex items-center justify-center`}>
                                                 {themePalette === theme.id && <Check size={14} className="text-white drop-shadow" />}
                                             </div>
-                                            <span className="text-[10px] font-black text-gray-800 dark:text-gray-200">{theme.name}</span>
+                                            <span className="text-xs font-black text-on-surface">{theme.name}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -950,7 +969,7 @@ const Settings = () => {
                     </div>
 
                     {/* Backup */}
-                    <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
+                    <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                                 <HardDrive size={20} />
@@ -958,8 +977,8 @@ const Settings = () => {
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-2">
-                            <button onClick={exportData} className="flex-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-1"><Download size={14} /> دانلود</button>
-                            <button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 py-2 rounded-xl text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900/40 transition flex items-center justify-center gap-1"><Upload size={14} /> بازگردانی</button>
+                            <button type="button" onClick={exportData} className="flex-1 min-h-[44px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-1 cursor-pointer"><Download size={14} /> دانلود</button>
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 min-h-[44px] bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 py-2 rounded-xl text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900/40 transition flex items-center justify-center gap-1 cursor-pointer"><Upload size={14} /> بازگردانی</button>
                         </div>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
                     </div>
@@ -967,13 +986,13 @@ const Settings = () => {
             </div>
 
             {/* --- Print Settings --- */}
-            <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
                 <div className="flex items-center gap-3 mb-4 text-sky-600 dark:text-sky-400">
                     <Printer size={20} />
                     <h2 className="font-bold">چاپ برنامه</h2>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 flex-1 leading-6">
+                    <p className="text-xs text-[var(--text-secondary)] flex-1 leading-6">
                         دریافت فایل PDF استاندارد و مرتب از کل برنامه مطالعاتی، تسک‌ها و تحلیل‌ها جهت چاپ یا ذخیره.
                         برای بهترین نتیجه، در تنظیمات چاپ گزینه "Background graphics" را فعال کنید.
                     </p>
@@ -1057,10 +1076,10 @@ const Settings = () => {
                     <button
                         type="button"
                         onClick={resetProgress}
-                        className="w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-700 py-2 font-bold text-xs cursor-pointer"
+                        className="w-full min-h-[44px] flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:text-red-700 py-2 font-bold text-xs cursor-pointer"
                     >
                         <RefreshCw size={14} />
-                        پاک کردن کامل همه داده‌ها (انجام نشود مگر در مورد اضطراری)
+                        پاک‌سازی کامل همه داده‌ها
                     </button>
                 </div>
             </div>
@@ -1123,7 +1142,7 @@ const Settings = () => {
             </ModalSheet>
 
             <div className="text-center mt-8 pb-8">
-                <p className="text-[10px] text-gray-300 dark:text-gray-600">ParsaPlan v4.5 - Designed for Excellence</p>
+                <p className="text-xs text-[var(--text-tertiary)]">پارساپلان — نسخه ۲.۴ پلاس</p>
             </div>
         </div>
     );

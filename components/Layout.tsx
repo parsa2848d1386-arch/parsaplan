@@ -234,7 +234,7 @@ const Layout = () => {
     ];
 
     const getDisplayName = () => userName || user?.displayName || user?.email?.split('@')[0] || 'کاربر مهمان';
-    const userInitial = (userName || user?.displayName || user?.email || 'U').charAt(0).toUpperCase();
+    const userInitial = (userName || user?.displayName || user?.email || 'کاربر').charAt(0).toUpperCase();
 
     const handleToggleAiPanel = () => {
         haptics.selection();
@@ -365,43 +365,18 @@ const Layout = () => {
                         </LayoutGroup>
                     </div>
 
-                    {/* Streak & User Level Footer */}
+                    {/* Version & Status Footer (no duplicate streak) */}
                     <div className="flex flex-col gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
                         {!sidebarCollapsed ? (
-                            <>
-                                <div className="bg-surface-container dark:bg-slate-800/80 squircle-card p-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center flex-shrink-0">
-                                            <Flame size={17} className="fill-current" aria-hidden="true" />
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-on-surface dark:text-white font-bold tabular-nums">
-                                                استریک {formatToPersianDigits(streakCount)} روزه
-                                            </span>
-                                            <span className="text-[11px] text-on-surface-variant dark:text-slate-400">رکورد حفظ استمرار</span>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-tertiary font-extrabold bg-tertiary-fixed/50 px-2 py-0.5 rounded-lg tabular-nums">
-                                        سطح {formatToPersianDigits(level)}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-between px-1 py-0.5 text-on-surface-variant dark:text-slate-400 text-xs">
-                                    <span>نسخه ۲.۴ پلاس</span>
-                                    <span className="flex items-center gap-1 text-secondary font-bold">
-                                        <CheckCircle2 size={13} className="text-secondary" aria-hidden="true" />
-                                        پایدار
-                                    </span>
-                                </div>
-                            </>
+                            <div className="flex items-center justify-between px-1 py-0.5 text-[var(--text-secondary)] text-xs">
+                                <span>نسخه ۲.۴ پلاس</span>
+                                <span className="flex items-center gap-1 text-secondary font-bold">
+                                    <CheckCircle2 size={13} className="text-secondary" aria-hidden="true" />
+                                    پایدار
+                                </span>
+                            </div>
                         ) : (
                             <div className="flex flex-col items-center gap-2">
-                                <div
-                                    className="w-9 h-9 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center"
-                                    title={`استریک ${streakCount} روزه`}
-                                >
-                                    <Flame size={16} aria-hidden="true" />
-                                </div>
                                 <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs">
                                     {userInitial}
                                 </div>
@@ -429,7 +404,7 @@ const Layout = () => {
                             >
                                 <span className="flex items-center gap-2 min-w-0 flex-1">
                                     <Search size={16} className="shrink-0 text-on-surface-variant group-hover:text-primary transition-colors" aria-hidden="true" />
-                                    <span className="truncate">جستجوی سریع، دروس، تسک‌ها...</span>
+                                    <span className="truncate">جستجو در برنامه...</span>
                                 </span>
                                 <kbd className="shrink-0 px-1.5 py-0.5 rounded-md bg-white/60 dark:bg-slate-700/80 text-on-surface-variant dark:text-slate-200 text-[11px] font-mono border border-[var(--border-subtle)]">
                                     Ctrl+K
@@ -515,7 +490,7 @@ const Layout = () => {
                                     whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
                                     transition={SPRING_SNAPPY}
                                     aria-label="بازگشت"
-                                    className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface dark:text-white hover:bg-surface-container/80 transition cursor-pointer"
+                                    className="w-11 h-11 flex items-center justify-center rounded-full text-on-surface dark:text-white hover:bg-surface-container/80 transition cursor-pointer"
                                 >
                                     <ChevronRight size={20} />
                                 </motion.button>
@@ -534,7 +509,7 @@ const Layout = () => {
                                 transition={SPRING_SNAPPY}
                                 aria-label={user ? `پروفایل ${getDisplayName()}` : 'پروفایل کاربر و ورود'}
                                 title={user ? 'تنظیمات حساب' : 'ورود یا همگام‌سازی ابری'}
-                                className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-extrabold text-xs shadow-xs cursor-pointer"
+                                className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center font-extrabold text-xs shadow-xs cursor-pointer"
                             >
                                 {userInitial}
                             </motion.button>
@@ -548,7 +523,7 @@ const Layout = () => {
                                 aria-label="تنظیمات"
                                 title="تنظیمات"
                                 className={({ isActive }) =>
-                                    `w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${
+                                    `w-11 h-11 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${
                                         isActive
                                             ? 'bg-primary-fixed text-on-primary-fixed shadow-xs'
                                             : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
@@ -576,7 +551,7 @@ const Layout = () => {
                                 transition={SPRING_SNAPPY}
                                 aria-label="جستجو و دستورات"
                                 title="جستجو و دستورات"
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
                                     isSearchExpanded || isCommandPaletteOpen
                                         ? 'bg-primary text-on-primary shadow-sm'
                                         : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
@@ -593,7 +568,7 @@ const Layout = () => {
                     <div
                         id="main-content"
                         tabIndex={-1}
-                        className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden outline-none bg-[var(--surface-canvas)]"
+                        className="flex-1 overflow-y-auto relative custom-scrollbar overflow-x-hidden outline-none bg-[var(--surface-canvas)] scroll-pt-24 scroll-pb-28 md:scroll-pt-20 md:scroll-pb-6"
                     >
                         <div className="top-nav-spacer" />
                         <RubberBandScrollContainer

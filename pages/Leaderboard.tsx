@@ -51,8 +51,13 @@ import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { formatToPersianDigits } from '../utils';
 import { getLogicalDateKey } from '../utils/streakEngine';
 import { LeaderboardRoomsSkeleton, LeaderboardListSkeleton } from '../components/Skeleton';
-import { leaderboardApi, ROOM_CATEGORIES } from '../services/backendApi';
+import { leaderboardApi, backendCache, ROOM_CATEGORIES } from '../services/backendApi';
 import { liveRoomService } from '../services/liveRoomService';
+import {
+    runOptimisticMutation,
+    applyPendingCheersToPeers,
+    mergeOptimisticRoomMessages,
+} from '../utils/optimisticMutation';
 import { AmbientSoundType, LiveRoomInfo, LiveRoomMessage, LiveRoomPeer, PublicProfileDetail, PublicProfileSummary } from '../types';
 import { STAGGER_CONTAINER_VARIANTS, STAGGER_ITEM_VARIANTS } from '../utils/motionPresets';
 import { TactileDepthCard } from '../components/ui/MotionPrimitives';
@@ -402,7 +407,11 @@ export const Leaderboard = () => {
         return () => el.removeEventListener('close', onNativeClose);
     }, [viewingProfile]);
 
-    // Load Paginated Leaderboard
+    const leaderboardQuerySeqRef = useRef(0);
+    const pendingCheerDeltasRef = useRef(new Map<string, number>());
+    const pendingRoomMessagesRef = useRef<LiveRoomMessage[]>([]);
+
+    // Load Paginated Leaderboard (with out-of-order response protection)
     const loadLeaderboardPage = useCallback(
         async (forceRefresh = false) => {
             if (!db || !isCloudAuthenticated) {
@@ -410,8 +419,10 @@ export const Leaderboard = () => {
                 setIsLoadingLb(false);
                 return;
             }
+            const querySeq = ++leaderboardQuerySeqRef.current;
             setIsLoadingLb(true);
             const res = await leaderboardApi.fetchPage(db, { sortBy, pageSize: 25, forceRefresh });
+            if (querySeq !== leaderboardQuerySeqRef.current) return;
             if (res.ok) {
                 setLeaderboardData(res.data.items);
                 setLbCursor(res.data.nextCursor);
@@ -491,14 +502,14 @@ export const Leaderboard = () => {
         const unsubPeers = liveRoomService.subscribeRoomMembers(
             db,
             activeRoomCode,
-            (peers) => setRoomPeers(peers),
+            (peers) => setRoomPeers(applyPendingCheersToPeers(peers, pendingCheerDeltasRef.current)),
             () => {}
         );
 
         const unsubMessages = liveRoomService.subscribeRoomMessages(
             db,
             activeRoomCode,
-            (msgs) => setRoomMessages(msgs),
+            (msgs) => setRoomMessages(mergeOptimisticRoomMessages(msgs, pendingRoomMessagesRef.current)),
             (err) => console.warn('[Leaderboard] Room messages listener:', err)
         );
 
@@ -559,33 +570,64 @@ export const Leaderboard = () => {
         return () => clearInterval(heartbeat);
     }, [db, activeRoomCode, userId, isCloudAuthenticated, userName, focusStatus, selectedSubject, getElapsedSeconds]);
 
-    // Handle Public Profile Toggle
+    // Handle Public Profile Toggle (Optimistic Update + Snapshot/Rollback + Race-Condition Guard)
     const handleTogglePublic = async () => {
         if (!db || !user?.uid) {
             showToast('برای انتشار رتبه ابتدا وارد حساب کاربری شوید.', 'error');
             return;
         }
-        setIsTogglingPublic(true);
-        if (isMyProfilePublic) {
-            const res = await leaderboardApi.unpublishProfile(db, user.uid);
-            if (res.ok) {
-                setIsMyProfilePublic(false);
-                showToast('پروفایل شما از جدول رتبه‌بندی عمومی برداشته شد.', 'info');
-                loadLeaderboardPage(true);
-            } else {
-                showToast(res.error.message, 'error');
-            }
-        } else {
-            const res = await leaderboardApi.publishProfile(db, user.uid, myStats, tasks);
-            if (res.ok) {
-                setIsMyProfilePublic(true);
-                showToast('پروفایل شما با موفقیت در لیگ عمومی فعال شد! 🏆', 'success');
-                loadLeaderboardPage(true);
-            } else {
-                showToast(res.error.message, 'error');
-            }
-        }
-        setIsTogglingPublic(false);
+        const uid = user.uid;
+        const targetNextPublic = !isMyProfilePublic;
+
+        await runOptimisticMutation({
+            mutationKey: `toggle_public_${uid}`,
+            cancelQueries: () => {
+                leaderboardQuerySeqRef.current += 1;
+                backendCache.cancelInFlight('lb_');
+            },
+            onMutate: () => {
+                const prevIsPublic = isMyProfilePublic;
+                const prevLeaderboard = leaderboardData;
+
+                setIsMyProfilePublic(targetNextPublic);
+                setLeaderboardData((prev) => {
+                    if (targetNextPublic) {
+                        const withoutMe = prev.filter((item) => item.id !== uid);
+                        return [myStats, ...withoutMe].sort((a, b) =>
+                            sortBy === 'exam' ? (b.examAverage || 0) - (a.examAverage || 0) : (b.xp || 0) - (a.xp || 0)
+                        );
+                    }
+                    return prev.filter((item) => item.id !== uid);
+                });
+                showToast(
+                    targetNextPublic
+                        ? 'پروفایل شما در لیگ عمومی فعال شد 🏆'
+                        : 'پروفایل شما از جدول رتبه‌بندی عمومی برداشته شد.',
+                    targetNextPublic ? 'success' : 'info'
+                );
+
+                return { prevIsPublic, prevLeaderboard };
+            },
+            mutationFn: async () => {
+                const res = targetNextPublic
+                    ? await leaderboardApi.publishProfile(db, uid, myStats, tasks)
+                    : await leaderboardApi.unpublishProfile(db, uid);
+                if (!res.ok) {
+                    throw new Error(res.error.message);
+                }
+                return res;
+            },
+            onError: (err, snapshot) => {
+                setIsMyProfilePublic(snapshot.prevIsPublic);
+                setLeaderboardData(snapshot.prevLeaderboard);
+                const msg = err instanceof Error ? err.message : 'خطا در تغییر وضعیت پروفایل عمومی';
+                showToast(msg, 'error');
+            },
+            onSettled: async () => {
+                backendCache.invalidate('lb_');
+                await loadLeaderboardPage(true);
+            },
+        });
     };
 
     // Open Profile Viewer Modal
@@ -679,20 +721,64 @@ export const Leaderboard = () => {
         setRoomActionLoading(false);
     };
 
-    // Send Room Chat Message
-    const handleSendRoomChat = async (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (!db || !activeRoomCode || !userId || !roomChatText.trim()) return;
-        const text = roomChatText.trim();
-        setRoomChatText('');
-        await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'دانش‌آموز', text);
+    const sendOptimisticRoomText = async (rawText: string, clearInput: boolean, toastInfo?: string) => {
+        if (!db || !activeRoomCode || !userId || !rawText.trim()) return;
+        const text = rawText.trim().slice(0, 300);
+        const optimisticId = `optimistic_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const optimisticMsg: LiveRoomMessage = {
+            id: optimisticId,
+            senderId: userId,
+            senderName: userName || 'دانش‌آموز',
+            text,
+            createdAt: Date.now(),
+        };
+
+        await runOptimisticMutation({
+            mutationKey: `room_msg_${activeRoomCode}_${optimisticId}`,
+            onMutate: () => {
+                const prevMessages = roomMessages;
+                const prevInput = clearInput ? roomChatText : '';
+                if (clearInput) setRoomChatText('');
+                pendingRoomMessagesRef.current = [...pendingRoomMessagesRef.current, optimisticMsg];
+                setRoomMessages((prev) => [...prev, optimisticMsg]);
+                if (toastInfo) showToast(toastInfo, 'info');
+                return { prevMessages, prevInput };
+            },
+            mutationFn: async () => {
+                const res = await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'دانش‌آموز', text);
+                if (res.throttled) {
+                    throw new Error('لطفاً لحظه‌ای صبر کنید و دوباره ارسال کنید.');
+                }
+                return res;
+            },
+            onError: (err, snapshot) => {
+                pendingRoomMessagesRef.current = pendingRoomMessagesRef.current.filter((m) => m.id !== optimisticId);
+                setRoomMessages(snapshot.prevMessages);
+                if (clearInput && snapshot.prevInput) {
+                    setRoomChatText(snapshot.prevInput);
+                }
+                showToast(err instanceof Error ? err.message : 'ارسال پیام ناموفق بود.', 'error');
+            },
+            onSettled: async () => {
+                pendingRoomMessagesRef.current = pendingRoomMessagesRef.current.filter((m) => m.id !== optimisticId);
+                const serverMsgs = await liveRoomService.fetchRoomMessagesOnce(db, activeRoomCode).catch(() => null);
+                if (serverMsgs) {
+                    setRoomMessages(mergeOptimisticRoomMessages(serverMsgs, pendingRoomMessagesRef.current));
+                }
+            },
+        });
     };
 
-    // Send Quick Emoji Reaction
+    // Send Room Chat Message (Optimistic Update)
+    const handleSendRoomChat = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!roomChatText.trim()) return;
+        await sendOptimisticRoomText(roomChatText, true);
+    };
+
+    // Send Quick Emoji Reaction (Optimistic Update)
     const handleSendReaction = async (emoji: string) => {
-        if (!db || !activeRoomCode || !userId) return;
-        await liveRoomService.sendRoomMessage(db, activeRoomCode, userId, userName || 'دانش‌آموز', emoji);
-        showToast(`انگیزه ارسال شد: ${emoji}`, 'info');
+        await sendOptimisticRoomText(emoji, false, `انگیزه ارسال شد: ${emoji}`);
     };
 
     // Copy Room Code
@@ -743,15 +829,52 @@ export const Leaderboard = () => {
     const safeProgressPct = typeof progressPercent === 'number' ? Math.min(100, Math.max(0, progressPercent)) : 0;
     const xpRemaining = Math.max(0, safeXpForNext - (currentLevelXp || 0));
 
-    // Cheer peer in active room (guarded against cheering self)
+    // Cheer peer in active room (Optimistic Update + Snapshot/Rollback + Server Sync)
     const handleCheerPeer = async (peer: LiveRoomPeer) => {
         if (!db || !activeRoomCode || !peer.uid || peer.uid === userId) return;
-        try {
-            await liveRoomService.sendCheer(db, activeRoomCode, peer.uid);
-            showToast(`انرژی مثبت برای ${peer.displayName} ارسال شد! 👏`, 'success');
-        } catch {
-            showToast('ارسال تشویق با خطا مواجه شد.', 'error');
-        }
+        const roomCode = activeRoomCode;
+        const targetUid = peer.uid;
+
+        await runOptimisticMutation({
+            mutationKey: `cheer_${roomCode}_${targetUid}`,
+            onMutate: () => {
+                const prevPeers = roomPeers;
+                pendingCheerDeltasRef.current.set(
+                    targetUid,
+                    (pendingCheerDeltasRef.current.get(targetUid) || 0) + 1
+                );
+                setRoomPeers((prev) =>
+                    prev.map((p) => (p.uid === targetUid ? { ...p, cheersReceived: (p.cheersReceived || 0) + 1 } : p))
+                );
+                showToast(`انرژی مثبت برای ${peer.displayName} ارسال شد! 👏`, 'success');
+                return { prevPeers };
+            },
+            mutationFn: async () => {
+                const res = await liveRoomService.sendCheer(db, roomCode, targetUid);
+                if (res.throttled) {
+                    throw new Error('لطفاً کمی صبر کنید و دوباره تشویق بفرستید.');
+                }
+                return res;
+            },
+            onError: (err, snapshot) => {
+                const currentDelta = pendingCheerDeltasRef.current.get(targetUid) || 0;
+                if (currentDelta <= 1) pendingCheerDeltasRef.current.delete(targetUid);
+                else pendingCheerDeltasRef.current.set(targetUid, currentDelta - 1);
+
+                setRoomPeers(snapshot.prevPeers);
+                showToast(err instanceof Error ? err.message : 'ارسال تشویق با خطا مواجه شد.', 'error');
+            },
+            onSettled: async () => {
+                const currentDelta = pendingCheerDeltasRef.current.get(targetUid) || 0;
+                if (currentDelta <= 1) pendingCheerDeltasRef.current.delete(targetUid);
+                else pendingCheerDeltasRef.current.set(targetUid, currentDelta - 1);
+
+                const serverPeers = await liveRoomService.fetchRoomMembersOnce(db, roomCode).catch(() => null);
+                if (serverPeers) {
+                    setRoomPeers(applyPendingCheersToPeers(serverPeers, pendingCheerDeltasRef.current));
+                }
+            },
+        });
     };
 
     const handleToggleAmbient = (soundId: AmbientSoundType) => {

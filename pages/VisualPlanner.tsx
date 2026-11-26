@@ -536,9 +536,9 @@ export const VisualPlanner: React.FC = () => {
                     </div>
 
                     {/* Widget 2: Total Logged Time Radial Summary Gauge */}
-                    <div className="bg-surface-container-lowest dark:bg-slate-900 squircle-lg p-space-lg shadow-sm border border-outline-variant/20 flex flex-col gap-space-md">
+                    <div className="bg-[var(--surface-elevated)] squircle-lg p-space-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-space-md">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-headline-md text-sm font-bold text-on-surface dark:text-white">تحقق هدف کل امروز</h4>
+                            <h4 className="font-headline-md text-sm font-bold text-on-surface">تحقق هدف کل امروز</h4>
                             <span className="font-label-sm text-xs text-secondary bg-secondary-container/40 px-space-xs py-0.5 rounded-full font-bold">
                                 {formatToPersianDigits(progressPct)}٪ مسیر
                             </span>
@@ -560,25 +560,25 @@ export const VisualPlanner: React.FC = () => {
                                     />
                                 </svg>
                                 <div className="absolute flex flex-col items-center">
-                                    <span className="font-display-lg text-lg font-bold text-on-surface dark:text-white">{studyHoursFormatted}</span>
-                                    <span className="font-label-sm text-[10px] text-on-surface-variant dark:text-gray-400">از {goalHoursFormatted} ساعت</span>
+                                    <span className="font-display-lg text-lg font-bold text-on-surface">{studyHoursFormatted}</span>
+                                    <span className="font-label-sm text-xs text-[var(--text-secondary)]">از {goalHoursFormatted} ساعت</span>
                                 </div>
                             </div>
 
                             {/* Mini Indicators breakdown */}
                             <div className="flex flex-col gap-space-sm text-xs">
                                 <div className="flex flex-col">
-                                    <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">زمان باقی‌مانده</span>
-                                    <span className="font-label-md font-bold text-on-surface dark:text-white">{remainingText}</span>
+                                    <span className="font-label-sm text-xs text-[var(--text-secondary)]">زمان باقی‌مانده</span>
+                                    <span className="font-label-md font-bold text-on-surface">{remainingText}</span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">تعداد دفعات گسست</span>
+                                    <span className="font-label-sm text-xs text-[var(--text-secondary)]">تعداد دفعات گسست</span>
                                     <span className="font-label-md font-bold text-secondary">
                                         {interruptionTotal === 0 ? 'بدون گسست' : `${formatToPersianDigits(interruptionTotal)} بار`}
                                     </span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">چرخه پومودورو</span>
+                                    <span className="font-label-sm text-xs text-[var(--text-secondary)]">چرخه پومودورو</span>
                                     <span className="font-label-md font-bold text-primary">
                                         {formatToPersianDigits(pomodoroCycles)} چرخه
                                     </span>
@@ -587,25 +587,25 @@ export const VisualPlanner: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-space-sm pt-space-xs text-xs">
-                            <div className="bg-surface-container-low dark:bg-slate-800/60 rounded-lg p-space-sm flex flex-col items-center">
-                                <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">بالاترین رکورد</span>
+                            <div className="bg-surface-container-low rounded-lg p-space-sm flex flex-col items-center">
+                                <span className="font-label-sm text-xs text-[var(--text-secondary)]">بالاترین رکورد</span>
                                 <span className="font-headline-md text-sm font-bold text-primary">{formatToPersianDigits(bestRecordHours)} ساعت</span>
                             </div>
-                            <div className="bg-surface-container-low dark:bg-slate-800/60 rounded-lg p-space-sm flex flex-col items-center">
-                                <span className="font-label-sm text-[11px] text-on-surface-variant dark:text-gray-400">میانگین ماه</span>
+                            <div className="bg-surface-container-low rounded-lg p-space-sm flex flex-col items-center">
+                                <span className="font-label-sm text-xs text-[var(--text-secondary)]">میانگین ماه</span>
                                 <span className="font-headline-md text-sm font-bold text-secondary">{formatToPersianDigits(monthAvgHours)} ساعت</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Widget 3: AI Circadian Rhythm & Energy Suggestion Banner */}
-                    <div className="bg-gradient-to-r from-tertiary-fixed/40 via-surface-container-lowest to-surface-container-low dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 squircle-card p-space-md shadow-sm border border-outline-variant/20 flex items-start gap-space-md relative overflow-hidden">
+                    <div className="bg-gradient-to-r from-tertiary-fixed/40 via-surface-container-lowest to-surface-container-low dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 squircle-card p-space-md shadow-sm border border-[var(--border-subtle)] flex items-start gap-space-md relative overflow-hidden">
                         <div className="w-10 h-10 rounded-xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center shrink-0 shadow-sm">
                             <Brain size={22} />
                         </div>
                         <div className="flex flex-col gap-1 text-xs">
-                            <span className="font-label-md font-bold text-tertiary">پیشنهاد هوشمند ریتم زیستی (Bio-Circadian)</span>
-                            <p className="font-body-sm text-[11px] text-on-surface-variant dark:text-gray-300 leading-relaxed">
+                            <span className="font-label-md font-bold text-tertiary">پیشنهاد هوشمند ریتم زیستی</span>
+                            <p className="font-body-sm text-xs text-[var(--text-secondary)] leading-relaxed">
                                 {circadianAdvice}
                             </p>
                         </div>

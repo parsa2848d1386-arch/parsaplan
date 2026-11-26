@@ -89,6 +89,7 @@ class BackendCache {
     private store = new Map<string, { value: unknown; expiresAt: number }>();
     private inFlight = new Map<string, Promise<unknown>>();
     private throttles = new Map<string, number>();
+    private generation = new Map<string, number>();
 
     get<T>(key: string): T | null {
         const entry = this.store.get(key);
@@ -116,13 +117,19 @@ class BackendCache {
             return { data, cached: false };
         }
 
+        const startGen = this.generation.get(key) || 0;
         const promise = fetcher()
             .then((val) => {
-                this.set(key, val, ttlMs);
+                // Only write to cache if this query wasn't cancelled/invalidated mid-flight
+                if ((this.generation.get(key) || 0) === startGen) {
+                    this.set(key, val, ttlMs);
+                }
                 return val;
             })
             .finally(() => {
-                this.inFlight.delete(key);
+                if (this.inFlight.get(key) === promise) {
+                    this.inFlight.delete(key);
+                }
             });
 
         this.inFlight.set(key, promise);
@@ -130,10 +137,29 @@ class BackendCache {
         return { data, cached: false };
     }
 
+    /**
+     * Cancels in-flight cache deduplication & bumps generation for matching keys
+     * so stale network responses won't populate the cache after an optimistic mutation.
+     */
+    cancelInFlight(prefix: string): void {
+        for (const k of this.inFlight.keys()) {
+            if (k.startsWith(prefix)) {
+                this.inFlight.delete(k);
+                this.generation.set(k, (this.generation.get(k) || 0) + 1);
+            }
+        }
+        for (const k of this.store.keys()) {
+            if (k.startsWith(prefix)) {
+                this.generation.set(k, (this.generation.get(k) || 0) + 1);
+            }
+        }
+    }
+
     invalidate(prefix: string): void {
         for (const k of this.store.keys()) {
             if (k.startsWith(prefix)) this.store.delete(k);
         }
+        this.cancelInFlight(prefix);
     }
 
     canProceed(actionKey: string, cooldownMs: number): boolean {
@@ -148,6 +174,7 @@ class BackendCache {
         this.store.clear();
         this.inFlight.clear();
         this.throttles.clear();
+        this.generation.clear();
     }
 }
 

@@ -209,7 +209,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                             }
                             transition={TRANSITION_SQUASH}
                             aria-label={isDone ? `لغو انجام ${task.topic}` : `تکمیل ${task.topic}`}
-                            className={`w-9 h-9 flex items-center justify-center rounded-xl shrink-0 cursor-pointer transition-colors ${
+                            className={`w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl shrink-0 cursor-pointer transition-colors ${
                                 isDone ? 'text-emerald-500' : 'text-[var(--text-tertiary)] hover:text-primary'
                             }`}
                         >
@@ -262,7 +262,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                     haptics.light();
                                     startFocusForTask(task);
                                 }}
-                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition cursor-pointer"
+                                className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition cursor-pointer"
                                 aria-label="شروع تمرکز"
                                 title="شروع تمرکز"
                             >
@@ -274,7 +274,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                     e.stopPropagation();
                                     onEdit(e, task);
                                 }}
-                                className="w-9 h-9 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container transition cursor-pointer"
+                                className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container transition cursor-pointer"
                                 aria-label="ویرایش"
                             >
                                 <Pencil size={14} />
@@ -286,7 +286,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                     haptics.warning();
                                     onDelete(e, task.id!);
                                 }}
-                                className="w-9 h-9 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                                className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
                                 aria-label="حذف"
                             >
                                 <Trash2 size={14} />
@@ -463,7 +463,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                             haptics.medium();
                             startFocusForTask(task);
                         }}
-                        className="min-h-[38px] flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/50 transition active:scale-[0.98] cursor-pointer"
+                        className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/50 transition active:scale-[0.98] cursor-pointer"
                         aria-label="شروع تمرکز"
                     >
                         <Play size={13} fill="currentColor" />
@@ -477,7 +477,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                 e.stopPropagation();
                                 onEdit(e, task);
                             }}
-                            className="min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-primary hover:bg-surface-container-high transition active:scale-[0.98] cursor-pointer"
+                            className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-primary hover:bg-surface-container-high transition active:scale-[0.98] cursor-pointer"
                             aria-label="ویرایش تسک"
                         >
                             <Pencil size={13} />
@@ -490,7 +490,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                 haptics.warning();
                                 onDelete(e, task.id!);
                             }}
-                            className="min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/35 transition active:scale-[0.98] cursor-pointer"
+                            className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/35 transition active:scale-[0.98] cursor-pointer"
                             aria-label="حذف تسک"
                         >
                             <Trash2 size={13} />
@@ -504,7 +504,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                     haptics.light();
                                     onMoveToToday(task.id!);
                                 }}
-                                className="min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-[0.98] cursor-pointer"
+                                className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-[0.98] cursor-pointer"
                                 aria-label="انتقال به امروز"
                             >
                                 <ArrowDownToLine size={13} />
