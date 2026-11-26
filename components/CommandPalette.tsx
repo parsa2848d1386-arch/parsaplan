@@ -8,6 +8,7 @@ import { useFocus } from '../context/FocusContext';
 import { useUI } from '../context/UIContext';
 import { useOverlayHistory } from '../hooks/useOverlayHistory';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { addRecentSearch, removeRecentSearch } from '../utils/designSystemHelpers';
 import {
     Search,
@@ -238,6 +239,7 @@ export const CommandPalette: React.FC = () => {
     }, [query, scope, isCommandPaletteOpen]);
 
     const prefersReducedMotion = useReducedMotion();
+    const isMobile = useMediaQuery('(max-width: 767px)');
 
     if (!isCommandPaletteOpen) return null;
 
@@ -271,28 +273,25 @@ export const CommandPalette: React.FC = () => {
             initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
-            className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/55 dark:bg-black/70 backdrop-blur-[6px] px-3 sm:p-4"
+            transition={{ duration: 0.14 }}
+            className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/40 dark:bg-black/55 sm:backdrop-blur-[6px] px-3 sm:p-4"
             onClick={closePalette}
         >
             <motion.div
                 ref={dialogRef}
                 tabIndex={-1}
                 onClick={(e) => e.stopPropagation()}
+                layoutId={isMobile ? 'morph-search-pill' : undefined}
                 initial={
-                    prefersReducedMotion
+                    isMobile || prefersReducedMotion
                         ? false
-                        : { opacity: 0, scale: 0.9, y: -10 }
-                }
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={
-                    prefersReducedMotion
-                        ? { opacity: 0 }
                         : { opacity: 0, scale: 0.94, y: -8 }
                 }
-                transition={{ type: 'spring', stiffness: 440, damping: 32, mass: 0.75 }}
-                style={{ transformOrigin: 'top left', willChange: 'transform, opacity' }}
-                className="bg-[var(--surface-elevated)] squircle-lg max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 32, mass: 0.8 }}
+                style={{ willChange: 'transform, border-radius' }}
+                className="bg-[var(--surface-elevated)] rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
             >
                 {/* Search Input Row */}
                 <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border-subtle)]">

@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MotionConfig } from 'framer-motion';
+import { MotionConfig, LayoutGroup } from 'framer-motion';
 import { setupPwaAutoUpdater } from './services/pwaManager';
 import { setupGlobalHapticListeners } from './utils/haptics';
 import { StoreProvider, useStore } from './context/StoreContext';
@@ -71,6 +71,7 @@ function App() {
             <StoreProvider>
                 <FocusProvider>
                     <ErrorBoundary>
+                        <LayoutGroup id="app-shell-morph">
                         <HashRouter>
                             <ScrollToTop />
                             <Routes>
@@ -100,6 +101,7 @@ function App() {
                             <EveningReflectionModal />
                             <BrainDumpModal />
                         </HashRouter>
+                        </LayoutGroup>
                         <ToastContainer />
                         <ConfirmModal />
                         <LevelUpShowcase />

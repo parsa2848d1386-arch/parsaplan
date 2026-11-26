@@ -150,7 +150,6 @@ const Layout = () => {
 
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [isProfileChipExpanded, setIsProfileChipExpanded] = useState(false);
-    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const [isBottomNavCompact, setIsBottomNavCompact] = useState(false);
     const profileCapsuleRef = useRef<HTMLDivElement>(null);
     const bottomNavIdleTimerRef = useRef<number | null>(null);
@@ -528,9 +527,7 @@ const Layout = () => {
                             ref={profileCapsuleRef}
                             layout
                             transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
-                            className={`pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] max-w-[calc(100vw-8.5rem)] transition-opacity duration-150 ${
-                                isNotificationOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                            }`}
+                            className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] max-w-[calc(100vw-8.5rem)]"
                         >
                             {currentPage.isSubRoute && (
                                 <motion.button
@@ -649,26 +646,27 @@ const Layout = () => {
                             <SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="mobile" />
                         </motion.div>
 
-                        {/* Top-Left Floating Capsule: Search + Notifications (GPU-smooth without unmounting siblings) */}
+                        {/* Top-Left Floating Capsule: Search + Notifications with layoutId button-to-panel morphing */}
                         <div className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]">
-                            <motion.button
-                                type="button"
-                                onClick={handleTriggerSearch}
-                                whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
-                                whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
-                                transition={SPRING_SNAPPY}
-                                aria-label="جستجو و دستورات"
-                                title="جستجو و دستورات"
-                                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-150 cursor-pointer shrink-0 ${
-                                    isSearchExpanded || isCommandPaletteOpen
-                                        ? 'bg-primary text-on-primary shadow-sm'
-                                        : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
-                                }`}
-                            >
-                                <Search size={18} className="shrink-0" />
-                            </motion.button>
+                            {!(isMobile && isCommandPaletteOpen) ? (
+                                <motion.button
+                                    layoutId={isMobile ? 'morph-search-pill' : undefined}
+                                    type="button"
+                                    onClick={handleTriggerSearch}
+                                    whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
+                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
+                                    transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.75 }}
+                                    aria-label="جستجو و دستورات"
+                                    title="جستجو و دستورات"
+                                    className="w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-150 cursor-pointer shrink-0 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white"
+                                >
+                                    <Search size={18} className="shrink-0" />
+                                </motion.button>
+                            ) : (
+                                <div className="w-11 h-11 shrink-0" aria-hidden="true" />
+                            )}
 
-                            <NotificationBell morphMode onOpenChange={setIsNotificationOpen} />
+                            <NotificationBell morphMode />
                         </div>
                     </header>
 
