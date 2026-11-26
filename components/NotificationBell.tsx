@@ -131,7 +131,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                 >
                                     <motion.div
                                         layoutId="morph-top-left-capsule"
-                                        transition={{ type: 'spring', stiffness: 250, damping: 27, mass: 0.95 }}
+                                        transition={{ type: 'spring', stiffness: 220, damping: 26, mass: 0.9 }}
                                         style={{ willChange: 'transform, border-radius' }}
                                         onClick={(e) => e.stopPropagation()}
                                         className="w-full max-w-[430px] rounded-[26px] bg-[var(--surface-elevated)] border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"

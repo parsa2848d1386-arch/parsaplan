@@ -651,7 +651,7 @@ const Layout = () => {
                         {!(isNotificationOpen || (isMobile && isCommandPaletteOpen)) ? (
                             <motion.div
                                 layoutId={isMobile ? 'morph-top-left-capsule' : undefined}
-                                transition={{ type: 'spring', stiffness: 250, damping: 27, mass: 0.95 }}
+                                transition={{ type: 'spring', stiffness: 220, damping: 26, mass: 0.9 }}
                                 style={{ willChange: 'transform, border-radius' }}
                                 className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]"
                             >

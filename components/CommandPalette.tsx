@@ -241,7 +241,14 @@ export const CommandPalette: React.FC = () => {
     const prefersReducedMotion = useReducedMotion();
     const isMobile = useMediaQuery('(max-width: 767px)');
 
-    if (!isCommandPaletteOpen) return null;
+    if (typeof document === 'undefined') return null;
+
+    const scopes: { id: SearchScope; label: string }[] = [
+        { id: 'all', label: 'همه' },
+        { id: 'تسک‌ها', label: 'تسک‌ها' },
+        { id: 'صفحات', label: 'صفحات' },
+        { id: 'ابزار سریع', label: 'ابزار سریع' },
+    ];
 
     const handleInputKeyDown = (e: React.KeyboardEvent) => {
         if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -257,42 +264,41 @@ export const CommandPalette: React.FC = () => {
         }
     };
 
-    const scopes: { id: SearchScope; label: string }[] = [
-        { id: 'all', label: 'همه' },
-        { id: 'تسک‌ها', label: 'تسک‌ها' },
-        { id: 'صفحات', label: 'صفحات' },
-        { id: 'ابزار سریع', label: 'ابزار سریع' },
-    ];
-
     return createPortal(
-        <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="جستجوی سریع و دستورات"
-            dir="rtl"
-            initial={prefersReducedMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/40 dark:bg-black/55 sm:backdrop-blur-[6px] px-3 sm:p-4"
-            onClick={closePalette}
-        >
-            <motion.div
-                ref={dialogRef}
-                tabIndex={-1}
-                onClick={(e) => e.stopPropagation()}
-                layoutId={isMobile ? 'morph-top-left-capsule' : undefined}
-                initial={
-                    isMobile || prefersReducedMotion
-                        ? false
-                        : { opacity: 0, scale: 0.94, y: -8 }
-                }
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 250, damping: 27, mass: 0.95 }}
-                style={{ willChange: 'transform, border-radius' }}
-                className="bg-[var(--surface-elevated)] rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
-            >
+        <AnimatePresence>
+            {isCommandPaletteOpen && (
+                <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="جستجوی سریع و دستورات"
+                    dir="rtl"
+                    initial={prefersReducedMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.22, ease: 'easeInOut' }}
+                    className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/40 dark:bg-black/55 sm:backdrop-blur-[6px] px-3 sm:p-4"
+                    onClick={closePalette}
+                >
+                    <motion.div
+                        ref={dialogRef}
+                        tabIndex={-1}
+                        onClick={(e) => e.stopPropagation()}
+                        layoutId={isMobile ? 'morph-top-left-capsule' : undefined}
+                        initial={
+                            isMobile || prefersReducedMotion
+                                ? false
+                                : { opacity: 0, scale: 0.94, y: -8 }
+                        }
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={
+                            isMobile || prefersReducedMotion
+                                ? undefined
+                                : { opacity: 0, scale: 0.95, y: -6 }
+                        }
+                        transition={{ type: 'spring', stiffness: 220, damping: 26, mass: 0.9 }}
+                        style={{ willChange: 'transform, border-radius' }}
+                        className="bg-[var(--surface-elevated)] rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
+                    >
                 {/* Search Input Row */}
                 <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border-subtle)]">
                     <Search size={18} className="text-primary shrink-0" aria-hidden="true" />
@@ -469,8 +475,10 @@ export const CommandPalette: React.FC = () => {
                         })
                     )}
                 </div>
-            </motion.div>
-        </motion.div>,
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>,
         document.body
     );
 };
