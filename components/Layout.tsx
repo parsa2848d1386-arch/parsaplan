@@ -522,13 +522,15 @@ const Layout = () => {
                     </header>
 
                     {/* Mobile Top Floating Capsules — Two Morphing Liquid Glass Pills (Right: Profile + Settings, Left: Search + Notifications) */}
-                    <header className="md:hidden fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-40 pointer-events-none flex items-center justify-between gap-2">
+                    <header className="md:hidden fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-40 pointer-events-none flex items-start justify-between gap-2">
                         {/* Top-Right Floating Capsule: Morphs & expands when Profile or Settings is active */}
                         <motion.div
                             ref={profileCapsuleRef}
                             layout
                             transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
-                            className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] max-w-[calc(100vw-8.5rem)]"
+                            className={`pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] max-w-[calc(100vw-8.5rem)] transition-opacity duration-150 ${
+                                isNotificationOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                            }`}
                         >
                             {currentPage.isSubRoute && (
                                 <motion.button
@@ -651,8 +653,10 @@ const Layout = () => {
                         <motion.div
                             layout
                             transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
-                            className={`pointer-events-auto flex items-center gap-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] ${
-                                isNotificationOpen ? 'p-0 border-0 bg-transparent shadow-none' : 'p-1'
+                            className={`pointer-events-auto flex items-center gap-1 rounded-full ${
+                                isNotificationOpen
+                                    ? 'p-0 border-0 bg-transparent shadow-none'
+                                    : 'p-1 liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]'
                             }`}
                         >
                             {!isNotificationOpen && (

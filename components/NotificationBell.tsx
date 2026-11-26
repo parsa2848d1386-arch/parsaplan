@@ -86,16 +86,28 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
 
     if (morphMode) {
         return (
-            <motion.div
-                ref={dropdownRef}
-                layout
-                transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
-                className={`relative overflow-hidden ${
-                    isOpen
-                        ? 'w-[min(calc(100vw-2rem),21.5rem)] rounded-[24px] bg-[var(--surface-elevated)]/95 border border-[var(--border-subtle)] shadow-2xl'
-                        : 'rounded-full'
-                }`}
-            >
+            <>
+                {isOpen && (
+                    <motion.div
+                        initial={prefersReducedMotion ? false : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsOpen(false)}
+                        className="fixed inset-0 z-40 bg-slate-950/35 dark:bg-black/50 backdrop-blur-[2px]"
+                        aria-hidden="true"
+                    />
+                )}
+                <motion.div
+                    ref={dropdownRef}
+                    layout
+                    transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                    style={{ transformOrigin: 'top left' }}
+                    className={`overflow-hidden ${
+                        isOpen
+                            ? 'fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-50 max-w-[430px] mx-auto rounded-[26px] bg-[var(--surface-elevated)]/95 backdrop-blur-xl border border-[var(--glass-nav-border)] shadow-2xl'
+                            : 'relative rounded-full'
+                    }`}
+                >
                 <div className={`flex items-center justify-between ${isOpen ? 'px-3 py-2 border-b border-[var(--border-subtle)] bg-surface-container-low/80' : ''}`}>
                     <motion.button
                         layout="position"
@@ -203,7 +215,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </motion.div>
+                </motion.div>
+            </>
         );
     }
 
