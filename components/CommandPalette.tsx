@@ -273,7 +273,7 @@ export const CommandPalette: React.FC = () => {
             initial={prefersReducedMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.14 }}
+            transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/40 dark:bg-black/55 sm:backdrop-blur-[6px] px-3 sm:p-4"
             onClick={closePalette}
         >
@@ -281,7 +281,7 @@ export const CommandPalette: React.FC = () => {
                 ref={dialogRef}
                 tabIndex={-1}
                 onClick={(e) => e.stopPropagation()}
-                layoutId={isMobile ? 'morph-search-pill' : undefined}
+                layoutId={isMobile ? 'morph-top-left-capsule' : undefined}
                 initial={
                     isMobile || prefersReducedMotion
                         ? false
@@ -289,7 +289,7 @@ export const CommandPalette: React.FC = () => {
                 }
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 32, mass: 0.8 }}
+                transition={{ type: 'spring', stiffness: 250, damping: 27, mass: 0.95 }}
                 style={{ willChange: 'transform, border-radius' }}
                 className="bg-[var(--surface-elevated)] rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
             >

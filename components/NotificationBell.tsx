@@ -13,20 +13,25 @@ interface NotificationBellProps {
     /** When true, expands the trigger button into an inline Dynamic-Island style tab pill when open */
     morphMode?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
+    isOpenExternal?: boolean;
+    renderTrigger?: boolean;
 }
 
 export const NotificationBell: React.FC<NotificationBellProps> = ({
     buttonClassName = '',
     morphMode = false,
     onOpenChange,
+    isOpenExternal,
+    renderTrigger = true,
 }) => {
-    const [isOpen, setIsOpenState] = useState(false);
+    const [isOpenInternal, setIsOpenInternal] = useState(false);
+    const isOpen = isOpenExternal !== undefined ? isOpenExternal : isOpenInternal;
     const setIsOpen = (val: boolean | ((prev: boolean) => boolean)) => {
-        setIsOpenState((prev) => {
-            const next = typeof val === 'function' ? val(prev) : val;
-            if (next !== prev) onOpenChange?.(next);
-            return next;
-        });
+        const next = typeof val === 'function' ? val(isOpen) : val;
+        if (isOpenExternal === undefined) {
+            setIsOpenInternal(next);
+        }
+        if (next !== isOpen) onOpenChange?.(next);
     };
     const [hasUpdate, setHasUpdate] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -88,17 +93,16 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     if (morphMode) {
         return (
             <div className="relative" ref={dropdownRef}>
-                {!isOpen ? (
+                {renderTrigger && (
                     <motion.button
-                        layoutId="morph-notification-pill"
                         type="button"
                         onClick={() => {
                             haptics.selection();
                             setIsOpen(true);
                         }}
                         whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
-                        transition={{ type: 'spring', stiffness: 420, damping: 32, mass: 0.75 }}
-                        aria-expanded={false}
+                        transition={SPRING_SNAPPY}
+                        aria-expanded={isOpen}
                         className={`w-11 h-11 rounded-full flex items-center justify-center relative cursor-pointer transition-colors duration-150 hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface ${buttonClassName}`}
                         aria-label="اعلان‌ها"
                         title="اعلان‌ها"
@@ -110,8 +114,6 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         )}
                         <Bell size={18} className="shrink-0" />
                     </motion.button>
-                ) : (
-                    <div className="w-11 h-11" aria-hidden="true" />
                 )}
 
                 {typeof document !== 'undefined' &&
@@ -122,14 +124,14 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                     initial={prefersReducedMotion ? false : { opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    transition={{ duration: 0.14 }}
+                                    transition={{ duration: 0.2 }}
                                     onClick={() => setIsOpen(false)}
                                     className="fixed inset-0 z-[60] bg-slate-950/35 dark:bg-black/50 flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] px-3"
                                     dir="rtl"
                                 >
                                     <motion.div
-                                        layoutId="morph-notification-pill"
-                                        transition={{ type: 'spring', stiffness: 400, damping: 32, mass: 0.8 }}
+                                        layoutId="morph-top-left-capsule"
+                                        transition={{ type: 'spring', stiffness: 250, damping: 27, mass: 0.95 }}
                                         style={{ willChange: 'transform, border-radius' }}
                                         onClick={(e) => e.stopPropagation()}
                                         className="w-full max-w-[430px] rounded-[26px] bg-[var(--surface-elevated)] border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"
@@ -138,7 +140,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                             initial={prefersReducedMotion ? false : { opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
-                                            transition={{ duration: 0.12, delay: 0.03 }}
+                                            transition={{ duration: 0.16, delay: 0.06 }}
                                         >
                                             <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
                                                 <div className="flex items-center gap-2">
