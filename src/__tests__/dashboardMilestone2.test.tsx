@@ -109,7 +109,7 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         renderDashboard();
 
         // Greeting and concise stat cards
-        expect(screen.getByText(/(صبح بخیر|ظهر بخیر|عصر بخیر|شب بخیر)، کاربر تست/)).toBeInTheDocument();
+        expect(screen.getAllByText(/(صبح بخیر|ظهر بخیر|عصر بخیر|شب بخیر)، کاربر تست/).length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('تمرکز عمیق')).toBeInTheDocument();
         expect(screen.getByText('پیشرفت تسک‌ها')).toBeInTheDocument();
 
@@ -126,9 +126,9 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         expect(screen.getByRole('button', { name: 'هفته قبل' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'هفته بعد' })).toBeInTheDocument();
 
-        // Check for 7 weekday badges
+        // Check weekday badges are removed for cleaner day cards
         ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'].forEach((wd) => {
-            expect(screen.getByText(wd)).toBeInTheDocument();
+            expect(screen.queryByText(wd)).not.toBeInTheDocument();
         });
 
         // Check for liquid fill elements
@@ -145,37 +145,18 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         expect(screen.queryByText(/۹۲٪ نمره بازدهی/)).not.toBeInTheDocument();
     });
 
-    it('R2.4: Today\'s Mood widget has 5 strict levels with vector SVGs and zero text emojis', () => {
+    it('R2.4: Today\'s Mood widget and Brain Dump section are removed from Dashboard', () => {
         renderDashboard();
 
-        // Mood header
-        expect(screen.getByText('مود امروز')).toBeInTheDocument();
-
-        // 5 exact levels
-        expect(screen.getByText('عالی')).toBeInTheDocument();
-        expect(screen.getByText('خوب/پرانرژی')).toBeInTheDocument();
-        expect(screen.getByText('معمولی')).toBeInTheDocument();
-        expect(screen.getByText('خسته/کم‌انرژی')).toBeInTheDocument();
-        expect(screen.getByText('فرسوده/بی‌انرژی')).toBeInTheDocument();
-
-        // Absolute prohibition of old text emojis
-        ['🌟', '🎯', '⚡', '🥱', '🌧️'].forEach((emoji) => {
-            expect(screen.queryByText(emoji)).not.toBeInTheDocument();
-        });
-
-        // Interacting with a mood button calls setMood
-        fireEvent.click(screen.getByText('عالی'));
-        expect(mockSetMood).toHaveBeenCalledWith('2026-11-14', 'excellent');
+        expect(screen.queryByText('مود امروز')).not.toBeInTheDocument();
+        expect(screen.queryByText('تخلیه ذهن و ثبت سریع')).not.toBeInTheDocument();
     });
 
-    it('R2.5: Timeblocks preview is integrated directly inside Today\'s Tasks section', () => {
+    it('R2.5: Default suggested timeblocks are hidden when no tasks have scheduled startTime', () => {
         renderDashboard();
 
-        // Timeblocks preview header exists
-        expect(screen.getByText('بلوک‌های زمانی پیش‌رو')).toBeInTheDocument();
-        expect(screen.getByText('بلوک جاری')).toBeInTheDocument();
-        expect(screen.getByText('استراحت هوشمند')).toBeInTheDocument();
-        expect(screen.getByText('بلوک عصر')).toBeInTheDocument();
+        expect(screen.queryByText('الگوی پیشنهادی')).not.toBeInTheDocument();
+        expect(screen.queryByText('استراحت هوشمند')).not.toBeInTheDocument();
     });
 
     it('R2.6: Clicking New Task opens TaskModal dialog with 4 duration quick chips and validation alert on empty submit', () => {

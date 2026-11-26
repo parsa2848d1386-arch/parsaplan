@@ -13,7 +13,6 @@ import { FloatingPiPWidget } from './components/focus/FloatingPiPWidget';
 import { CommandPalette } from './components/CommandPalette';
 import { MorningPlanningModal } from './components/rituals/MorningPlanningModal';
 import { EveningReflectionModal } from './components/rituals/EveningReflectionModal';
-import { BrainDumpModal } from './components/BrainDumpModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastContainer, ConfirmModal, LevelUpShowcase, ConfettiContainer } from './components/Feedback';
 import FocusTimer from './components/FocusTimer';
@@ -99,7 +98,6 @@ function App() {
                             <CommandPalette />
                             <MorningPlanningModal />
                             <EveningReflectionModal />
-                            <BrainDumpModal />
                         </HashRouter>
                         </LayoutGroup>
                         <ToastContainer />

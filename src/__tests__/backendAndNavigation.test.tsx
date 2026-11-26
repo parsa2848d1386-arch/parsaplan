@@ -259,14 +259,12 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
 
         expect(screen.getByText('تمرکز عمیق')).toBeInTheDocument();
         expect(screen.getByText('پیشرفت تسک‌ها')).toBeInTheDocument();
-        expect(screen.getByText(/زنجیره پیوستگی/)).toBeInTheDocument();
+        expect(screen.getByText(/روز پیوسته/)).toBeInTheDocument();
 
-        // WeekMini Saturday-to-Friday distinct weekdays & navigation
-        ['ش', '۱ش', '۲ش', '۳ش', '۴ش', '۵ش', 'ج'].forEach((wd) => {
-            expect(screen.getByText(wd)).toBeInTheDocument();
-        });
+        // WeekMini concise navigation controls
         expect(screen.getByRole('button', { name: 'هفته قبل' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'هفته بعد' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'امروز' })).toBeInTheDocument();
 
         render(<WeeklyView />);
         ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].forEach((fullWd) => {
@@ -343,9 +341,9 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
             const dialog = screen.getByRole('dialog', { name: 'جستجوی سریع و دستورات' });
             expect(dialog).toBeInTheDocument();
 
-            // Hick's Law curated initial actions: top 4 quick actions shown, secondary pages hidden until search/scope
+            // Hick's Law curated initial actions: quick actions shown, Brain Dump removed, secondary pages hidden until search/scope
             expect(screen.getByText('باز کردن کرنومتر و اتاق مطالعه')).toBeInTheDocument();
-            expect(screen.getByText(/تخلیه ذهن سریع/)).toBeInTheDocument();
+            expect(screen.queryByText(/تخلیه ذهن سریع/)).not.toBeInTheDocument();
             expect(screen.getByText(/آیین برنامه‌ریزی صبحگاهی/)).toBeInTheDocument();
             expect(screen.getByText(/جمع‌بندی شبانه/)).toBeInTheDocument();
             expect(screen.queryByText('تنظیمات و پروفایل')).not.toBeInTheDocument();

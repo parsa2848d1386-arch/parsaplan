@@ -173,7 +173,6 @@ export const CommandPalette: React.FC = () => {
 
         const baseActions: PaletteAction[] = [
             { id: 'act-focus', label: 'باز کردن کرنومتر و اتاق مطالعه', group: 'ابزار سریع', shortcut: 'T', icon: Timer, run: closeAnd(() => setIsTimerOpen(true)) },
-            { id: 'act-bd', label: 'تخلیه ذهن سریع (Brain Dump)', group: 'ابزار سریع', shortcut: 'B', icon: Sparkles, run: closeAnd(() => setBrainDumpOpen(true)) },
             { id: 'act-morning', label: 'آیین برنامه‌ریزی صبحگاهی (MIT)', group: 'ابزار سریع', shortcut: 'M', icon: Sunrise, run: closeAnd(() => setMorningModalOpen(true)) },
             { id: 'act-evening', label: 'جمع‌بندی شبانه و انتقال معلق‌ها', group: 'ابزار سریع', shortcut: 'E', icon: MoonStar, run: closeAnd(() => setEveningModalOpen(true)) },
             { id: 'act-theme', label: 'تغییر حالت شب / روز', group: 'ابزار سریع', icon: Moon, run: closeAnd(() => toggleDarkMode()) },

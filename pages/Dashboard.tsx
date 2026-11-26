@@ -160,10 +160,6 @@ export const Dashboard: React.FC = () => {
     const [onlySpecialized, setOnlySpecialized] = useState(false);
     const [selectedFilterSubject, setSelectedFilterSubject] = useState<string | null>(null);
 
-    // Brain Dump Input State
-    const [brainDumpText, setBrainDumpText] = useState('');
-    const [brainDumpFeedback, setBrainDumpFeedback] = useState<string | null>(null);
-
     // Modal State
     const [editingTask, setEditingTask] = useState<SubjectTask | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -171,15 +167,6 @@ export const Dashboard: React.FC = () => {
     const openNewTaskModal = () => {
         setEditingTask(null);
         setIsModalOpen(true);
-    };
-
-    // Current Mood for Active Date
-    const currentMood = (moods && moods[activeDateIso]) || undefined;
-
-    const handleSelectMood = (moodId: MoodType) => {
-        if (setMood) {
-            setMood(activeDateIso, moodId);
-        }
     };
 
     // 7-day Persian week ribbon (Sat -> Fri) with Liquid Fill & Week Navigation
@@ -309,74 +296,74 @@ export const Dashboard: React.FC = () => {
 
     const handleMoveToToday = useCallback((taskId: string) => moveTaskToDate(taskId, todayIso), [moveTaskToDate, todayIso]);
 
-    const handleBrainDumpSubmit = (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (!brainDumpText.trim()) return;
-
-        const val = brainDumpText.trim();
-        addTask({
-            id: crypto.randomUUID(),
-            dayId: currentDay,
-            date: activeDateIso,
-            subject: 'شخصی',
-            topic: val,
-            details: 'ثبت سریع از نوار دستیار هوشمند',
-            isCompleted: false,
-            status: 'todo',
-            priority: 'medium',
-            durationMinutes: 30,
-            isCustom: true
-        });
-
-        setBrainDumpText('');
-        setBrainDumpFeedback(`ثبت شد: «${val.slice(0, 24)}...»`);
-        setTimeout(() => setBrainDumpFeedback(null), 3500);
-    };
-
     const streakCount = streakStats?.currentStreak ?? 0;
 
     return (
         <div className="flex flex-col w-full">
-            {/* ===== 1. Full-Bleed Edge-to-Edge Theme Gradient Hero Header ===== */}
+            {/* ===== 1. Full-Bleed Edge-to-Edge Theme Gradient Hero Header (Space-Optimized) ===== */}
             <section
                 aria-label="خلاصه وضعیت امروز"
-                className="relative overflow-hidden -mt-[calc(4.25rem+env(safe-area-inset-top,0px))] md:-mt-16 pt-[calc(5.1rem+env(safe-area-inset-top,0px))] md:pt-22 pb-5 sm:pb-6 px-3.5 xs:px-4 sm:px-6 lg:px-8 rounded-b-[28px] sm:rounded-b-[32px] bg-gradient-to-br from-[var(--color-indigo-600)] via-[var(--md-primary)] to-[var(--color-violet-700)] dark:from-[var(--color-indigo-900)] dark:via-[var(--color-indigo-800)] dark:to-[var(--color-violet-950)] text-white shadow-lg"
+                className="relative overflow-hidden -mt-[calc(4.25rem+env(safe-area-inset-top,0px))] md:-mt-16 pt-[max(0.75rem,env(safe-area-inset-top,0px))] md:pt-20 pb-5 sm:pb-6 px-3.5 xs:px-4 sm:px-6 lg:px-8 rounded-b-[28px] sm:rounded-b-[32px] bg-gradient-to-br from-[var(--color-indigo-600)] via-[var(--md-primary)] to-[var(--color-violet-700)] dark:from-[var(--color-indigo-900)] dark:via-[var(--color-indigo-800)] dark:to-[var(--color-violet-950)] text-white shadow-lg"
             >
                 {/* Ambient decorative highlights */}
                 <div className="absolute -top-16 -left-12 w-48 h-48 rounded-full bg-white/12 blur-2xl pointer-events-none" aria-hidden="true" />
                 <div className="absolute -bottom-20 -right-10 w-56 h-56 rounded-full bg-white/10 blur-3xl pointer-events-none" aria-hidden="true" />
 
-                <div className="relative z-10 max-app-container w-full mx-auto flex flex-col gap-4">
-                    {/* Top Greeting & Compact New Task CTA */}
+                <div className="relative z-10 max-app-container w-full mx-auto flex flex-col gap-3.5">
+                    {/* Mobile: Greeting & Date tucked cleanly between the two top floating capsules */}
+                    <div className="md:hidden flex flex-col items-center justify-center min-h-[50px] px-[6.8rem] text-center">
+                        <h1 className="text-[13px] font-black text-white leading-tight truncate max-w-full">
+                            {getTimeOfDayGreeting(new Date().getHours())}، {userName || 'دوست من'}
+                        </h1>
+                        <span className="text-[11px] font-bold text-white/80 mt-0.5">
+                            {getShamsiDate(activeDateIso)}
+                        </span>
+                    </div>
+
+                    {/* Desktop Greeting Row + Mobile Compact Action Bar */}
                     <div className="flex items-center justify-between gap-3">
-                        <div className="flex flex-col gap-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-lg sm:text-2xl md:text-3xl text-white font-black leading-snug truncate">
-                                    {getTimeOfDayGreeting(new Date().getHours())}، {userName || 'دوست من'}
-                                </h1>
-                                <span className="text-[11px] sm:text-xs bg-white/20 backdrop-blur-md text-white px-2.5 py-0.5 rounded-full font-bold border border-white/20 shrink-0">
-                                    {getShamsiDate(activeDateIso)}
-                                </span>
-                            </div>
+                        <div className="hidden md:flex items-center gap-2.5 min-w-0">
+                            <h1 className="text-2xl md:text-3xl text-white font-black leading-snug truncate">
+                                {getTimeOfDayGreeting(new Date().getHours())}، {userName || 'دوست من'}
+                            </h1>
+                            <span className="text-xs bg-white/20 backdrop-blur-md text-white px-2.5 py-0.5 rounded-full font-bold border border-white/20 shrink-0">
+                                {getShamsiDate(activeDateIso)}
+                            </span>
                         </div>
 
-                        <button
+                        <div className="flex md:hidden items-center gap-1.5 text-[11px] font-bold text-white/90 bg-white/15 px-3 py-1.5 rounded-full border border-white/15">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" aria-hidden="true" />
+                            <span>هدف امروز: {formatToPersianDigits(focusTargetHours)} ساعت</span>
+                        </div>
+
+                        <motion.button
                             type="button"
                             onClick={openNewTaskModal}
-                            className="touch-target flex items-center justify-center gap-1.5 bg-white text-[var(--color-indigo-700)] dark:bg-white/95 dark:text-slate-900 px-3.5 py-2 rounded-full hover:brightness-95 active:scale-[0.97] transition-all shadow-md font-extrabold text-xs cursor-pointer min-h-[40px] whitespace-nowrap shrink-0"
+                            whileTap={prefersReducedMotion ? undefined : { scale: 0.93 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                            className="touch-target flex items-center justify-center gap-1.5 bg-white text-[var(--color-indigo-700)] dark:bg-white/95 dark:text-slate-900 px-3.5 py-2 rounded-full hover:brightness-95 transition-colors shadow-md font-extrabold text-xs cursor-pointer min-h-[40px] whitespace-nowrap shrink-0"
                         >
                             <Plus size={15} strokeWidth={2.6} aria-hidden="true" />
                             <span>تسک جدید</span>
-                        </button>
+                        </motion.button>
                     </div>
 
-                    {/* Two Crisp White / Dark Mini Stat Cards */}
+                    {/* Two Animated, Upgraded White / Dark Mini Stat Cards */}
                     <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
-                        {/* Mini Card 1: Upgraded Deep Focus Card */}
-                        <div className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5">
+                        {/* Mini Card 1: Animated Deep Focus Card */}
+                        <motion.div
+                            initial={prefersReducedMotion ? false : { opacity: 0, y: 12, scale: 0.94 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 19, mass: 0.85 }}
+                            className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5"
+                        >
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">تمرکز عمیق</span>
+                                    <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                                        تمرکز عمیق
+                                    </span>
                                     <span className="text-sm sm:text-base font-black text-on-surface tabular-nums mt-0.5">
                                         {formatToPersianDigits(studyHoursDecimal)}{' '}
                                         <span className="text-xs font-semibold text-[var(--text-tertiary)]">
@@ -385,7 +372,7 @@ export const Dashboard: React.FC = () => {
                                     </span>
                                 </div>
 
-                                <div className="relative w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
+                                <div className="relative w-12 h-12 sm:w-13 sm:h-13 flex items-center justify-center shrink-0">
                                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48" aria-hidden="true">
                                         <circle
                                             className="text-surface-container-high dark:text-slate-800 fill-none"
@@ -393,12 +380,14 @@ export const Dashboard: React.FC = () => {
                                             stroke="currentColor"
                                             strokeWidth="4.5"
                                         />
-                                        <circle
-                                            className="text-primary fill-none transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)]"
+                                        <motion.circle
+                                            className="text-primary fill-none"
                                             cx="24" cy="24" r="19"
                                             stroke="currentColor"
                                             strokeDasharray="119.38"
-                                            strokeDashoffset={119.38 - (119.38 * (focusProgressPct / 100))}
+                                            initial={prefersReducedMotion ? false : { strokeDashoffset: 119.38 }}
+                                            animate={{ strokeDashoffset: 119.38 - (119.38 * (focusProgressPct / 100)) }}
+                                            transition={{ type: 'spring', stiffness: 140, damping: 20 }}
                                             strokeLinecap="round"
                                             strokeWidth="4.5"
                                         />
@@ -409,19 +398,32 @@ export const Dashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
-                                <div
-                                    className="h-full rounded-full bg-primary transition-all duration-300"
-                                    style={{ width: `${focusProgressPct}%` }}
-                                />
+                            <div className="flex flex-col gap-1">
+                                <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
+                                    <motion.div
+                                        initial={prefersReducedMotion ? false : { width: 0 }}
+                                        animate={{ width: `${focusProgressPct}%` }}
+                                        transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+                                        className="h-full rounded-full bg-gradient-to-l from-primary to-violet-500"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        </motion.div>
 
-                        {/* Mini Card 2: Today's Tasks Progress Card */}
-                        <div className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5">
+                        {/* Mini Card 2: Animated Today's Tasks Progress Card */}
+                        <motion.div
+                            initial={prefersReducedMotion ? false : { opacity: 0, y: 12, scale: 0.94 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 19, mass: 0.85, delay: 0.04 }}
+                            className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5"
+                        >
                             <div className="flex items-start justify-between gap-2">
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">پیشرفت تسک‌ها</span>
+                                    <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" aria-hidden="true" />
+                                        پیشرفت تسک‌ها
+                                    </span>
                                     <span className="text-sm sm:text-base font-black text-on-surface tabular-nums mt-0.5">
                                         {formatToPersianDigits(completedDailyTasks)}{' '}
                                         <span className="text-xs font-semibold text-[var(--text-tertiary)]">
@@ -429,7 +431,7 @@ export const Dashboard: React.FC = () => {
                                         </span>
                                     </span>
                                 </div>
-                                <span className="px-2 py-0.5 rounded-full bg-primary/12 text-primary text-[11px] font-extrabold tabular-nums shrink-0">
+                                <span className="px-2 py-0.5 rounded-full bg-secondary/12 text-secondary text-[11px] font-extrabold tabular-nums shrink-0">
                                     {formatToPersianDigits(dailyPct)}٪
                                 </span>
                             </div>
@@ -443,13 +445,15 @@ export const Dashboard: React.FC = () => {
                                           : 'بدون کار ثبت‌شده'}
                                 </span>
                                 <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
-                                    <div
-                                        className="h-full rounded-full bg-secondary transition-all duration-300"
-                                        style={{ width: `${dailyPct}%` }}
+                                    <motion.div
+                                        initial={prefersReducedMotion ? false : { width: 0 }}
+                                        animate={{ width: `${dailyPct}%` }}
+                                        transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+                                        className="h-full rounded-full bg-gradient-to-l from-secondary to-emerald-400"
                                     />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
@@ -486,52 +490,52 @@ export const Dashboard: React.FC = () => {
                 )}
 
             {/* ===== 2. 7-Day Persian Weekly Calendar with Liquid Fill Effect ===== */}
-            <section className="bento-card-interactive bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-[var(--border-subtle)] gap-3">
-                    <div className="flex items-center gap-2">
-                        <Calendar size={20} className="text-primary shrink-0" />
-                        <h2 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
-                            تقویم هفته جاری | {getShamsiDate(activeDateIso)}
+            <section className="bento-card-interactive bg-[var(--surface-elevated)] p-3.5 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[var(--border-subtle)] gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Calendar size={18} className="text-primary shrink-0" />
+                        <h2 className="font-headline-md text-xs sm:text-base font-bold text-on-surface truncate">
+                            تقویم هفته جاری
                         </h2>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                        <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-[var(--border-subtle)]">
-                            <button
-                                type="button"
-                                aria-label="هفته قبل"
-                                onClick={() => setWeekOffset(prev => prev - 1)}
-                                className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
-                            >
-                                <ChevronRight size={18} />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => { setWeekOffset(0); setSelectedDateOverride(todayIso); }}
-                                className="min-h-[40px] sm:min-h-[32px] px-3 py-1 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
-                            >
-                                امروز
-                            </button>
-                            <button
-                                type="button"
-                                aria-label="هفته بعد"
-                                onClick={() => setWeekOffset(prev => prev + 1)}
-                                className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
-                            >
-                                <ChevronLeft size={18} />
-                            </button>
-                        </div>
+                    <div className="flex items-center gap-0.5 bg-surface-container-low p-0.5 rounded-xl border border-[var(--border-subtle)] shrink-0">
+                        <button
+                            type="button"
+                            aria-label="هفته قبل"
+                            onClick={() => setWeekOffset(prev => prev - 1)}
+                            className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setWeekOffset(0); setSelectedDateOverride(todayIso); }}
+                            className="min-h-[34px] px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                        >
+                            امروز
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="هفته بعد"
+                            onClick={() => setWeekOffset(prev => prev + 1)}
+                            className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
                     </div>
                 </div>
 
-                {/* 7 Days Liquid Fill Strip — Visual Completion (~32% next-card peek) on mobile, 7-col grid on md+ */}
-                <div className="flex md:grid md:grid-cols-7 gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1">
+                {/* 7 Days Liquid Fill Strip — Date + Task Count Only (Percentage via Liquid Fill) */}
+                <div className="flex md:grid md:grid-cols-7 gap-2 sm:gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1">
                     {weekDays.map((d) => (
-                        <button
+                        <motion.button
                             key={d.iso}
                             type="button"
+                            whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 20 }}
                             onClick={() => setSelectedDateOverride(d.iso)}
-                            className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2.5 sm:p-3 squircle-sm border transition-colors duration-150 w-[calc((100%-2rem)/4.35)] min-w-[68px] shrink-0 md:w-auto md:min-w-0 md:shrink snap-start min-h-[96px] sm:min-h-[110px] cursor-pointer group ${
+                            className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2 sm:p-2.5 squircle-sm border transition-colors duration-150 w-[calc((100%-2rem)/4.8)] min-w-[58px] shrink-0 md:w-auto md:min-w-0 md:shrink snap-start min-h-[76px] sm:min-h-[84px] cursor-pointer group ${
                                 d.isSelected
                                     ? 'border-primary ring-2 ring-primary/30 bg-[var(--surface-elevated)]'
                                     : d.isToday
@@ -556,159 +560,70 @@ export const Dashboard: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* Content Layer with z-10 */}
-                            <div className="relative z-10 w-full flex flex-col items-center gap-1 text-center">
-                                <div className="flex items-center justify-center w-full text-[11px] sm:text-xs">
-                                    <span
-                                        className="font-bold px-2 py-0.5 rounded-lg bg-surface-container-high/60 dark:bg-slate-700/60 text-on-surface dark:text-white"
-                                        title={d.weekday}
-                                    >
-                                        {d.shortWeekday}
-                                    </span>
-                                </div>
-                                <span className="text-base sm:text-xl font-display-md font-bold text-on-surface dark:text-white my-0.5">
+                            {/* Date Number Only */}
+                            <div className="relative z-10 flex-1 flex items-center justify-center">
+                                <span
+                                    title={d.weekday}
+                                    className="text-base sm:text-xl font-display-md font-black text-on-surface dark:text-white tabular-nums"
+                                >
                                     {d.shamsiDayNum}
                                 </span>
                             </div>
 
-                            {/* Bottom Reservoir Metric */}
-                            <div className="relative z-10 w-full flex items-center justify-between text-xs pt-1 border-t border-[var(--border-subtle)]">
-                                <span className="text-[var(--text-secondary)] font-medium">
+                            {/* Bottom Task Count Metric Only */}
+                            <div className="relative z-10 w-full flex items-center justify-center text-[11px] pt-1 border-t border-[var(--border-subtle)]">
+                                <span className="text-[var(--text-secondary)] font-bold tabular-nums">
                                     {formatToPersianDigits(d.done)}/{formatToPersianDigits(d.total)}
                                 </span>
-                                <span className={`font-bold font-mono ${d.isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'}`}>
-                                    {formatToPersianDigits(d.pct)}٪
-                                </span>
                             </div>
-                        </button>
+                        </motion.button>
                     ))}
                 </div>
             </section>
 
-            {/* ===== 3. Balanced 2-Column Key Metrics (Clean Single-Elevation Surfaces) ===== */}
-            <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {/* Tile 1: Streak / Chain Continuity (Principle 17: Solid Drawing) */}
-                <TactileDepthCard className="squircle-card">
-                <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-card border border-[var(--border-subtle)] flex items-center justify-between h-full">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-xs text-[var(--text-secondary)] font-medium">
-                            استمرار مطالعاتی و زنجیره پیوستگی
-                        </span>
+            {/* ===== 3. Compact Warm Yellow Streak Card (Duplicate Task KPI Removed) ===== */}
+            <motion.section
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 20 }}
+                className="bg-gradient-to-l from-amber-500/22 via-amber-400/12 to-yellow-500/8 dark:from-amber-500/20 dark:via-amber-500/10 dark:to-yellow-500/5 px-4 py-3 squircle-card border border-amber-500/40 flex items-center justify-between gap-3"
+            >
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/25 flex items-center justify-center text-amber-500 shrink-0 shadow-xs">
+                        <Flame size={21} className="fill-current text-amber-500" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
                         <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl sm:text-3xl font-extrabold text-tertiary tabular-nums">
+                            <span className="text-lg sm:text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
                                 {formatToPersianDigits(streakCount)}
                             </span>
-                            <span className="text-xs sm:text-sm font-bold text-on-surface">روز پیوسته</span>
+                            <span className="text-xs sm:text-sm font-extrabold text-on-surface">روز پیوسته</span>
                         </div>
-                        <span className="text-xs text-tertiary font-semibold flex items-center gap-1 mt-1 tabular-nums">
-                            <TrendingUp size={14} className="shrink-0" aria-hidden="true" />
+                        <span className="text-[11px] text-amber-700 dark:text-amber-300/90 font-semibold truncate tabular-nums">
                             {streakCount > 0
-                                ? `بیشترین رکورد ثبت‌شده: ${formatToPersianDigits(streakStats?.longestStreak ?? streakCount)} روز`
+                                ? `رکورد: ${formatToPersianDigits(streakStats?.longestStreak ?? streakCount)} روز`
                                 : 'با ثبت اولین فعالیت امروز زنجیره را روشن کنید'}
                         </span>
                     </div>
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 squircle-sm bg-tertiary-fixed/60 flex items-center justify-center text-tertiary shrink-0">
-                        <Flame size={26} className="fill-current text-tertiary" aria-hidden="true" />
-                    </div>
                 </div>
-                </TactileDepthCard>
-
-                {/* Tile 2: Task Progress */}
-                <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-card shadow-xs border border-[var(--border-subtle)] flex items-center justify-between">
-                    <div className="flex flex-col gap-1 flex-1 pe-4">
-                        <span className="text-xs text-[var(--text-secondary)] font-medium">وظایف کلیدی امروز</span>
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-2xl sm:text-3xl font-extrabold text-secondary tabular-nums">
-                                {formatToPersianDigits(completedDailyTasks)}
-                            </span>
-                            <span className="text-xs sm:text-sm font-bold text-on-surface tabular-nums">
-                                از {formatToPersianDigits(dailyTasks.length)} تسک
-                            </span>
-                        </div>
-                        <div className="w-full max-w-xs bg-surface-container h-2 rounded-full overflow-hidden mt-2">
-                            <div
-                                className="bg-secondary h-full rounded-full transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)]"
-                                style={{ width: `${dailyPct}%` }}
-                            />
-                        </div>
-                    </div>
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-secondary-fixed/50 flex items-center justify-center text-secondary shrink-0">
-                        <CheckCircle2 size={26} aria-hidden="true" />
-                    </div>
-                </div>
-            </section>
+                <TrendingUp size={18} className="text-amber-500 shrink-0 opacity-80" aria-hidden="true" />
+            </motion.section>
 
             {/* ===== 4. Core Bento Layout (8 Cols Main / 4 Cols Side) ===== */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
                 {/* Main 8 Columns */}
                 <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
-                    {/* ===== Today's Mood Widget (5 Strict Levels + Vector SVGs, No Emojis) ===== */}
-                    <div className="bento-card-interactive bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-3.5">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2">
-                                <Sparkles size={20} className="text-primary shrink-0" />
-                                <h3 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
-                                    مود امروز
-                                </h3>
-                            </div>
-                            <span className="font-label-sm text-xs text-[var(--text-secondary)]">
-                                ثبت وضعیت زیستی و روانی برای تطبیق هوشمند فشار مطالعه
-                            </span>
-                        </div>
-
-                        {/* 5-Level Vector Grid */}
-                        <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2.5">
-                            {MOOD_LEVELS.map((m) => {
-                                const isSelected = currentMood === m.id;
-                                const MoodIcon = m.Icon;
-                                return (
-                                    <button
-                                        key={m.id}
-                                        type="button"
-                                        onClick={() => {
-                                            haptics.selection();
-                                            handleSelectMood(m.id);
-                                        }}
-                                        className={`touch-target flex flex-col items-center justify-center p-3 squircle-sm border transition-all duration-200 cursor-pointer min-h-[76px] gap-1.5 ${
-                                            isSelected ? m.themeActive : m.themeDefault
-                                        }`}
-                                    >
-                                        <motion.span
-                                            animate={
-                                                prefersReducedMotion
-                                                    ? undefined
-                                                    : isSelected
-                                                      ? SQUASH_STRETCH_KEYFRAMES
-                                                      : { scaleX: 1, scaleY: 1 }
-                                            }
-                                            transition={TRANSITION_SQUASH}
-                                            className="inline-flex"
-                                        >
-                                            <MoodIcon className={`w-6 h-6 ${isSelected ? 'scale-110' : m.iconColor} transition-transform`} />
-                                        </motion.span>
-                                        <span className="font-label-md text-xs font-bold">{m.label}</span>
-                                        <span className="font-label-sm text-[10px] opacity-75">{m.subLabel}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* ===== Unified Tasks & Integrated Timeblocks Hub ===== */}
+                    {/* ===== Unified Tasks & Real Scheduled Timeblocks Hub ===== */}
                     <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-5">
-                        {/* 5.1 Integrated Timeblocks Preview Header */}
+                        {/* 5.1 Real Scheduled Timeblocks Preview (Only shown when user has scheduled tasks) */}
+                        {scheduledTimeblocks.length > 0 && (
                         <div className="bg-surface-container-low/70 p-4 squircle-card border border-[var(--border-subtle)] flex flex-col gap-3">
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div className="flex items-center gap-2">
                                     <Clock size={18} className="text-secondary shrink-0" />
                                     <h4 className="font-headline-md text-sm sm:text-base font-bold text-on-surface">
-                                        بلوک‌های زمانی پیش‌رو
+                                        بلوک‌های زمانی امروز
                                     </h4>
-                                    {scheduledTimeblocks.length === 0 && (
-                                        <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300">
-                                            الگوی پیشنهادی
-                                        </span>
-                                    )}
                                 </div>
                                 <button
                                     type="button"
@@ -719,116 +634,45 @@ export const Dashboard: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* Continuity Connector Track + Horizontal Timeblock Flow (Visual Completion mobile peek + Connected Steps) */}
-                            <div className="relative">
-                                {/* Connected Timeline Track on Desktop */}
-                                <div className="hidden md:flex items-center justify-between px-12 mb-2 relative" aria-hidden="true">
-                                    <div className="absolute inset-x-16 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-l from-primary/60 via-secondary/45 to-[var(--border-strong)]" />
-                                    {[1, 2, 3].map((stepNum) => (
-                                        <span
-                                            key={stepNum}
-                                            className={`relative z-10 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center border ${
-                                                stepNum === 1
-                                                    ? 'bg-primary text-on-primary border-primary shadow-xs'
-                                                    : stepNum === 2
-                                                      ? 'bg-secondary-fixed text-on-secondary-fixed border-secondary/40'
-                                                      : 'bg-[var(--surface-elevated)] text-[var(--text-secondary)] border-[var(--border-strong)]'
-                                            }`}
-                                        >
-                                            {formatToPersianDigits(stepNum)}
-                                        </span>
-                                    ))}
-                                </div>
-
-                                {scheduledTimeblocks.length > 0 ? (
-                                    <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1 text-xs">
-                                        {scheduledTimeblocks.map((blk, i) => (
-                                            <div
-                                                key={blk.id}
-                                                className={`w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm border flex flex-col gap-1.5 relative ${
+                            <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1 text-xs">
+                                {scheduledTimeblocks.map((blk, i) => (
+                                    <div
+                                        key={blk.id}
+                                        className={`w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm border flex flex-col gap-1.5 relative ${
+                                            i === 0
+                                                ? 'bg-primary-fixed/35 dark:bg-primary-container/25 border-primary/40 ring-2 ring-primary/30 shadow-xs'
+                                                : 'bg-surface-container-lowest dark:bg-slate-800/80 border-outline-variant/10'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-1">
+                                            <span
+                                                className={`font-label-sm text-[10px] px-2 py-0.5 rounded font-bold ${
                                                     i === 0
-                                                        ? 'bg-primary-fixed/35 dark:bg-primary-container/25 border-primary/40 ring-2 ring-primary/30 shadow-xs'
-                                                        : 'bg-surface-container-lowest dark:bg-slate-800/80 border-outline-variant/10'
+                                                        ? 'bg-primary text-on-primary'
+                                                        : i === 1
+                                                            ? 'bg-secondary-fixed text-on-secondary-fixed'
+                                                            : 'bg-surface-container-highest dark:bg-slate-700 text-on-surface-variant dark:text-gray-300'
                                                 }`}
                                             >
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <span
-                                                        className={`font-label-sm text-[10px] px-2 py-0.5 rounded font-bold ${
-                                                            i === 0
-                                                                ? 'bg-primary text-on-primary'
-                                                                : i === 1
-                                                                    ? 'bg-secondary-fixed text-on-secondary-fixed'
-                                                                    : 'bg-surface-container-highest dark:bg-slate-700 text-on-surface-variant dark:text-gray-300'
-                                                        }`}
-                                                    >
-                                                        {blk.badge}
-                                                    </span>
-                                                    <span className="text-xs text-on-surface font-semibold tabular-nums" dir="ltr">
-                                                        {formatToPersianDigits(blk.timeRange)}
-                                                    </span>
-                                                </div>
-                                                <h5 className={`text-xs font-bold text-on-surface mt-1 line-clamp-1 ${blk.isCompleted ? 'line-through opacity-60' : ''}`}>
-                                                    {blk.title}
-                                                </h5>
-                                                <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
-                                                    {blk.subtitle}
-                                                </p>
-                                            </div>
-                                        ))}
+                                                {blk.badge}
+                                            </span>
+                                            <span className="text-xs text-on-surface font-semibold tabular-nums" dir="ltr">
+                                                {formatToPersianDigits(blk.timeRange)}
+                                            </span>
+                                        </div>
+                                        <h5 className={`text-xs font-bold text-on-surface mt-1 line-clamp-1 ${blk.isCompleted ? 'line-through opacity-60' : ''}`}>
+                                            {blk.title}
+                                        </h5>
+                                        <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
+                                            {blk.subtitle}
+                                        </p>
                                     </div>
-                                ) : (
-                                    <div className="flex md:grid md:grid-cols-3 gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1 text-xs">
-                                        {/* Suggested Block 1 (Principle 13: Von Restorff focal prominence) */}
-                                        <div className="w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm bg-primary-fixed/35 border border-primary/40 ring-2 ring-primary/30 shadow-xs flex flex-col gap-1.5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[11px] bg-primary text-on-primary px-2 py-0.5 rounded font-bold">
-                                                    بلوک جاری
-                                                </span>
-                                                <span className="text-xs text-[var(--text-secondary)] font-semibold">پیشنهادی</span>
-                                            </div>
-                                            <h5 className="text-xs font-bold text-on-surface mt-1 line-clamp-1">
-                                                {dailyTasks[0]?.topic || 'مطالعه متمرکز کلیدی'}
-                                            </h5>
-                                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
-                                                {dailyTasks[0]?.subject || 'برای زمان‌بندی دقیق به تایم‌لاین بروید'}
-                                            </p>
-                                        </div>
-
-                                        {/* Suggested Block 2 */}
-                                        <div className="w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex flex-col gap-1.5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[11px] bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded font-semibold">
-                                                    استراحت هوشمند
-                                                </span>
-                                                <span className="text-xs text-[var(--text-secondary)]">۱۵ دقیقه</span>
-                                            </div>
-                                            <h5 className="text-xs font-bold text-on-surface mt-1 line-clamp-1">
-                                                ریکاوری ذهن و نوشیدن آب
-                                            </h5>
-                                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1">فاصله گرفتن از نمایشگر بین بلوک‌ها</p>
-                                        </div>
-
-                                        {/* Suggested Block 3 */}
-                                        <div className="w-[74%] shrink-0 snap-start md:w-auto p-3 squircle-sm bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex flex-col gap-1.5">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[11px] bg-surface-container-highest text-[var(--text-secondary)] px-2 py-0.5 rounded font-semibold">
-                                                    بلوک عصر
-                                                </span>
-                                                <span className="text-xs text-[var(--text-secondary)]">مرور</span>
-                                            </div>
-                                            <h5 className="text-xs font-bold text-on-surface mt-1 line-clamp-1">
-                                                {dailyTasks[1]?.topic || 'مرور و تثبیت یادداشت‌ها'}
-                                            </h5>
-                                            <p className="text-xs text-[var(--text-secondary)] line-clamp-1">
-                                                {dailyTasks[1]?.subject || 'زمان‌بندی نشده در تایم‌لاین'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </div>
+                        )}
 
-                        {/* 5.2 Tasks List Header */}
+                        {/* 5.2 Tasks List Header (Clean — redundant buttons removed) */}
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                             <div className="flex items-center gap-2">
                                 <CheckCircle2 size={20} className="text-primary" />
@@ -836,36 +680,19 @@ export const Dashboard: React.FC = () => {
                                     تسک‌های امروز ({formatToPersianDigits(completedDailyTasks)} از {formatToPersianDigits(dailyTasks.length)})
                                 </h3>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                {isAcademicStream && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setOnlySpecialized(!onlySpecialized)}
-                                        className={`min-h-[40px] sm:min-h-[34px] text-xs px-2.5 py-1 rounded-lg font-bold transition-all border cursor-pointer ${
-                                            onlySpecialized
-                                                ? 'bg-primary/10 text-primary border-primary/30'
-                                                : 'bg-surface-container-low text-[var(--text-secondary)] border-[var(--border-subtle)]'
-                                        }`}
-                                    >
-                                        {onlySpecialized ? 'فقط دروس تخصصی' : 'همه دروس'}
-                                    </button>
-                                )}
+                            {isAcademicStream && (
                                 <button
                                     type="button"
-                                    onClick={() => navigate('/subjects')}
-                                    className="md:hidden min-h-[40px] text-xs text-[var(--text-secondary)] hover:text-on-surface font-bold hover:bg-surface-container px-2.5 py-1 rounded-lg transition cursor-pointer"
+                                    onClick={() => setOnlySpecialized(!onlySpecialized)}
+                                    className={`min-h-[40px] sm:min-h-[34px] text-xs px-2.5 py-1 rounded-lg font-bold transition-all border cursor-pointer ${
+                                        onlySpecialized
+                                            ? 'bg-primary/10 text-primary border-primary/30'
+                                            : 'bg-surface-container-low text-[var(--text-secondary)] border-[var(--border-subtle)]'
+                                    }`}
                                 >
-                                    مدیریت حوزه‌ها
+                                    {onlySpecialized ? 'فقط دروس تخصصی' : 'همه دروس'}
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={openNewTaskModal}
-                                    className="min-h-[40px] sm:min-h-[34px] text-xs text-primary font-bold hover:bg-primary/10 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
-                                >
-                                    <Plus size={14} />
-                                    افزودن تسک
-                                </button>
-                            </div>
+                            )}
                         </div>
 
                         {/* Subject Filters Carousel */}
@@ -1061,40 +888,6 @@ export const Dashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
-
-            {/* ===== Bottom Bento: Brain Dump & Quick Capture Bar ===== */}
-            <section className="bg-[var(--surface-elevated)] p-4 squircle-lg shadow-xs border border-[var(--border-subtle)] flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="w-10 h-10 rounded-xl bg-primary-fixed flex items-center justify-center text-on-primary-fixed shrink-0">
-                        <Sparkles size={20} aria-hidden="true" />
-                    </div>
-                    <div className="flex flex-col text-right">
-                        <span className="text-xs sm:text-sm font-bold text-on-surface">
-                            تخلیه ذهن و ثبت سریع
-                        </span>
-                        <span className="text-xs text-[var(--text-secondary)]">
-                            {brainDumpFeedback || 'ثبت هرگونه ایده، استرس لحظه‌ای یا وظیفه سریع بدون خروج از تمرکز'}
-                        </span>
-                    </div>
-                </div>
-
-                <form onSubmit={handleBrainDumpSubmit} className="relative w-full md:w-2/5 flex items-center">
-                    <input
-                        type="text"
-                        value={brainDumpText}
-                        onChange={(e) => setBrainDumpText(e.target.value)}
-                        placeholder="ثبت ایده یا تسک جدید..."
-                        aria-label="ثبت سریع ایده یا تسک"
-                        className="w-full min-h-[48px] ps-4 pe-24 bg-surface-container-low rounded-xl text-on-surface text-base sm:text-sm placeholder:text-[var(--text-secondary)] focus:outline-none focus:bg-[var(--surface-elevated)] focus:border-primary border border-[var(--border-subtle)] transition-all"
-                    />
-                    <button
-                        type="submit"
-                        className="touch-target absolute end-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:brightness-110 transition-all cursor-pointer min-h-[40px]"
-                    >
-                        ثبت سریع
-                    </button>
-                </form>
-            </section>
 
             {/* Task Modal for Creating / Editing Tasks */}
             {isModalOpen && (
