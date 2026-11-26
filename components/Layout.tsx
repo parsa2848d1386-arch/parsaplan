@@ -647,35 +647,36 @@ const Layout = () => {
                             <SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="mobile" />
                         </motion.div>
 
-                        {/* Top-Left Floating Capsule: The outer capsule itself morphs into Search or Notification panel */}
-                        {!(isNotificationOpen || (isMobile && isCommandPaletteOpen)) ? (
-                            <motion.div
-                                layoutId={isMobile ? 'morph-top-left-capsule' : undefined}
-                                transition={{ type: 'spring', stiffness: 220, damping: 26, mass: 0.9 }}
-                                style={{ willChange: 'transform, border-radius' }}
-                                className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]"
+                        {/* Top-Left Floating Capsule: Elastic liquid-glass bubble reaction matching the menu bubble */}
+                        <motion.div
+                            animate={
+                                prefersReducedMotion
+                                    ? undefined
+                                    : { scale: isNotificationOpen || (isMobile && isCommandPaletteOpen) ? 0.92 : 1 }
+                            }
+                            transition={{ type: 'spring', stiffness: 400, damping: 14, mass: 0.75, restDelta: 0.01 }}
+                            style={{ transformOrigin: 'top left', willChange: 'transform' }}
+                            className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]"
+                        >
+                            <motion.button
+                                type="button"
+                                onClick={handleTriggerSearch}
+                                whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
+                                whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+                                transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                                aria-label="جستجو و دستورات"
+                                title="جستجو و دستورات"
+                                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-150 cursor-pointer shrink-0 ${
+                                    isSearchExpanded || isCommandPaletteOpen
+                                        ? 'bg-primary text-on-primary shadow-sm'
+                                        : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
+                                }`}
                             >
-                                <motion.button
-                                    type="button"
-                                    onClick={handleTriggerSearch}
-                                    whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
-                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
-                                    transition={SPRING_SNAPPY}
-                                    aria-label="جستجو و دستورات"
-                                    title="جستجو و دستورات"
-                                    className="w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-150 cursor-pointer shrink-0 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white"
-                                >
-                                    <Search size={18} className="shrink-0" />
-                                </motion.button>
+                                <Search size={18} className="shrink-0" />
+                            </motion.button>
 
-                                <NotificationBell morphMode isOpenExternal={isNotificationOpen} onOpenChange={setIsNotificationOpen} />
-                            </motion.div>
-                        ) : (
-                            <>
-                                <div className="w-[100px] h-[54px] pointer-events-none" aria-hidden="true" />
-                                <NotificationBell morphMode isOpenExternal={isNotificationOpen} onOpenChange={setIsNotificationOpen} renderTrigger={false} />
-                            </>
-                        )}
+                            <NotificationBell morphMode isOpenExternal={isNotificationOpen} onOpenChange={setIsNotificationOpen} />
+                        </motion.div>
                     </header>
 
                     {/* Page Content — Never hidden when mobile AI drawer opens so scroll position is preserved */}
@@ -719,13 +720,14 @@ const Layout = () => {
                     <div aria-hidden="true" className="scroll-edge-fade-top" />
                     <div aria-hidden="true" className="scroll-edge-fade-bottom" />
 
-                    {/* Bottom Nav — Smooth Auto-Compacting Liquid Glass Capsule + Inviting AI Button */}
+                    {/* Bottom Nav — Smooth GPU-Fluid Auto-Compacting Liquid Glass Capsule (concrete max-width transition, zero opening lag) + Inviting AI Button */}
                     <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 max-w-[430px] mx-auto flex items-center justify-between gap-2.5 pointer-events-none md:hidden">
                         <nav
                             onClick={expandBottomNav}
                             aria-label="منوی موبایل"
-                            className={`pointer-events-auto rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                                isBottomNavCompact ? 'w-auto' : 'flex-1 min-w-0'
+                            style={{ willChange: 'max-width' }}
+                            className={`pointer-events-auto flex-1 min-w-0 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5 transition-[max-width] duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                                isBottomNavCompact ? 'max-w-[232px]' : 'max-w-[356px]'
                             }`}
                         >
                             <LayoutGroup id="mobile-bottom-nav">
@@ -750,14 +752,12 @@ const Layout = () => {
                                                 onTouchStart={() => prefetchRoute(tab.to)}
                                                 onFocus={() => prefetchRoute(tab.to)}
                                                 className={({ isActive }) =>
-                                                    `relative flex items-center justify-center rounded-full transition-all duration-200 active:scale-[0.95] ${
-                                                        isBottomNavCompact
-                                                            ? isActive
-                                                                ? 'min-h-[46px] h-[48px] px-3.5 text-on-primary-fixed font-extrabold'
-                                                                : 'w-9 h-[46px] px-0 text-on-surface/70 dark:text-slate-300'
-                                                            : isActive
-                                                                ? 'flex-[1.45] flex-col min-h-[48px] h-[52px] px-2 text-on-primary-fixed font-extrabold'
-                                                                : 'flex-[0.85] flex-col min-h-[48px] h-[50px] px-1 text-on-surface/75 dark:text-slate-300 hover:text-on-surface dark:hover:text-white font-medium'
+                                                    `relative flex flex-col items-center justify-center h-[50px] rounded-full transition-[flex,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.95] overflow-hidden ${
+                                                        isActive
+                                                            ? 'flex-[1.55] px-2.5 text-on-primary-fixed font-extrabold'
+                                                            : isBottomNavCompact
+                                                              ? 'flex-[0.55] px-0.5 text-on-surface/70 dark:text-slate-300'
+                                                              : 'flex-[0.85] px-1 text-on-surface/75 dark:text-slate-300 hover:text-on-surface dark:hover:text-white font-medium'
                                                     }`
                                                 }
                                             >
@@ -766,18 +766,16 @@ const Layout = () => {
                                                         {isActive && (
                                                             <motion.span
                                                                 layoutId="mobileBottomNavActivePill"
-                                                                transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                                                                transition={
+                                                                    prefersReducedMotion
+                                                                        ? { duration: 0 }
+                                                                        : { type: 'spring', stiffness: 360, damping: 24, mass: 0.85 }
+                                                                }
                                                                 aria-hidden="true"
                                                                 className="absolute inset-0 rounded-full bg-primary-fixed/85 dark:bg-[#2a2f6c]/90 shadow-xs ring-1 ring-primary/20 dark:ring-primary/40"
                                                             />
                                                         )}
-                                                        <span
-                                                            className={`relative z-10 flex items-center justify-center max-w-full ${
-                                                                isBottomNavCompact && isActive
-                                                                    ? 'flex-row gap-1.5'
-                                                                    : 'flex-col gap-0.5'
-                                                            }`}
-                                                        >
+                                                        <span className="relative z-10 flex flex-col items-center justify-center gap-0.5 max-w-full">
                                                             <Icon
                                                                 size={isActive ? 20 : 16}
                                                                 strokeWidth={isActive ? 2.4 : 1.85}
@@ -785,15 +783,13 @@ const Layout = () => {
                                                                 className="shrink-0 transition-transform duration-200"
                                                             />
                                                             <span
-                                                                className={
+                                                                className={`leading-tight truncate max-w-full transition-[opacity,max-height] duration-250 ease-out ${
                                                                     isBottomNavCompact && !isActive
-                                                                        ? 'sr-only'
-                                                                        : `leading-tight truncate max-w-full ${
-                                                                              isActive
-                                                                                  ? 'text-[12px] font-extrabold'
-                                                                                  : 'text-[10.5px] opacity-80'
-                                                                          }`
-                                                                }
+                                                                        ? 'max-h-0 opacity-0 pointer-events-none'
+                                                                        : isActive
+                                                                          ? 'max-h-5 opacity-100 text-[12px] font-extrabold'
+                                                                          : 'max-h-5 opacity-80 text-[10.5px]'
+                                                                }`}
                                                             >
                                                                 {tab.label}
                                                             </span>

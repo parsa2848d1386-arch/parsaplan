@@ -283,21 +283,31 @@ export const CommandPalette: React.FC = () => {
                         ref={dialogRef}
                         tabIndex={-1}
                         onClick={(e) => e.stopPropagation()}
-                        layoutId={isMobile ? 'morph-top-left-capsule' : undefined}
                         initial={
-                            isMobile || prefersReducedMotion
+                            prefersReducedMotion
                                 ? false
-                                : { opacity: 0, scale: 0.94, y: -8 }
+                                : isMobile
+                                  ? { opacity: 0, scale: 0.24, y: -6, borderRadius: 48 }
+                                  : { opacity: 0, scale: 0.94, y: -8 }
                         }
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        animate={{ opacity: 1, scale: 1, y: 0, borderRadius: 26 }}
                         exit={
-                            isMobile || prefersReducedMotion
-                                ? undefined
-                                : { opacity: 0, scale: 0.95, y: -6 }
+                            prefersReducedMotion
+                                ? { opacity: 0 }
+                                : isMobile
+                                  ? { opacity: 0, scale: 0.22, y: -6, borderRadius: 48, transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] } }
+                                  : { opacity: 0, scale: 0.96, y: -4, transition: { duration: 0.14, ease: 'easeOut' } }
                         }
-                        transition={{ type: 'spring', stiffness: 220, damping: 26, mass: 0.9 }}
-                        style={{ willChange: 'transform, border-radius' }}
-                        className="bg-[var(--surface-elevated)] rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
+                        transition={{ type: 'spring', stiffness: 340, damping: 18, mass: 0.85, restDelta: 0.015, restSpeed: 0.5 }}
+                        style={{
+                            transformOrigin: isMobile ? '28px 26px' : 'top center',
+                            willChange: 'transform, opacity',
+                        }}
+                        className={`${
+                            isMobile
+                                ? 'liquid-glass-nav glass-pill-shadow'
+                                : 'bg-[var(--surface-elevated)]'
+                        } rounded-[26px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none`}
                     >
                 {/* Search Input Row */}
                 <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border-subtle)]">

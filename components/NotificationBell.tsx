@@ -93,28 +93,31 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     if (morphMode) {
         return (
             <div className="relative" ref={dropdownRef}>
-                {renderTrigger && (
-                    <motion.button
-                        type="button"
-                        onClick={() => {
-                            haptics.selection();
-                            setIsOpen(true);
-                        }}
-                        whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
-                        transition={SPRING_SNAPPY}
-                        aria-expanded={isOpen}
-                        className={`w-11 h-11 rounded-full flex items-center justify-center relative cursor-pointer transition-colors duration-150 hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface ${buttonClassName}`}
-                        aria-label="اعلان‌ها"
-                        title="اعلان‌ها"
-                    >
-                        {unreadCount > 0 && (
-                            <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
-                                <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
-                            </span>
-                        )}
-                        <Bell size={18} className="shrink-0" />
-                    </motion.button>
-                )}
+                <motion.button
+                    type="button"
+                    onClick={() => {
+                        haptics.selection();
+                        setIsOpen((prev) => !prev);
+                    }}
+                    animate={prefersReducedMotion ? undefined : { scale: isOpen ? 0.9 : 1 }}
+                    whileTap={prefersReducedMotion ? undefined : { scale: 0.86 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 14, mass: 0.75, restDelta: 0.01 }}
+                    aria-expanded={isOpen}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center relative cursor-pointer transition-colors duration-150 ${
+                        isOpen
+                            ? 'bg-primary text-on-primary shadow-sm'
+                            : 'hover:bg-surface-container text-[var(--text-secondary)] hover:text-on-surface'
+                    } ${buttonClassName}`}
+                    aria-label="اعلان‌ها"
+                    title="اعلان‌ها"
+                >
+                    {unreadCount > 0 && (
+                        <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+                            <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[var(--surface-elevated)]" />
+                        </span>
+                    )}
+                    <Bell size={18} className="shrink-0" />
+                </motion.button>
 
                 {typeof document !== 'undefined' &&
                     createPortal(
@@ -126,15 +129,38 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                     exit={{ opacity: 0 }}
                                     transition={{ duration: 0.2 }}
                                     onClick={() => setIsOpen(false)}
-                                    className="fixed inset-0 z-[60] bg-slate-950/35 dark:bg-black/50 flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] px-3"
+                                    className="fixed inset-0 z-[60] bg-slate-950/30 dark:bg-black/45"
                                     dir="rtl"
                                 >
                                     <motion.div
-                                        layoutId="morph-top-left-capsule"
-                                        transition={{ type: 'spring', stiffness: 220, damping: 26, mass: 0.9 }}
-                                        style={{ willChange: 'transform, border-radius' }}
+                                        initial={
+                                            prefersReducedMotion
+                                                ? false
+                                                : { opacity: 0, scale: 0.24, y: -6, borderRadius: 48 }
+                                        }
+                                        animate={{ opacity: 1, scale: 1, y: 0, borderRadius: 26 }}
+                                        exit={
+                                            prefersReducedMotion
+                                                ? { opacity: 0 }
+                                                : {
+                                                      opacity: 0,
+                                                      scale: 0.22,
+                                                      y: -6,
+                                                      borderRadius: 48,
+                                                      transition: { duration: 0.22, ease: [0.32, 0.72, 0, 1] },
+                                                  }
+                                        }
+                                        transition={{
+                                            type: 'spring',
+                                            stiffness: 340,
+                                            damping: 18,
+                                            mass: 0.85,
+                                            restDelta: 0.015,
+                                            restSpeed: 0.5,
+                                        }}
+                                        style={{ transformOrigin: '28px 26px', willChange: 'transform, opacity' }}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="w-full max-w-[430px] rounded-[26px] bg-[var(--surface-elevated)] border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"
+                                        className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] left-3 w-[min(calc(100vw-1.5rem),360px)] rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"
                                     >
                                         <motion.div
                                             initial={prefersReducedMotion ? false : { opacity: 0 }}
