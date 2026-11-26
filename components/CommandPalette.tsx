@@ -282,16 +282,16 @@ export const CommandPalette: React.FC = () => {
                 initial={
                     prefersReducedMotion
                         ? false
-                        : { opacity: 0.4, scaleX: 0.24, scaleY: 0.16, borderRadius: 9999 }
+                        : { opacity: 0, scale: 0.9, y: -10 }
                 }
-                animate={{ opacity: 1, scaleX: 1, scaleY: 1, borderRadius: 26 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={
                     prefersReducedMotion
                         ? { opacity: 0 }
-                        : { opacity: 0, scaleX: 0.24, scaleY: 0.16, borderRadius: 9999 }
+                        : { opacity: 0, scale: 0.94, y: -8 }
                 }
-                transition={SPRING_SNAPPY}
-                style={{ transformOrigin: 'top left' }}
+                transition={{ type: 'spring', stiffness: 440, damping: 32, mass: 0.75 }}
+                style={{ transformOrigin: 'top left', willChange: 'transform, opacity' }}
                 className="bg-[var(--surface-elevated)] squircle-lg max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none"
             >
                 {/* Search Input Row */}

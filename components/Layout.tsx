@@ -649,53 +649,27 @@ const Layout = () => {
                             <SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="mobile" />
                         </motion.div>
 
-                        {/* Top-Left Floating Capsule: Morphs & stretches into active Search or Notification panel */}
-                        <motion.div
-                            layout
-                            transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
-                            className={`pointer-events-auto flex items-center gap-1 rounded-full ${
-                                isNotificationOpen
-                                    ? 'p-0 border-0 bg-transparent shadow-none'
-                                    : 'p-1 liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]'
-                            }`}
-                        >
-                            {!isNotificationOpen && (
-                                <motion.button
-                                    layout
-                                    type="button"
-                                    onClick={handleTriggerSearch}
-                                    whileHover={prefersReducedMotion ? undefined : { scale: 1.04 }}
-                                    whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
-                                    transition={SPRING_SNAPPY}
-                                    aria-label="جستجو و دستورات"
-                                    title="جستجو و دستورات"
-                                    className={`h-11 rounded-full flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                                        isSearchExpanded || isCommandPaletteOpen
-                                            ? 'bg-primary text-on-primary shadow-sm px-3.5 gap-2'
-                                            : 'w-11 text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
-                                    }`}
-                                >
-                                    <Search size={18} className="shrink-0" />
-                                    <AnimatePresence initial={false}>
-                                        {(isSearchExpanded || isCommandPaletteOpen) && (
-                                            <motion.span
-                                                initial={prefersReducedMotion ? false : { opacity: 0, width: 0 }}
-                                                animate={{ opacity: 1, width: 'auto' }}
-                                                exit={{ opacity: 0, width: 0 }}
-                                                transition={SPRING_SNAPPY}
-                                                className="text-xs font-bold whitespace-nowrap overflow-hidden"
-                                            >
-                                                جستجو...
-                                            </motion.span>
-                                        )}
-                                    </AnimatePresence>
-                                </motion.button>
-                            )}
+                        {/* Top-Left Floating Capsule: Search + Notifications (GPU-smooth without unmounting siblings) */}
+                        <div className="pointer-events-auto flex items-center gap-1 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)]">
+                            <motion.button
+                                type="button"
+                                onClick={handleTriggerSearch}
+                                whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
+                                whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
+                                transition={SPRING_SNAPPY}
+                                aria-label="جستجو و دستورات"
+                                title="جستجو و دستورات"
+                                className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-150 cursor-pointer shrink-0 ${
+                                    isSearchExpanded || isCommandPaletteOpen
+                                        ? 'bg-primary text-on-primary shadow-sm'
+                                        : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
+                                }`}
+                            >
+                                <Search size={18} className="shrink-0" />
+                            </motion.button>
 
-                            {!(isSearchExpanded || isCommandPaletteOpen) && (
-                                <NotificationBell morphMode onOpenChange={setIsNotificationOpen} />
-                            )}
-                        </motion.div>
+                            <NotificationBell morphMode onOpenChange={setIsNotificationOpen} />
+                        </div>
                     </header>
 
                     {/* Page Content — Never hidden when mobile AI drawer opens so scroll position is preserved */}
@@ -739,14 +713,12 @@ const Layout = () => {
                     <div aria-hidden="true" className="scroll-edge-fade-top" />
                     <div aria-hidden="true" className="scroll-edge-fade-bottom" />
 
-                    {/* Bottom Nav — Auto-Compacting Liquid Glass Capsule (Collapses right on idle/scroll, expands on tap) + Inviting AI Button */}
+                    {/* Bottom Nav — Smooth Auto-Compacting Liquid Glass Capsule + Inviting AI Button */}
                     <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 z-40 max-w-[430px] mx-auto flex items-center justify-between gap-2.5 pointer-events-none md:hidden">
-                        <motion.nav
-                            layout
-                            transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                        <nav
                             onClick={expandBottomNav}
                             aria-label="منوی موبایل"
-                            className={`pointer-events-auto rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5 transition-[width] ${
+                            className={`pointer-events-auto rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1.5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                                 isBottomNavCompact ? 'w-auto' : 'flex-1 min-w-0'
                             }`}
                         >
@@ -827,7 +799,7 @@ const Layout = () => {
                                     })}
                                 </div>
                             </LayoutGroup>
-                        </motion.nav>
+                        </nav>
 
                         {/* Separate Circular AI Assistant Button — Distinct inviting accent tint */}
                         <motion.button
