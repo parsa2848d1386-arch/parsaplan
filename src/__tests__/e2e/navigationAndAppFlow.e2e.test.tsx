@@ -200,7 +200,7 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
         expect(screen.getAllByRole('button', { name: /دستیار هوشمند/ }).length).toBeGreaterThanOrEqual(1);
 
         // 4. Verify Dashboard content renders
-        expect(screen.getByText('تایمر فوکوس')).toBeInTheDocument();
+        expect(screen.getByText('تمرکز عمیق')).toBeInTheDocument();
         await waitFor(() => {
             expect(document.title).toContain('داشبورد');
         });
@@ -255,7 +255,7 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
 
         await waitFor(() => {
             expect(document.title).toContain('داشبورد');
-            expect(screen.getByText('تایمر فوکوس')).toBeInTheDocument();
+            expect(screen.getByText('تمرکز عمیق')).toBeInTheDocument();
         });
     });
 

@@ -238,6 +238,7 @@ export const Dashboard: React.FC = () => {
             .reduce((sum, t) => sum + (t.actualDuration || 0), 0);
     const studyHoursToday = Math.floor(studyMinsToday / 60);
     const studyRemMinsToday = studyMinsToday % 60;
+    const studyHoursDecimal = Math.round((studyMinsToday / 60) * 10) / 10;
     const focusTargetHours = Math.max(1, Math.round(((settings?.dailyCapacityMinutes ?? 360) / 60) * 10) / 10);
     const focusProgressPct = Math.min(100, Math.round((studyMinsToday / (focusTargetHours * 60)) * 100));
 
@@ -335,131 +336,154 @@ export const Dashboard: React.FC = () => {
     const streakCount = streakStats?.currentStreak ?? 0;
 
     return (
-        <div className="p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6 w-full max-app-container">
-            {/* Welcome banner for new users */}
-            <WelcomeBanner
-                visible={isNewUser}
-                onDismiss={() => setIsNewUser(false)}
-            />
+        <div className="flex flex-col w-full">
+            {/* ===== 1. Full-Bleed Edge-to-Edge Theme Gradient Hero Header ===== */}
+            <section
+                aria-label="خلاصه وضعیت امروز"
+                className="relative overflow-hidden -mt-[calc(4.25rem+env(safe-area-inset-top,0px))] md:-mt-16 pt-[calc(5.1rem+env(safe-area-inset-top,0px))] md:pt-22 pb-5 sm:pb-6 px-3.5 xs:px-4 sm:px-6 lg:px-8 rounded-b-[28px] sm:rounded-b-[32px] bg-gradient-to-br from-[var(--color-indigo-600)] via-[var(--md-primary)] to-[var(--color-violet-700)] dark:from-[var(--color-indigo-900)] dark:via-[var(--color-indigo-800)] dark:to-[var(--color-violet-950)] text-white shadow-lg"
+            >
+                {/* Ambient decorative highlights */}
+                <div className="absolute -top-16 -left-12 w-48 h-48 rounded-full bg-white/12 blur-2xl pointer-events-none" aria-hidden="true" />
+                <div className="absolute -bottom-20 -right-10 w-56 h-56 rounded-full bg-white/10 blur-3xl pointer-events-none" aria-hidden="true" />
 
-            {/* Native Workspace Preview Notice (Calm, non-promotional surface — Banner Blindness fix) */}
-            {isDemoActive && (
-                <div className="flex flex-wrap items-center justify-between gap-3 squircle-card px-4 py-2.5 bg-[var(--surface-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
-                        <span className="font-bold text-on-surface shrink-0">پیش‌نمایش نمونه</span>
-                        <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
-                        <span className="font-medium truncate sm:whitespace-normal">
-                            با ثبت اولین فعالیت یا جلسه تمرکز، داده‌های واقعی شما جایگزین می‌شوند.
-                        </span>
-                    </div>
-                    {dismissDemoMode && (
-                        <button
-                            type="button"
-                            onClick={dismissDemoMode}
-                            className="px-3 min-h-[44px] sm:min-h-[36px] rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold transition-colors cursor-pointer shrink-0"
-                        >
-                            بستن پیش‌نمایش
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {/* ===== 1. Hero Bento Banner (Principle 17: Solid Drawing Tactile 3D Depth + G2 Squircle) ===== */}
-            <TactileDepthCard className="squircle-lg">
-            <section className="relative overflow-hidden squircle-lg p-4 sm:p-6 border border-[var(--border-subtle)] bg-[var(--surface-elevated)] flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-                {/* Right Side: Greeting & Study Summary */}
-                <div className="flex flex-col gap-2.5 min-w-0 z-10 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-xl sm:text-2xl md:text-3xl text-on-surface font-extrabold leading-snug">
-                            {getTimeOfDayGreeting(new Date().getHours())}، {userName || 'دوست من'}
-                        </h1>
-                        <span className="text-xs bg-primary-fixed text-on-primary-fixed px-2.5 py-1 rounded-full font-semibold">
-                            {getShamsiDate(activeDateIso)}
-                        </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-secondary">
-                        <span className="whitespace-nowrap">سیستم آمادگی ذهنی فعال</span>
-                        <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
-                        <span className="text-[var(--text-secondary)] font-medium tabular-nums whitespace-nowrap">
-                            هدف روز: {formatToPersianDigits(focusTargetHours)} ساعت
-                        </span>
-                        <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
-                        <span className="text-[var(--text-secondary)] font-medium tabular-nums whitespace-nowrap">
-                            پیشرفت وظایف: {formatToPersianDigits(dailyPct)}٪
-                        </span>
-                    </div>
-
-                    <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-2xl">
-                        {studyMinsToday > 0
-                            ? `برنامه مطالعه روزانه: ${formatToPersianDigits(`${studyHoursToday} ساعت و ${studyRemMinsToday} دقیقه`)} تمرکز عمیق ثبت شده است.`
-                            : 'هنوز جلسه تمرکزی برای امروز ثبت نشده است؛ تایمر فوکوس را آغاز کنید.'}{' '}
-                        {dailyTasks.length > 0
-                            ? `${formatToPersianDigits(dailyTasks.length - completedDailyTasks)} تسک از ${formatToPersianDigits(dailyTasks.length)} تسک کلیدی باقی مانده.`
-                            : 'هنوز تسکی برای امروز برنامه‌ریزی نشده است.'}
-                    </p>
-                </div>
-
-                {/* Left Side: Compact Focus Ring & Thumb-Friendly Actions */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 z-10 shrink-0 w-full lg:w-auto">
-                    {/* Compact Interactive Progress Ring (Concentric inner radius 12px) */}
-                    <div className="flex items-center gap-3 bg-surface-container-low p-2.5 px-3.5 rounded-xl border border-[var(--border-subtle)]">
-                        <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
-                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48" aria-hidden="true">
-                                <circle
-                                    className="text-surface-container-high fill-none"
-                                    cx="24" cy="24" r="19"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                />
-                                <circle
-                                    className="text-primary fill-none transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)]"
-                                    cx="24" cy="24" r="19"
-                                    stroke="currentColor"
-                                    strokeDasharray="119.38"
-                                    strokeDashoffset={119.38 - (119.38 * (focusProgressPct / 100))}
-                                    strokeLinecap="round"
-                                    strokeWidth="4"
-                                />
-                            </svg>
-                            <span className="absolute text-[11px] font-bold tabular-nums text-on-surface">
-                                {formatToPersianDigits(focusProgressPct)}٪
-                            </span>
+                <div className="relative z-10 max-app-container w-full mx-auto flex flex-col gap-4">
+                    {/* Top Greeting & Compact New Task CTA */}
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-lg sm:text-2xl md:text-3xl text-white font-black leading-snug truncate">
+                                    {getTimeOfDayGreeting(new Date().getHours())}، {userName || 'دوست من'}
+                                </h1>
+                                <span className="text-[11px] sm:text-xs bg-white/20 backdrop-blur-md text-white px-2.5 py-0.5 rounded-full font-bold border border-white/20 shrink-0">
+                                    {getShamsiDate(activeDateIso)}
+                                </span>
+                            </div>
                         </div>
-                        <div className="flex flex-col text-right">
-                            <span className="text-xs text-[var(--text-secondary)] font-medium">تمرکز عمیق</span>
-                            <span className="text-sm font-bold text-on-surface tabular-nums" dir="ltr">
-                                {formatToPersianDigits(
-                                    `${String(studyHoursToday).padStart(2, '0')}:${String(studyRemMinsToday).padStart(2, '0')}`
-                                )}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Symmetric Full-Width Mobile CTAs */}
-                    <div className="grid grid-cols-2 sm:flex items-center gap-2.5">
-                        <button
-                            type="button"
-                            onClick={() => setIsTimerOpen(true)}
-                            className="touch-target flex items-center justify-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-sm font-bold text-xs cursor-pointer min-h-[46px] whitespace-nowrap"
-                        >
-                            <Play size={16} fill="currentColor" aria-hidden="true" />
-                            <span>تایمر فوکوس</span>
-                        </button>
 
                         <button
                             type="button"
                             onClick={openNewTaskModal}
-                            className="touch-target flex items-center justify-center gap-1.5 bg-surface-container-low text-on-surface hover:bg-surface-container px-4 py-2.5 rounded-xl border border-[var(--border-subtle)] active:scale-[0.98] transition-all font-bold text-xs cursor-pointer min-h-[46px] whitespace-nowrap"
+                            className="touch-target flex items-center justify-center gap-1.5 bg-white text-[var(--color-indigo-700)] dark:bg-white/95 dark:text-slate-900 px-3.5 py-2 rounded-full hover:brightness-95 active:scale-[0.97] transition-all shadow-md font-extrabold text-xs cursor-pointer min-h-[40px] whitespace-nowrap shrink-0"
                         >
-                            <Plus size={16} aria-hidden="true" />
+                            <Plus size={15} strokeWidth={2.6} aria-hidden="true" />
                             <span>تسک جدید</span>
                         </button>
                     </div>
+
+                    {/* Two Crisp White / Dark Mini Stat Cards */}
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
+                        {/* Mini Card 1: Upgraded Deep Focus Card */}
+                        <div className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">تمرکز عمیق</span>
+                                    <span className="text-sm sm:text-base font-black text-on-surface tabular-nums mt-0.5">
+                                        {formatToPersianDigits(studyHoursDecimal)}{' '}
+                                        <span className="text-xs font-semibold text-[var(--text-tertiary)]">
+                                            / {formatToPersianDigits(focusTargetHours)} ساعت
+                                        </span>
+                                    </span>
+                                </div>
+
+                                <div className="relative w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
+                                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48" aria-hidden="true">
+                                        <circle
+                                            className="text-surface-container-high dark:text-slate-800 fill-none"
+                                            cx="24" cy="24" r="19"
+                                            stroke="currentColor"
+                                            strokeWidth="4.5"
+                                        />
+                                        <circle
+                                            className="text-primary fill-none transition-all duration-300 ease-[cubic-bezier(0.42,0,0.58,1)]"
+                                            cx="24" cy="24" r="19"
+                                            stroke="currentColor"
+                                            strokeDasharray="119.38"
+                                            strokeDashoffset={119.38 - (119.38 * (focusProgressPct / 100))}
+                                            strokeLinecap="round"
+                                            strokeWidth="4.5"
+                                        />
+                                    </svg>
+                                    <span className="absolute text-[10px] sm:text-[11px] font-extrabold tabular-nums text-on-surface">
+                                        {formatToPersianDigits(focusProgressPct)}٪
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-primary transition-all duration-300"
+                                    style={{ width: `${focusProgressPct}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Mini Card 2: Today's Tasks Progress Card */}
+                        <div className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">پیشرفت تسک‌ها</span>
+                                    <span className="text-sm sm:text-base font-black text-on-surface tabular-nums mt-0.5">
+                                        {formatToPersianDigits(completedDailyTasks)}{' '}
+                                        <span className="text-xs font-semibold text-[var(--text-tertiary)]">
+                                            از {formatToPersianDigits(dailyTasks.length)} تسک
+                                        </span>
+                                    </span>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full bg-primary/12 text-primary text-[11px] font-extrabold tabular-nums shrink-0">
+                                    {formatToPersianDigits(dailyPct)}٪
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] truncate">
+                                    {dailyTasks.length > completedDailyTasks
+                                        ? `${formatToPersianDigits(dailyTasks.length - completedDailyTasks)} کار باقی‌مانده`
+                                        : dailyTasks.length > 0
+                                          ? 'همه کارها انجام شد'
+                                          : 'بدون کار ثبت‌شده'}
+                                </span>
+                                <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
+                                    <div
+                                        className="h-full rounded-full bg-secondary transition-all duration-300"
+                                        style={{ width: `${dailyPct}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
-            </TactileDepthCard>
+
+            {/* Main Dashboard Body */}
+            <div className="p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 flex flex-col gap-4 sm:gap-6 w-full max-app-container mx-auto">
+                {/* Welcome banner for new users */}
+                <WelcomeBanner
+                    visible={isNewUser}
+                    onDismiss={() => setIsNewUser(false)}
+                />
+
+                {/* Native Workspace Preview Notice (Calm, non-promotional surface — Banner Blindness fix) */}
+                {isDemoActive && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 squircle-card px-4 py-2.5 bg-[var(--surface-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+                            <span className="font-bold text-on-surface shrink-0">پیش‌نمایش نمونه</span>
+                            <span aria-hidden="true" className="text-[var(--text-muted)]">·</span>
+                            <span className="font-medium truncate sm:whitespace-normal">
+                                با ثبت اولین فعالیت یا جلسه تمرکز، داده‌های واقعی شما جایگزین می‌شوند.
+                            </span>
+                        </div>
+                        {dismissDemoMode && (
+                            <button
+                                type="button"
+                                onClick={dismissDemoMode}
+                                className="px-3 min-h-[44px] sm:min-h-[36px] rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold transition-colors cursor-pointer shrink-0"
+                            >
+                                بستن پیش‌نمایش
+                            </button>
+                        )}
+                    </div>
+                )}
 
             {/* ===== 2. 7-Day Persian Weekly Calendar with Liquid Fill Effect ===== */}
             <section className="bento-card-interactive bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
@@ -1083,6 +1107,7 @@ export const Dashboard: React.FC = () => {
                     defaultDateStr={activeDateIso}
                 />
             )}
+            </div>
         </div>
     );
 };

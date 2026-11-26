@@ -243,7 +243,7 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         expect(perfHeading.compareDocumentPosition(balanceHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('removes marked Dashboard cards, fixes 7-day mini bars, and keeps تایمر فوکوس', () => {
+    it('removes marked Dashboard cards, fixes 7-day mini bars, and renders upgraded Hero stats', () => {
         render(
             <MemoryRouter>
                 <Dashboard />
@@ -257,7 +257,8 @@ describe('Backend standardization, scaling, UI cleanup & mobile nav', () => {
         expect(screen.queryByText(/دفترچه و تخته قلم/)).not.toBeInTheDocument();
         expect(screen.queryByText(/جمع‌بندی شبانه/)).not.toBeInTheDocument();
 
-        expect(screen.getByText('تایمر فوکوس')).toBeInTheDocument();
+        expect(screen.getByText('تمرکز عمیق')).toBeInTheDocument();
+        expect(screen.getByText('پیشرفت تسک‌ها')).toBeInTheDocument();
         expect(screen.getByText(/زنجیره پیوستگی/)).toBeInTheDocument();
 
         // WeekMini Saturday-to-Friday distinct weekdays & navigation

@@ -108,19 +108,13 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
     it('R2.1: Merges deep focus card with greeting into Hero Bento Banner', () => {
         renderDashboard();
 
-        // Greeting and active mindset
+        // Greeting and concise stat cards
         expect(screen.getByText(/(صبح بخیر|ظهر بخیر|عصر بخیر|شب بخیر)، کاربر تست/)).toBeInTheDocument();
-        expect(screen.getByText('سیستم آمادگی ذهنی فعال')).toBeInTheDocument();
-
-        // Mini focus progress ring details
         expect(screen.getByText('تمرکز عمیق')).toBeInTheDocument();
+        expect(screen.getByText('پیشرفت تسک‌ها')).toBeInTheDocument();
 
-        // CTA buttons inside Hero Banner
-        const timerBtn = screen.getByText('تایمر فوکوس');
-        expect(timerBtn).toBeInTheDocument();
-        fireEvent.click(timerBtn);
-        expect(mockSetIsTimerOpen).toHaveBeenCalledWith(true);
-
+        // Focus timer CTA removed from Hero Header; compact New Task CTA remains
+        expect(screen.queryByText('تایمر فوکوس')).not.toBeInTheDocument();
         const newTaskBtns = screen.getAllByRole('button', { name: /تسک جدید/ });
         expect(newTaskBtns.length).toBeGreaterThanOrEqual(1);
     });
