@@ -1,5 +1,5 @@
-import React, { useCallback, useRef } from 'react';
-import { motion, useMotionValue, useTransform, useReducedMotion, PanInfo } from 'framer-motion';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { motion, useMotionValue, useTransform, useReducedMotion, PanInfo, AnimatePresence } from 'framer-motion';
 import { SubjectTask, getSubjectStyle } from '../types';
 import { formatToPersianDigits, getShamsiDate } from '../utils';
 import {
@@ -16,6 +16,8 @@ import {
     FileText,
     Check,
     X,
+    MoreHorizontal,
+    ListChecks,
 } from 'lucide-react';
 import { ExamTaskCard } from './ExamTaskCard';
 import { useFocus } from '../context/FocusContext';
@@ -25,10 +27,12 @@ import {
     SPRING_SWIPE,
     SQUASH_STRETCH_KEYFRAMES,
     SWIPE_COMMIT_THRESHOLD,
+    TRANSITION_FAST,
     TRANSITION_SQUASH,
     resolveRtlTaskSwipe,
 } from '../utils/motionPresets';
 import { triggerArcFlight } from './ui/MotionPrimitives';
+import { SlideToComplete } from './ui/SlideToComplete';
 
 interface TaskCardProps {
     task: SubjectTask;
@@ -76,7 +80,27 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
     const { startFocusForTask } = useFocus();
     const prefersReducedMotion = useReducedMotion();
     const checkBtnRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
     const x = useMotionValue(0);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const onDocClick = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuOpen(false);
+            }
+        };
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setMenuOpen(false);
+        };
+        document.addEventListener('mousedown', onDocClick);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', onDocClick);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [menuOpen]);
 
     // Physical RTL edge alignment:
     // - Dragging LEFT (x < 0) exposes RIGHT edge -> Complete (emerald)
@@ -121,6 +145,20 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         }
         onToggle(task.id!);
     }, [onToggle, task.id, task.isCompleted]);
+
+    const handleSlideComplete = useCallback(
+        (triggerEl?: HTMLElement | null) => {
+            if (!task.isCompleted) {
+                triggerArcFlight({
+                    fromEl: triggerEl || checkBtnRef.current,
+                    targetSelector: '[data-arc-target="xp-badge"]',
+                    label: '+XP',
+                });
+            }
+            onToggle(task.id!);
+        },
+        [onToggle, task.id, task.isCompleted]
+    );
 
     // 1. Exam/Analysis Card Delegation
     if (task.studyType === 'exam' || task.studyType === 'analysis') {
@@ -329,13 +367,15 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 dragSnapToOrigin
                 dragTransition={SPRING_SWIPE}
                 onDragEnd={handleDragEnd}
-                className={`group relative z-10 bg-[var(--surface-elevated)] p-4 squircle-card shadow-xs border flex flex-col gap-3 touch-pan-y transition-colors ${
-                    isOverdue
-                        ? 'border-amber-300/80 dark:border-amber-800/60 bg-amber-50/25 dark:bg-amber-950/15'
-                        : 'border-[var(--border-subtle)]'
+                className={`group relative z-10 bg-[var(--surface-elevated)] p-3.5 sm:p-4 squircle-card shadow-xs border flex flex-col gap-3 touch-pan-y transition-colors ${
+                    isDone
+                        ? 'border-emerald-500/25 bg-emerald-500/[0.03]'
+                        : isOverdue
+                          ? 'border-amber-300/80 dark:border-amber-800/60 bg-amber-50/25 dark:bg-amber-950/15'
+                          : 'border-[var(--border-subtle)] hover:border-[var(--border-strong)]'
                 }`}
             >
-                {/* Top Section: Check Button + Task Content */}
+                {/* Top Header Row: Check Icon + Subject/Date + Quick Focus & Overflow Menu */}
                 <div className="flex items-start gap-2.5 w-full">
                     <motion.button
                         ref={checkBtnRef}
@@ -364,10 +404,10 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                         type="button"
                         onClick={handleToggleClick}
                         className={`flex-1 min-w-0 text-start cursor-pointer transition-opacity duration-200 ${
-                            isDone ? 'opacity-60' : ''
+                            isDone ? 'opacity-65' : ''
                         }`}
                     >
-                        <div className="flex justify-between items-start gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             <h3
                                 className={`font-extrabold text-sm sm:text-base text-on-surface ${
                                     isDone ? 'line-through text-[var(--text-secondary)]' : ''
@@ -375,22 +415,20 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                             >
                                 {task.subject}
                             </h3>
-                            <div className="flex flex-col items-end gap-1 shrink-0">
-                                <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold ${subColor}`}>
-                                    {task.details}
-                                </span>
-                                <span className="flex items-center gap-1 text-[11px] text-[var(--text-secondary)] font-medium">
-                                    <Calendar size={11} />
-                                    {taskDateShamsi}
-                                </span>
-                            </div>
+                            <span className={`text-[10px] sm:text-[11px] px-2 py-0.5 rounded-lg font-bold ${subColor}`}>
+                                {task.details}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[11px] text-[var(--text-tertiary)] font-semibold">
+                                <Calendar size={11} />
+                                {taskDateShamsi}
+                            </span>
                         </div>
 
-                        <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 leading-relaxed font-medium">
-                            <span className="font-bold text-on-surface">مبحث:</span> {task.topic}
+                        <p className={`text-xs sm:text-sm mt-1.5 leading-relaxed font-semibold text-on-surface/90 ${isDone ? 'line-through text-[var(--text-secondary)]' : ''}`}>
+                            {task.topic}
                         </p>
 
-                        <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
                             {task.isMIT && (
                                 <span className="inline-flex items-center gap-1 text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 px-2 py-0.5 rounded-md font-bold">
                                     <Star size={10} fill="currentColor" />
@@ -404,6 +442,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                 >
                                     <Clock size={11} />
                                     {task.startTime}
+                                    {task.durationMinutes ? ` · ${task.durationMinutes}′` : ''}
+                                </span>
+                            )}
+                            {task.testRange && (
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-violet-50 dark:bg-violet-950/35 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded-md font-bold tabular-nums">
+                                    <ListChecks size={11} />
+                                    تست {task.testRange}
                                 </span>
                             )}
                             {(task.actualDuration ?? 0) > 0 && (
@@ -449,70 +494,104 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                             )}
                         </div>
                     </button>
-                </div>
 
-                {/* Bottom Section: Footer Actions */}
-                <div
-                    className="w-full flex flex-wrap justify-between items-center gap-2 pt-2.5 border-t border-[var(--border-subtle)]"
-                    onPointerDownCapture={(e) => e.stopPropagation()}
-                >
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            haptics.medium();
-                            startFocusForTask(task);
-                        }}
-                        className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/50 transition active:scale-[0.98] cursor-pointer"
-                        aria-label="شروع تمرکز"
+                    {/* Top-Corner Quick Focus Play & Overflow Menu */}
+                    <div
+                        className="flex items-center gap-1 shrink-0 relative"
+                        ref={menuRef}
+                        onPointerDownCapture={(e) => e.stopPropagation()}
                     >
-                        <Play size={13} fill="currentColor" />
-                        <span>شروع تمرکز</span>
-                    </button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                haptics.medium();
+                                startFocusForTask(task);
+                            }}
+                            title="شروع تمرکز"
+                            aria-label="شروع تمرکز"
+                            className="w-10 h-10 rounded-xl bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <Play size={16} fill="currentColor" />
+                        </button>
 
-                    <div className="flex flex-wrap items-center gap-1.5">
                         <button
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onEdit(e, task);
+                                setMenuOpen((prev) => !prev);
                             }}
-                            className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-primary hover:bg-surface-container-high transition active:scale-[0.98] cursor-pointer"
-                            aria-label="ویرایش تسک"
+                            aria-expanded={menuOpen}
+                            aria-label="گزینه‌های تسک"
+                            title="گزینه‌ها"
+                            className="w-10 h-10 rounded-xl bg-surface-container-low text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container flex items-center justify-center transition-colors cursor-pointer"
                         >
-                            <Pencil size={13} />
-                            <span>ویرایش</span>
+                            <MoreHorizontal size={17} />
                         </button>
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                haptics.warning();
-                                onDelete(e, task.id!);
-                            }}
-                            className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-surface-container text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/35 transition active:scale-[0.98] cursor-pointer"
-                            aria-label="حذف تسک"
-                        >
-                            <Trash2 size={13} />
-                            <span>حذف</span>
-                        </button>
-                        {isOverdue && onMoveToToday && (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    haptics.light();
-                                    onMoveToToday(task.id!);
-                                }}
-                                className="min-h-[44px] sm:min-h-[38px] flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition active:scale-[0.98] cursor-pointer"
-                                aria-label="انتقال به امروز"
-                            >
-                                <ArrowDownToLine size={13} />
-                                <span>انتقال به امروز</span>
-                            </button>
-                        )}
+
+                        <AnimatePresence>
+                            {menuOpen && (
+                                <motion.div
+                                    initial={prefersReducedMotion ? false : { opacity: 0, y: -4, scale: 0.96 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                                    transition={TRANSITION_FAST}
+                                    className="absolute top-11 end-0 z-30 min-w-[152px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-2xl shadow-lg p-1.5 flex flex-col gap-1"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setMenuOpen(false);
+                                            onEdit(e, task);
+                                        }}
+                                        aria-label="ویرایش تسک"
+                                        className="min-h-[40px] w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-primary hover:bg-surface-container transition-colors cursor-pointer"
+                                    >
+                                        <Pencil size={14} />
+                                        <span>ویرایش</span>
+                                    </button>
+                                    {isOverdue && onMoveToToday && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMenuOpen(false);
+                                                haptics.light();
+                                                onMoveToToday(task.id!);
+                                            }}
+                                            aria-label="انتقال به امروز"
+                                            className="min-h-[40px] w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                        >
+                                            <ArrowDownToLine size={14} />
+                                            <span>انتقال به امروز</span>
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setMenuOpen(false);
+                                            haptics.warning();
+                                            onDelete(e, task.id!);
+                                        }}
+                                        aria-label="حذف تسک"
+                                        className="min-h-[40px] w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 size={14} />
+                                        <span>حذف</span>
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
+
+                {/* Tactile Slide-to-Complete Action Bar */}
+                <SlideToComplete
+                    isCompleted={Boolean(isDone)}
+                    onComplete={handleSlideComplete}
+                />
             </motion.div>
         </div>
     );

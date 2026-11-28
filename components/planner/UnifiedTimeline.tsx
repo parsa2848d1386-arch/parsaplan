@@ -28,7 +28,10 @@ import {
     Plus,
     Minus,
     CalendarOff,
+    Trash2,
+    Layers,
 } from 'lucide-react';
+import { haptics } from '../../utils/haptics';
 import { createPortal } from 'react-dom';
 import { useOverlayHistory } from '../../hooks/useOverlayHistory';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -151,7 +154,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
     onAddAtHour,
     onEditTask,
 }) => {
-    const { toggleTask, updateTask, settings } = useStore();
+    const { toggleTask, updateTask, deleteTask, settings } = useStore();
     const { startFocusForTask } = useFocus();
     const { showToast } = useUI();
 
@@ -160,6 +163,12 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
     const [dragHoverTime, setDragHoverTime] = useState<string | null>(null);
     const [dragHoverTopPx, setDragHoverTopPx] = useState<number>(0);
     const [resizingState, setResizingState] = useState<{ taskId: string; previewDuration: number } | null>(null);
+    const [draggingBlockState, setDraggingBlockState] = useState<{
+        taskId: string;
+        previewOffset: number;
+        previewTime: string;
+    } | null>(null);
+    const [overlapSheetTasks, setOverlapSheetTasks] = useState<SubjectTask[] | null>(null);
     const [nowTick, setNowTick] = useState<Date>(() => new Date());
     const [actionSheetTaskId, setActionSheetTaskId] = useState<string | null>(null);
 
@@ -237,7 +246,10 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
 
     const positionedTasks = useMemo(() => {
         const spans = scheduledTasks.map((t) => {
-            const startOffset = getOffsetMinutesFromCutoff(t.startTime || '08:00', cutoffHour);
+            const startOffset =
+                draggingBlockState?.taskId === t.id
+                    ? draggingBlockState.previewOffset
+                    : getOffsetMinutesFromCutoff(t.startTime || '08:00', cutoffHour);
             const effectiveDuration =
                 resizingState?.taskId === t.id ? resizingState.previewDuration : Math.max(15, t.durationMinutes ?? 60);
             return {
@@ -248,7 +260,38 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
             };
         });
         return computeTimelineLanes(spans);
-    }, [scheduledTasks, cutoffHour, resizingState]);
+    }, [scheduledTasks, cutoffHour, resizingState, draggingBlockState]);
+
+    // Collapse 3+ concurrent tasks cleanly into at most 2 readable lanes + interactive overflow cluster chips
+    const { visibleTaskBlocks, overflowClusters } = useMemo(() => {
+        const visible = positionedTasks.filter((p) => p.laneIndex < 2);
+        const hidden = positionedTasks.filter((p) => p.laneIndex >= 2);
+        const clusters: Array<{
+            id: string;
+            topOffset: number;
+            tasks: SubjectTask[];
+        }> = [];
+
+        hidden.forEach((item) => {
+            const existing = clusters.find((c) => Math.abs(c.topOffset - item.startOffset) < 45);
+            if (existing) {
+                if (!existing.tasks.some((x) => x.id === item.data.id)) {
+                    existing.tasks.push(item.data);
+                }
+            } else {
+                const overlappingAll = positionedTasks
+                    .filter((p) => p.startOffset < item.endOffset && p.endOffset > item.startOffset)
+                    .map((p) => p.data);
+                clusters.push({
+                    id: `cluster_${item.id}`,
+                    topOffset: item.startOffset,
+                    tasks: overlappingAll.length > 0 ? overlappingAll : [item.data],
+                });
+            }
+        });
+
+        return { visibleTaskBlocks: visible, overflowClusters: clusters };
+    }, [positionedTasks]);
 
     const matchSessionCategory = (session: StudySession): boolean => {
         if (!selectedCategory) return true;
@@ -316,14 +359,6 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
         [positionedTasks]
     );
 
-    const totalScheduledMins = useMemo(
-        () => scheduledTasks.reduce((sum, t) => sum + (t.durationMinutes ?? 60), 0),
-        [scheduledTasks]
-    );
-
-    const dailyCapacity = settings?.dailyCapacityMinutes ?? 360;
-    const isOverCapacity = totalScheduledMins > dailyCapacity;
-
     const hoursOrder = useMemo(() => Array.from({ length: 24 }, (_, i) => (cutoffHour + i) % 24), [cutoffHour]);
 
     const pointerYToSnappedTime = (clientY: number): { timeStr: string; topPx: number } => {
@@ -358,34 +393,90 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
         updateTask({ ...target, startTime: timeStr });
     };
 
+    const startDragBlock = (e: React.PointerEvent, task: SubjectTask) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const startY = e.clientY;
+        const initialOffset = getOffsetMinutesFromCutoff(task.startTime || '09:00', cutoffHour);
+        let lastOffset = initialOffset;
+        let lastTime = formatMinutesAtCutoffOffset(initialOffset, cutoffHour, 15);
+        setDraggingBlockState({
+            taskId: task.id,
+            previewOffset: initialOffset,
+            previewTime: lastTime,
+        });
+        haptics.light();
+
+        const onMove = (ev: PointerEvent) => {
+            const deltaY = ev.clientY - startY;
+            const deltaMins = Math.round(deltaY / pxPerMin / 15) * 15;
+            const nextOffset = Math.max(0, Math.min(1425, initialOffset + deltaMins));
+            if (nextOffset !== lastOffset) {
+                lastOffset = nextOffset;
+                lastTime = formatMinutesAtCutoffOffset(nextOffset, cutoffHour, 15);
+                haptics.selection();
+                setDraggingBlockState({
+                    taskId: task.id,
+                    previewOffset: nextOffset,
+                    previewTime: lastTime,
+                });
+            }
+        };
+
+        const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            setDraggingBlockState(null);
+            if (lastOffset !== initialOffset) {
+                haptics.success();
+                updateTask({ ...task, startTime: lastTime });
+                showToast(`زمان‌بندی به ${lastTime} منتقل شد`, 'success');
+            }
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    };
+
     const startResizeBlock = (e: React.PointerEvent, task: SubjectTask) => {
         e.stopPropagation();
         e.preventDefault();
         const startY = e.clientY;
         const initialDur = Math.max(15, task.durationMinutes ?? 60);
+        let prevDur = initialDur;
         setResizingState({ taskId: task.id, previewDuration: initialDur });
+        haptics.light();
 
         const onMove = (ev: PointerEvent) => {
             const deltaY = ev.clientY - startY;
             const deltaMins = Math.round((deltaY / pxPerMin) / 15) * 15;
             const nextDur = Math.max(15, Math.min(480, initialDur + deltaMins));
+            if (nextDur !== prevDur) {
+                prevDur = nextDur;
+                haptics.selection();
+            }
             setResizingState({ taskId: task.id, previewDuration: nextDur });
         };
 
         const onUp = (ev: PointerEvent) => {
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
             const deltaY = ev.clientY - startY;
             const deltaMins = Math.round((deltaY / pxPerMin) / 15) * 15;
             const finalDur = Math.max(15, Math.min(480, initialDur + deltaMins));
             setResizingState(null);
             if (finalDur !== initialDur) {
+                haptics.success();
                 updateTask({ ...task, durationMinutes: finalDur });
             }
         };
 
         window.addEventListener('pointermove', onMove);
         window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
     };
 
     const handleAutoScheduleSingle = (task: SubjectTask) => {
@@ -481,77 +572,6 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 </div>
             )}
 
-            {/* Slim Single-Line Timeline Controls & Capacity Status Bar */}
-            <div className="bg-[var(--surface-elevated)] squircle-md border border-[var(--border-subtle)] px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
-                <div className="flex flex-wrap items-center gap-1.5">
-                    {/* Zoom Switcher */}
-                    <div className="flex items-center bg-surface-container-low p-0.5 rounded-xl border border-[var(--border-subtle)] gap-0.5">
-                        <ZoomIn size={13} className="text-[var(--text-secondary)] mx-1.5" aria-hidden="true" />
-                        {(
-                            [
-                                { id: 'compact', label: 'فشرده' },
-                                { id: 'normal', label: 'متعادل' },
-                                { id: 'expanded', label: 'بزرگ' },
-                            ] as { id: ZoomLevel; label: string }[]
-                        ).map((z) => (
-                            <button
-                                key={z.id}
-                                type="button"
-                                onClick={() => setZoom(z.id)}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                                    zoom === z.id
-                                        ? 'bg-[var(--surface-elevated)] text-primary shadow-xs'
-                                        : 'text-[var(--text-secondary)] hover:text-on-surface'
-                                }`}
-                            >
-                                {z.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => setShowActualTrack(!showActualTrack)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
-                            showActualTrack
-                                ? 'bg-secondary-container/45 border-secondary/30 text-secondary'
-                                : 'bg-surface-container-low border-[var(--border-subtle)] text-[var(--text-secondary)]'
-                        }`}
-                    >
-                        <Eye size={13} aria-hidden="true" /> ستون واقعی ({formatToPersianDigits(positionedSessions.length)})
-                    </button>
-
-                    {isToday && (
-                        <button
-                            type="button"
-                            onClick={scrollToNow}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-error-container/50 text-error border border-error/25 text-[11px] font-extrabold cursor-pointer"
-                        >
-                            <Crosshair size={13} aria-hidden="true" /> الان <span dir="ltr" className="tabular-nums">{formatToPersianDigits(nowTimeStr)}</span>
-                        </button>
-                    )}
-                </div>
-
-                {/* Capacity & Conflict Pills */}
-                <div className="flex items-center gap-2 text-[11px] font-bold tabular-nums">
-                    {conflictCount > 0 && (
-                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-error-container text-error border border-error/30">
-                            <AlertTriangle size={12} aria-hidden="true" /> تداخل زمانی
-                        </span>
-                    )}
-                    <span
-                        className={`px-2.5 py-1 rounded-xl border ${
-                            isOverCapacity
-                                ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                                : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)]'
-                        }`}
-                    >
-                        ظرفیت: {formatToPersianDigits(Math.round((totalScheduledMins / 60) * 10) / 10)} از{' '}
-                        {formatToPersianDigits(Math.round((dailyCapacity / 60) * 10) / 10)} ساعت
-                    </span>
-                </div>
-            </div>
-
             {/* Empty Guidance Banner when day has no tasks */}
             {scheduledTasks.length === 0 && unscheduledTasks.length === 0 && (
                 <div className="bg-[var(--surface-elevated)] rounded-2xl border border-dashed border-[var(--border-strong)] p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-start">
@@ -577,11 +597,51 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 {/* Column Header */}
                 <div className="flex border-b border-[var(--border-subtle)] bg-surface-container-low text-xs font-bold text-[var(--text-secondary)]">
                     <div className="w-16 shrink-0 py-2.5 text-center border-e border-[var(--border-subtle)]">ساعت</div>
-                    <div className="flex-1 py-2.5 px-3 sm:px-4 flex justify-between items-center gap-2 min-w-0">
-                        <span className="whitespace-nowrap">برنامه زمان‌بندی‌شده</span>
-                        <span className="text-xs font-medium text-[var(--text-secondary)] hidden lg:inline truncate">
-                            لمس بلوک = تنظیم زمان • لمس فضای خالی = افزودن
-                        </span>
+                    <div className="flex-1 py-2 px-3 sm:px-4 flex justify-between items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="whitespace-nowrap">برنامه زمان‌بندی‌شده</span>
+                            {conflictCount > 0 && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-error-container text-error text-[10px] font-extrabold">
+                                    <AlertTriangle size={11} aria-hidden="true" />
+                                    {formatToPersianDigits(conflictCount)} هم‌پوشانی
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {isToday && (
+                                <button
+                                    type="button"
+                                    onClick={scrollToNow}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[11px] font-extrabold cursor-pointer hover:bg-rose-500/15 transition"
+                                >
+                                    <Crosshair size={12} aria-hidden="true" />
+                                    الان
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setZoom((z) => (z === 'normal' ? 'expanded' : z === 'expanded' ? 'compact' : 'normal'))}
+                                title="تغییر تراکم نمایش"
+                                aria-label="تغییر تراکم نمایش"
+                                className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] hover:text-on-surface cursor-pointer"
+                            >
+                                <ZoomIn size={12} aria-hidden="true" />
+                                {zoom === 'compact' ? 'فشرده' : zoom === 'expanded' ? 'بزرگ' : 'متعادل'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowActualTrack(!showActualTrack)}
+                                title="نمایش یا مخفی کردن ستون واقعی"
+                                className={`hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border cursor-pointer transition ${
+                                    showActualTrack
+                                        ? 'bg-secondary-container/45 border-secondary/30 text-secondary'
+                                        : 'bg-[var(--surface-elevated)] border-[var(--border-subtle)] text-[var(--text-secondary)]'
+                                }`}
+                            >
+                                <Eye size={12} aria-hidden="true" />
+                                واقعی ({formatToPersianDigits(positionedSessions.length)})
+                            </button>
+                        </div>
                     </div>
                     {showActualTrack && (
                         <div className="hidden md:flex w-52 shrink-0 py-2.5 px-3 border-s border-[var(--border-subtle)] justify-center text-secondary font-bold">
@@ -667,21 +727,27 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                 </div>
                             )}
 
-                            {/* Scheduled Task Blocks (Side-by-side Overlap Lanes + Resize Handle) */}
-                            {positionedTasks.map((item) => {
+                            {/* Scheduled Task Blocks (Max 2 Readable Lanes + Touch Drag/Resize + Cluster Overflow) */}
+                            {visibleTaskBlocks.map((item) => {
                                 const t = item.data;
                                 const st = getSubjectStyle(t.subject);
                                 const colorStyle = getStaticSubjectClasses(st.color);
                                 const top = item.startOffset * pxPerMin;
                                 const dur = item.endOffset - item.startOffset;
-                                const height = Math.max(38, dur * pxPerMin - 2);
-                                const widthPct = 100 / item.laneCount;
+                                const height = Math.max(44, dur * pxPerMin - 2);
+                                const effectiveLaneCount = Math.min(2, item.laneCount);
+                                const widthPct = 100 / effectiveLaneCount;
                                 const rightPct = item.laneIndex * widthPct;
+                                const isDraggingThis = draggingBlockState?.taskId === t.id;
+                                const isResizingThis = resizingState?.taskId === t.id;
+                                const displayStartTime = isDraggingThis
+                                    ? draggingBlockState!.previewTime
+                                    : t.startTime || '';
 
                                 return (
                                     <div
                                         key={t.id}
-                                        draggable={resizingState?.taskId !== t.id}
+                                        draggable={resizingState?.taskId !== t.id && !isDraggingThis}
                                         onDragStart={(e) => {
                                             e.dataTransfer.setData('text/plain', t.id);
                                             e.dataTransfer.effectAllowed = 'move';
@@ -690,10 +756,14 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                         style={{
                                             top,
                                             height,
-                                            right: `calc(${rightPct}% + 6px)`,
-                                            width: `calc(${widthPct}% - 12px)`,
+                                            right: `calc(${rightPct}% + 4px)`,
+                                            width: `calc(${widthPct}% - 8px)`,
                                         }}
-                                        className={`group absolute rounded-2xl border shadow-sm transition-shadow hover:shadow-md z-10 flex flex-col justify-between overflow-hidden ${
+                                        className={`group absolute rounded-2xl border shadow-sm transition-shadow hover:shadow-md flex flex-col justify-between overflow-hidden ${
+                                            isDraggingThis || isResizingThis
+                                                ? 'z-30 ring-2 ring-primary shadow-lg scale-[1.01]'
+                                                : 'z-10'
+                                        } ${
                                             t.isCompleted
                                                 ? 'bg-emerald-50/90 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 opacity-85 text-emerald-950 dark:text-emerald-100'
                                                 : item.hasConflict
@@ -701,18 +771,28 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                                   : `${colorStyle.bg} ${colorStyle.border} ${colorStyle.text}`
                                         }`}
                                     >
-                                        <div className="p-2 flex items-start justify-between gap-2 min-h-0">
-                                            <div className="flex items-start gap-1.5 min-w-0">
+                                        <div className="p-1.5 sm:p-2 flex items-start justify-between gap-1 min-h-0">
+                                            <div className="flex items-start gap-1 min-w-0">
+                                                {/* Touch-First Vertical Drag Handle (15-min Snap) */}
+                                                <button
+                                                    type="button"
+                                                    onPointerDown={(e) => startDragBlock(e, t)}
+                                                    aria-label={`جابجایی زمانی ${t.topic}`}
+                                                    title="بکشید تا ساعت تغییر کند"
+                                                    className="min-w-[26px] min-h-[28px] -ms-0.5 flex items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:text-primary hover:bg-black/5 dark:hover:bg-white/10 touch-none cursor-grab active:cursor-grabbing shrink-0"
+                                                >
+                                                    <GripVertical size={13} aria-hidden="true" />
+                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => toggleTask(t.id)}
                                                     aria-label={t.isCompleted ? `لغو تکمیل ${t.topic}` : `تکمیل ${t.topic}`}
-                                                    className="p-1 -m-1 shrink-0 min-w-[28px] min-h-[28px] flex items-center justify-center cursor-pointer"
+                                                    className="p-0.5 shrink-0 min-w-[26px] min-h-[28px] flex items-center justify-center cursor-pointer"
                                                 >
                                                     {t.isCompleted ? (
-                                                        <CheckCircle2 size={16} className="text-emerald-500" />
+                                                        <CheckCircle2 size={15} className="text-emerald-500" />
                                                     ) : (
-                                                        <Circle size={16} className="text-[var(--text-secondary)] hover:text-primary" />
+                                                        <Circle size={15} className="text-[var(--text-secondary)] hover:text-primary" />
                                                     )}
                                                 </button>
                                                 <button
@@ -720,26 +800,34 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                                     onClick={() => setActionSheetTaskId(t.id)}
                                                     className="text-start min-w-0 cursor-pointer"
                                                 >
-                                                    <div className="text-xs font-extrabold text-on-surface flex items-center gap-1 truncate">
-                                                        <span>{st.icon}</span>
+                                                    <div className="text-[11px] sm:text-xs font-extrabold text-on-surface flex items-center gap-1 truncate">
+                                                        <span className="shrink-0">{st.icon}</span>
                                                         <span className={t.isCompleted ? 'line-through truncate' : 'truncate'}>{t.topic}</span>
                                                         {t.isMIT && (
-                                                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-400 text-amber-950 font-extrabold shrink-0">
+                                                            <span className="text-[10px] px-1 py-0.5 rounded bg-amber-400 text-amber-950 font-extrabold shrink-0">
                                                                 <bdi>MIT</bdi>
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5 truncate tabular-nums">
-                                                        <span>{t.subject}</span>
-                                                        <span aria-hidden="true">·</span>
-                                                        <span dir="ltr">{formatToPersianDigits(t.startTime || '')}</span>
-                                                        <span>({formatToPersianDigits(dur)} دقیقه)</span>
+                                                    <div className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] flex items-center gap-1 truncate tabular-nums">
+                                                        {effectiveLaneCount === 1 && (
+                                                            <>
+                                                                <span className="truncate">{t.subject}</span>
+                                                                <span aria-hidden="true">·</span>
+                                                            </>
+                                                        )}
+                                                        <span dir="ltr" className={isDraggingThis ? 'text-primary font-black' : ''}>
+                                                            {formatToPersianDigits(displayStartTime)}
+                                                        </span>
+                                                        <span className={isResizingThis ? 'text-primary font-black' : ''}>
+                                                            ({formatToPersianDigits(dur)}′)
+                                                        </span>
                                                     </div>
                                                 </button>
                                             </div>
 
                                             {/* Quick inline controls (Touch-accessible + Desktop hover shortcuts) */}
-                                            <div className="flex items-center gap-1 shrink-0">
+                                            <div className="flex items-center gap-0.5 shrink-0">
                                                 <div className="hidden md:group-hover:flex items-center gap-0.5 bg-[var(--surface-elevated)] rounded-lg p-0.5 border border-[var(--border-subtle)]">
                                                     <button
                                                         type="button"
@@ -783,17 +871,17 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                                     type="button"
                                                     onClick={() => setActionSheetTaskId(t.id)}
                                                     aria-label={`تنظیمات و تغییر زمان ${t.topic}`}
-                                                    className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg bg-surface-container-low/90 text-on-surface hover:bg-surface-container transition cursor-pointer"
+                                                    className="min-w-[30px] min-h-[30px] flex items-center justify-center rounded-lg bg-surface-container-low/90 text-on-surface hover:bg-surface-container transition cursor-pointer"
                                                     title="تغییر زمان و عملیات"
                                                 >
-                                                    <MoreHorizontal size={15} />
+                                                    <MoreHorizontal size={14} />
                                                 </button>
-                                                {!t.isCompleted && (
+                                                {!t.isCompleted && effectiveLaneCount === 1 && (
                                                     <button
                                                         type="button"
                                                         onClick={() => startFocusForTask(t)}
                                                         aria-label={`شروع تمرکز روی ${t.topic}`}
-                                                        className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg bg-primary text-on-primary hover:brightness-110 shadow-xs cursor-pointer"
+                                                        className="min-w-[30px] min-h-[30px] flex items-center justify-center rounded-lg bg-primary text-on-primary hover:brightness-110 shadow-xs cursor-pointer"
                                                         title="شروع تمرکز"
                                                     >
                                                         <Play size={12} fill="currentColor" />
@@ -802,17 +890,38 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                             </div>
                                         </div>
 
-                                        {/* Bottom Drag-Resize Handle */}
+                                        {/* Always-Touchable Bottom Drag-Resize Handle */}
                                         <div
                                             onPointerDown={(e) => startResizeBlock(e, t)}
                                             title="بکشید تا مدت زمان تغییر کند"
-                                            className="h-2 w-full cursor-ns-resize flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/5 dark:bg-white/10 transition-opacity"
+                                            className="h-3.5 sm:h-3 w-full touch-none cursor-ns-resize flex items-center justify-center bg-black/[0.04] dark:bg-white/[0.06] opacity-80 sm:opacity-45 group-hover:opacity-100 transition-opacity"
                                         >
-                                            <span className="w-8 h-0.5 rounded-full bg-gray-400" />
+                                            <span className="w-8 h-1 rounded-full bg-[var(--text-tertiary)]/55" />
                                         </div>
                                     </div>
                                 );
                             })}
+
+                            {/* Overflow Cluster Badges for 3+ Concurrent Tasks on Mobile & Desktop */}
+                            {overflowClusters.map((cluster) => (
+                                <button
+                                    key={cluster.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        haptics.light();
+                                        setOverlapSheetTasks(cluster.tasks);
+                                    }}
+                                    style={{
+                                        top: cluster.topOffset * pxPerMin + 4,
+                                        left: 10,
+                                    }}
+                                    className="absolute z-20 min-h-[32px] px-2.5 py-1 rounded-xl bg-primary text-on-primary shadow-md border border-white/25 text-[11px] font-black flex items-center gap-1 hover:brightness-110 transition cursor-pointer tabular-nums"
+                                >
+                                    <Layers size={12} aria-hidden="true" />
+                                    +{formatToPersianDigits(Math.max(1, cluster.tasks.length - 2))} هم‌زمان
+                                </button>
+                            ))}
                         </div>
 
                         {/* Companion Track: Real Focus Sessions Side-by-Side */}
@@ -1016,11 +1125,117 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                         updateTask({ ...actionSheetTask, startTime: undefined });
                                         setActionSheetTaskId(null);
                                     }}
-                                    className="min-h-[44px] rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-center gap-1.5 hover:brightness-95 cursor-pointer"
+                                    className="min-h-[44px] rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 hover:brightness-95 cursor-pointer"
                                 >
                                     <CalendarOff size={15} aria-hidden="true" />
                                     حذف از تایم‌لاین
                                 </button>
+                                {deleteTask && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const idToDelete = actionSheetTask.id;
+                                            setActionSheetTaskId(null);
+                                            deleteTask(idToDelete);
+                                            haptics.warning();
+                                            showToast('تسک حذف شد', 'info');
+                                        }}
+                                        className="col-span-2 min-h-[44px] rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center justify-center gap-1.5 hover:brightness-95 cursor-pointer"
+                                    >
+                                        <Trash2 size={15} aria-hidden="true" />
+                                        حذف کامل تسک
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
+            {/* Overlap Cluster Bottom Sheet for Concurrent Tasks on Mobile */}
+            {overlapSheetTasks &&
+                typeof document !== 'undefined' &&
+                createPortal(
+                    <div
+                        className="fixed inset-0 z-[100] bg-black/45 flex items-end sm:items-center justify-center p-0 sm:p-4"
+                        onClick={() => setOverlapSheetTasks(null)}
+                    >
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="تسک‌های هم‌زمان"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full sm:max-w-md bg-[var(--surface-elevated)] rounded-t-3xl sm:rounded-3xl border border-[var(--border-subtle)] p-5 shadow-2xl space-y-3 pb-safe max-h-[80dvh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+                                <div className="flex items-center gap-2">
+                                    <Layers size={18} className="text-primary" aria-hidden="true" />
+                                    <h4 className="font-black text-sm text-on-surface">
+                                        تسک‌های هم‌زمان ({formatToPersianDigits(overlapSheetTasks.length)})
+                                    </h4>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setOverlapSheetTasks(null)}
+                                    aria-label="بستن لیست هم‌پوشانی"
+                                    className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl hover:bg-surface-container text-[var(--text-secondary)] cursor-pointer"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {overlapSheetTasks.map((ot) => {
+                                    const st = getSubjectStyle(ot.subject);
+                                    return (
+                                        <div
+                                            key={ot.id}
+                                            className="p-3 rounded-2xl bg-surface-container-low border border-[var(--border-subtle)] flex items-center justify-between gap-2"
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setOverlapSheetTasks(null);
+                                                    setActionSheetTaskId(ot.id);
+                                                }}
+                                                className="min-w-0 flex-1 text-start cursor-pointer"
+                                            >
+                                                <div className="text-xs font-extrabold text-on-surface flex items-center gap-1.5 truncate">
+                                                    <span>{st.icon}</span>
+                                                    <span className="truncate">{ot.topic}</span>
+                                                </div>
+                                                <div className="text-[11px] text-[var(--text-secondary)] mt-0.5 tabular-nums">
+                                                    {ot.subject} · <bdi dir="ltr">{ot.startTime}</bdi> ({formatToPersianDigits(ot.durationMinutes ?? 60)} دقیقه)
+                                                </div>
+                                            </button>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setOverlapSheetTasks(null);
+                                                        onEditTask(ot);
+                                                    }}
+                                                    aria-label={`ویرایش ${ot.topic}`}
+                                                    className="min-w-[36px] min-h-[36px] rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex items-center justify-center text-primary cursor-pointer"
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                {!ot.isCompleted && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setOverlapSheetTasks(null);
+                                                            startFocusForTask(ot);
+                                                        }}
+                                                        aria-label={`شروع تمرکز روی ${ot.topic}`}
+                                                        className="min-w-[36px] min-h-[36px] rounded-xl bg-primary text-on-primary flex items-center justify-center cursor-pointer"
+                                                    >
+                                                        <Play size={14} fill="currentColor" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>,

@@ -24,7 +24,7 @@ type MarkdownCodeProps = React.ComponentPropsWithoutRef<'code'> &
     ExtraProps & {
         inline?: boolean;
     };
-import { User, Copy, Volume2, RotateCcw, Check, ListChecks, FileText, Image as ImageIcon, PlayCircle, ChevronDown, Eye } from 'lucide-react';
+import { User, Copy, Volume2, RotateCcw, Check, ListChecks, FileText, Image as ImageIcon, PlayCircle, ChevronDown, Eye, Clock, Tag } from 'lucide-react';
 import { ParsedTask } from '../AITaskReviewWindow';
 import { BlobatarBot } from '../ui/BlobatarBot';
 import type { BlobatarConfig } from '../../types';
@@ -344,37 +344,64 @@ export const ChatMessage: React.FC<MessageProps> = ({
 
                         {showTasks && (
                             <div className="p-4">
-                                <div className="space-y-2 mb-4">
-                                    {message.pendingTasks.slice(0, 4).map((task, i) => (
+                                <div className="space-y-2 mb-4 max-h-72 overflow-y-auto custom-scrollbar pe-0.5">
+                                    {message.pendingTasks.map((task, i) => (
                                         <div
-                                            key={i}
-                                            className="flex items-center gap-2.5 p-2.5 bg-surface-container-low rounded-xl border border-[var(--border-subtle)] text-xs"
+                                            key={task.id || i}
+                                            className="flex flex-col gap-1.5 p-2.5 bg-surface-container-low rounded-xl border border-[var(--border-subtle)] text-xs"
                                         >
-                                            <div className="w-1 h-8 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                                            <div className="flex-1 min-w-0 text-start">
-                                                <div className="font-extrabold text-on-surface truncate">{task.subject}</div>
-                                                <div className="text-[var(--text-secondary)] truncate text-[11px] font-medium mt-0.5">
-                                                    {task.topic}
-                                                    {task.startTime ? ` · ${task.startTime}` : ''}
-                                                    {task.durationMinutes ? ` (${formatToPersianDigits(task.durationMinutes)} دقیقه)` : ''}
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-start gap-2 min-w-0 flex-1">
+                                                    <div className="w-1 self-stretch min-h-[28px] rounded-full bg-primary shrink-0" aria-hidden="true" />
+                                                    <div className="min-w-0 flex-1 text-start">
+                                                        <div className="font-extrabold text-on-surface truncate">
+                                                            {task.subject}
+                                                            {task.topic ? ` — ${task.topic}` : ''}
+                                                        </div>
+                                                        <div className="text-[var(--text-secondary)] text-[11px] font-medium mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 tabular-nums">
+                                                            {task.startTime && (
+                                                                <span className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 font-bold" dir="ltr">
+                                                                    <Clock size={10} />
+                                                                    {task.startTime}
+                                                                </span>
+                                                            )}
+                                                            {task.durationMinutes && (
+                                                                <span>{formatToPersianDigits(task.durationMinutes)} دقیقه</span>
+                                                            )}
+                                                            {task.testRange && (
+                                                                <span className="text-violet-600 dark:text-violet-300 font-bold">
+                                                                    تست {task.testRange}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    dir="rtl"
+                                                    className="bg-primary/10 px-2 py-1 rounded-lg text-[10px] sm:text-[11px] text-primary font-bold shrink-0 tabular-nums"
+                                                >
+                                                    {new Date(task.date).toLocaleDateString('fa-IR-u-ca-persian', {
+                                                        weekday: 'short',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                    })}
                                                 </div>
                                             </div>
-                                            <div
-                                                dir="rtl"
-                                                className="bg-primary/10 px-2 py-1 rounded-lg text-[11px] text-primary font-bold shrink-0 tabular-nums"
-                                            >
-                                                {new Date(task.date).toLocaleDateString('fa-IR-u-ca-persian', {
-                                                    month: 'long',
-                                                    day: 'numeric',
-                                                })}
-                                            </div>
+                                            {task.tags && task.tags.length > 0 && (
+                                                <div className="flex flex-wrap items-center gap-1 ps-3">
+                                                    {task.tags.map((tg) => (
+                                                        <span
+                                                            key={tg}
+                                                            className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-primary/8 text-primary border border-primary/15 font-bold"
+                                                        >
+                                                            <Tag size={9} />
+                                                            {tg}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
-                                    {message.pendingTasks.length > 4 && (
-                                        <div className="text-center text-xs text-[var(--text-secondary)] font-bold pt-1">
-                                            و {formatToPersianDigits(message.pendingTasks.length - 4)} مورد دیگر...
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-2">
@@ -382,19 +409,23 @@ export const ChatMessage: React.FC<MessageProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => onAutoAddTasks(message.pendingTasks!, message.id)}
-                                            className="min-h-[44px] flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                                            className="min-h-[44px] flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                                         >
                                             <Check size={15} strokeWidth={2.5} />
-                                            افزودن خودکار همه به برنامه
+                                            افزودن همه به برنامه
                                         </button>
                                     )}
                                     <button
                                         type="button"
                                         onClick={() => onReviewTasks(message.pendingTasks!)}
-                                        className="min-h-[44px] flex-1 py-2.5 bg-primary hover:opacity-95 text-on-primary rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                                        className={`min-h-[44px] flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                                            tasksApplied
+                                                ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                                                : 'bg-surface-container hover:bg-surface-container-high text-on-surface border border-[var(--border-subtle)]'
+                                        }`}
                                     >
-                                        <Eye size={15} strokeWidth={2.2} />
-                                        {tasksApplied ? 'اضافه شد (مشاهده)' : 'بررسی و ویرایش'}
+                                        {tasksApplied ? <Check size={15} strokeWidth={2.5} /> : <Eye size={15} strokeWidth={2.2} />}
+                                        {tasksApplied ? 'به برنامه اضافه شد ✓' : 'ویرایش و بازبینی'}
                                     </button>
                                 </div>
                             </div>

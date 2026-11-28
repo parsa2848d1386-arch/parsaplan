@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { get, set } from 'idb-keyval';
 import { SubjectTask, TaskPriority, StudyType, StoredChatMessage } from '../types';
-import { getDiffDays, toIsoString } from '../utils';
+import { addDays, getDiffDays, getFullShamsiDate, toIsoString } from '../utils';
 import { getErrorMessage } from '../utils/formHelpers';
 import { aiTaskActionSchema } from '../utils/schemas';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
@@ -26,6 +26,8 @@ export interface AIChatProps {
 }
 
 const AI_MODELS = [
+    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (پیشنهادی رایگان)' },
+    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (سریع)' },
     { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen' },
     { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
 ];
@@ -67,7 +69,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     const [isTyping, setIsTyping] = useState(false);
     const selectedModel = AI_MODELS.some((m) => m.id === settings.geminiModel)
         ? settings.geminiModel
-        : 'gemini-4-hydrogen';
+        : 'gemini-2.5-flash';
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 
@@ -210,7 +212,9 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 title: p.title || p.topic || 'تسک هوشمند',
                 topic: p.topic || '',
                 studyType: (p.studyType as StudyType) || 'study',
-                details: p.details || '',
+                details: p.details || (p.testRange ? `تست ${p.testRange}` : 'برنامه هوشمند'),
+                testRange: p.testRange,
+                tags: p.tags && p.tags.length > 0 ? p.tags : ['هوش مصنوعی'],
                 isCompleted: false,
                 date: dateStr,
                 startTime: p.startTime || '10:00',
@@ -250,23 +254,46 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         try {
             abortControllerRef.current = new AbortController();
 
+            const now = new Date();
+            const todayIso = toIsoString(now);
+            const calendarWindow = Array.from({ length: 14 }, (_, i) => {
+                const d = addDays(now, i);
+                return `${toIsoString(d)} (${getFullShamsiDate(d)})`;
+            }).join(' | ');
+            const availableSubjects = subjects.map((s) => s.name).join('، ') || 'عمومی';
+            const dailyTargetHours = Math.round(((settings?.dailyCapacityMinutes ?? 360) / 60) * 10) / 10;
+
             const systemContext = `
-شما دستیار هوشمند و اختصاصی برنامه‌ریزی تحصیلی «پارساپلان» هستید. نام کاربر: ${userName || 'دوست من'}.
-پاسخ‌های شما باید کاملاً فارسی، پرانرژی، راهبردی و ساختاریافته باشد.
-اگر کاربر درخواست برنامه‌ریزی یا ساخت تسک دارد، می‌توانید یک بلوک JSON معتبر از دستورات زیر تولید کنید:
+شما دستیار هوشمند و مربی برنامه‌ریزی «پارساپلان» هستید. نام کاربر: ${userName || 'دوست من'}.
+تاریخ امروز میلادی (ISO): ${todayIso} | شمسی: ${getFullShamsiDate(now)}
+جدول ۱۴ روز آینده (برای محاسبه دقیق تاریخ‌ها):
+${calendarWindow}
+حوزه‌ها/دروس کاربر: ${availableSubjects}
+هدف تمرکز روزانه کاربر: ${dailyTargetHours} ساعت
+
+پاسخ‌های شما باید کاملاً فارسی، دوستانه، دقیق و کاربردی باشد.
+قوانین مهم برای چیدن برنامه و تسک:
+۱. اگر کاربر درخواست برنامه‌ریزی چندروزه یا تقسیم تست/فصل دارد (مثلاً «تست ۱۰۰ تا ۵۰۰ رو هر روز ۳۰ تا تست از امروز برام بچین»):
+   - اگر مشخصات ضروری مثل اسم درس/حوزه یا ساعت تقریبی مطالعه مشخص نشده است، ابتدا خیلی کوتاه (در ۱ تا ۳ بولت ساده) بپرس که چه درسی و چه ساعتی ترجیح می‌دهد، و اگر کاربر مشخص کرده یا از مکالمه قبلی مشخص است، بلافاصله برنامه کامل چندروزه را در بلوک JSON زیر بساز (حداکثر تا ۶۰ تسک).
+   - بازه تست هر روز را دقیق محاسبه کن و در فیلد "testRange" بنویس (مثلاً "100-129"، "130-159" و برای روز آخر باقی‌مانده بازه).
+   - برای هر تسک حتماً "tags" (آرایه‌ای از ۱ تا ۳ برچسب فارسی واضح مثل ["تست", "زیست", "برنامه_هفتگی"])، "startTime" ("HH:mm")، "durationMinutes"، "date" (ISO دقیق از جدول بالا)، و "studyType" ("study" | "test_educational" | "test_speed" | "review" | "task" | "project" | "exam") قرار بده.
+۲. هیچ‌وقت متن خام JSON را به عنوان توضیح کپی نکن؛ فقط یک توضیح کوتاه فارسی برای کاربر بنویس و بلوک \`\`\`json زیر را در انتهای پاسخ بگذار تا پیش‌نمایش تعاملی و دکمه «افزودن همه به برنامه» داخل چت نمایش داده شود:
 \`\`\`json
 {
   "action": {
     "type": "preview_tasks",
     "tasks": [
       {
-        "title": "مرور زیست",
+        "title": "تست زیست ۱۰۱ تا ۱۳۰",
         "subject": "زیست‌شناسی",
-        "topic": "ژنتیک",
-        "date": "${toIsoString(new Date())}",
-        "startTime": "09:00",
-        "durationMinutes": 60,
-        "studyType": "study",
+        "topic": "تست ۱۰۰ تا ۱۲۹ فصل اول",
+        "details": "تست آموزشی",
+        "testRange": "100-129",
+        "tags": ["تست", "زیست", "روزانه"],
+        "date": "${todayIso}",
+        "startTime": "16:00",
+        "durationMinutes": 45,
+        "studyType": "test_educational",
         "priority": "high"
       }
     ]
@@ -334,6 +361,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                                 topic: t.topic || t.title || '',
                                 details: t.details,
                                 testRange: t.testRange,
+                                tags: t.tags,
                                 date: t.date || toIsoString(new Date()),
                                 startTime: t.startTime,
                                 durationMinutes: t.durationMinutes,
@@ -351,11 +379,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 }
             }
 
-            // User Agency (WWDC26): Always preview AI-proposed tasks before mutating the user's schedule
-            if (parsedTasks && parsedTasks.length > 0) {
-                setReviewTasks(parsedTasks);
-            }
-
+            // User Agency: Inline interactive preview in ChatMessage lets user inspect tags/times/ranges and approve with 1 click
             const cleanText = text.replace(/```json[\s\S]*?```/g, '').trim();
 
             const aiMsg: Message = {

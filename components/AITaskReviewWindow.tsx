@@ -13,6 +13,7 @@ export interface ParsedTask {
     topic: string;
     details: string;
     testRange?: string;
+    tags?: string[];
     date: string;
     startTime?: string;
     durationMinutes?: number;
@@ -59,7 +60,7 @@ const AITaskReviewWindow: React.FC<AITaskReviewWindowProps> = ({
                 isCompleted: false, // Default for preview
                 status: 'todo',
                 isCustom: true,
-                tags: ['AI'],
+                tags: t.tags && t.tags.length > 0 ? t.tags : ['AI'],
                 startTime: t.startTime,
                 durationMinutes: t.durationMinutes ?? 60,
                 priority: t.priority || 'medium',

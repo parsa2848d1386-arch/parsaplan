@@ -598,6 +598,7 @@ export interface StoredChatMessage {
         topic: string;
         details: string;
         testRange?: string;
+        tags?: string[];
         date: string;
         startTime?: string;
         durationMinutes?: number;

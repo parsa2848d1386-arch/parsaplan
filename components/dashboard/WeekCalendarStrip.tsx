@@ -72,8 +72,8 @@ export const WeekCalendarStrip: React.FC<WeekCalendarStripProps> = React.memo(
                     </div>
                 </div>
 
-                {/* 7 Days Liquid Fill Strip — Date + Task Count Only (Percentage via Liquid Fill) */}
-                <div className="flex md:grid md:grid-cols-7 gap-2 sm:gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1">
+                {/* 7 Days Liquid Fill Strip — Fits 7 equal columns across all mobile & desktop screens */}
+                <div className="grid grid-cols-7 gap-1 sm:gap-2 py-1">
                     {weekDays.map((d) => (
                         <m.button
                             key={d.iso}
@@ -81,11 +81,12 @@ export const WeekCalendarStrip: React.FC<WeekCalendarStripProps> = React.memo(
                             whileTap={prefersReducedMotion ? undefined : TAP_SCALE}
                             transition={SPRING_TAP}
                             onClick={() => onSelectDate(d.iso)}
-                            className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2 sm:p-2.5 squircle-sm border transition-colors duration-150 w-[calc((100%-2rem)/4.8)] min-w-[58px] shrink-0 md:w-auto md:min-w-0 md:shrink snap-start min-h-[76px] sm:min-h-[84px] cursor-pointer group ${
+                            aria-label={`${d.weekday} ${d.shamsiDayNum} — ${formatToPersianDigits(d.done)} از ${formatToPersianDigits(d.total)} کار`}
+                            className={`relative overflow-hidden flex flex-col items-center justify-between w-full min-w-0 p-1 sm:p-2.5 squircle-sm border transition-colors duration-150 min-h-[68px] sm:min-h-[84px] cursor-pointer group ${
                                 d.isSelected
-                                    ? 'border-primary ring-2 ring-primary/30 bg-[var(--surface-elevated)]'
+                                    ? 'border-primary ring-2 ring-primary/30 bg-[var(--surface-elevated)] shadow-xs'
                                     : d.isToday
-                                        ? 'border-primary/50 bg-surface-container-low/70'
+                                        ? 'border-primary/55 bg-surface-container-low/80'
                                         : 'border-[var(--border-subtle)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
                             }`}
                         >

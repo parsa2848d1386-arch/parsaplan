@@ -22,10 +22,13 @@ describe('PWA & Cache Management Acceptance Verification (Milestone 1)', () => {
 
     const config = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf-8'));
 
-    // بررسی rewrite برای SPA
+    // بررسی rewrite برای SPA (با استثنای /api/ برای فانکشن‌های سرورلس جمینای)
     expect(config.rewrites).toBeDefined();
     expect(
-      config.rewrites.some((r: any) => r.source === '/(.*)' && r.destination === '/index.html')
+      config.rewrites.some(
+        (r: any) =>
+          (r.source === '/((?!api/).*)' || r.source === '/(.*)') && r.destination === '/index.html'
+      )
     ).toBe(true);
 
     // بررسی هدرها

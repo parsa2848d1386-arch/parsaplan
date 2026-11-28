@@ -69,6 +69,7 @@ export const aiProposedTaskSchema = z.object({
     topic: z.string().trim().max(240).catch(''),
     details: z.string().max(1000).catch(''),
     testRange: z.string().max(200).optional(),
+    tags: z.array(z.string().trim().min(1).max(32)).max(8).optional(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     startTime: z.string().regex(/^\d{1,2}:\d{2}$/).optional(),
     durationMinutes: z.coerce.number().int().min(5).max(480).catch(60),
@@ -89,11 +90,11 @@ export const aiTaskActionSchema = z.object({
     action: z
         .object({
             type: z.enum(['preview_tasks', 'auto_add_tasks']),
-            tasks: z.array(aiProposedTaskSchema).max(40),
+            tasks: z.array(aiProposedTaskSchema).max(60),
         })
         .optional(),
     type: z.enum(['preview_tasks', 'auto_add_tasks']).optional(),
-    tasks: z.array(aiProposedTaskSchema).max(40).optional(),
+    tasks: z.array(aiProposedTaskSchema).max(60).optional(),
 });
 
 export const aiBrainDumpItemSchema = z.object({

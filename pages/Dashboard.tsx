@@ -349,31 +349,53 @@ export const Dashboard: React.FC = () => {
                         </motion.button>
                     </div>
 
-                    {/* Two Animated, Upgraded White / Dark Mini Stat Cards */}
+                    {/* Two Redesigned Interactive Bento Hero Stat Cards */}
                     <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
-                        {/* Mini Card 1: Animated Deep Focus Card */}
-                        <motion.div
+                        {/* Mini Card 1: Deep Focus Card (Interactive -> Opens Timer) */}
+                        <motion.button
+                            type="button"
+                            onClick={() => {
+                                haptics.light();
+                                setIsTimerOpen(true);
+                            }}
                             initial={prefersReducedMotion ? false : { opacity: 0, y: 12, scale: 0.94 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
                             transition={{ type: 'spring', stiffness: 320, damping: 19, mass: 0.85 }}
-                            className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5"
+                            className="group relative overflow-hidden bg-gradient-to-br from-white/95 via-indigo-50/40 to-white/95 dark:from-slate-900/95 dark:via-indigo-950/35 dark:to-slate-900/95 text-[var(--text-primary)] squircle-md p-3.5 sm:p-4 shadow-md border border-white/55 dark:border-indigo-400/15 hover:border-primary/40 text-start flex flex-col justify-between gap-2.5 cursor-pointer transition-colors"
                         >
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex flex-col min-w-0">
-                                    <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                                        تمرکز عمیق
+                            <div className="flex items-center justify-between gap-1.5 w-full">
+                                <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[var(--text-secondary)]">
+                                    <span className="w-6 h-6 rounded-lg bg-primary/12 text-primary flex items-center justify-center shrink-0">
+                                        <Clock size={13} strokeWidth={2.3} aria-hidden="true" />
                                     </span>
-                                    <span className="text-sm sm:text-base font-black text-on-surface tabular-nums mt-0.5">
+                                    تمرکز عمیق
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/12 text-primary text-[10px] sm:text-[11px] font-extrabold shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                                    <Play size={9} fill="currentColor" aria-hidden="true" />
+                                    شروع
+                                </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 w-full">
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-base sm:text-xl font-black text-on-surface tabular-nums leading-tight">
                                         {formatToPersianDigits(studyHoursDecimal)}{' '}
-                                        <span className="text-xs font-semibold text-[var(--text-tertiary)]">
+                                        <span className="text-[11px] sm:text-xs font-semibold text-[var(--text-tertiary)]">
                                             / {formatToPersianDigits(focusTargetHours)} ساعت
                                         </span>
                                     </span>
+                                    <span className="text-[11px] font-semibold text-[var(--text-tertiary)] truncate mt-0.5 tabular-nums">
+                                        {focusProgressPct >= 100
+                                            ? 'هدف تمرکز امروز کامل شد'
+                                            : studyMinsToday > 0
+                                              ? `${formatToPersianDigits(studyHoursToday)} ساعت و ${formatToPersianDigits(studyRemMinsToday)} دقیقه ثبت‌شده`
+                                              : 'برای شروع تایمر ضربه بزنید'}
+                                    </span>
                                 </div>
 
-                                <div className="relative w-12 h-12 sm:w-13 sm:h-13 flex items-center justify-center shrink-0">
+                                {/* Single Clean SVG Radial Progress Ring */}
+                                <div className="relative w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center shrink-0">
                                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48" aria-hidden="true">
                                         <circle
                                             className="text-surface-container-high dark:text-slate-800 fill-none"
@@ -393,68 +415,68 @@ export const Dashboard: React.FC = () => {
                                             strokeWidth="4.5"
                                         />
                                     </svg>
-                                    <span className="absolute text-[11px] font-extrabold tabular-nums text-on-surface">
+                                    <span className="absolute text-[11px] font-black tabular-nums text-on-surface">
                                         {formatToPersianDigits(focusProgressPct)}٪
                                     </span>
                                 </div>
                             </div>
+                        </motion.button>
 
-                            <div className="flex flex-col gap-1">
-                                <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
-                                    <motion.div
-                                        initial={prefersReducedMotion ? false : { width: 0 }}
-                                        animate={{ width: `${focusProgressPct}%` }}
-                                        transition={{ type: 'spring', stiffness: 180, damping: 22 }}
-                                        className="h-full rounded-full bg-gradient-to-l from-primary to-violet-500"
-                                    />
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        {/* Mini Card 2: Animated Today's Tasks Progress Card */}
-                        <motion.div
+                        {/* Mini Card 2: Today's Tasks Progress Card (Interactive -> Scrolls to Tasks) */}
+                        <motion.button
+                            type="button"
+                            onClick={() => {
+                                haptics.light();
+                                document.getElementById('today-tasks-hub')?.scrollIntoView({
+                                    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+                                    block: 'start',
+                                });
+                            }}
                             initial={prefersReducedMotion ? false : { opacity: 0, y: 12, scale: 0.94 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
                             transition={{ type: 'spring', stiffness: 320, damping: 19, mass: 0.85, delay: 0.04 }}
-                            className="bg-white/95 dark:bg-slate-900/90 text-[var(--text-primary)] squircle-md p-3 sm:p-4 shadow-md border border-white/45 dark:border-white/10 flex flex-col justify-between gap-2.5"
+                            className="group relative overflow-hidden bg-gradient-to-br from-white/95 via-emerald-50/40 to-white/95 dark:from-slate-900/95 dark:via-emerald-950/30 dark:to-slate-900/95 text-[var(--text-primary)] squircle-md p-3.5 sm:p-4 shadow-md border border-white/55 dark:border-emerald-400/15 hover:border-emerald-500/40 text-start flex flex-col justify-between gap-2.5 cursor-pointer transition-colors"
                         >
-                            <div className="flex items-start justify-between gap-2">
-                                <div className="flex flex-col min-w-0">
-                                    <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--text-secondary)]">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" aria-hidden="true" />
-                                        پیشرفت تسک‌ها
+                            <div className="flex items-center justify-between gap-1.5 w-full">
+                                <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-extrabold text-[var(--text-secondary)]">
+                                    <span className="w-6 h-6 rounded-lg bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 size={13} strokeWidth={2.3} aria-hidden="true" />
                                     </span>
-                                    <span className="text-sm sm:text-base font-black text-on-surface tabular-nums mt-0.5">
-                                        {formatToPersianDigits(completedDailyTasks)}{' '}
-                                        <span className="text-xs font-semibold text-[var(--text-tertiary)]">
-                                            از {formatToPersianDigits(dailyTasks.length)} تسک
-                                        </span>
-                                    </span>
-                                </div>
-                                <span className="px-2 py-0.5 rounded-full bg-secondary/12 text-secondary text-[11px] font-extrabold tabular-nums shrink-0">
+                                    پیشرفت تسک‌ها
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[11px] font-black tabular-nums shrink-0">
                                     {formatToPersianDigits(dailyPct)}٪
                                 </span>
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <span className="text-[11px] font-semibold text-[var(--text-tertiary)] truncate">
-                                    {dailyTasks.length > completedDailyTasks
-                                        ? `${formatToPersianDigits(dailyTasks.length - completedDailyTasks)} کار باقی‌مانده`
-                                        : dailyTasks.length > 0
-                                          ? 'همه کارها انجام شد'
-                                          : 'بدون کار ثبت‌شده'}
-                                </span>
-                                <div className="h-1.5 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden">
+                            <div className="flex flex-col gap-2 w-full">
+                                <div className="flex items-baseline justify-between gap-2">
+                                    <span className="text-base sm:text-xl font-black text-on-surface tabular-nums leading-tight">
+                                        {formatToPersianDigits(completedDailyTasks)}{' '}
+                                        <span className="text-[11px] sm:text-xs font-semibold text-[var(--text-tertiary)]">
+                                            از {formatToPersianDigits(dailyTasks.length)} تسک
+                                        </span>
+                                    </span>
+                                    <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 truncate tabular-nums">
+                                        {dailyTasks.length > completedDailyTasks
+                                            ? `${formatToPersianDigits(dailyTasks.length - completedDailyTasks)} کار باقی‌مانده`
+                                            : dailyTasks.length > 0
+                                              ? 'همه کارها انجام شد'
+                                              : 'بدون کار ثبت‌شده'}
+                                    </span>
+                                </div>
+
+                                <div className="h-2 w-full rounded-full bg-surface-container-high dark:bg-slate-800 overflow-hidden p-0.5">
                                     <motion.div
                                         initial={prefersReducedMotion ? false : { width: 0 }}
                                         animate={{ width: `${dailyPct}%` }}
                                         transition={{ type: 'spring', stiffness: 180, damping: 22 }}
-                                        className="h-full rounded-full bg-gradient-to-l from-secondary to-emerald-400"
+                                        className="h-full rounded-full bg-gradient-to-l from-emerald-500 via-teal-400 to-cyan-400"
                                     />
                                 </div>
                             </div>
-                        </motion.div>
+                        </motion.button>
                     </div>
                 </div>
             </section>
@@ -533,7 +555,10 @@ export const Dashboard: React.FC = () => {
                 {/* Main 8 Columns */}
                 <div className="lg:col-span-8 flex flex-col gap-4 sm:gap-6">
                     {/* ===== Today's Tasks Hub (Timeblocks unified in 24h Timeline) Hub ===== */}
-                    <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-5">
+                    <div
+                        id="today-tasks-hub"
+                        className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-sm border border-[var(--border-subtle)] flex flex-col gap-5 scroll-mt-20"
+                    >
                         {/* Tasks List Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                             <div className="flex items-center gap-2">
