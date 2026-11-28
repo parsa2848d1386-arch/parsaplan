@@ -5,6 +5,7 @@ import { get, set } from 'idb-keyval';
 import { SubjectTask, TaskPriority, StudyType, StoredChatMessage } from '../types';
 import { addDays, getDiffDays, getFullShamsiDate, toIsoString } from '../utils';
 import { getErrorMessage } from '../utils/formHelpers';
+import { StorageManager } from '../utils/StorageManager';
 import { aiTaskActionSchema } from '../utils/schemas';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
 import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
@@ -26,10 +27,8 @@ export interface AIChatProps {
 }
 
 const AI_MODELS = [
-    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (پیشنهادی رایگان)' },
-    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (سریع)' },
-    { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen' },
-    { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite' },
+    { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash' },
+    { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite' },
 ];
 
 export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
@@ -50,6 +49,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         streakStats,
         showToast,
         userId,
+        geminiApiKey,
     } = useStore();
     const focusCtx = useOptionalFocus();
     const botSeed = userName || user?.displayName || user?.email?.split('@')[0] || 'Parsashz';
@@ -69,7 +69,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
     const [isTyping, setIsTyping] = useState(false);
     const selectedModel = AI_MODELS.some((m) => m.id === settings.geminiModel)
         ? settings.geminiModel
-        : 'gemini-2.5-flash';
+        : 'gemini-3.8-flash';
 
     const [reviewTasks, setReviewTasks] = useState<ParsedTask[] | null>(null);
 
@@ -317,9 +317,13 @@ ${calendarWindow}
                 ...(att.textContent !== undefined ? { textContent: att.textContent } : {}),
             }));
 
+            const effectiveApiKey = (geminiApiKey || StorageManager.loadLocalGeminiKey() || '').trim();
             const response = await fetch('/api/gemini/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(effectiveApiKey ? { 'x-gemini-api-key': effectiveApiKey } : {}),
+                },
                 body: JSON.stringify({
                     message: textToSend,
                     history,

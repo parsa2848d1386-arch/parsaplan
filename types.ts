@@ -12,7 +12,14 @@ export type StudyType =
     | 'test_educational'
     | 'test_speed'
     | 'review'
-    | 'study';
+    | 'study'
+    | (string & {});
+
+export interface CustomActivityType {
+    id: string;
+    label: string;
+    icon?: string;
+}
 export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
 export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'cancelled';
 export type EnergyLevel = 'high' | 'medium' | 'low';
@@ -77,9 +84,22 @@ export const SUBJECT_LISTS: Record<StreamType, string[]> = {
         'آزمایشگاه علوم تجربی'
     ],
     tajrobi: [
-        'زیست‌شناسی', 'ریاضیات', 'فیزیک', 'شیمی', 'زمین‌شناسی',
-        'ادبیات فارسی', 'نگارش', 'دین و زندگی', 'عربی', 'زبان انگلیسی', 'سلامت و بهداشت', 'مدیریت خانواده', 'آمادگی دفاعی', 'هویت اجتماعی', 'تفکر و سواد رسانه‌ای',
-        'آزمایشگاه علوم تجربی'
+        'زیست‌شناسی',
+        'شیمی',
+        'فیزیک',
+        'ریاضیات',
+        'زمین‌شناسی',
+        'ادبیات فارسی',
+        'نگارش',
+        'دین و زندگی',
+        'عربی',
+        'زبان انگلیسی',
+        'سلامت و بهداشت',
+        'هویت اجتماعی',
+        'مدیریت خانواده',
+        'تفکر و سواد رسانه‌ای',
+        'آمادگی دفاعی',
+        'آزمایشگاه علوم تجربی',
     ],
     ensani: [
         'ریاضی و آمار', 'علوم و فنون ادبی', 'عربی اختصاصی', 'تاریخ', 'جغرافیا', 'جامعه‌شناسی', 'فلسفه', 'منطق', 'اقتصاد', 'روان‌شناسی',
@@ -501,6 +521,8 @@ export interface AppSettings {
     targetExamDate?: string; // YYYY-MM-DD
     chronotype?: 'early_bird' | 'balanced' | 'night_owl';
     blobatar?: BlobatarConfig;
+    customActivityTypes?: CustomActivityType[];
+    hiddenActivityTypes?: string[];
 }
 
 export interface AppState {

@@ -214,7 +214,7 @@ describe('Milestone 2 - Dashboard Restructuring Acceptance Tests', () => {
         expect(screen.getByRole('button', { name: /نمایش کمتر/ })).toHaveAttribute('aria-expanded', 'true');
 
         // Open schedule chip to verify Parkinson's Law smart startTime pre-filled automatically
-        fireEvent.click(screen.getByRole('button', { name: 'زمان‌بندی روز و ساعت' }));
+        fireEvent.click(screen.getByRole('button', { name: 'زمان‌بندی تاریخ و ساعت' }));
         const startTimeInput = screen.getByLabelText(/ساعت شروع/) as HTMLInputElement;
         expect(startTimeInput.value).toMatch(/^\d{2}:\d{2}$/);
     });

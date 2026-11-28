@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Play, Pause, Square, Maximize2, Sparkles, Cloud, CloudOff, Users, Lock } from 'lucide-react';
+import { Play, Pause, Square, Maximize2, Sparkles, Cloud, CloudOff, Users, Lock, CheckCircle2, Info, AlertTriangle } from 'lucide-react';
 import { useOptionalFocus, useOptionalFocusTick } from '../context/FocusContext';
 import { useStore, useStoreSyncStatus } from '../context/StoreContext';
+import { useUI } from '../context/UIContext';
 import { formatClockTime, formatToPersianDigits } from '../utils';
 import { haptics } from '../utils/haptics';
 
@@ -16,6 +17,7 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
     const focus = useOptionalFocus();
     const tick = useOptionalFocusTick();
     const { xp = 0, tasks = [] } = useStore();
+    const { toasts } = useUI();
     const { isSyncing, syncQueueCount = 0 } = useStoreSyncStatus();
     const prefersReducedMotion = useReducedMotion();
 
@@ -24,12 +26,17 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
     const prevXpRef = useRef<number>(xp);
     const xpTimerRef = useRef<number | null>(null);
 
+    const latestCompactToast = toasts.length > 0 ? toasts[toasts.length - 1] : null;
+    const showToastInIsland = Boolean(
+        latestCompactToast && !latestCompactToast.action && (latestCompactToast.type === 'success' || latestCompactToast.type === 'info')
+    );
+
     useEffect(() => {
         if (xp > prevXpRef.current && prevXpRef.current > 0) {
             const delta = xp - prevXpRef.current;
             setXpDelta(delta);
             if (xpTimerRef.current) window.clearTimeout(xpTimerRef.current);
-            xpTimerRef.current = window.setTimeout(() => setXpDelta(0), 2600);
+            xpTimerRef.current = window.setTimeout(() => setXpDelta(0), 2200);
         }
         prevXpRef.current = xp;
     }, [xp]);
@@ -44,7 +51,7 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
     const isTimerLive = status === 'running' || status === 'paused';
     const hasSyncAlert = !isOnline || isSyncing || syncQueueCount > 0 || cloudStatus === 'error';
     const activeRoomCode = focus?.activeRoomCode ?? null;
-    const isVisible = xpDelta > 0 || isTimerLive || hasSyncAlert || Boolean(activeRoomCode);
+    const isVisible = showToastInIsland || xpDelta > 0 || isTimerLive || hasSyncAlert || Boolean(activeRoomCode);
 
     if (!isVisible) return null;
 
@@ -69,9 +76,24 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
                 transition={{ type: 'spring', stiffness: 380, damping: 17, mass: 0.8 }}
                 aria-label="جزیره هوشمند وضعیت"
                 aria-expanded={isExpanded}
-                className="pointer-events-auto h-[42px] px-2.5 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] flex items-center justify-center gap-1.5 cursor-pointer max-w-[116px] shadow-md"
+                className={`pointer-events-auto h-[40px] px-3 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all ${
+                    showToastInIsland ? 'max-w-[210px]' : 'max-w-[120px]'
+                }`}
             >
-                {xpDelta > 0 ? (
+                {showToastInIsland && latestCompactToast ? (
+                    <>
+                        {latestCompactToast.type === 'success' ? (
+                            <CheckCircle2 size={13} className="text-emerald-500 shrink-0" aria-hidden="true" />
+                        ) : latestCompactToast.type === 'warning' ? (
+                            <AlertTriangle size={13} className="text-amber-500 shrink-0" aria-hidden="true" />
+                        ) : (
+                            <Info size={13} className="text-primary shrink-0" aria-hidden="true" />
+                        )}
+                        <span className="text-[11px] font-bold text-on-surface dark:text-white truncate">
+                            {latestCompactToast.message}
+                        </span>
+                    </>
+                ) : xpDelta > 0 ? (
                     <>
                         <Sparkles size={13} className="text-amber-400 shrink-0" aria-hidden="true" />
                         <span className="text-[11px] font-black text-emerald-500 dark:text-emerald-300 tabular-nums whitespace-nowrap">

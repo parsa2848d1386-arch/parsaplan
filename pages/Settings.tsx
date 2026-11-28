@@ -220,25 +220,42 @@ const InlineAuthForm = () => {
 };
 
 const GeminiModelSettings = () => {
-    const { settings, updateSettings } = useStore();
-    const activeModel = settings?.geminiModel || 'gemini-2.5-flash';
+    const { settings, updateSettings, geminiApiKey, setGeminiApiKey, showToast } = useStore();
+    const activeModel =
+        settings?.geminiModel === 'gemini-3.5-flash-lite' ? 'gemini-3.5-flash-lite' : 'gemini-3.8-flash';
+    const [keyDraft, setKeyDraft] = useState(geminiApiKey || '');
+    const [showKey, setShowKey] = useState(false);
+
+    useEffect(() => {
+        setKeyDraft(geminiApiKey || '');
+    }, [geminiApiKey]);
 
     const models = [
         {
-            id: 'gemini-2.5-flash',
-            title: 'جمینای ۲.۵ فلش (پیشنهادی رایگان)',
+            id: 'gemini-3.8-flash',
+            title: 'Gemini 3.8 Flash',
             badge: 'پیشنهادی',
-            desc: 'دقت تحلیلی بالا و سازگار با سهمیه رایگان Google AI Studio',
+            desc: 'قدرتمند و دقیق برای برنامه‌ریزی چندروزه و تحلیل درسی',
         },
         {
-            id: 'gemini-2.5-flash-lite',
-            title: 'جمینای ۲.۵ لایت (فوق سریع)',
-            desc: 'پاسخ‌دهی فوری برای چت روزمره و ساخت سریع تسک',
+            id: 'gemini-3.5-flash-lite',
+            title: 'Gemini 3.5 Flash Lite',
+            desc: 'پاسخ‌دهی بسیار سریع و سبک برای کارهای روزمره',
         },
     ];
 
+    const handleSaveKey = () => {
+        const trimmed = keyDraft.trim();
+        setGeminiApiKey(trimmed);
+        haptics.success();
+        showToast(
+            trimmed ? 'کلید جمینای با موفقیت روی دستگاه شما ذخیره شد.' : 'کلید اختصاصی جمینای پاک شد.',
+            'success'
+        );
+    };
+
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center shrink-0">
                     <Sparkles size={16} aria-hidden="true" />
@@ -262,7 +279,7 @@ const GeminiModelSettings = () => {
                         }`}
                     >
                         <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs font-extrabold text-on-surface">{m.title}</span>
+                            <span className="text-xs font-extrabold text-on-surface" dir="ltr">{m.title}</span>
                             {m.badge && (
                                 <span className="px-2 py-0.5 rounded-md bg-primary text-on-primary text-[11px] font-bold">
                                     {m.badge}
@@ -272,6 +289,54 @@ const GeminiModelSettings = () => {
                         <p className="text-[11px] text-[var(--text-secondary)]">{m.desc}</p>
                     </button>
                 ))}
+            </div>
+
+            {/* Free User BYOK Gemini API Key Guide */}
+            <div className="p-3.5 rounded-2xl bg-surface-container-low border border-[var(--border-subtle)] space-y-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-extrabold text-on-surface flex items-center gap-1.5">
+                        <Lock size={14} className="text-primary" aria-hidden="true" />
+                        کلید اختصاصی جمینای (<bdi>Gemini API Key</bdi>)
+                    </span>
+                    <a
+                        href="https://aistudio.google.com/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-extrabold text-primary hover:underline"
+                    >
+                        دریافت کلید رایگان از Google AI Studio ↗
+                    </a>
+                </div>
+                <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                    برای استفاده با سهمیه رایگان خودتان، وارد لینک بالا شوید، دکمه <bdi>Create API key</bdi> را بزنید و کد دریافتی را اینجا وارد کنید (کلید فقط روی مرورگر خودتان ذخیره می‌شود).
+                </p>
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                        <input
+                            type={showKey ? 'text' : 'password'}
+                            value={keyDraft}
+                            onChange={(e) => setKeyDraft(e.target.value)}
+                            placeholder="AIzaSy..."
+                            dir="ltr"
+                            className="w-full min-h-[42px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl ps-3 pe-10 py-2 text-xs font-mono text-on-surface outline-none focus:border-primary"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowKey((v) => !v)}
+                            aria-label={showKey ? 'مخفی کردن کلید' : 'نمایش کلید'}
+                            className="absolute end-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-[var(--text-secondary)] hover:text-on-surface cursor-pointer"
+                        >
+                            {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleSaveKey}
+                        className="min-h-[42px] px-4 rounded-xl bg-primary text-on-primary text-xs font-bold hover:brightness-110 transition cursor-pointer shrink-0"
+                    >
+                        ذخیره کلید
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -726,17 +791,17 @@ const Settings = () => {
                 ]}
             />
 
-            {/* TAB 1: DAILY RHYTHM & OPTIONAL GOAL (Simple Background System) */}
+            {/* TAB 1: SIMPLE SHAMSI CALENDAR & DAILY FOCUS RHYTHM */}
             {activeTab === 'plan' && (
                 <div className="space-y-4">
                     <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-5">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="flex items-center gap-2 text-primary">
                                 <Clock size={19} aria-hidden="true" />
                                 <div>
-                                    <h2 className="font-bold text-sm sm:text-base text-on-surface">ریتم تمرکز و هدف روزانه</h2>
+                                    <h2 className="font-bold text-sm sm:text-base text-on-surface">برنامه‌ریزی و ریتم تمرکز</h2>
                                     <p className="text-[11px] text-[var(--text-secondary)]">
-                                        بدون محدودیت دوره اجباری؛ برنامه شما آزادانه بر اساس تقویم ذخیره می‌شود
+                                        امروز: <span className="font-bold text-on-surface">{getFullShamsiDate(new Date())}</span> · ثبت آزاد تسک روی هر تاریخ شمسی
                                     </p>
                                 </div>
                             </div>
@@ -792,34 +857,69 @@ const Settings = () => {
                             </div>
 
                             {isCustomRhythmOpen && (
-                                <div className="grid sm:grid-cols-2 gap-3 pt-2">
-                                    <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
-                                        <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
-                                            مدت تمرکز ({formatToPersianDigits(settings?.pomodoroWorkMinutes ?? 25)} دقیقه)
-                                        </label>
-                                        <input
-                                            type="range"
-                                            min={15}
-                                            max={120}
-                                            step={5}
-                                            value={settings?.pomodoroWorkMinutes ?? 25}
-                                            onChange={(e) => updateSettings({ pomodoroWorkMinutes: Number(e.target.value) })}
-                                            className="w-full accent-primary cursor-pointer"
-                                        />
+                                <div className="space-y-3 pt-2">
+                                    <div className="grid sm:grid-cols-2 gap-3">
+                                        <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+                                            <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
+                                                مدت تمرکز ({formatToPersianDigits(settings?.pomodoroWorkMinutes ?? 25)} دقیقه)
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min={15}
+                                                max={120}
+                                                step={5}
+                                                value={settings?.pomodoroWorkMinutes ?? 25}
+                                                onChange={(e) => updateSettings({ pomodoroWorkMinutes: Number(e.target.value) })}
+                                                className="w-full accent-primary cursor-pointer"
+                                            />
+                                        </div>
+                                        <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+                                            <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
+                                                مدت استراحت ({formatToPersianDigits(settings?.pomodoroBreakMinutes ?? 5)} دقیقه)
+                                            </label>
+                                            <input
+                                                type="range"
+                                                min={5}
+                                                max={30}
+                                                step={5}
+                                                value={settings?.pomodoroBreakMinutes ?? 5}
+                                                onChange={(e) => updateSettings({ pomodoroBreakMinutes: Number(e.target.value) })}
+                                                className="w-full accent-emerald-500 cursor-pointer"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
-                                        <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
-                                            مدت استراحت ({formatToPersianDigits(settings?.pomodoroBreakMinutes ?? 5)} دقیقه)
-                                        </label>
-                                        <input
-                                            type="range"
-                                            min={5}
-                                            max={30}
-                                            step={5}
-                                            value={settings?.pomodoroBreakMinutes ?? 5}
-                                            onChange={(e) => updateSettings({ pomodoroBreakMinutes: Number(e.target.value) })}
-                                            className="w-full accent-emerald-500 cursor-pointer"
-                                        />
+
+                                    <div className="space-y-2 pt-1">
+                                        <span className="text-xs font-bold text-[var(--text-secondary)] block">
+                                            ساعت شروع روز جدید در تایم‌لاین
+                                        </span>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {[
+                                                { hour: 0, label: '۰۰:۰۰ بامداد' },
+                                                { hour: 4, label: '۰۴:۰۰ صبح' },
+                                                { hour: 5, label: '۰۵:۰۰ صبح' },
+                                                { hour: 6, label: '۰۶:۰۰ صبح' },
+                                            ].map((opt) => {
+                                                const active = (settings?.dayCutoffHour ?? 5) === opt.hour;
+                                                return (
+                                                    <button
+                                                        key={opt.hour}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            haptics.light();
+                                                            updateSettings({ dayCutoffHour: opt.hour });
+                                                        }}
+                                                        className={`min-h-[40px] rounded-xl border text-[11px] font-bold tabular-nums transition cursor-pointer ${
+                                                            active
+                                                                ? 'bg-primary text-on-primary border-primary shadow-xs'
+                                                                : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)] hover:border-primary/40'
+                                                        }`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -852,41 +952,6 @@ const Settings = () => {
                                             }`}
                                         >
                                             {formatToPersianDigits(hrs)} ساعت
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Logical Day Start Hour */}
-                        <div className="space-y-2 pt-3 border-t border-[var(--border-subtle)]">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-bold text-[var(--text-secondary)]">شروع روز جدید در تایم‌لاین</span>
-                                <span className="text-[11px] text-[var(--text-tertiary)]">مناسب تنظیم زمان‌بندی شبانه‌روزی</span>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2">
-                                {[
-                                    { hour: 0, label: '۰۰:۰۰ بامداد' },
-                                    { hour: 4, label: '۰۴:۰۰ صبح' },
-                                    { hour: 5, label: '۰۵:۰۰ صبح' },
-                                    { hour: 6, label: '۰۶:۰۰ صبح' },
-                                ].map((opt) => {
-                                    const active = (settings?.dayCutoffHour ?? 5) === opt.hour;
-                                    return (
-                                        <button
-                                            key={opt.hour}
-                                            type="button"
-                                            onClick={() => {
-                                                haptics.light();
-                                                updateSettings({ dayCutoffHour: opt.hour });
-                                            }}
-                                            className={`min-h-[40px] rounded-xl border text-[11px] font-bold tabular-nums transition cursor-pointer ${
-                                                active
-                                                    ? 'bg-primary text-on-primary border-primary shadow-xs'
-                                                    : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)] hover:border-primary/40'
-                                            }`}
-                                        >
-                                            {opt.label}
                                         </button>
                                     );
                                 })}

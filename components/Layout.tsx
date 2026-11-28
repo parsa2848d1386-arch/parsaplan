@@ -281,7 +281,7 @@ const Layout = () => {
     };
 
     return (
-        <div data-color-scheme={darkMode ? 'dark' : 'light'}>
+        <div data-color-scheme={darkMode ? 'dark' : 'light'} data-dynamic-island-host="true">
             <a
                 href="#main-content"
                 className="visually-hidden focus:fixed focus:top-3 focus:start-3 focus:z-[var(--z-toast)] focus:px-4 focus:py-2.5 focus:rounded-xl focus:bg-primary focus:text-on-primary focus:font-bold focus:text-sm focus:shadow-lg"

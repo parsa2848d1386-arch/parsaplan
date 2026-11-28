@@ -9,6 +9,7 @@ import {
     ConfirmDialogState,
     FirebaseConfig,
     CustomSubject,
+    CustomActivityType,
     AppSettings,
     StreamType,
     ArchivedPlan,
@@ -280,7 +281,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     // --- SETTINGS ---
     const [stream, setStream] = useState<StreamType>('life');
-    const [geminiModel, setGeminiModel] = useState<string>('gemini-4-hydrogen');
+    const [geminiModel, setGeminiModel] = useState<string>('gemini-3.8-flash');
     const [geminiApiKey, setGeminiApiKeyState] = useState<string>(() => StorageManager.loadLocalGeminiKey());
     const [bioTheme, setBioTheme] = useState<boolean>(false);
     const [hasUnreadAiMessage, setHasUnreadAiMessage] = useState<boolean>(false);
@@ -293,6 +294,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [targetExamTitle, setTargetExamTitle] = useState<string>('');
     const [targetExamDate, setTargetExamDate] = useState<string>('');
     const [blobatar, setBlobatar] = useState<AppSettings['blobatar']>({ shape: 'boxy', hue: 'auto', expression: 'auto' });
+    const [customActivityTypes, setCustomActivityTypes] = useState<CustomActivityType[]>([]);
+    const [hiddenActivityTypes, setHiddenActivityTypes] = useState<string[]>([]);
 
     // --- SYNC & UI STATE ---
     const [isInitialized, setIsInitialized] = useState(false);
@@ -403,6 +406,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             targetExamTitle,
             targetExamDate,
             blobatar,
+            customActivityTypes,
+            hiddenActivityTypes,
         }),
         [
             darkMode,
@@ -422,6 +427,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             targetExamTitle,
             targetExamDate,
             blobatar,
+            customActivityTypes,
+            hiddenActivityTypes,
         ]
     );
 
@@ -447,6 +454,8 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (s.targetExamTitle !== undefined) setTargetExamTitle(s.targetExamTitle);
             if (s.targetExamDate !== undefined) setTargetExamDate(s.targetExamDate);
             if (s.blobatar !== undefined) setBlobatar(s.blobatar);
+            if (s.customActivityTypes !== undefined) setCustomActivityTypes(s.customActivityTypes);
+            if (s.hiddenActivityTypes !== undefined) setHiddenActivityTypes(s.hiddenActivityTypes);
         },
         [darkMode, viewMode, showQuotes, toggleDarkMode, setViewMode, toggleShowQuotes]
     );
@@ -537,6 +546,46 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
                 setSyncQueueCount(pending.length);
                 setDeadLetterCount(deadLetters.length);
+
+                // Cloud Hydration on Startup / Cross-Device Login:
+                // If authenticated, flush any pending offline changes first, then pull newer cloud state.
+                if (isCloudSyncAllowed(db, userId, user) && db) {
+                    try {
+                        if (pending.length > 0 && (typeof navigator === 'undefined' || navigator.onLine)) {
+                            const flushRes = await syncEngine.flushOutbox(db, userId, user);
+                            setSyncQueueCount(flushRes.remaining);
+                        }
+                        const cloudData = await syncEngine.loadFullState(db, userId);
+                        if (cloudData) {
+                            const cloudTs = Number(cloudData.lastUpdated || 0);
+                            const localTs = Number(data?.lastUpdated || 0);
+                            const localIsEmpty =
+                                !data ||
+                                ((data.tasks?.length || 0) === 0 &&
+                                    (data.sessions?.length || 0) === 0 &&
+                                    (data.xp || 0) === 0);
+                            const cloudHasContent =
+                                (cloudData.tasks?.length || 0) > 0 ||
+                                (cloudData.sessions?.length || 0) > 0 ||
+                                Number(cloudData.xp || 0) > 0;
+                            if (cloudTs > localTs || (localIsEmpty && cloudHasContent)) {
+                                ignoreSyncUntilRef.current = Date.now() + 2500;
+                                applyCloudData(cloudData);
+                                lastSyncTimeRef.current = cloudTs || Date.now();
+                                setLastSyncTime(lastSyncTimeRef.current);
+                                await StorageManager.save(cloudData as AppDataV1, backupUserId);
+                            }
+                            cloudPermissionBlockedRef.current = false;
+                            reportCloudStatus('connected');
+                        }
+                    } catch (cloudErr) {
+                        if (isFirestorePermissionDenied(cloudErr)) {
+                            handleCloudPermissionError('StartupHydrate', cloudErr);
+                        } else {
+                            console.warn('[StartupHydrate] Failed to pull initial cloud state:', cloudErr);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Error during app initialization, loading defaults:', error);
                 loadDefaultPlan();
@@ -553,7 +602,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         };
 
         if (userId) initApp();
-    }, [userId]);
+    }, [userId, db, user]);
 
     const loadDefaultPlan = () => {
         const start = toIsoString(new Date());
@@ -614,8 +663,11 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         ]
     );
 
-    // --- LOCAL PERSISTENCE (DEBOUNCED AUTO-SAVE TO INDEXEDDB FOR SMOOTH 60FPS UI) ---
+    // --- LOCAL PERSISTENCE (FAST AUTO-SAVE + PAGEHIDE FLUSH SO REFRESH NEVER LOSES STATE) ---
     const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const latestSnapshotRef = useRef<ReturnType<typeof buildDataSnapshot> | null>(null);
+    latestSnapshotRef.current = buildDataSnapshot(false);
+
     useEffect(() => {
         if (!isInitialized) return;
         let cancelled = false;
@@ -625,12 +677,56 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             StorageManager.save(buildDataSnapshot(false), userId || 'parsaplan_local_user').then((ok) => {
                 if (!cancelled) setSaveStatus(ok ? 'saved' : 'error');
             });
-        }, 280);
+        }, 45);
         return () => {
             cancelled = true;
             if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
         };
     }, [buildDataSnapshot, isInitialized, userId]);
+
+    useEffect(() => {
+        if (!isInitialized) return;
+        const flushLocalNow = () => {
+            if (latestSnapshotRef.current) {
+                void StorageManager.save(latestSnapshotRef.current, userId || 'parsaplan_local_user');
+            }
+        };
+        const onVisChange = () => {
+            if (document.visibilityState === 'hidden') flushLocalNow();
+        };
+        window.addEventListener('pagehide', flushLocalNow);
+        window.addEventListener('beforeunload', flushLocalNow);
+        document.addEventListener('visibilitychange', onVisChange);
+        return () => {
+            window.removeEventListener('pagehide', flushLocalNow);
+            window.removeEventListener('beforeunload', flushLocalNow);
+            document.removeEventListener('visibilitychange', onVisChange);
+        };
+    }, [isInitialized, userId]);
+
+    // Fast background outbox flush helper so task completions/edits sync to Firestore within ~150ms
+    const fastFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const scheduleFastCloudFlush = useCallback(() => {
+        if (!isCloudSyncAllowed(db, userId, user) || !db || cloudPermissionBlockedRef.current) return;
+        if (fastFlushTimerRef.current) clearTimeout(fastFlushTimerRef.current);
+        fastFlushTimerRef.current = setTimeout(async () => {
+            if (!db || !isCloudSyncAllowed(db, userId, user) || cloudPermissionBlockedRef.current) return;
+            if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+            const res = await syncEngine.flushOutbox(db, userId, user);
+            setSyncQueueCount(res.remaining);
+            if (res.permissionDenied) {
+                handleCloudPermissionError('FastFlush');
+                return;
+            }
+            if (res.flushed > 0) {
+                cloudPermissionBlockedRef.current = false;
+                reportCloudStatus('connected');
+                const ts = Date.now();
+                lastSyncTimeRef.current = ts;
+                setLastSyncTime(ts);
+            }
+        }, 120);
+    }, [db, userId, user, reportCloudStatus]);
 
     // --- AUTO-SYNC PROFILE METADATA + INCREMENTAL OUTBOX FLUSH (HIGH-SCALE ARCHITECTURE) ---
     const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1210,7 +1306,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         ensureSubjectsExist([newTask.subject]);
         setTasks((prev) => [...prev, newTask]);
         if (isCloudSyncAllowed(db, userId, user)) {
-            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: newTask.id, payload: newTask }).then(setSyncQueueCount);
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: newTask.id, payload: newTask }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
         }
         logAction('add_task', `افزودن تسک: ${newTask.subject}`);
         showToast('تسک اضافه شد', 'success');
@@ -1227,10 +1326,13 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     userId,
                     normalizedList.map((t) => ({ type: 'upsert_task' as const, entityId: t.id, payload: t }))
                 )
-                .then(setSyncQueueCount);
+                .then((c) => {
+                    setSyncQueueCount(c);
+                    scheduleFastCloudFlush();
+                });
         }
         logAction('batch_add_tasks', `${sourceLabel}: ${normalizedList.length} تسک`);
-        showToast(`${normalizedList.length} تسک با موفقیت به برنامه اضافه شد ✅`, 'success');
+        showToast(`${normalizedList.length} تسک اضافه شد`, 'success');
     };
 
     const updateTask = (updatedTask: SubjectTask) => {
@@ -1250,10 +1352,12 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         };
         setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? normalized : t)));
         if (isCloudSyncAllowed(db, userId, user)) {
-            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: normalized.id, payload: normalized }).then(setSyncQueueCount);
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: normalized.id, payload: normalized }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
         }
         logAction('update_task', `ویرایش: ${updatedTask.subject}`);
-        showToast('ذخیره شد', 'success');
     };
 
     const deleteTask = (taskId: string) => {
@@ -1263,12 +1367,15 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         if (isCloudSyncAllowed(db, userId, user)) {
-            syncEngine.enqueue(userId, { type: 'delete_task', entityId: taskId }).then(setSyncQueueCount);
+            syncEngine.enqueue(userId, { type: 'delete_task', entityId: taskId }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
         }
         logAction('delete_task', `حذف: ${deletedTask.subject}`);
 
         showToast(`«${deletedTask.topic || deletedTask.subject}» حذف شد`, 'warning', {
-            durationMs: 5200,
+            durationMs: 4500,
             action: {
                 label: 'بازگردانی',
                 onClick: () => {
@@ -1282,10 +1389,13 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     if (isCloudSyncAllowed(db, userId, user)) {
                         syncEngine
                             .enqueue(userId, { type: 'upsert_task', entityId: deletedTask.id, payload: deletedTask })
-                            .then(setSyncQueueCount);
+                            .then((c) => {
+                                setSyncQueueCount(c);
+                                scheduleFastCloudFlush();
+                            });
                     }
                     logAction('restore_task', `بازگردانی: ${deletedTask.subject}`);
-                    showToast('تسک بازگردانی شد', 'success', { durationMs: 2400 });
+                    showToast('بازگردانی شد', 'success', { durationMs: 1800 });
                 },
             },
         });
@@ -1307,23 +1417,6 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 const reward = getXpReward(rewardType, streakStats.currentStreak);
                 newState ? addXp(reward) : addXp(-reward);
                 if (newState) {
-                    showToast(`+${reward} XP · به زنجیره اضافه شد`, 'success', {
-                        durationMs: 4200,
-                        action: {
-                            label: 'بازگردانی',
-                            onClick: () => {
-                                addXp(-reward);
-                                setTasks((prev) =>
-                                    prev.map((item) =>
-                                        item.id === taskId
-                                            ? { ...item, isCompleted: false, status: 'todo' as TaskStatus }
-                                            : item
-                                    )
-                                );
-                                soundFX.playClick();
-                            },
-                        },
-                    });
                     soundFX.playSuccess();
                 } else {
                     soundFX.playClick();
@@ -1341,7 +1434,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
         const toggledTask = nextTasks.find((t) => t.id === taskId);
         if (toggledTask && isCloudSyncAllowed(db, userId, user)) {
-            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: toggledTask.id, payload: toggledTask }).then(setSyncQueueCount);
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: toggledTask.id, payload: toggledTask }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
         }
 
         // Award PERFECT_DAY_BONUS once per date when all tasks on that date become completed
@@ -1357,11 +1453,41 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
 
     const updateTaskBlocks = (taskId: string, blocks: BlockNote[]) => {
-        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, blocks } : t)));
+        let updated: SubjectTask | undefined;
+        setTasks((prev) =>
+            prev.map((t) => {
+                if (t.id === taskId) {
+                    updated = { ...t, blocks };
+                    return updated;
+                }
+                return t;
+            })
+        );
+        if (updated && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: updated }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
+        }
     };
 
     const toggleTaskMIT = (taskId: string) => {
-        setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, isMIT: !t.isMIT } : t)));
+        let updated: SubjectTask | undefined;
+        setTasks((prev) =>
+            prev.map((t) => {
+                if (t.id === taskId) {
+                    updated = { ...t, isMIT: !t.isMIT };
+                    return updated;
+                }
+                return t;
+            })
+        );
+        if (updated && isCloudSyncAllowed(db, userId, user)) {
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: updated }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
+        }
     };
 
     const updateTaskStatus = (taskId: string, status: TaskStatus) => {
@@ -1381,7 +1507,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setTasks(nextTasks);
 
         if (targetTask && isCloudSyncAllowed(db, userId, user)) {
-            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: targetTask }).then(setSyncQueueCount);
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: targetTask }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
         }
     };
 
@@ -1398,7 +1527,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setTasks(nextTasks);
 
         if (targetTask && isCloudSyncAllowed(db, userId, user)) {
-            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: targetTask }).then(setSyncQueueCount);
+            syncEngine.enqueue(userId, { type: 'upsert_task', entityId: taskId, payload: targetTask }).then((c) => {
+                setSyncQueueCount(c);
+                scheduleFastCloudFlush();
+            });
         }
         showToast('تسک منتقل شد', 'success');
     };
@@ -1667,12 +1799,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (newSettings.targetExamTitle !== undefined) setTargetExamTitle(newSettings.targetExamTitle);
             if (newSettings.targetExamDate !== undefined) setTargetExamDate(newSettings.targetExamDate);
             if (newSettings.blobatar !== undefined) setBlobatar(newSettings.blobatar);
-
-            if (Object.keys(newSettings).some((k) => k !== 'hasUnreadAiMessage' && k !== 'darkMode')) {
-                showToast('تنظیمات ذخیره شد', 'success');
-            }
+            if (newSettings.customActivityTypes !== undefined) setCustomActivityTypes(newSettings.customActivityTypes);
+            if (newSettings.hiddenActivityTypes !== undefined) setHiddenActivityTypes(newSettings.hiddenActivityTypes);
         },
-        [setDarkMode, stream, showToast]
+        [setDarkMode, stream]
     );
 
     const setGeminiApiKey = useCallback(

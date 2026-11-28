@@ -39,8 +39,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const showToast = useCallback((message: string, type: ToastType = 'info', options?: ShowToastOptions) => {
         const id = crypto.randomUUID();
-        const duration = options?.durationMs ?? (options?.action ? 5200 : 3200);
-        setToasts(prev => [...prev.slice(-2), { id, message, type, action: options?.action, durationMs: duration }]);
+        const duration = options?.durationMs ?? (options?.action ? 4500 : 2100);
+        setToasts(prev => [...prev.filter(t => t.message !== message).slice(-1), { id, message, type, action: options?.action, durationMs: duration }]);
         const timer = setTimeout(() => removeToast(id), duration);
         timersRef.current.set(id, timer);
     }, [removeToast]);

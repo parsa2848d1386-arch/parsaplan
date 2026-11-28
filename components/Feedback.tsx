@@ -9,7 +9,14 @@ import { haptics } from '../utils/haptics';
 
 export const ToastContainer = () => {
     const { toasts, removeToast } = useStore();
-    const visibleToasts = toasts.slice(-2);
+    // Minor success/info notifications now appear compactly inside DynamicIsland at the top.
+    // Keep bottom toast strictly for critical errors/warnings or actionable Undo banners (max 1 at a time).
+    const hasDynamicIsland =
+        typeof document !== 'undefined' && Boolean(document.querySelector('[data-dynamic-island-host="true"]'));
+    const filtered = hasDynamicIsland
+        ? toasts.filter((t) => Boolean(t.action) || t.type === 'error' || t.type === 'warning')
+        : toasts;
+    const visibleToasts = filtered.slice(-1);
 
     return (
         <div

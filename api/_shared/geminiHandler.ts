@@ -3,14 +3,16 @@ import { GoogleGenAI, type Part } from '@google/genai';
 import { geminiChatRequestSchema, geminiGenerateRequestSchema } from '../../utils/schemas';
 
 export const ALLOWED_MODELS = new Set([
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
-    'gemini-4-hydrogen',
-    'gemini-3.1-flash-lite',
 ]);
 
-export const DEFAULT_FREE_MODEL = 'gemini-2.5-flash';
-export const FALLBACK_FREE_MODEL = 'gemini-2.5-flash-lite';
+export const DEFAULT_FREE_MODEL = 'gemini-3.8-flash';
+export const FALLBACK_FREE_MODEL = 'gemini-3.5-flash-lite';
+const LIVE_FREE_FALLBACK_PRIMARY = 'gemini-2.5-flash';
+const LIVE_FREE_FALLBACK_SECONDARY = 'gemini-2.5-flash-lite';
 
 const ALLOWED_ATTACHMENT_MIMES = new Set([
     'image/png',
@@ -146,14 +148,20 @@ export function resolveModel(requested?: string): string {
     if (requested && ALLOWED_MODELS.has(requested)) {
         return requested;
     }
-    if (requested === 'gemini-1.5-flash' || requested === 'gemini-2.0-flash-lite') {
+    if (
+        requested === 'gemini-1.5-flash' ||
+        requested === 'gemini-2.0-flash-lite' ||
+        requested === 'gemini-3.1-flash-lite'
+    ) {
         return FALLBACK_FREE_MODEL;
     }
     return DEFAULT_FREE_MODEL;
 }
 
-export function getAiClient(): GoogleGenAI {
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
+export function getAiClient(req?: ApiRequestLike): GoogleGenAI {
+    const headerKeyRaw = req?.headers?.['x-gemini-api-key'];
+    const headerKey = (Array.isArray(headerKeyRaw) ? headerKeyRaw[0] : headerKeyRaw || '').trim();
+    const apiKey = headerKey || process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
         throw new Error('MISSING_GEMINI_API_KEY');
     }
@@ -179,7 +187,15 @@ async function withFreeTierFallback<T>(
     requestedModel: string,
     executor: (modelName: string) => Promise<T>
 ): Promise<T> {
-    const candidates = Array.from(new Set([requestedModel, DEFAULT_FREE_MODEL, FALLBACK_FREE_MODEL]));
+    const candidates = Array.from(
+        new Set([
+            requestedModel,
+            DEFAULT_FREE_MODEL,
+            FALLBACK_FREE_MODEL,
+            LIVE_FREE_FALLBACK_PRIMARY,
+            LIVE_FREE_FALLBACK_SECONDARY,
+        ])
+    );
     let lastError: unknown;
     for (let i = 0; i < candidates.length; i++) {
         try {
@@ -293,7 +309,7 @@ export async function handleGeminiGenerate(req: ApiRequestLike, res: ServerRespo
             return;
         }
         const { prompt, model, systemInstruction, responseMimeType } = parsedBody.data;
-        const ai = getAiClient();
+        const ai = getAiClient(req);
         const config: Record<string, unknown> = {};
         if (systemInstruction && systemInstruction.trim()) {
             config.systemInstruction = systemInstruction;
@@ -354,7 +370,7 @@ export async function handleGeminiChat(req: ApiRequestLike, res: ServerResponse)
             return;
         }
 
-        const ai = getAiClient();
+        const ai = getAiClient(req);
         const formattedHistory = Array.isArray(history)
             ? history
                   .filter(

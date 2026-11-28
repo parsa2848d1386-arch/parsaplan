@@ -279,8 +279,19 @@ class CloudSyncEngine {
                 }
                 try {
                     const batch = writeBatch(db);
+                    let touchesSubcollectionOnly = false;
+                    let touchesProfile = false;
                     for (const tx of slice) {
                         this.addTxToBatch(batch, db, userId, tx);
+                        if (tx.type === 'save_profile') touchesProfile = true;
+                        else touchesSubcollectionOnly = true;
+                    }
+                    if (touchesSubcollectionOnly && !touchesProfile) {
+                        batch.set(
+                            doc(db, 'users', userId),
+                            { lastUpdated: Date.now(), lastClientId: CLIENT_INSTANCE_ID },
+                            { merge: true }
+                        );
                     }
                     await batch.commit();
                     flushed += slice.length;

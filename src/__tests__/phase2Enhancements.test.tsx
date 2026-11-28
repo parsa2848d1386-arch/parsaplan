@@ -134,11 +134,11 @@ describe('Phase 2 Enhancements — SlideToComplete, Mobile Calendar, Welcome Car
         expect(mockNavigate).toHaveBeenCalledWith('/');
     });
 
-    it('resolveModel supports free-tier Gemini models and maps legacy aliases safely', () => {
-        expect(resolveModel('gemini-2.5-flash')).toBe('gemini-2.5-flash');
-        expect(resolveModel('gemini-2.5-flash-lite')).toBe('gemini-2.5-flash-lite');
-        expect(resolveModel('gemini-1.5-flash')).toBe('gemini-2.5-flash-lite');
-        expect(resolveModel('unknown-model')).toBe('gemini-2.5-flash');
+    it('resolveModel supports Gemini 3.8 Flash and 3.5 Flash Lite and maps legacy aliases safely', () => {
+        expect(resolveModel('gemini-3.8-flash')).toBe('gemini-3.8-flash');
+        expect(resolveModel('gemini-3.5-flash-lite')).toBe('gemini-3.5-flash-lite');
+        expect(resolveModel('gemini-1.5-flash')).toBe('gemini-3.5-flash-lite');
+        expect(resolveModel('unknown-model')).toBe('gemini-3.8-flash');
     });
 
     it('handleGeminiChat enforces POST method and reports missing GEMINI_API_KEY gracefully', async () => {
