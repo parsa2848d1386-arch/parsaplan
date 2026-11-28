@@ -359,10 +359,10 @@ service cloud.firestore {
         (!('xp' in request.resource.data) || isValidNonNegNumber(request.resource.data.xp, 10000000)) &&
         (!('userName' in request.resource.data) || isValidBoundedString(request.resource.data.userName, 80));
       allow delete: if isOwner(userId) && isValidId(userId);
-      match /tasks/{taskId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(taskId); }
-      match /sessions/{sessionId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(sessionId); }
-      match /flashcards/{cardId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(cardId); }
-      match /pages/{pageId} { allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(pageId); }
+      match /tasks/{taskId} { allow read: if isOwner(userId) && isValidId(userId); allow write: if isOwner(userId) && isValidId(userId) && isValidId(taskId); }
+      match /sessions/{sessionId} { allow read: if isOwner(userId) && isValidId(userId); allow write: if isOwner(userId) && isValidId(userId) && isValidId(sessionId); }
+      match /flashcards/{cardId} { allow read: if isOwner(userId) && isValidId(userId); allow write: if isOwner(userId) && isValidId(userId) && isValidId(cardId); }
+      match /pages/{pageId} { allow read: if isOwner(userId) && isValidId(userId); allow write: if isOwner(userId) && isValidId(userId) && isValidId(pageId); }
     }
     match /publicProfiles/{profileId} {
       allow read: if isAuthenticated();

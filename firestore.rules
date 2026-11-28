@@ -46,19 +46,23 @@ service cloud.firestore {
       allow delete: if isOwner(userId) && isValidId(userId);
 
       match /tasks/{taskId} {
-        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(taskId);
+        allow read: if isOwner(userId) && isValidId(userId);
+        allow write: if isOwner(userId) && isValidId(userId) && isValidId(taskId);
       }
 
       match /sessions/{sessionId} {
-        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
+        allow read: if isOwner(userId) && isValidId(userId);
+        allow write: if isOwner(userId) && isValidId(userId) && isValidId(sessionId);
       }
 
       match /flashcards/{cardId} {
-        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(cardId);
+        allow read: if isOwner(userId) && isValidId(userId);
+        allow write: if isOwner(userId) && isValidId(userId) && isValidId(cardId);
       }
 
       match /pages/{pageId} {
-        allow read, write: if isOwner(userId) && isValidId(userId) && isValidId(pageId);
+        allow read: if isOwner(userId) && isValidId(userId);
+        allow write: if isOwner(userId) && isValidId(userId) && isValidId(pageId);
       }
     }
 
