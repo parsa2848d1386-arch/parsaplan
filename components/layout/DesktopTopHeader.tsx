@@ -1,169 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import { CalendarClock, Search, Flame, Sparkles, LogIn } from 'lucide-react';
-import { formatToPersianDigits, getFullShamsiDate } from '../../utils';
+import React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Search } from 'lucide-react';
 import { haptics } from '../../utils/haptics';
-
-const formatMinuteTime = () =>
-    new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-
-const useMinuteClock = () => {
-    const [clock, setClock] = useState(() => ({
-        time: formatMinuteTime(),
-        date: getFullShamsiDate(new Date().toISOString()),
-    }));
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            const nextTime = formatMinuteTime();
-            setClock((prev) => {
-                if (prev.time === nextTime) return prev;
-                const nextDate = getFullShamsiDate(new Date().toISOString());
-                return { time: nextTime, date: nextDate };
-            });
-        }, 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    return clock;
-};
-
-const DesktopClockChip = React.memo(() => {
-    const { time, date } = useMinuteClock();
-    return (
-        <div className="hidden xl:flex items-center gap-2 bg-white/45 dark:bg-white/8 px-3 py-1.5 squircle-sm text-on-surface-variant dark:text-slate-200 border border-[var(--glass-nav-border)] text-xs font-medium tabular-nums whitespace-nowrap shrink-0">
-            <CalendarClock size={15} className="text-primary shrink-0" aria-hidden="true" />
-            <span className="font-bold text-on-surface dark:text-white">{time}</span>
-            <span className="opacity-40">|</span>
-            <span>{date}</span>
-        </div>
-    );
-});
-DesktopClockChip.displayName = 'DesktopClockChip';
 
 interface DesktopTopHeaderProps {
     onOpenCommandPalette: () => void;
-    syncStatusSlot: React.ReactNode;
-    notificationSlot: React.ReactNode;
-    streakCount: number;
-    isAiPanelOpen: boolean;
-    onToggleAiPanel: () => void;
+    isCommandPaletteOpen: boolean;
+    isNotificationOpen: boolean;
+    isProfileOpen: boolean;
+    onToggleProfile: () => void;
     isAuthenticated: boolean;
-    displayName: string;
-    level: number;
-    userInitial: string;
-    avatarSlot?: React.ReactNode;
-    onProfileClick: () => void;
+    avatarSlot: React.ReactNode;
+    dynamicIslandSlot?: React.ReactNode;
+    notificationSlot: React.ReactNode;
 }
 
 /**
- * Desktop top bar separated from Layout using slot-based composition to keep header state isolated.
+ * Desktop floating Liquid Glass top capsules — mirrors the mobile floating top bar natively:
+ * - Top-Right (viewport corner): standalone BlobatarBot circular capsule opening the unified Profile Bubble
+ * - Top-Center: Dynamic Island hub (Focus Timer, XP, Study Room, Sync/Offline)
+ * - Top-Left: compact Search + Notifications capsule that morphs directly into Search or Notifications
  */
 export const DesktopTopHeader: React.FC<DesktopTopHeaderProps> = React.memo(
     ({
         onOpenCommandPalette,
-        syncStatusSlot,
-        notificationSlot,
-        streakCount,
-        isAiPanelOpen,
-        onToggleAiPanel,
+        isCommandPaletteOpen,
+        isNotificationOpen,
+        isProfileOpen,
+        onToggleProfile,
         isAuthenticated,
-        displayName,
-        level,
-        userInitial,
         avatarSlot,
-        onProfileClick,
+        dynamicIslandSlot,
+        notificationSlot,
     }) => {
+        const prefersReducedMotion = useReducedMotion();
+
         return (
-            <header className="hidden md:flex md:absolute md:top-0 md:inset-x-0 items-center justify-between h-16 px-6 border-b border-[var(--glass-nav-border)] liquid-glass-nav glass-header-shadow z-40">
-                <div className="flex items-center gap-3">
-                    <button
+            <>
+                {/* Top-Right Standalone Smart Robot Capsule — Pinned to true top-right corner so expanding/collapsing sidebar never moves it */}
+                <motion.div
+                    animate={
+                        prefersReducedMotion
+                            ? undefined
+                            : {
+                                  scale: isProfileOpen ? 0.86 : 1,
+                                  opacity: isProfileOpen ? 0 : 1,
+                              }
+                    }
+                    transition={{ type: 'spring', stiffness: 400, damping: 18, mass: 0.75, restDelta: 0.01 }}
+                    style={{ transformOrigin: 'top right', willChange: 'transform, opacity' }}
+                    className="hidden md:flex fixed top-3 right-3 z-40 pointer-events-auto items-center p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shrink-0"
+                >
+                    <motion.button
                         type="button"
+                        data-arc-target="xp-badge"
                         onClick={() => {
                             haptics.selection();
-                            onOpenCommandPalette();
+                            onToggleProfile();
                         }}
-                        className="w-56 xl:w-64 h-10 px-3 gap-2 flex items-center justify-between bg-white/45 dark:bg-white/8 squircle-sm text-on-surface-variant dark:text-slate-200 text-xs border border-[var(--glass-nav-border)] hover:border-primary/40 transition-colors group cursor-pointer text-start shrink-0"
-                        title="جستجو و دستورات (Ctrl+K)"
-                        aria-label="جستجو و دستورات (Ctrl+K)"
+                        whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
+                        whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+                        aria-expanded={isProfileOpen}
+                        aria-label="منوی حساب کاربری"
+                        title={isAuthenticated ? 'حساب کاربری و تنظیمات' : 'ورود یا همگام‌سازی ابری'}
+                        className="w-11 h-11 rounded-full bg-white/60 dark:bg-white/10 border border-[var(--glass-nav-border)] flex items-center justify-center shadow-xs cursor-pointer shrink-0"
                     >
-                        <span className="flex items-center gap-2 min-w-0 flex-1">
-                            <Search
-                                size={16}
-                                className="shrink-0 text-on-surface-variant group-hover:text-primary transition-colors"
-                                aria-hidden="true"
-                            />
-                            <span className="truncate">جستجو در برنامه...</span>
-                        </span>
-                        <kbd className="shrink-0 px-1.5 py-0.5 rounded-md bg-white/60 dark:bg-slate-700/80 text-on-surface-variant dark:text-slate-200 text-[11px] font-mono border border-[var(--border-subtle)]">
-                            Ctrl+K
-                        </kbd>
-                    </button>
+                        {avatarSlot}
+                    </motion.button>
+                </motion.div>
 
-                    <DesktopClockChip />
+                {/* Top-Center Dynamic Island + Top-Left Search & Notifications Capsule (inside main so AI drawer never overlaps it) */}
+                <header className="hidden md:flex md:absolute md:top-3 md:inset-x-3 items-center justify-between gap-3 z-40 pointer-events-none">
+                    {/* Right balance spacer matching top-left capsule width for centered Dynamic Island */}
+                    <div className="w-[104px] shrink-0" aria-hidden="true" />
 
-                    {syncStatusSlot}
-                </div>
-
-                {/* Right Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                    <div
-                        data-arc-target="xp-badge"
-                        className="flex items-center gap-1.5 bg-tertiary-fixed/70 px-3 py-1.5 squircle-sm text-on-tertiary-fixed font-bold text-xs tabular-nums border border-tertiary/15 whitespace-nowrap shrink-0"
-                    >
-                        <Flame size={15} className="fill-current text-tertiary shrink-0" aria-hidden="true" />
-                        <span>{formatToPersianDigits(streakCount)} روز زنجیره</span>
+                    {/* Center Floating Zone: Desktop Dynamic Island (invisible when idle) */}
+                    <div className="flex-1 flex items-center justify-center min-w-0">
+                        {dynamicIslandSlot}
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={onToggleAiPanel}
-                        aria-label={isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
-                        className={`relative flex items-center gap-1.5 px-3 min-h-[40px] squircle-sm text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                            isAiPanelOpen
-                                ? 'bg-primary text-on-primary shadow-xs'
-                                : 'bg-primary/14 text-primary hover:bg-primary/20'
-                        }`}
+                    {/* Top-Left Floating Capsule: Search + Notifications (identical to mobile; morphs directly into active tab) */}
+                    <motion.div
+                        data-top-left-capsule="desktop"
+                        animate={
+                            prefersReducedMotion
+                                ? undefined
+                                : {
+                                      scale: isNotificationOpen || isCommandPaletteOpen ? 0.86 : 1,
+                                      opacity: isNotificationOpen || isCommandPaletteOpen ? 0 : 1,
+                                  }
+                        }
+                        transition={{ type: 'spring', stiffness: 400, damping: 18, mass: 0.75, restDelta: 0.01 }}
+                        style={{ transformOrigin: 'top left', willChange: 'transform, opacity' }}
+                        className="pointer-events-auto flex items-center gap-0.5 p-1 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shrink-0"
                     >
-                        <Sparkles size={15} className="shrink-0" aria-hidden="true" />
-                        <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار هوشمند'}</span>
-                    </button>
+                        <motion.button
+                            type="button"
+                            onClick={() => {
+                                haptics.selection();
+                                onOpenCommandPalette();
+                            }}
+                            whileHover={prefersReducedMotion ? undefined : { scale: 1.06 }}
+                            whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+                            transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                            aria-label="جستجو و دستورات (Ctrl+K)"
+                            title="جستجو و دستورات (Ctrl+K)"
+                            className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors duration-150 cursor-pointer shrink-0 ${
+                                isCommandPaletteOpen
+                                    ? 'bg-primary text-on-primary shadow-sm'
+                                    : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container/70 dark:hover:bg-white/10 hover:text-on-surface dark:hover:text-white'
+                            }`}
+                        >
+                            <Search size={17} className="shrink-0" aria-hidden="true" />
+                        </motion.button>
 
-                    {notificationSlot}
-
-                    <div className="h-5 w-px bg-[var(--border-subtle)] mx-0.5" />
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            haptics.selection();
-                            onProfileClick();
-                        }}
-                        className="flex items-center gap-2 px-2 py-1 squircle-sm hover:bg-white/40 dark:hover:bg-white/10 transition text-end cursor-pointer shrink-0 whitespace-nowrap"
-                        title={isAuthenticated ? 'تنظیمات حساب' : 'ورود یا همگام‌سازی ابری'}
-                    >
-                        <div className="flex flex-col text-end items-end">
-                            <span className="text-xs font-bold text-on-surface dark:text-white truncate max-w-[120px]">
-                                {displayName}
-                            </span>
-                            <span className="text-[11px] text-secondary font-semibold flex items-center gap-1 whitespace-nowrap">
-                                {isAuthenticated ? (
-                                    `سطح ${formatToPersianDigits(level)} • ابری`
-                                ) : (
-                                    <>
-                                        <LogIn size={11} aria-hidden="true" />
-                                        ورود ابری / آفلاین
-                                    </>
-                                )}
-                            </span>
-                        </div>
-                        {avatarSlot ?? (
-                            <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                                {userInitial}
-                            </div>
-                        )}
-                    </button>
-                </div>
-            </header>
+                        {notificationSlot}
+                    </motion.div>
+                </header>
+            </>
         );
     }
 );

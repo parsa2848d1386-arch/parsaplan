@@ -10,7 +10,6 @@ import Layout from './components/Layout';
 import { AppShellSkeleton } from './components/Skeleton';
 import { routeImporters } from './utils/routePrefetch';
 import ScrollToTop from './components/ScrollToTop';
-import { FloatingPiPWidget } from './components/focus/FloatingPiPWidget';
 import { CommandPalette } from './components/CommandPalette';
 import { MorningPlanningModal } from './components/rituals/MorningPlanningModal';
 import { EveningReflectionModal } from './components/rituals/EveningReflectionModal';
@@ -139,7 +138,6 @@ function App() {
                         <LevelUpShowcase />
                         <ConfettiContainer />
                         <FocusTimer />
-                        <FloatingPiPWidget />
                     </ErrorBoundary>
                 </FocusProvider>
             </StoreProvider>

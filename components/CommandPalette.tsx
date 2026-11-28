@@ -240,6 +240,20 @@ export const CommandPalette: React.FC = () => {
 
     const prefersReducedMotion = useReducedMotion();
     const isMobile = useMediaQuery('(max-width: 767px)');
+    const [desktopAnchor, setDesktopAnchor] = useState<{ top: number; left: number }>({ top: 12, left: 12 });
+
+    useEffect(() => {
+        if (!isCommandPaletteOpen || isMobile || typeof document === 'undefined') return;
+        const capsule = document.querySelector('[data-top-left-capsule="desktop"]') as HTMLElement | null;
+        if (capsule) {
+            const rect = capsule.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                setDesktopAnchor({ top: Math.round(rect.top), left: Math.round(rect.left) });
+                return;
+            }
+        }
+        setDesktopAnchor({ top: 12, left: 12 });
+    }, [isCommandPaletteOpen, isMobile]);
 
     if (typeof document === 'undefined') return null;
 
@@ -275,8 +289,10 @@ export const CommandPalette: React.FC = () => {
                     initial={prefersReducedMotion ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.22, ease: 'easeInOut' }}
-                    className="fixed inset-0 z-[60] flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] sm:pt-20 bg-slate-950/40 dark:bg-black/55 sm:backdrop-blur-[6px] px-3 sm:p-4"
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    className={`fixed inset-0 z-[60] bg-slate-950/30 dark:bg-black/50 ${
+                        isMobile ? 'flex items-start justify-center pt-[max(0.625rem,env(safe-area-inset-top,0px))] px-3' : ''
+                    }`}
                     onClick={closePalette}
                 >
                     <motion.div
@@ -286,31 +302,34 @@ export const CommandPalette: React.FC = () => {
                         initial={
                             prefersReducedMotion
                                 ? false
-                                : isMobile
-                                  ? { opacity: 0, scale: 0.14, y: 0, borderRadius: 48 }
-                                  : { opacity: 0, scale: 0.94, y: -8 }
+                                : { opacity: 0, scale: 0.14, y: 0, borderRadius: 48 }
                         }
                         animate={{ opacity: 1, scale: 1, y: 0, borderRadius: 24 }}
                         exit={
                             prefersReducedMotion
                                 ? { opacity: 0 }
-                                : isMobile
-                                  ? { opacity: 0, scale: 0.14, y: 0, borderRadius: 48, transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }
-                                  : { opacity: 0, scale: 0.96, y: -4, transition: { duration: 0.14, ease: 'easeOut' } }
+                                : {
+                                      opacity: 0,
+                                      scale: 0.14,
+                                      y: 0,
+                                      borderRadius: 48,
+                                      transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
+                                  }
                         }
                         transition={{ type: 'spring', stiffness: 350, damping: 20, mass: 0.82, restDelta: 0.015, restSpeed: 0.5 }}
                         style={{
-                            transformOrigin: isMobile ? '72px 26px' : 'top center',
+                            transformOrigin: '72px 26px',
                             willChange: 'transform, opacity',
+                            ...(!isMobile ? { top: `${desktopAnchor.top}px`, left: `${desktopAnchor.left}px` } : {}),
                         }}
                         className={`${
                             isMobile
-                                ? 'liquid-glass-nav glass-pill-shadow'
-                                : 'bg-[var(--surface-elevated)]'
-                        } rounded-[24px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none`}
+                                ? 'w-full max-w-xl'
+                                : 'fixed w-[min(calc(100vw-1.5rem),480px)]'
+                        } liquid-glass-nav glass-pill-shadow rounded-[24px] overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none`}
                     >
-                {/* Search Input Row */}
-                <div className="flex items-center gap-2 pt-1 pb-1.5 pe-3.5 ps-1 sm:px-4 sm:py-3 border-b border-[var(--border-subtle)]">
+                {/* Search Input Row — Circular Close X aligned directly over the top-left capsule on both mobile and desktop */}
+                <div className="flex items-center gap-2 pt-1 pb-1.5 ps-3.5 pe-1 border-b border-[var(--border-subtle)]">
                     <Search size={18} className="text-primary shrink-0" aria-hidden="true" />
                     <input
                         autoFocus
@@ -329,7 +348,7 @@ export const CommandPalette: React.FC = () => {
                             type="button"
                             onClick={() => setQuery('')}
                             aria-label="پاک کردن عبارت جستجو"
-                            className="px-2.5 min-h-[34px] flex items-center justify-center rounded-xl text-[11px] font-bold text-[var(--text-secondary)] bg-surface-container-low hover:bg-surface-container transition cursor-pointer shrink-0"
+                            className="px-2.5 min-h-[34px] flex items-center justify-center rounded-xl text-[11px] font-bold text-[var(--text-secondary)] bg-white/60 dark:bg-white/10 hover:bg-white/85 dark:hover:bg-white/15 transition cursor-pointer shrink-0"
                         >
                             پاک کردن
                         </button>
@@ -338,15 +357,15 @@ export const CommandPalette: React.FC = () => {
                         type="button"
                         onClick={closePalette}
                         aria-label="بستن جستجو"
-                        className="w-11 h-11 sm:w-auto sm:h-auto sm:px-2.5 sm:py-1 flex items-center justify-center rounded-full sm:rounded-xl bg-primary text-on-primary sm:bg-surface-container sm:text-[var(--text-secondary)] text-xs font-mono shadow-xs sm:shadow-none hover:brightness-110 sm:hover:brightness-100 sm:hover:bg-surface-container-high transition cursor-pointer shrink-0"
+                        title="بستن جستجو (Esc)"
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-primary text-on-primary shadow-xs hover:brightness-110 active:scale-90 transition cursor-pointer shrink-0"
                     >
-                        <span className="hidden sm:inline">ESC</span>
-                        <X size={17} className="sm:hidden" />
+                        <X size={17} />
                     </button>
                 </div>
 
                 {/* Visible Scope Filter Bar (WWDC26 Search Excellence) */}
-                <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-[var(--border-subtle)] overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 px-3.5 py-2 border-b border-[var(--border-subtle)] overflow-x-auto no-scrollbar">
                     {scopes.map((item) => {
                         const active = scope === item.id;
                         return (
@@ -355,10 +374,10 @@ export const CommandPalette: React.FC = () => {
                                 type="button"
                                 aria-pressed={active}
                                 onClick={() => setScope(item.id)}
-                                className={`shrink-0 px-3 min-h-[34px] rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                                className={`shrink-0 px-3 min-h-[32px] rounded-full text-xs font-bold transition-colors cursor-pointer ${
                                     active
-                                        ? 'bg-primary text-on-primary'
-                                        : 'bg-surface-container-low dark:bg-slate-800 text-[var(--text-secondary)] hover:bg-surface-container'
+                                        ? 'bg-primary text-on-primary shadow-xs'
+                                        : 'bg-white/60 dark:bg-white/10 text-[var(--text-secondary)] hover:bg-white/85 dark:hover:bg-white/15'
                                 }`}
                             >
                                 {item.label}

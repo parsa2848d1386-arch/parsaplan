@@ -5,10 +5,10 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion, useDragControls, PanInfo } from 'framer-motion';
 import {
     Home, CalendarClock, BookOpen, Settings, BarChart2, Trophy,
-    Search, X, LogIn, LogOut, Cloud, CloudOff, AlertTriangle, Sparkles,
-    ChevronLeft, ChevronRight, Flame, CheckCircle2, History as HistoryIcon
+    Search, X, LogIn, LogOut, Sparkles,
+    ChevronLeft, ChevronRight, History as HistoryIcon
 } from 'lucide-react';
-import { useStore, useStoreSyncStatus } from '../context/StoreContext';
+import { useStore } from '../context/StoreContext';
 const AIChat = React.lazy(() => import('../pages/AIChat'));
 import { useProactiveAI } from './AIChat/useProactiveAI';
 const AuthModal = React.lazy(() => import('./AuthModal').then(m => ({ default: m.AuthModal })));
@@ -22,7 +22,7 @@ import { useOptionalFocus } from '../context/FocusContext';
 import { ErrorBoundary } from './ErrorBoundary';
 import { RouteSkeleton, AIChatSkeleton } from './Skeleton';
 import { ArcFlightOverlay, RubberBandScrollContainer } from './ui/MotionPrimitives';
-import { getFullShamsiDate, formatToPersianDigits } from '../utils';
+import { formatToPersianDigits } from '../utils';
 import { useBioperformance } from '../hooks/useBioperformance';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useOverlayHistory } from '../hooks/useOverlayHistory';
@@ -40,62 +40,6 @@ const PAGE_TITLES: Record<string, { title: string; shortTitle?: string; breadcru
     '/history': { title: 'تاریخچه', breadcrumb: 'تاریخچه', isSubRoute: true },
     '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'AI', isSubRoute: true },
 };
-
-const SyncStatusChip = React.memo<{
-    isOnline: boolean;
-    cloudStatus: 'disconnected' | 'connected' | 'error';
-    variant: 'desktop' | 'mobile';
-}>(({ isOnline, cloudStatus, variant }) => {
-    const { isSyncing, syncQueueCount } = useStoreSyncStatus();
-    const shouldShow = !isOnline || isSyncing || (syncQueueCount ?? 0) > 0 || cloudStatus === 'error';
-    if (!shouldShow) return null;
-
-    if (variant === 'mobile') {
-        return (
-            <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-container text-on-surface-variant shrink-0"
-                title={!isOnline ? 'حالت آفلاین' : 'در حال همگام‌سازی'}
-            >
-                {!isOnline ? (
-                    <CloudOff size={12} className="text-amber-500" />
-                ) : cloudStatus === 'error' ? (
-                    <AlertTriangle size={12} className="text-rose-500" />
-                ) : (
-                    <Cloud size={12} className="text-secondary" />
-                )}
-                {syncQueueCount > 0 && (
-                    <span className="tabular-nums">{formatToPersianDigits(syncQueueCount)}</span>
-                )}
-            </span>
-        );
-    }
-
-    return (
-        <span className="text-xs flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold border border-[var(--border-subtle)] bg-surface-container-low dark:bg-slate-800 text-on-surface-variant">
-            {!isOnline ? (
-                <>
-                    <CloudOff size={13} className="text-amber-500" aria-hidden="true" />
-                    <span>آفلاین</span>
-                </>
-            ) : cloudStatus === 'error' ? (
-                <>
-                    <AlertTriangle size={13} className="text-rose-500" aria-hidden="true" />
-                    <span>خطای همگام‌سازی</span>
-                </>
-            ) : (
-                <>
-                    <Cloud size={13} className="text-secondary" aria-hidden="true" />
-                    <span>
-                        {isSyncing
-                            ? 'در حال همگام‌سازی...'
-                            : `${formatToPersianDigits(syncQueueCount)} تغییر در صف`}
-                    </span>
-                </>
-            )}
-        </span>
-    );
-});
-SyncStatusChip.displayName = 'SyncStatusChip';
 
 const Layout = () => {
     const prefersReducedMotion = useReducedMotion();
@@ -153,13 +97,13 @@ const Layout = () => {
 
     useEffect(() => {
         if (!isProfileChipExpanded) return;
-        const handleOutside = (e: MouseEvent) => {
-            if (profileCapsuleRef.current && !profileCapsuleRef.current.contains(e.target as Node)) {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
                 setIsProfileChipExpanded(false);
             }
         };
-        document.addEventListener('mousedown', handleOutside);
-        return () => document.removeEventListener('mousedown', handleOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
     }, [isProfileChipExpanded]);
 
     // Preload core route bundles during browser idle so tab switches have zero JS-fetch lag
@@ -247,7 +191,6 @@ const Layout = () => {
     ];
 
     const getDisplayName = () => userName || user?.displayName || user?.email?.split('@')[0] || 'کاربر مهمان';
-    const userInitial = (userName || user?.displayName || user?.email || 'کاربر').charAt(0).toUpperCase();
     const botSeed = userName || user?.displayName || user?.email?.split('@')[0] || 'Parsashz';
     const focusCtx = useOptionalFocus();
     const isFocusRunning = focusCtx?.status === 'running';
@@ -307,60 +250,59 @@ const Layout = () => {
                 )}
 
                 {/* ====================================================
-                    SIDEBAR — DESKTOP
+                    SIDEBAR — CENTERED, COMPACT DESKTOP FLOATING LIQUID GLASS DOCK
+                    (Overlays cleanly over middle sections when expanded; zero content shift)
                    ==================================================== */}
                 <aside
                     className={`
-                        hidden md:flex flex-col h-full z-30 flex-shrink-0 relative
-                        bg-surface-container-low dark:bg-slate-900
-                        border-s border-[var(--border-subtle)]
-                        transition-all duration-300 py-space-md px-space-sm justify-between
-                        ${sidebarCollapsed ? 'w-[76px]' : 'w-72'}
+                        hidden md:flex md:fixed md:inset-y-0 md:right-0 md:z-[45] flex-col items-start justify-center h-full
+                        py-3 ps-3 pe-1 gap-2.5 select-none pointer-events-none transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]
+                        ${sidebarCollapsed ? 'w-[66px]' : 'w-[212px]'}
                     `}
                 >
-                    <div className="flex flex-col gap-space-md">
-                        {/* Logo & Brand Header */}
-                        <div className="flex items-center justify-between px-space-xs">
-                            <div className="flex items-center gap-space-sm">
-                                <div className="w-10 h-10 squircle-sm bg-primary flex items-center justify-center text-on-primary shadow-sm flex-shrink-0">
-                                    <BrandLogo size={22} />
-                                </div>
-                                {!sidebarCollapsed && (
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="font-headline-md text-base text-on-surface dark:text-white font-bold">پارساپلان</span>
-                                        <span className="font-label-sm text-xs text-on-surface-variant dark:text-slate-400">مدیریت عمیق زیست و مطالعه</span>
-                                    </div>
-                                )}
-                            </div>
-                            <button
+                    {/* Main Vertical Liquid Glass Navigation Capsule — Invariant height & right-edge anchor so BrandLogo never moves */}
+                    <div className="pointer-events-auto w-full flex flex-col liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] rounded-[25px] p-1">
+                        {/* Stationary ParsaPlan Expand/Collapse Toggle Row */}
+                        <div className="flex items-center h-[42px] gap-2 shrink-0">
+                            <motion.button
                                 type="button"
+                                data-testid="sidebar-brand-toggle"
                                 onClick={() => {
                                     haptics.selection();
                                     setSidebarCollapsed(!sidebarCollapsed);
                                 }}
+                                whileHover={prefersReducedMotion ? undefined : { scale: 1.05 }}
+                                whileTap={prefersReducedMotion ? undefined : { scale: 0.92 }}
+                                title={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
                                 aria-label={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-                                className="w-9 h-9 flex items-center justify-center squircle-sm text-on-surface-variant hover:bg-surface-container dark:hover:bg-slate-800 transition cursor-pointer"
+                                aria-expanded={!sidebarCollapsed}
+                                className="w-[42px] h-[42px] rounded-full bg-primary flex items-center justify-center text-on-primary shadow-sm flex-shrink-0 cursor-pointer"
                             >
-                                {sidebarCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-                            </button>
+                                <BrandLogo size={20} />
+                            </motion.button>
+                            {!sidebarCollapsed && (
+                                <div className="flex flex-col min-w-0 pe-2 leading-tight overflow-hidden">
+                                    <span className="font-headline-md text-[14px] text-on-surface dark:text-white font-extrabold truncate">
+                                        پارساپلان
+                                    </span>
+                                    <span className="text-[10.5px] text-[var(--text-secondary)] font-semibold tabular-nums truncate">
+                                        هدف امروز · {dailyGoalLabel}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Focus Goal Badge */}
-                        {!sidebarCollapsed && (
-                            <div className="bg-surface-container-lowest dark:bg-slate-800/90 squircle-card p-3 border border-[var(--border-subtle)] flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-on-surface-variant dark:text-slate-300">
-                                    <CalendarClock size={16} className="text-secondary" aria-hidden="true" />
-                                    <span className="text-xs font-medium">هدف فوکوس امروز</span>
-                                </div>
-                                <span className="text-xs bg-secondary-container text-on-secondary-container px-2.5 py-0.5 squircle-sm font-bold tabular-nums">
-                                    {dailyGoalLabel}
-                                </span>
-                            </div>
-                        )}
+                        <div
+                            className="h-px bg-[var(--border-subtle)] shrink-0 my-1.5 mx-1.5"
+                            aria-hidden="true"
+                        />
 
-                        {/* Navigation Links (Desktop Sliding Pill + Apple G2 Squircle) */}
+                        {/* Vertical Navigation Links — Fixed icon column keeps every icon stationary during expand/collapse */}
                         <LayoutGroup id="desktop-sidebar-nav">
-                            <nav aria-label="منوی اصلی" className="flex flex-col gap-1 custom-scrollbar">
+                            <nav
+                                aria-label="منوی اصلی"
+                                className="flex flex-col gap-0.5 overflow-visible"
+                            >
                                 {mainNavItems.map((item) => (
                                     <NavLink
                                         key={item.to}
@@ -371,10 +313,10 @@ const Layout = () => {
                                         onFocus={() => prefetchRoute(item.to)}
                                         title={sidebarCollapsed ? item.label : undefined}
                                         className={({ isActive }) =>
-                                            `relative flex items-center gap-3 px-3.5 min-h-[44px] squircle-sm transition-colors duration-150 text-sm font-medium ${
+                                            `group relative flex items-center w-full h-[38px] rounded-full transition-colors duration-150 active:scale-[0.97] text-[12.5px] ${
                                                 isActive
-                                                    ? 'text-on-primary-fixed font-bold'
-                                                    : 'text-on-surface-variant dark:text-slate-300 hover:bg-surface-container-high dark:hover:bg-slate-800 hover:text-on-surface dark:hover:text-white'
+                                                    ? 'text-on-primary-fixed font-extrabold'
+                                                    : 'text-on-surface/75 dark:text-slate-300 hover:bg-white/45 dark:hover:bg-white/8 hover:text-on-surface dark:hover:text-white font-medium'
                                             }`
                                         }
                                     >
@@ -383,13 +325,35 @@ const Layout = () => {
                                                 {isActive && (
                                                     <motion.span
                                                         layoutId="desktopSidebarActivePill"
-                                                        transition={prefersReducedMotion ? { duration: 0 } : SPRING_SNAPPY}
+                                                        transition={
+                                                            prefersReducedMotion
+                                                                ? { duration: 0 }
+                                                                : { type: 'spring', stiffness: 360, damping: 24, mass: 0.85 }
+                                                        }
                                                         aria-hidden="true"
-                                                        className="absolute inset-0 squircle-sm bg-primary-fixed dark:bg-[#2a2f6c] shadow-xs ring-1 ring-primary/15 dark:ring-primary/35"
+                                                        className="absolute inset-0 rounded-full bg-primary-fixed/85 dark:bg-[#2a2f6c]/90 shadow-xs ring-1 ring-primary/20 dark:ring-primary/40"
                                                     />
                                                 )}
-                                                <item.icon size={19} strokeWidth={isActive ? 2.3 : 1.9} className="relative z-10 flex-shrink-0" aria-hidden="true" />
-                                                {!sidebarCollapsed && <span className="relative z-10">{item.label}</span>}
+                                                <span className="relative z-10 w-[42px] h-[38px] flex items-center justify-center shrink-0">
+                                                    <item.icon
+                                                        size={isActive ? 18 : 17}
+                                                        strokeWidth={isActive ? 2.3 : 1.85}
+                                                        className="transition-transform duration-200 group-hover:scale-105"
+                                                        aria-hidden="true"
+                                                    />
+                                                </span>
+                                                {!sidebarCollapsed && (
+                                                    <span className="relative z-10 truncate pe-3">{item.label}</span>
+                                                )}
+                                                {/* Desktop Collapsed Hover Glass Tooltip */}
+                                                {sidebarCollapsed && (
+                                                    <span
+                                                        role="tooltip"
+                                                        className="pointer-events-none opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 absolute end-[calc(100%+0.65rem)] top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] text-xs font-bold text-on-surface dark:text-white whitespace-nowrap z-50 shadow-lg"
+                                                    >
+                                                        {item.label}
+                                                    </span>
+                                                )}
                                             </>
                                         )}
                                     </NavLink>
@@ -398,31 +362,50 @@ const Layout = () => {
                         </LayoutGroup>
                     </div>
 
-                    {/* Version & Status Footer (no duplicate streak) */}
-                    <div className="flex flex-col gap-2.5 pt-3 border-t border-[var(--border-subtle)]">
-                        {!sidebarCollapsed ? (
-                            <div className="flex items-center justify-between px-1 py-0.5 text-[var(--text-secondary)] text-xs">
-                                <span>نسخه ۲.۴ پلاس</span>
-                                <span className="flex items-center gap-1 text-secondary font-bold">
-                                    <CheckCircle2 size={13} className="text-secondary" aria-hidden="true" />
-                                    پایدار
+                    {/* Separate Floating AI Assistant Orb / Pill — Fixed 50px height in both states to keep vertical center invariant */}
+                    <motion.button
+                        type="button"
+                        onClick={handleToggleAiPanel}
+                        onPointerEnter={() => prefetchRoute('/ai-chat')}
+                        animate={prefersReducedMotion ? undefined : { scale: isAiPanelOpen ? 1.03 : 1 }}
+                        whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
+                        whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
+                        transition={SPRING_SNAPPY}
+                        aria-label={isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
+                        title={isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
+                        className={`pointer-events-auto group relative shrink-0 h-[50px] rounded-full border flex items-center cursor-pointer transition-[width,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                            sidebarCollapsed ? 'w-[50px] justify-center' : 'w-full pe-3'
+                        } ${
+                            isAiPanelOpen
+                                ? 'bg-primary text-on-primary border-primary/60 shadow-[0_12px_30px_-6px_rgba(70,72,212,0.58)]'
+                                : 'bg-gradient-to-br from-indigo-500 via-primary to-violet-600 text-white border-white/40 dark:border-indigo-300/35 shadow-[0_12px_28px_-6px_rgba(79,70,229,0.5)] dark:shadow-[0_12px_30px_-6px_rgba(129,140,248,0.42)]'
+                        }`}
+                    >
+                        <span className="w-[50px] h-[50px] flex items-center justify-center shrink-0">
+                            <Sparkles size={19} aria-hidden="true" />
+                        </span>
+                        {!sidebarCollapsed && (
+                            <span className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                                <span className="text-[12.5px] font-extrabold whitespace-nowrap truncate">
+                                    {isAiPanelOpen ? 'بستن دستیار' : 'دستیار هوشمند'}
                                 </span>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-9 h-9 rounded-full bg-surface-container-low border border-[var(--border-subtle)] flex items-center justify-center">
-                                    <BlobatarBot
-                                        seed={botSeed}
-                                        config={settings?.blobatar}
-                                        level={level ?? 1}
-                                        streak={streakCount}
-                                        isFocusRunning={isFocusRunning}
-                                        size="xs"
-                                    />
-                                </div>
-                            </div>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/18 text-white/95 whitespace-nowrap shrink-0">
+                                    {isAiPanelOpen ? 'فعال' : 'AI'}
+                                </span>
+                            </span>
                         )}
-                    </div>
+                        {!isAiPanelOpen && settings?.hasUnreadAiMessage && (
+                            <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
+                        )}
+                        {sidebarCollapsed && (
+                            <span
+                                role="tooltip"
+                                className="pointer-events-none opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 absolute end-[calc(100%+0.65rem)] top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] text-xs font-bold text-on-surface dark:text-white whitespace-nowrap z-50 shadow-lg"
+                            >
+                                {isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
+                            </span>
+                        )}
+                    </motion.button>
                 </aside>
 
                 {/* ====================================================
@@ -430,21 +413,25 @@ const Layout = () => {
                    ==================================================== */}
                 <main className="flex-1 flex flex-col min-w-0 relative h-full">
                     <DesktopTopHeader
-                        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-                        syncStatusSlot={<SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="desktop" />}
-                        notificationSlot={<NotificationBell />}
-                        streakCount={streakCount}
-                        isAiPanelOpen={isAiPanelOpen}
-                        onToggleAiPanel={handleToggleAiPanel}
+                        onOpenCommandPalette={handleTriggerSearch}
+                        isCommandPaletteOpen={isCommandPaletteOpen}
+                        isNotificationOpen={!isMobile && isNotificationOpen}
+                        isProfileOpen={isProfileChipExpanded}
+                        onToggleProfile={() => setIsProfileChipExpanded((prev) => !prev)}
                         isAuthenticated={Boolean(user)}
-                        displayName={getDisplayName()}
-                        level={level}
-                        userInitial={userInitial}
                         avatarSlot={profileBotAvatar}
-                        onProfileClick={() => {
-                            if (!user) setIsAuthModalOpen(true);
-                            else navigate('/settings');
-                        }}
+                        dynamicIslandSlot={
+                            !isMobile ? (
+                                <DynamicIsland isOnline={isOnline} cloudStatus={cloudStatus} desktopMode />
+                            ) : null
+                        }
+                        notificationSlot={
+                            <NotificationBell
+                                morphMode
+                                isOpenExternal={!isMobile ? isNotificationOpen : false}
+                                onOpenChange={setIsNotificationOpen}
+                            />
+                        }
                     />
 
                     {/* Mobile Top Floating Capsules — Right: Profile Bubble Trigger, Start-Offset: Dynamic Island (camera-safe), Left: Search + Notifications */}
@@ -541,7 +528,7 @@ const Layout = () => {
                                                 }}
                                                 style={{ transformOrigin: 'calc(100% - 26px) 26px', willChange: 'transform, opacity' }}
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] right-3 w-[min(calc(100vw-1.5rem),296px)] rounded-[24px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden pt-1 pe-1 ps-3 pb-3 space-y-2.5"
+                                                className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] md:top-3 right-3 w-[min(calc(100vw-1.5rem),296px)] rounded-[24px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden pt-1 ps-1 pe-3 pb-3 space-y-2.5"
                                             >
                                                 {/* Account Header — Close X sits first on top-right directly aligned over the closed Profile circle */}
                                                 <div className="flex items-center gap-2.5">
@@ -576,7 +563,7 @@ const Layout = () => {
                                                 </div>
 
                                                 {/* Level & XP Progress Pill */}
-                                                <div className="ms-1 rounded-2xl bg-white/60 dark:bg-white/8 border border-[var(--border-subtle)] p-2.5 space-y-1.5">
+                                                <div className="ms-2 rounded-2xl bg-white/60 dark:bg-white/8 border border-[var(--border-subtle)] p-2.5 space-y-1.5">
                                                     <div className="flex items-center justify-between text-xs font-bold">
                                                         <span className="text-primary dark:text-indigo-300 flex items-center gap-1">
                                                             <Sparkles size={13} aria-hidden="true" />
@@ -602,7 +589,7 @@ const Layout = () => {
                                                 </div>
 
                                                 {/* Bubble Actions: Settings + Login/Logout */}
-                                                <div className="ms-1 flex flex-col gap-1.5">
+                                                <div className="ms-2 flex flex-col gap-1.5">
                                                     <NavLink
                                                         to="/settings"
                                                         onClick={() => {
@@ -656,17 +643,18 @@ const Layout = () => {
 
                         {/* Top Dynamic Island Hub — Offset beside Profile pill so dead-center camera/punch-hole stays clear */}
                         <div className="flex-1 flex items-center justify-start ps-1 min-w-0">
-                            <DynamicIsland isOnline={isOnline} cloudStatus={cloudStatus} />
+                            {isMobile && <DynamicIsland isOnline={isOnline} cloudStatus={cloudStatus} />}
                         </div>
 
                         {/* Top-Left Floating Capsule: Slightly trimmer Search + Notifications for visual harmony */}
                         <motion.div
+                            data-top-left-capsule="mobile"
                             animate={
                                 prefersReducedMotion
                                     ? undefined
                                     : {
-                                          scale: isNotificationOpen || (isMobile && isCommandPaletteOpen) ? 0.86 : 1,
-                                          opacity: isNotificationOpen || (isMobile && isCommandPaletteOpen) ? 0 : 1,
+                                          scale: (isMobile && isNotificationOpen) || (isMobile && isCommandPaletteOpen) ? 0.86 : 1,
+                                          opacity: (isMobile && isNotificationOpen) || (isMobile && isCommandPaletteOpen) ? 0 : 1,
                                       }
                             }
                             transition={{ type: 'spring', stiffness: 400, damping: 18, mass: 0.75, restDelta: 0.01 }}
@@ -690,7 +678,11 @@ const Layout = () => {
                                 <Search size={17} className="shrink-0" />
                             </motion.button>
 
-                            <NotificationBell morphMode isOpenExternal={isNotificationOpen} onOpenChange={setIsNotificationOpen} />
+                            <NotificationBell
+                                morphMode
+                                isOpenExternal={isMobile ? isNotificationOpen : false}
+                                onOpenChange={setIsNotificationOpen}
+                            />
                         </motion.div>
                     </header>
 
@@ -713,13 +705,14 @@ const Layout = () => {
                         <div className="top-nav-spacer" />
                         <RubberBandScrollContainer
                             scrollContainerId="main-content"
-                            className="min-h-[calc(100%-4.25rem)] md:min-h-[calc(100%-4rem)] max-app-container w-full"
+                            className="min-h-[calc(100%-4.25rem)] md:min-h-[calc(100%-4rem)] w-full md:px-[7.75rem]"
                         >
                             <motion.div
                                 key={location.pathname}
                                 initial={prefersReducedMotion ? false : { opacity: 0.85 }}
                                 animate={{ opacity: 1 }}
                                 transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.12, ease: 'easeOut' }}
+                                className="max-app-container mx-auto w-full"
                             >
                                 <ErrorBoundary>
                                     <Suspense fallback={<RouteSkeleton pathname={location.pathname} />}>
@@ -890,7 +883,7 @@ const Layout = () => {
                                 className={
                                     isMobile
                                         ? 'fixed inset-0 z-[55] flex flex-col bg-[var(--surface-elevated)] pt-safe pb-safe'
-                                        : 'flex-shrink-0 h-full bg-[var(--surface-elevated)] border-s border-[var(--border-subtle)] z-30 flex flex-col'
+                                        : 'flex-shrink-0 my-3 me-3 h-[calc(100%-1.5rem)] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] squircle-lg shadow-xl overflow-hidden z-30 flex flex-col'
                                 }
                                 style={{
                                     transformOrigin: isMobile ? 'bottom left' : 'center left',

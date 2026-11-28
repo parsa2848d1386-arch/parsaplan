@@ -11,9 +11,10 @@ import { haptics } from '../utils/haptics';
 interface DynamicIslandProps {
     isOnline: boolean;
     cloudStatus: 'disconnected' | 'connected' | 'error';
+    desktopMode?: boolean;
 }
 
-export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudStatus }) => {
+export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudStatus, desktopMode = false }) => {
     const focus = useOptionalFocus();
     const tick = useOptionalFocusTick();
     const { xp = 0, tasks = [] } = useStore();
@@ -47,6 +48,15 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
         };
     }, []);
 
+    useEffect(() => {
+        if (!isExpanded) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsExpanded(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [isExpanded]);
+
     const status = focus?.status ?? 'idle';
     const isTimerLive = status === 'running' || status === 'paused';
     const hasSyncAlert = !isOnline || isSyncing || syncQueueCount > 0 || cloudStatus === 'error';
@@ -77,7 +87,11 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
                 aria-label="جزیره هوشمند وضعیت"
                 aria-expanded={isExpanded}
                 className={`pointer-events-auto h-[40px] px-3 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all ${
-                    showToastInIsland ? 'max-w-[210px]' : 'max-w-[120px]'
+                    desktopMode
+                        ? 'max-w-[280px] h-[44px] px-4'
+                        : showToastInIsland
+                          ? 'max-w-[210px]'
+                          : 'max-w-[120px]'
                 }`}
             >
                 {showToastInIsland && latestCompactToast ? (
@@ -111,6 +125,11 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
                         <span className="text-xs font-mono font-extrabold tabular-nums text-on-surface dark:text-white" dir="ltr">
                             {formatClockTime(displaySeconds)}
                         </span>
+                        {desktopMode && (
+                            <span className="text-[11px] font-bold text-[var(--text-secondary)] truncate max-w-[120px]">
+                                · {displayLabel}
+                            </span>
+                        )}
                         {focus?.strictLockActive && (
                             <Lock size={11} className="text-rose-400 shrink-0" aria-hidden="true" />
                         )}
@@ -147,7 +166,7 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.18 }}
                                 onClick={() => setIsExpanded(false)}
-                                className="fixed inset-0 z-[60] bg-slate-950/30 dark:bg-black/45"
+                                className="fixed inset-0 z-[60] bg-slate-950/25 dark:bg-black/45"
                                 dir="rtl"
                             >
                                 <motion.div
@@ -176,9 +195,16 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ isOnline, cloudSta
                                         restDelta: 0.015,
                                         restSpeed: 0.5,
                                     }}
-                                    style={{ transformOrigin: 'top right', willChange: 'transform, opacity' }}
+                                    style={{
+                                        transformOrigin: desktopMode ? 'top center' : 'top right',
+                                        willChange: 'transform, opacity',
+                                    }}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="fixed top-[max(3.65rem,calc(env(safe-area-inset-top,0px)+3.15rem))] inset-x-4 max-w-[340px] mx-auto rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden p-4 space-y-3"
+                                    className={
+                                        desktopMode
+                                            ? 'fixed top-[4.25rem] inset-x-0 mx-auto w-[min(calc(100vw-2rem),360px)] rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden p-4 space-y-3'
+                                            : 'fixed top-[max(3.65rem,calc(env(safe-area-inset-top,0px)+3.15rem))] inset-x-4 max-w-[340px] mx-auto rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden p-4 space-y-3'
+                                    }
                                 >
                                     {isTimerLive ? (
                                         <>

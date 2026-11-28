@@ -167,7 +167,7 @@
 
 @media (min-width: 768px) {
   .top-nav-spacer {
-    height: 4rem; /* Matches h-16 overlaid desktop Liquid Glass header */
+    height: 4rem; /* Exact bottom edge of top-3 (12px) + 52px floating Liquid Glass top capsules */
   }
 
   .bottom-nav-spacer {
@@ -176,7 +176,7 @@
 
   .scroll-edge-fade-top {
     top: 0;
-    height: 5.5rem; /* Glides smoothly underneath desktop h-16 Liquid Glass header */
+    height: 5.75rem; /* Glides smoothly underneath floating desktop Liquid Glass header capsules */
   }
 
   .scroll-edge-fade-bottom {
@@ -700,6 +700,12 @@ dialog::backdrop {
   width: 100%;
   max-width: 1440px;
   margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .max-app-container {
+    max-width: 1060px;
+  }
 }
 
 /* ================================================================

@@ -11,6 +11,36 @@ export default defineConfig(() => {
       port: 3000,
       host: '0.0.0.0',
       allowedHosts: true as const,
+      hmr: process.env.DISABLE_HMR !== 'true',
+    },
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-dom/client',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'react-router-dom',
+        'framer-motion',
+        'lucide-react',
+        'idb-keyval',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'recharts',
+        'react-hook-form',
+        '@hookform/resolvers/zod',
+        'zod',
+        'react-markdown',
+        'remark-gfm',
+      ],
+      entries: [
+        'index.html',
+        'index.tsx',
+        'App.tsx',
+        'pages/**/*.tsx',
+        'components/**/*.tsx',
+      ],
     },
     plugins: [
       react(),
@@ -124,6 +154,7 @@ export default defineConfig(() => {
       testTimeout: 20000,
     },
     resolve: {
+      dedupe: ['react', 'react-dom', 'react-router-dom', 'framer-motion'],
       alias: {
         '@': path.resolve(__dirname, '.'),
       }

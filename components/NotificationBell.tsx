@@ -34,7 +34,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
         if (next !== isOpen) onOpenChange?.(next);
     };
     const [hasUpdate, setHasUpdate] = useState(false);
+    const [morphAnchor, setMorphAnchor] = useState<{ top: number; left: number } | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const portalRef = useRef<HTMLDivElement>(null);
     const prefersReducedMotion = useReducedMotion();
     const { showToast } = useUI();
 
@@ -65,8 +67,22 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     const unreadCount = notifications.length;
 
     useEffect(() => {
+        if (isOpen && morphMode && dropdownRef.current) {
+            const capsule = dropdownRef.current.closest('[data-top-left-capsule]') as HTMLElement | null;
+            const rect = (capsule || dropdownRef.current).getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                setMorphAnchor({ top: Math.round(rect.top), left: Math.round(rect.left) });
+            } else {
+                setMorphAnchor(null);
+            }
+        }
+    }, [isOpen, morphMode]);
+
+    useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            if (portalRef.current && portalRef.current.contains(target)) return;
+            if (dropdownRef.current && !dropdownRef.current.contains(target)) {
                 setIsOpen(false);
             }
         };
@@ -133,6 +149,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                     dir="rtl"
                                 >
                                     <motion.div
+                                        ref={portalRef}
                                         initial={
                                             prefersReducedMotion
                                                 ? false
@@ -158,9 +175,15 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                             restDelta: 0.015,
                                             restSpeed: 0.5,
                                         }}
-                                        style={{ transformOrigin: '26px 26px', willChange: 'transform, opacity' }}
+                                        style={{
+                                            transformOrigin: '26px 26px',
+                                            willChange: 'transform, opacity',
+                                            ...(morphAnchor ? { top: `${morphAnchor.top}px`, left: `${morphAnchor.left}px` } : {}),
+                                        }}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] left-3 w-[min(calc(100vw-1.5rem),360px)] rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"
+                                        className={`fixed ${
+                                            morphAnchor ? '' : 'top-[max(0.625rem,env(safe-area-inset-top,0px))] md:top-3 left-3'
+                                        } w-[min(calc(100vw-1.5rem),360px)] rounded-[26px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden`}
                                     >
                                         <motion.div
                                             initial={prefersReducedMotion ? false : { opacity: 0 }}
@@ -168,7 +191,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                             exit={{ opacity: 0 }}
                                             transition={{ duration: 0.16, delay: 0.06 }}
                                         >
-                                            <div className="pt-1 ps-1 pe-3.5 pb-2.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
+                                            <div className="pt-1 ps-3.5 pe-1 pb-2.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 rounded-full bg-primary/12 text-primary flex items-center justify-center">
                                                         <Bell size={15} />
@@ -303,12 +326,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         animate="visible"
                         exit="exit"
                         style={{ transformOrigin: 'top left' }}
-                        className="absolute top-[calc(100%+0.75rem)] -left-1 right-auto w-[min(calc(100vw-1.5rem),21.5rem)] z-[var(--z-popover)] md:top-12 md:left-0 md:w-80 bg-[var(--surface-elevated)] squircle-lg shadow-xl border border-[var(--border-subtle)] overflow-hidden"
+                        className="absolute top-[calc(100%+0.75rem)] left-0 right-auto w-[min(calc(100vw-1.5rem),21.5rem)] z-[var(--z-popover)] md:top-[calc(100%+0.85rem)] md:left-0 md:w-80 liquid-glass-nav glass-pill-shadow squircle-lg border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden"
                     >
-                        <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low">
-                            <h3 className="font-extrabold text-sm text-on-surface">اعلان‌ها</h3>
+                        <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-white/45 dark:bg-white/5">
+                            <h3 className="font-extrabold text-sm text-on-surface dark:text-white">اعلان‌ها</h3>
                             {unreadCount > 0 && (
-                                <span className="bg-primary/10 text-primary text-[11px] font-bold px-2.5 py-0.5 rounded-full tabular-nums">
+                                <span className="bg-primary/12 text-primary text-[11px] font-bold px-2.5 py-0.5 rounded-full tabular-nums">
                                     {formatToPersianDigits(unreadCount)} اعلان جدید
                                 </span>
                             )}
