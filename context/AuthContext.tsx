@@ -154,6 +154,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         let unsubscribeAuth: (() => void) | undefined;
 
         const initFirebase = async () => {
+            if (IS_DEFAULT_FIREBASE_ENABLED) {
+                try {
+                    // Always prefer the official app Firebase project so stale local configs never lock users out
+                    try {
+                        localStorage.removeItem(KEY_FB_CONFIG);
+                    } catch {}
+                    setFirebaseConfig(DEFAULT_FIREBASE_CONFIG);
+                    unsubscribeAuth = await initializeFirebaseApp(DEFAULT_FIREBASE_CONFIG);
+                } catch (e) {
+                    console.error('Error loading default firebase config', e);
+                }
+                return;
+            }
+
             const storedConfig = localStorage.getItem(KEY_FB_CONFIG);
             if (storedConfig) {
                 try {
@@ -162,13 +176,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     unsubscribeAuth = await initializeFirebaseApp(config);
                 } catch (e) {
                     console.error('Error loading firebase config', e);
-                }
-            } else if (IS_DEFAULT_FIREBASE_ENABLED) {
-                try {
-                    setFirebaseConfig(DEFAULT_FIREBASE_CONFIG);
-                    unsubscribeAuth = await initializeFirebaseApp(DEFAULT_FIREBASE_CONFIG);
-                } catch (e) {
-                    console.error('Error loading default firebase config', e);
                 }
             }
         };
