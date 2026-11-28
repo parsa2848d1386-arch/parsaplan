@@ -705,7 +705,7 @@ const Layout = () => {
                         <div className="top-nav-spacer" />
                         <RubberBandScrollContainer
                             scrollContainerId="main-content"
-                            className="min-h-[calc(100%-4.25rem)] md:min-h-[calc(100%-4rem)] w-full md:px-[7.75rem]"
+                            className="min-h-[calc(100%-4.25rem)] md:min-h-[calc(100%-4rem)] w-full md:px-12"
                         >
                             <motion.div
                                 key={location.pathname}
