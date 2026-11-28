@@ -208,7 +208,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ input, setInput, onSend, i
                                         ) : (
                                             <>
                                                 <FileText className="text-primary" size={20} />
-                                                <span className="text-[9px] text-[var(--text-secondary)] truncate max-w-full mt-1">
+                                                <span className="text-[11px] text-[var(--text-secondary)] truncate max-w-full mt-1">
                                                     {att.name}
                                                 </span>
                                             </>

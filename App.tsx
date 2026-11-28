@@ -1,10 +1,11 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { MotionConfig, LayoutGroup } from 'framer-motion';
+import { MotionConfig, LayoutGroup, LazyMotion, domMax } from 'framer-motion';
 import { setupPwaAutoUpdater } from './services/pwaManager';
 import { setupGlobalHapticListeners } from './utils/haptics';
 import { StoreProvider, useStore } from './context/StoreContext';
-import { FocusProvider } from './context/FocusContext';
+import { FocusProvider, useOptionalFocus } from './context/FocusContext';
+import { useUI } from './context/UIContext';
 import Layout from './components/Layout';
 import { AppShellSkeleton } from './components/Skeleton';
 import { routeImporters } from './utils/routePrefetch';
@@ -55,20 +56,53 @@ const FirstVisitGate: React.FC = () => {
     return <Layout />;
 };
 
-function App() {
+const AppLifecycleEffects: React.FC = () => {
+    const focus = useOptionalFocus();
+    const { showToast } = useUI();
+    const focusStatusRef = useRef(focus?.status ?? 'idle');
+    focusStatusRef.current = focus?.status ?? 'idle';
+
     useEffect(() => {
-        const cleanupPwa = setupPwaAutoUpdater();
+        const cleanupPwa = setupPwaAutoUpdater({
+            onUpdateAvailable: (applyUpdate) => {
+                if (focusStatusRef.current === 'running') {
+                    showToast('نسخه جدید برنامه آماده است.', 'info', {
+                        durationMs: 12000,
+                        action: {
+                            label: 'به‌روزرسانی',
+                            onClick: () => {
+                                void applyUpdate();
+                            },
+                        },
+                    });
+                    return true;
+                }
+                return false;
+            },
+        });
         const cleanupHaptics = setupGlobalHapticListeners();
+        const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+            console.warn('[ParsaPlan] Unhandled async rejection:', event.reason);
+        };
+        window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
         return () => {
             cleanupPwa();
             cleanupHaptics();
+            window.removeEventListener('unhandledrejection', handleUnhandledRejection);
         };
-    }, []);
+    }, [showToast]);
 
+    return null;
+};
+
+function App() {
     return (
+        <LazyMotion features={domMax}>
         <MotionConfig reducedMotion="user">
             <StoreProvider>
                 <FocusProvider>
+                    <AppLifecycleEffects />
                     <ErrorBoundary>
                         <LayoutGroup id="app-shell-morph">
                         <HashRouter>
@@ -110,6 +144,7 @@ function App() {
                 </FocusProvider>
             </StoreProvider>
         </MotionConfig>
+        </LazyMotion>
     );
 }
 

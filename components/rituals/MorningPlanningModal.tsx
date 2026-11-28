@@ -134,7 +134,7 @@ export const MorningPlanningModal: React.FC = () => {
                         </div>
 
                         {todayTasks.length === 0 ? (
-                            <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/60 rounded-2xl text-xs text-gray-400 font-bold">
+                            <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/60 rounded-2xl text-xs text-[var(--text-tertiary)] font-bold">
                                 برای امروز تسک معلقی ثبت نشده است! می‌توانید از بخش تخلیه ذهن یا برنامه دروس اضافه کنید.
                             </div>
                         ) : (
@@ -156,7 +156,7 @@ export const MorningPlanningModal: React.FC = () => {
                                                     <div className="text-xs font-black text-gray-800 dark:text-white truncate">
                                                         {t.topic}
                                                     </div>
-                                                    <div className="text-[10px] text-gray-400">
+                                                    <div className="text-[11px] text-[var(--text-tertiary)]">
                                                         {t.subject} • {formatToPersianDigits(t.durationMinutes ?? 60)} دقیقه
                                                         {t.startTime ? ` • ساعت ${t.startTime}` : ''}
                                                     </div>
@@ -168,7 +168,7 @@ export const MorningPlanningModal: React.FC = () => {
                                                 className={`p-2 rounded-xl transition ${
                                                     t.isMIT
                                                         ? 'bg-amber-400 text-amber-950 shadow-sm'
-                                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-400 hover:text-amber-500'
+                                                        : 'bg-gray-100 dark:bg-gray-700 text-[var(--text-tertiary)] hover:text-amber-500'
                                                 }`}
                                                 title="انتخاب به عنوان اولویت طلایی"
                                             >

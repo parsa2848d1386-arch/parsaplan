@@ -1,98 +1,98 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-    Sparkles,
-    CheckCircle2,
-    Brain,
-    BarChart2,
-    Zap,
-    Briefcase,
-    Target,
-    Dumbbell,
-    Calendar,
-} from 'lucide-react';
+import { CheckCircle2, Brain, BarChart2, Flame } from 'lucide-react';
 import { STAGGER_CONTAINER_VARIANTS, STAGGER_ITEM_VARIANTS } from '../../utils/motionPresets';
+import type { BlobatarConfig } from '../../types';
+import { BlobatarBot } from '../ui/BlobatarBot';
+import { getGamifiedBotRank } from '../../utils/blobatar';
+import { formatToPersianDigits } from '../../utils';
 
 interface WelcomeScreenProps {
     onPromptSelect: (text: string) => void;
     userName: string;
+    botSeed?: string;
+    botConfig?: BlobatarConfig;
+    level?: number;
+    xp?: number;
+    streak?: number;
+    isFocusRunning?: boolean;
 }
-
-// Principle 10 (Hick's Law): 4 focused topic themes minimize choice paralysis
-const TOPIC_THEMES = [
-    { text: 'کار و پروژه', Icon: Briefcase },
-    { text: 'اهداف و عادت‌ها', Icon: Target },
-    { text: 'ورزش و سلامت', Icon: Dumbbell },
-    { text: 'تایم‌لاین امروز', Icon: Calendar },
-];
 
 const BENTO_PROMPTS = [
     {
-        text: 'برای امروز ۳ تسک زمان‌بندی‌شده (با ساعت شروع و مدت) بساز و به تایم‌لاین اضافه کن',
+        text: 'برای امروز ۳ تسک زمان‌بندی‌شده بساز و به تایم‌لاین اضافه کن',
         Icon: CheckCircle2,
         bg: 'bg-emerald-50 dark:bg-emerald-950/35 text-emerald-600 dark:text-emerald-400',
     },
     {
-        text: 'برنامه این هفته‌ام رو با تعادل کار، ورزش و استراحت بچین',
+        text: 'برنامه این هفته‌ام رو با تعادل کار، استراحت و تمرکز بچین',
         Icon: Brain,
         bg: 'bg-primary/10 text-primary',
     },
     {
-        text: 'عملکرد و زمان تمرکز اخیرم رو تحلیل کن و نقاط قوت و ضعف رو بگو',
+        text: 'عملکرد و تمرکز اخیرم رو تحلیل کن و گام بعدی رو پیشنهاد بده',
         Icon: BarChart2,
         bg: 'bg-sky-50 dark:bg-sky-950/35 text-sky-600 dark:text-sky-400',
     },
-    {
-        text: 'پیشنهاد ۳ عادت کلیدی برای افزایش انرژی، تمرکز و بهره‌وری',
-        Icon: Zap,
-        bg: 'bg-amber-50 dark:bg-amber-950/35 text-amber-600 dark:text-amber-400',
-    },
 ];
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptSelect, userName }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
+    onPromptSelect,
+    userName,
+    botSeed,
+    botConfig,
+    level = 1,
+    xp = 0,
+    streak = 0,
+    isFocusRunning = false,
+}) => {
     const prefersReducedMotion = useReducedMotion();
+    const displayName = userName || 'دوست من';
+    const effectiveSeed = botConfig?.seed?.trim() || botSeed || userName || 'Parsashz';
+    const rank = getGamifiedBotRank(level, streak);
 
     return (
-        <div className="flex flex-col items-center justify-start sm:justify-center py-2 sm:py-6 px-1 sm:px-4 text-center select-none max-w-2xl mx-auto">
-            {/* Crisp App Emblem (Zero Blur-Orb Slop) */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 mb-3 rounded-2xl bg-primary text-on-primary flex items-center justify-center shadow-sm">
-                <Sparkles size={24} />
+        <div className="flex flex-col items-center justify-center py-4 sm:py-8 px-1 sm:px-4 text-center select-none max-w-2xl mx-auto">
+            {/* User's Personalized Gamified Blobatar Bot Centerpiece */}
+            <div className="mb-3 flex flex-col items-center gap-2.5">
+                <BlobatarBot
+                    seed={effectiveSeed}
+                    config={botConfig}
+                    level={level}
+                    streak={streak}
+                    isFocusRunning={isFocusRunning}
+                    interactiveGaze
+                    showLevelBadge
+                    showAura
+                    size="2xl"
+                />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low border border-[var(--border-subtle)] text-[11px] font-bold text-[var(--text-secondary)]">
+                    <span className="text-primary font-black">{rank.title}</span>
+                    <span aria-hidden="true">•</span>
+                    <span className="tabular-nums">{formatToPersianDigits(xp)} XP</span>
+                    {streak > 0 && (
+                        <>
+                            <span aria-hidden="true">•</span>
+                            <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400 tabular-nums">
+                                <Flame size={12} className="fill-current" aria-hidden="true" />
+                                {formatToPersianDigits(streak)} روز
+                            </span>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Greeting Headline */}
-            <h2 className="text-lg sm:text-2xl font-black text-on-surface mb-1">
-                چطور می‌تونم کمکت کنم، <span className="text-primary">{userName || 'دوست من'}</span>؟
+            {/* Minimal Conversational Prompt Header */}
+            <h2 className="text-lg sm:text-xl font-black text-on-surface mb-4">
+                هم‌پای هوشمند <span className="text-primary">{displayName}</span> آماده است
             </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-sm mb-4 leading-6">
-                یکی از موضوعات زیر را انتخاب کن یا مستقیم برنامه و سوالت را بنویس.
-            </p>
 
-            {/* Quick Themes */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-4">
-                {TOPIC_THEMES.map((theme) => {
-                    const ThemeIcon = theme.Icon;
-                    return (
-                        <button
-                            key={theme.text}
-                            type="button"
-                            onClick={() =>
-                                onPromptSelect(`لطفاً در زمینه «${theme.text}» من را راهنمایی کن و چند پیشنهاد اجرایی بده.`)
-                            }
-                            className="min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--surface-elevated)] hover:bg-surface-container text-on-surface transition active:scale-95 border border-[var(--border-subtle)] text-xs font-bold cursor-pointer"
-                        >
-                            <ThemeIcon size={14} className="text-primary shrink-0" />
-                            <span>{theme.text}</span>
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* Action Prompt Cards (Principle 3: Stagger choreography) */}
+            {/* Concise Action Starters */}
             <motion.div
                 variants={STAGGER_CONTAINER_VARIANTS}
                 initial={prefersReducedMotion ? false : 'hidden'}
                 animate="visible"
-                className="flex flex-col gap-2.5 w-full mb-4"
+                className="flex flex-col gap-2.5 w-full mb-2"
             >
                 {BENTO_PROMPTS.map((prompt, idx) => {
                     const Icon = prompt.Icon;
@@ -102,7 +102,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onPromptSelect, us
                             variants={STAGGER_ITEM_VARIANTS}
                             type="button"
                             onClick={() => onPromptSelect(prompt.text)}
-                            className="group w-full text-right p-3.5 sm:p-4 rounded-[20px] bg-[var(--surface-elevated)] hover:bg-surface-container-low transition flex items-center justify-between gap-3 active:scale-[0.99] border border-[var(--border-subtle)] cursor-pointer"
+                            className="group w-full text-start p-3.5 sm:p-4 rounded-[20px] bg-[var(--surface-elevated)] hover:bg-surface-container-low transition flex items-center justify-between gap-3 active:scale-[0.99] border border-[var(--border-subtle)] cursor-pointer"
                         >
                             <span className="text-xs sm:text-sm text-on-surface group-hover:text-primary transition-colors flex-1 leading-6 font-semibold">
                                 {prompt.text}

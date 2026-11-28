@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, MessageSquare, Edit2, Trash2, X, History, Check } from 'lucide-react';
+import type { StoredChatMessage } from '../../types';
 
 export interface ChatSession {
     id: string;
     title: string;
-    messages: any[];
+    messages: StoredChatMessage[];
     timestamp: number;
 }
 
@@ -64,7 +65,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             )}
 
             <aside className={`
-                absolute inset-y-0 right-0 z-40 bg-white/90 dark:bg-gray-900/95 border-l border-gray-200/50 dark:border-gray-800/50 transition-all duration-300 ease-out shadow-[-10px_0_30px_rgba(0,0,0,0.05)] dark:shadow-[-10px_0_40px_rgba(0,0,0,0.3)] glass-premium
+                absolute inset-y-0 right-0 z-40 bg-white/90 dark:bg-gray-900/95 border-s border-gray-200/50 dark:border-gray-800/50 transition-all duration-300 ease-out shadow-[-10px_0_30px_rgba(0,0,0,0.05)] dark:shadow-[-10px_0_40px_rgba(0,0,0,0.3)] glass-premium
                 ${isOpen ? 'translate-x-0' : 'translate-x-full'}
                 w-72 md:w-80
             `}>
@@ -72,7 +73,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     <div className="p-4 border-b border-gray-100/50 dark:border-gray-800/50 flex items-center justify-between">
                         <h2 className="font-extrabold text-gray-800 dark:text-gray-100 flex items-center gap-2.5">
                             <History size={18} className="text-indigo-500" />
-                            <span className="text-base tracking-tight">تاریخچه چت</span>
+                            <span className="text-base">تاریخچه چت</span>
                         </h2>
                         <button
                             type="button"
@@ -98,7 +99,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4 space-y-2">
                         {sessions.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-40 text-gray-400 gap-2 opacity-60">
+                            <div className="flex flex-col items-center justify-center h-40 text-[var(--text-tertiary)] gap-2 opacity-60">
                                 <MessageSquare size={32} />
                                 <p className="text-xs">هیچ چتی یافت نشد</p>
                             </div>
@@ -114,7 +115,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         onSelectSession(session.id);
                                         onClose();
                                     }}
-                                    className={`group relative p-3 rounded-2xl border transition-all duration-300 cursor-pointer select-none overflow-hidden btn-micro-interactive text-right
+                                    className={`group relative p-3 rounded-2xl border transition-all duration-300 cursor-pointer select-none overflow-hidden btn-micro-interactive text-start
                                         ${activeSessionId === session.id
                                             ? 'bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/20 dark:border-indigo-500/30 shadow-inner'
                                             : 'bg-transparent border-transparent hover:bg-gray-50/50 dark:hover:bg-gray-800/40 hover:border-gray-200/20 dark:hover:border-gray-700/20'
@@ -122,11 +123,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                     `}
                                 >
                                     {activeSessionId === session.id && (
-                                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-l-full" />
+                                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-s-full" />
                                     )}
 
                                     {isEditing ? (
-                                        <div className="flex items-center gap-1.5 pr-1" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-1.5 pe-1" onClick={(e) => e.stopPropagation()}>
                                             <input
                                                 type="text"
                                                 autoFocus
@@ -158,12 +159,12 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="flex items-start justify-between gap-2 overflow-hidden pr-2 pl-16">
+                                            <div className="flex items-start justify-between gap-2 overflow-hidden pe-2 ps-16">
                                                 <div className="flex-1 min-w-0">
                                                     <div className={`font-extrabold text-xs md:text-[13px] truncate mb-1.5 ${activeSessionId === session.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300'}`} title={session.title}>
                                                         {session.title}
                                                     </div>
-                                                    <div className="text-[9px] text-gray-400 dark:text-gray-500 font-extrabold flex items-center gap-1.5 font-mono">
+                                                    <div className="text-[11px] text-[var(--text-tertiary)] font-extrabold flex items-center gap-1.5 font-mono">
                                                         <span>{new Date(session.timestamp).toLocaleDateString('fa-IR')}</span>
                                                         <span className="opacity-40">•</span>
                                                         <span>{new Date(session.timestamp).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</span>

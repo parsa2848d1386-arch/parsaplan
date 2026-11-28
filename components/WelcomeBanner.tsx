@@ -43,7 +43,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ visible, onDismiss
                             type="button"
                             onClick={onDismiss}
                             aria-label="بستن پیام خوش‌آمدگویی"
-                            className="w-10 h-10 -mt-1 -ml-1 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-surface-container transition shrink-0"
+                            className="w-10 h-10 -mt-1 -ms-1 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-surface-container transition shrink-0"
                         >
                             <X size={17} />
                         </button>

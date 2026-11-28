@@ -163,7 +163,7 @@ const PrintableSchedule = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="mt-auto pt-8 flex items-center justify-center gap-2 text-xs text-gray-400">
+                        <div className="mt-auto pt-8 flex items-center justify-center gap-2 text-xs text-[var(--text-tertiary)]">
                             <BrandLogo size={14} />
                             <span>ParsaPlan | روز {dayId} از {totalDays}</span>
                         </div>

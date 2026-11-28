@@ -182,8 +182,8 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
         expect(desktopNav).toBeInTheDocument();
         expect(within(desktopNav).getByText('داشبورد جامع')).toBeInTheDocument();
         expect(within(desktopNav).getByText('تایم‌لاین ۲۴ ساعته')).toBeInTheDocument();
-        expect(within(desktopNav).getByText('تحلیل و لیگ رقابتی')).toBeInTheDocument();
-        expect(within(desktopNav).getByText('اتاق‌های مطالعه')).toBeInTheDocument();
+        expect(within(desktopNav).getByText('تحلیل و پیشرفت')).toBeInTheDocument();
+        expect(within(desktopNav).getByText('لیگ و اتاق مطالعه')).toBeInTheDocument();
         expect(within(desktopNav).getByText('تنظیمات و راهنما')).toBeInTheDocument();
 
         // 3. Verify Mobile Navigation has strictly 4 core tabs + separate Settings link in top capsule + circular AI button
@@ -224,20 +224,20 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
         });
 
         // Step 2: Navigate to Analysis (/analysis)
-        const analysisLink = within(desktopNav).getByText('تحلیل و لیگ رقابتی');
+        const analysisLink = within(desktopNav).getByText('تحلیل و پیشرفت');
         fireEvent.click(analysisLink);
 
         await waitFor(() => {
-            expect(document.title).toContain('تحلیل عملکرد');
+            expect(document.title).toContain('تحلیل و پیشرفت');
             expect(screen.getByText('جزئیات عملکرد')).toBeInTheDocument();
         });
 
         // Step 3: Navigate to Leaderboard (/leaderboard)
-        const leaderboardLink = within(desktopNav).getByText('اتاق‌های مطالعه');
+        const leaderboardLink = within(desktopNav).getByText('لیگ و اتاق مطالعه');
         fireEvent.click(leaderboardLink);
 
         await waitFor(() => {
-            expect(document.title).toContain('لیگ و اتاق‌های مطالعه');
+            expect(document.title).toContain('لیگ و اتاق مطالعه');
         });
 
         // Step 4: Navigate to Settings (/settings)
@@ -246,8 +246,9 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
 
         await waitFor(() => {
             expect(document.title).toContain('تنظیمات');
-            expect(screen.getByText('راهنمای کامل و سوالات متداول')).toBeInTheDocument();
         });
+        fireEvent.click(screen.getByRole('tab', { name: /داده و راهنما/ }));
+        expect(screen.getByText('راهنمای کامل و سوالات متداول')).toBeInTheDocument();
 
         // Step 5: Cycle back to Dashboard (/)
         const dashboardLink = within(desktopNav).getByText('داشبورد جامع');
@@ -279,14 +280,14 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
         const mobileAnalysis = within(mobileNav).getByText('تحلیل');
         fireEvent.click(mobileAnalysis);
         await waitFor(() => {
-            expect(document.title).toContain('تحلیل عملکرد');
+            expect(document.title).toContain('تحلیل و پیشرفت');
         });
 
         // 3. Mobile Leaderboard tab
         const mobileLeaderboard = within(mobileNav).getByText('لیگ');
         fireEvent.click(mobileLeaderboard);
         await waitFor(() => {
-            expect(document.title).toContain('لیگ و اتاق‌های مطالعه');
+            expect(document.title).toContain('لیگ و اتاق مطالعه');
         });
 
         // 4. Top-Right Profile Capsule opens Liquid Glass bubble containing Settings Link
@@ -359,7 +360,8 @@ describe('E2E Application Flow & Navigation Suite (Milestone 5)', { timeout: 250
             expect(document.title).toContain('تنظیمات');
         });
 
-        // Verify container is rendered without uncaught exceptions
+        // Switch to Data & Help tab and verify FAQ renders cleanly
+        fireEvent.click(screen.getByRole('tab', { name: /داده و راهنما/ }));
         expect(screen.getByText('راهنمای کامل و سوالات متداول')).toBeInTheDocument();
     });
 });

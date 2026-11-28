@@ -37,6 +37,42 @@ export interface OutboxTransaction {
 const getOutboxKey = (userId: string) => `parsaplan_outbox_${userId}`;
 const getDeadLetterKey = (userId: string) => `parsaplan_deadletter_${userId}`;
 const MAX_RETRY_COUNT = 5;
+const MAX_OUTBOX_SIZE = 500;
+const INITIAL_BACKOFF_MS = 1000;
+const MAX_BACKOFF_MS = 30_000;
+const JITTER_FACTOR = 0.5;
+const SYNC_BROADCAST_CHANNEL = 'parsaplan_sync_channel';
+
+/**
+ * Exponential backoff with +/-50% jitter to avoid thundering-herd retries on reconnect.
+ */
+export function calculateBackoff(attempt: number): number {
+    const safeAttempt = Math.max(0, Math.min(10, Math.floor(attempt)));
+    const delay = Math.min(INITIAL_BACKOFF_MS * 2 ** safeAttempt, MAX_BACKOFF_MS);
+    const jitter = delay * JITTER_FACTOR * (Math.random() * 2 - 1);
+    return Math.max(250, Math.floor(delay + jitter));
+}
+
+/**
+ * Verifies real reachability beyond navigator.onLine (handles captive portals).
+ */
+export async function checkConnectivity(timeoutMs = 4000): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
+    if (typeof fetch !== 'function') return true;
+    try {
+        const signal = typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal
+            ? AbortSignal.timeout(timeoutMs)
+            : undefined;
+        const response = await fetch('/api/health', {
+            method: 'GET',
+            cache: 'no-store',
+            ...(signal ? { signal } : {}),
+        });
+        return response.ok;
+    } catch {
+        return false;
+    }
+}
 
 /**
  * Unique identifier per browser tab so Firestore listeners can skip self-echoes.
@@ -75,6 +111,40 @@ export function isFirestorePermissionDenied(err: unknown): boolean {
 
 class CloudSyncEngine {
     private isFlushing = false;
+    private channel: BroadcastChannel | null = null;
+
+    private notifyPeers(event: { type: 'outbox_updated' | 'flush_completed'; userId: string; count: number }) {
+        try {
+            if (typeof BroadcastChannel === 'undefined') return;
+            if (!this.channel) {
+                this.channel = new BroadcastChannel(SYNC_BROADCAST_CHANNEL);
+            }
+            this.channel.postMessage({ ...event, senderId: CLIENT_INSTANCE_ID });
+        } catch {
+            // Ignore environments without BroadcastChannel support
+        }
+    }
+
+    subscribeToPeerSync(onPeerEvent: (event: { type: string; userId: string; count: number }) => void): () => void {
+        if (typeof BroadcastChannel === 'undefined') return () => {};
+        try {
+            const ch = new BroadcastChannel(SYNC_BROADCAST_CHANNEL);
+            const handler = (ev: MessageEvent) => {
+                const payload = ev.data as { senderId?: string; type?: string; userId?: string; count?: number } | null;
+                if (!payload || payload.senderId === CLIENT_INSTANCE_ID) return;
+                if (payload.type && payload.userId !== undefined) {
+                    onPeerEvent({ type: payload.type, userId: payload.userId, count: payload.count ?? 0 });
+                }
+            };
+            ch.addEventListener('message', handler);
+            return () => {
+                ch.removeEventListener('message', handler);
+                ch.close();
+            };
+        } catch {
+            return () => {};
+        }
+    }
 
     async getQueue(userId: string): Promise<OutboxTransaction[]> {
         if (!userId || userId === 'parsaplan_local_user') return [];
@@ -130,8 +200,10 @@ class CloudSyncEngine {
             timestamp: Date.now(),
             retryCount: 0,
         });
-        await set(getOutboxKey(userId), filtered);
-        return filtered.length;
+        const bounded = filtered.slice(-MAX_OUTBOX_SIZE);
+        await set(getOutboxKey(userId), bounded);
+        this.notifyPeers({ type: 'outbox_updated', userId, count: bounded.length });
+        return bounded.length;
     }
 
     async enqueueMany(
@@ -151,8 +223,10 @@ class CloudSyncEngine {
                 retryCount: 0,
             });
         });
-        await set(getOutboxKey(userId), filtered);
-        return filtered.length;
+        const bounded = filtered.slice(-MAX_OUTBOX_SIZE);
+        await set(getOutboxKey(userId), bounded);
+        this.notifyPeers({ type: 'outbox_updated', userId, count: bounded.length });
+        return bounded.length;
     }
 
     /**
@@ -229,7 +303,7 @@ class CloudSyncEngine {
                             this.addTxToBatch(singleBatch, db, userId, tx);
                             await singleBatch.commit();
                             flushed++;
-                        } catch (err: any) {
+                        } catch (err: unknown) {
                             if (isFirestorePermissionDenied(err)) {
                                 permissionDenied = true;
                                 console.warn('[SyncEngine] Outbox tx blocked by Firestore rules (permission-denied).');
@@ -237,7 +311,7 @@ class CloudSyncEngine {
                                 continue;
                             }
                             console.warn('[SyncEngine] Outbox tx failed:', tx.type, err);
-                            const errMsg = err?.message || String(err || 'Sync error');
+                            const errMsg = err instanceof Error ? err.message : String(err || 'Sync error');
                             if (tx.retryCount + 1 < MAX_RETRY_COUNT) {
                                 remaining.push({ ...tx, retryCount: tx.retryCount + 1, lastError: errMsg });
                             } else {
@@ -252,6 +326,7 @@ class CloudSyncEngine {
             if (deadLetters.length !== existingDead.length) {
                 await set(getDeadLetterKey(userId), deadLetters.slice(-50));
             }
+            this.notifyPeers({ type: 'flush_completed', userId, count: remaining.length });
             return permissionDenied
                 ? { flushed, remaining: remaining.length, permissionDenied: true }
                 : { flushed, remaining: remaining.length };

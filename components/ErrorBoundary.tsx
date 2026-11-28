@@ -42,6 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
                         <p className="text-gray-600 mb-6">متأسفانه خطایی در برنامه رخ داده است. لطفاً صفحه را رفرش کنید.</p>
 
                         <button
+                            type="button"
                             onClick={() => window.location.reload()}
                             className="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition duration-300"
                         >

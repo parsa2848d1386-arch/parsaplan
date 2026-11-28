@@ -539,7 +539,7 @@ const Subjects = () => {
                 <button
                     type="button"
                     onClick={() => toggleTask(task.id)}
-                    className={`flex-1 min-w-0 text-right py-0.5 cursor-pointer transition-opacity ${isDone ? 'opacity-60' : ''}`}
+                    className={`flex-1 min-w-0 text-start py-0.5 cursor-pointer transition-opacity ${isDone ? 'opacity-60' : ''}`}
                 >
                     <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
                         <div className="flex items-center gap-1.5 min-w-0">
@@ -547,12 +547,12 @@ const Subjects = () => {
                                 روز {formatToPersianDigits(task.dayId)} ({getDayDate(task.dayId)})
                             </span>
                             {task.dayId === todayDayId && (
-                                <span className="text-[10px] bg-primary text-on-primary px-1.5 py-0.5 rounded-md font-bold">
+                                <span className="text-[11px] bg-primary text-on-primary px-1.5 py-0.5 rounded-md font-bold">
                                     امروز
                                 </span>
                             )}
                         </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold ${tokens.softBadge}`}>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold ${tokens.softBadge}`}>
                             {task.details}
                         </span>
                     </div>
@@ -567,7 +567,7 @@ const Subjects = () => {
                 </button>
 
                 {task.dayId === todayDayId && (
-                    <div className="absolute right-0 top-2.5 bottom-2.5 w-1 bg-primary rounded-l-full" aria-hidden="true" />
+                    <div className="absolute right-0 top-2.5 bottom-2.5 w-1 bg-primary rounded-s-full" aria-hidden="true" />
                 )}
 
                 <div className="flex items-center gap-1 shrink-0 pt-0.5">
@@ -736,12 +736,12 @@ const Subjects = () => {
                                     draggedSubjectId === subject.id ? 'opacity-50 scale-[0.99] border-primary border-dashed' : ''
                                 }`}
                             >
-                                <div className="p-3.5 sm:p-4 flex items-center justify-between gap-2 hover:bg-surface-container-low transition-colors">
+                                <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 hover:bg-surface-container-low transition-colors">
                                     <button
                                         type="button"
                                         aria-expanded={isExpanded}
                                         onClick={() => setExpandedSubject(isExpanded ? null : subjectName)}
-                                        className="flex-1 min-w-0 flex items-center justify-between gap-3 text-right cursor-pointer min-h-[44px] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                        className="flex-1 min-w-0 flex items-center justify-between gap-3 text-start cursor-pointer min-h-[44px] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div
@@ -756,7 +756,7 @@ const Subjects = () => {
                                                         {subjectName}
                                                     </h3>
                                                     {!isOriginalDefault && (
-                                                        <span className="text-[10px] bg-surface-container text-[var(--text-secondary)] px-1.5 py-0.5 rounded-md font-bold shrink-0">
+                                                        <span className="text-[11px] bg-surface-container text-[var(--text-secondary)] px-1.5 py-0.5 rounded-md font-bold shrink-0">
                                                             سفارشی
                                                         </span>
                                                     )}
@@ -768,7 +768,7 @@ const Subjects = () => {
                                         </div>
 
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                            <span className="text-xs font-extrabold text-[var(--text-secondary)] tabular-nums min-w-[32px] text-left">
+                                            <span className="text-xs font-extrabold text-[var(--text-secondary)] tabular-nums min-w-[32px] text-end">
                                                 {formatToPersianDigits(progress)}٪
                                             </span>
                                             {isExpanded ? (
@@ -779,24 +779,24 @@ const Subjects = () => {
                                         </div>
                                     </button>
 
-                                    <div className="flex items-center gap-0.5 shrink-0">
+                                    <div className="flex items-center justify-end gap-0.5 shrink-0 border-t border-[var(--border-subtle)] pt-2 sm:border-t-0 sm:pt-0">
                                         <button
                                             type="button"
                                             disabled={idx === 0}
                                             aria-label={`انتقال ${subjectName} به بالا`}
                                             onClick={(e) => moveSubjectByOffset(e, subject.id, -1)}
-                                            className="w-9 h-9 flex items-center justify-center text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container rounded-lg transition disabled:opacity-25 cursor-pointer"
+                                            className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container rounded-lg transition disabled:opacity-25 cursor-pointer"
                                         >
-                                            <ArrowUp size={14} />
+                                            <ArrowUp size={14} aria-hidden="true" />
                                         </button>
                                         <button
                                             type="button"
                                             disabled={idx === displayedSubjects.length - 1}
                                             aria-label={`انتقال ${subjectName} به پایین`}
                                             onClick={(e) => moveSubjectByOffset(e, subject.id, 1)}
-                                            className="w-9 h-9 flex items-center justify-center text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container rounded-lg transition disabled:opacity-25 cursor-pointer"
+                                            className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center text-[var(--text-secondary)] hover:text-primary hover:bg-surface-container rounded-lg transition disabled:opacity-25 cursor-pointer"
                                         >
-                                            <ArrowDown size={14} />
+                                            <ArrowDown size={14} aria-hidden="true" />
                                         </button>
                                         <button
                                             type="button"

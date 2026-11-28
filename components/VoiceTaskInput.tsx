@@ -2,22 +2,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { useUI } from '../context/UIContext';
-import { SubjectTask } from '../types';
+import {
+    SubjectTask,
+    type SpeechRecognitionErrorEventLike,
+    type SpeechRecognitionEventLike,
+    type SpeechRecognitionInstance,
+    type WindowWithSpeechRecognition,
+} from '../types';
 import { addDays, toIsoString } from '../utils';
+import { aiVoiceTaskItemSchema } from '../utils/schemas';
 
 export const VoiceTaskInput: React.FC = () => {
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const { settings, addTask, startDate, currentDay } = useStore();
     const { showToast } = useUI();
-    const [recognition, setRecognition] = useState<any>(null);
+    const [recognition, setRecognition] = useState<SpeechRecognitionInstance | null>(null);
     const processCommandRef = useRef<(text: string) => Promise<void>>(async () => {});
     const showToastRef = useRef(showToast);
     showToastRef.current = showToast;
 
     useEffect(() => {
-        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-            const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const win = window as WindowWithSpeechRecognition;
+        const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+        if (SpeechRec) {
             const rec = new SpeechRec();
             rec.lang = 'fa-IR';
             rec.continuous = false;
@@ -25,13 +33,13 @@ export const VoiceTaskInput: React.FC = () => {
 
             rec.onstart = () => setIsListening(true);
             rec.onend = () => setIsListening(false);
-            rec.onerror = (e: any) => {
+            rec.onerror = (e: SpeechRecognitionErrorEventLike) => {
                 setIsListening(false);
                 if (e.error !== 'no-speech') {
                     showToastRef.current('خطا در تشخیص صدا: ' + e.error, 'error');
                 }
             };
-            rec.onresult = async (e: any) => {
+            rec.onresult = async (e: SpeechRecognitionEventLike) => {
                 const text = e.results[0][0].transcript;
                 await processCommandRef.current(text);
             };
@@ -89,10 +97,17 @@ export const VoiceTaskInput: React.FC = () => {
                 jsonStr = jsonStr.substring(startIndex, endIndex + 1);
             }
 
-            const parsed = JSON.parse(jsonStr);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                parsed.forEach(item => {
-                    const taskDayId = currentDay + (item.dateOffset || 0);
+            const parsedRaw: unknown = JSON.parse(jsonStr);
+            if (Array.isArray(parsedRaw) && parsedRaw.length > 0) {
+                const validItems = parsedRaw
+                    .map((raw) => aiVoiceTaskItemSchema.safeParse(raw))
+                    .filter((r) => r.success)
+                    .map((r) => r.data);
+
+                if (validItems.length === 0) throw new Error('Invalid format');
+
+                validItems.forEach((item) => {
+                    const taskDayId = currentDay + item.dateOffset;
                     const taskDate = toIsoString(addDays(startDate, taskDayId - 1));
 
                     const newTask: SubjectTask = {
@@ -102,7 +117,7 @@ export const VoiceTaskInput: React.FC = () => {
                         subject: item.subject || 'عمومی',
                         topic: item.topic || 'بدون مبحث',
                         details: item.details || 'مطالعه',
-                        durationMinutes: Math.max(10, Math.min(480, Number(item.estimatedMinutes) || 60)),
+                        durationMinutes: item.estimatedMinutes,
                         status: 'todo',
                         priority: 'medium',
                         isCompleted: false,
@@ -111,9 +126,9 @@ export const VoiceTaskInput: React.FC = () => {
                     };
                     addTask(newTask);
                 });
-                showToast(`${parsed.length} وظیفه هوشمند اضافه‌شد!`, 'success');
+                showToast(`${validItems.length} وظیفه هوشمند اضافه‌شد!`, 'success');
             } else {
-                throw new Error("Invalid format");
+                throw new Error('Invalid format');
             }
         } catch (error) {
             console.error("Voice Ai Error:", error);
@@ -145,7 +160,7 @@ export const VoiceTaskInput: React.FC = () => {
         <div className="fixed bottom-[5.5rem] md:bottom-6 left-6 z-50 flex items-center gap-2.5 select-none" dir="ltr">
             {isListening && (
                 <div className="bg-slate-900/90 dark:bg-gray-950/90 backdrop-blur-xl border border-white/10 dark:border-gray-800/50 px-4 py-2.5 rounded-2xl flex items-center gap-3 shadow-xl shadow-rose-500/5">
-                    <span className="text-[10px] font-black text-gray-300 mr-1" dir="rtl">در حال شنیدن...</span>
+                    <span className="text-[11px] font-black text-gray-300 me-1" dir="rtl">در حال شنیدن...</span>
                     {/* Animated sound wave bars */}
                     <div className="flex items-end gap-0.5 h-3.5 w-10 overflow-hidden">
                         <div className="w-1 bg-rose-500 rounded-full animate-sound-wave h-full" style={{ animationDelay: '0.1s' }}></div>

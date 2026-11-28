@@ -2,26 +2,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { get, set } from 'idb-keyval';
-import { SubjectTask, TaskPriority } from '../types';
+import { SubjectTask, TaskPriority, StudyType, StoredChatMessage } from '../types';
 import { getDiffDays, toIsoString } from '../utils';
+import { getErrorMessage } from '../utils/formHelpers';
+import { aiTaskActionSchema } from '../utils/schemas';
 import AITaskReviewWindow, { ParsedTask } from '../components/AITaskReviewWindow';
 import { ChatSidebar, ChatSession } from '../components/AIChat/ChatSidebar';
 import { ChatMessage } from '../components/AIChat/ChatMessage';
 import { ChatInput, ChatAttachmentPayload } from '../components/AIChat/ChatInput';
 import { WelcomeScreen } from '../components/AIChat/WelcomeScreen';
+import { BlobatarBot } from '../components/ui/BlobatarBot';
+import { useOptionalFocus } from '../context/FocusContext';
 import { ChevronRight, ChevronDown, Check, X, Sparkles, History as HistoryIcon, Trash2, Plus, Loader2 } from 'lucide-react';
 
 // --- TYPES (Internal) ---
-interface Message {
-    id: string;
-    text: string;
-    sender: 'user' | 'ai';
-    timestamp: Date;
-    isError?: boolean;
-    retryText?: string;
+interface Message extends Omit<StoredChatMessage, 'pendingTasks'> {
     pendingTasks?: ParsedTask[];
-    tasksApplied?: boolean;
-    attachments?: { type: 'image' | 'video' | 'file'; url?: string; name: string }[];
 }
 
 export interface AIChatProps {
@@ -36,7 +32,27 @@ const AI_MODELS = [
 
 export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => {
     const navigate = useNavigate();
-    const { settings, updateSettings, subjects, addTasksBatch, askConfirm, startDate, currentDay, totalDays, userName, showToast, userId } = useStore();
+    const {
+        settings,
+        updateSettings,
+        subjects,
+        addTasksBatch,
+        askConfirm,
+        startDate,
+        currentDay,
+        totalDays,
+        userName,
+        user,
+        level,
+        xp,
+        streakStats,
+        showToast,
+        userId,
+    } = useStore();
+    const focusCtx = useOptionalFocus();
+    const botSeed = userName || user?.displayName || user?.email?.split('@')[0] || 'Parsashz';
+    const currentStreak = streakStats?.currentStreak ?? 0;
+    const isFocusRunning = focusCtx?.status === 'running';
 
     // --- STATE ---
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -80,9 +96,12 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 }
 
                 if (savedSessions && Array.isArray(savedSessions)) {
-                    const fixed = savedSessions.map((s: any) => ({
+                    const fixed: ChatSession[] = (savedSessions as Array<{ id: string; title: string; timestamp: number; messages?: StoredChatMessage[] }>).map((s) => ({
                         ...s,
-                        messages: s.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })),
+                        messages: (Array.isArray(s.messages) ? s.messages : []).map((m) => ({
+                            ...m,
+                            timestamp: new Date(m.timestamp),
+                        })),
                     }));
                     setSessions(fixed);
                     if (fixed.length > 0) setActiveSessionId(fixed[0].id);
@@ -149,7 +168,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
         setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: newTitle } : s)));
     };
 
-    const updateActiveSessionMessages = (newMessages: Message[]) => {
+    const updateActiveSessionMessages = (newMessages: StoredChatMessage[]) => {
         if (!activeSessionId) return;
         setSessions((prev) =>
             prev.map((s) => {
@@ -190,7 +209,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 subject: targetSubject ? targetSubject.name : p.subject || 'عمومی',
                 title: p.title || p.topic || 'تسک هوشمند',
                 topic: p.topic || '',
-                studyType: (p.studyType as any) || 'study',
+                studyType: (p.studyType as StudyType) || 'study',
                 details: p.details || '',
                 isCompleted: false,
                 date: dateStr,
@@ -301,13 +320,31 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
             const jsonMatch = text.match(/```json([\s\S]*?)```/);
             if (jsonMatch && jsonMatch[1]) {
                 try {
-                    const rawJson = JSON.parse(jsonMatch[1].trim());
-                    const action = rawJson.action || rawJson;
-                    if (action.type === 'preview_tasks' || action.type === 'auto_add_tasks') {
-                        parsedTasks = action.tasks?.map((t: any) => ({
-                            ...t,
-                            id: crypto.randomUUID(),
-                        }));
+                    const rawJson: unknown = JSON.parse(jsonMatch[1].trim());
+                    const validated = aiTaskActionSchema.safeParse(rawJson);
+                    if (validated.success) {
+                        const actionBlock = validated.data.action;
+                        const actionType = actionBlock?.type ?? validated.data.type;
+                        const rawTasks = actionBlock?.tasks ?? validated.data.tasks;
+                        if ((actionType === 'preview_tasks' || actionType === 'auto_add_tasks') && rawTasks) {
+                            parsedTasks = rawTasks.map((t) => ({
+                                id: t.id || crypto.randomUUID(),
+                                title: t.title || t.topic || 'تسک هوشمند',
+                                subject: t.subject,
+                                topic: t.topic || t.title || '',
+                                details: t.details,
+                                testRange: t.testRange,
+                                date: t.date || toIsoString(new Date()),
+                                startTime: t.startTime,
+                                durationMinutes: t.durationMinutes,
+                                priority: t.priority,
+                                studyType: t.studyType,
+                                subTasks: t.subTasks?.map((st) => ({
+                                    subject: st.subject || t.subject || 'عمومی',
+                                    topic: st.topic || '',
+                                })),
+                            }));
+                        }
                     }
                 } catch (e) {
                     console.error('JSON Error', e);
@@ -332,17 +369,18 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
 
             updateActiveSessionMessages([...updatedMsgs, aiMsg]);
             setIsTyping(false);
-        } catch (error: any) {
-            if (error?.name === 'AbortError') {
+        } catch (error: unknown) {
+            if (error instanceof Error && error.name === 'AbortError') {
                 setIsTyping(false);
                 return;
             }
             console.error('AI Error:', error);
             const errorMsg: Message = {
                 id: Date.now().toString(),
-                text:
-                    error?.message ||
-                    'متاسفانه در پردازش درخواست خطایی رخ داد. لطفاً اتصال اینترنت را بررسی فرمایید.',
+                text: getErrorMessage(
+                    error,
+                    'متاسفانه در پردازش درخواست خطایی رخ داد. لطفاً اتصال اینترنت را بررسی فرمایید.'
+                ),
                 sender: 'ai',
                 timestamp: new Date(),
                 isError: true,
@@ -423,8 +461,8 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 setIsHistoryCollapsed={setIsHistoryCollapsed}
             />
 
-            {/* Main Area */}
-            <main className="flex-1 flex flex-col h-full relative w-full transition-all duration-200 z-10 min-w-0">
+            {/* Chat Conversation Area */}
+            <section aria-label="ناحیه گفتگو" className="flex-1 flex flex-col h-full relative w-full transition-all duration-200 z-10 min-w-0">
                 {/* Opaque Semantic Header (Zero Glass-on-Glass) */}
                 <header
                     className={`px-3.5 py-2 bg-[var(--surface-elevated)] border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 z-20 ${
@@ -466,7 +504,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                                                 updateSettings({ geminiModel: m.id });
                                                 setIsModelDropdownOpen(false);
                                             }}
-                                            className="min-h-[40px] flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-surface-container text-right transition-colors text-xs cursor-pointer"
+                                            className="min-h-[40px] flex items-center justify-between w-full px-3 py-2 rounded-xl hover:bg-surface-container text-start transition-colors text-xs cursor-pointer"
                                         >
                                             <span className={selectedModel === m.id ? 'text-primary font-bold' : 'text-on-surface'}>
                                                 {m.label}
@@ -527,7 +565,16 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto px-3.5 py-4 md:p-6 custom-scrollbar scroll-smooth min-h-0 relative">
                     {messages.length === 0 ? (
-                        <WelcomeScreen onPromptSelect={(text) => handleSend(text)} userName={userName || 'دوست من'} />
+                        <WelcomeScreen
+                            onPromptSelect={(text) => handleSend(text)}
+                            userName={userName || 'دوست من'}
+                            botSeed={botSeed}
+                            botConfig={settings?.blobatar}
+                            level={level}
+                            xp={xp}
+                            streak={currentStreak}
+                            isFocusRunning={isFocusRunning}
+                        />
                     ) : (
                         <div className="max-w-3xl mx-auto pb-4">
                             {/* Search bar */}
@@ -552,13 +599,22 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                                     onReviewTasks={setReviewTasks}
                                     onAutoAddTasks={handleAutoAddMessageTasks}
                                     tasksApplied={msg.tasksApplied}
+                                    botSeed={botSeed}
+                                    botConfig={settings?.blobatar}
+                                    userLevel={level}
                                 />
                             ))}
 
                             {isTyping && (
                                 <div className="flex flex-row-reverse items-center gap-3 mb-6">
-                                    <div className="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0">
-                                        <Sparkles size={17} />
+                                    <div className="w-9 h-9 rounded-xl bg-[var(--surface-elevated)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+                                        <BlobatarBot
+                                            seed={botSeed}
+                                            config={settings?.blobatar}
+                                            level={level}
+                                            isThinking
+                                            size="xs"
+                                        />
                                     </div>
                                     <div className="bg-[var(--surface-elevated)] px-4 py-3 rounded-[20px] rounded-tl-md border border-[var(--border-subtle)] text-xs font-bold text-[var(--text-secondary)] flex items-center gap-2">
                                         <Loader2 size={15} className="animate-spin text-primary" />
@@ -585,7 +641,7 @@ export const AIChat: React.FC<AIChatProps> = ({ isWidget = false, onClose }) => 
                         onStop={handleStop}
                     />
                 </div>
-            </main>
+            </section>
 
             {/* Task Review Modal */}
             {reviewTasks && (

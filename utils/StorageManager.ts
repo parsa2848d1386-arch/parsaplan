@@ -44,7 +44,49 @@ const KEY_BACKUP = 'parsaplan_backup_v4';
 const KEY_DATA_DEFAULT = KEY_PREFIX + 'full_data';
 const KEY_LOCAL_GEMINI = 'parsaplan_local_gemini_key';
 
+export interface StorageQuotaInfo {
+    usageBytes: number;
+    quotaBytes: number;
+    percentUsed: number;
+}
+
 export class StorageManager {
+    private static persistenceRequested = false;
+
+    /**
+     * Requests persistent IndexedDB storage so Safari/mobile browsers don't evict user plans after 7 days.
+     */
+    static async ensurePersistentStorage(): Promise<boolean> {
+        if (this.persistenceRequested) return true;
+        this.persistenceRequested = true;
+        try {
+            if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+                return await navigator.storage.persist();
+            }
+        } catch {
+            // Ignore unsupported environments
+        }
+        return false;
+    }
+
+    /**
+     * Inspects current origin storage usage and quota for QuotaExceededError prevention.
+     */
+    static async checkStorageQuota(): Promise<StorageQuotaInfo | null> {
+        try {
+            if (typeof navigator !== 'undefined' && navigator.storage?.estimate) {
+                const est = await navigator.storage.estimate();
+                const usageBytes = est.usage ?? 0;
+                const quotaBytes = est.quota ?? 0;
+                const percentUsed = quotaBytes > 0 ? Math.min(100, Math.round((usageBytes / quotaBytes) * 100)) : 0;
+                return { usageBytes, quotaBytes, percentUsed };
+            }
+        } catch {
+            // Ignore unsupported environments
+        }
+        return null;
+    }
+
     private static getScopedKey(userId: string | undefined): string {
         if (!userId || userId === 'parsaplan_local_user' || userId === 'parsaplan_main_user') {
             return KEY_DATA_DEFAULT;
@@ -79,6 +121,11 @@ export class StorageManager {
 
     static async save(data: Partial<AppDataV1>, userId?: string): Promise<boolean> {
         try {
+            void this.ensurePersistentStorage();
+            const quota = await this.checkStorageQuota();
+            if (quota && quota.percentUsed >= 95) {
+                console.warn('[StorageManager] Storage quota nearly full:', quota.percentUsed, '%');
+            }
             const dataToSave = {
                 ...data,
                 schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -160,8 +207,9 @@ export class StorageManager {
         return null;
     }
 
-    private static migrateDataIfNeeded(data: any): AppDataV1 {
-        const version = data.schemaVersion || 1;
+    private static migrateDataIfNeeded(rawData: unknown): AppDataV1 {
+        const data = (typeof rawData === 'object' && rawData !== null ? { ...rawData } : {}) as Partial<AppDataV1> & Record<string, unknown>;
+        const version = typeof data.schemaVersion === 'number' ? data.schemaVersion : 1;
         if (version < 2) {
             data.schemaVersion = 2;
         }

@@ -219,7 +219,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                         <button
                             type="button"
                             onClick={handleToggleClick}
-                            className="flex-1 min-w-0 flex items-center justify-between gap-2 text-right cursor-pointer"
+                            className="flex-1 min-w-0 flex items-center justify-between gap-2 text-start cursor-pointer"
                         >
                             <div className={`truncate ${isDone ? 'line-through text-[var(--text-secondary)]' : ''}`}>
                                 <span className="font-bold text-sm text-on-surface">{task.subject}</span>
@@ -228,7 +228,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                             </div>
                             <div className="flex gap-1 items-center shrink-0">
                                 {hasTestStats && (
-                                    <div className="hidden sm:flex items-center gap-1 bg-surface-container px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums">
+                                    <div className="hidden sm:flex items-center gap-1 bg-surface-container px-1.5 py-0.5 rounded-md text-[11px] font-bold tabular-nums">
                                         <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
                                             <Check size={10} />
                                             {formatToPersianDigits(task.testStats?.correct ?? 0)}
@@ -244,11 +244,11 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                     </div>
                                 )}
                                 {task.tags && task.tags.length > 0 && (
-                                    <span className="hidden xs:inline text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">
+                                    <span className="hidden xs:inline text-[11px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-bold">
                                         #{task.tags[0]}
                                     </span>
                                 )}
-                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ${subColor}`}>
+                                <span className={`text-[11px] px-2 py-0.5 rounded-md font-bold whitespace-nowrap ${subColor}`}>
                                     {task.details}
                                 </span>
                             </div>
@@ -351,7 +351,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                         }
                         transition={TRANSITION_SQUASH}
                         aria-label={isDone ? `لغو انجام ${task.topic}` : `تکمیل ${task.topic}`}
-                        className={`w-10 h-10 -mt-1 -mr-1 flex items-center justify-center rounded-xl shrink-0 cursor-pointer transition-colors ${
+                        className={`w-10 h-10 -mt-1 -me-1 flex items-center justify-center rounded-xl shrink-0 cursor-pointer transition-colors ${
                             isDone
                                 ? 'text-emerald-500'
                                 : 'text-[var(--text-tertiary)] hover:text-primary'
@@ -363,7 +363,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                     <button
                         type="button"
                         onClick={handleToggleClick}
-                        className={`flex-1 min-w-0 text-right cursor-pointer transition-opacity duration-200 ${
+                        className={`flex-1 min-w-0 text-start cursor-pointer transition-opacity duration-200 ${
                             isDone ? 'opacity-60' : ''
                         }`}
                     >
@@ -376,7 +376,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                 {task.subject}
                             </h3>
                             <div className="flex flex-col items-end gap-1 shrink-0">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-lg font-bold ${subColor}`}>
+                                <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold ${subColor}`}>
                                     {task.details}
                                 </span>
                                 <span className="flex items-center gap-1 text-[11px] text-[var(--text-secondary)] font-medium">
@@ -392,7 +392,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
                         <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                             {task.isMIT && (
-                                <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 px-2 py-0.5 rounded-md font-bold">
+                                <span className="inline-flex items-center gap-1 text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/50 px-2 py-0.5 rounded-md font-bold">
                                     <Star size={10} fill="currentColor" />
                                     <bdi>MIT</bdi>
                                 </span>
@@ -440,7 +440,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                                     {task.tags.map((t) => (
                                         <span
                                             key={t}
-                                            className="text-[10px] bg-primary/8 text-primary px-1.5 py-0.5 rounded-md border border-primary/15 font-bold"
+                                            className="text-[11px] bg-primary/8 text-primary px-1.5 py-0.5 rounded-md border border-primary/15 font-bold"
                                         >
                                             #{t}
                                         </span>

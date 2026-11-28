@@ -128,3 +128,24 @@ export function clearSessionDraft(key: string): void {
         // Ignore storage errors
     }
 }
+
+/**
+ * Type-safe unknown error narrowing helpers (eliminates `catch (err: any)`).
+ */
+export function getErrorCode(err: unknown): string {
+    if (typeof err === 'object' && err !== null && 'code' in err) {
+        const code = (err as { code?: unknown }).code;
+        return typeof code === 'string' ? code : '';
+    }
+    return '';
+}
+
+export function getErrorMessage(err: unknown, fallback = ''): string {
+    if (err instanceof Error) return err.message || fallback;
+    if (typeof err === 'string') return err || fallback;
+    if (typeof err === 'object' && err !== null && 'message' in err) {
+        const msg = (err as { message?: unknown }).message;
+        return typeof msg === 'string' && msg ? msg : fallback;
+    }
+    return fallback;
+}

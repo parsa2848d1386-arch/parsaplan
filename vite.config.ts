@@ -23,6 +23,7 @@ export default defineConfig(() => {
         workbox: {
           // Pre-cache all static assets (JS, CSS, HTML, fonts)
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}'],
+          navigateFallbackDenylist: [/^\/api\//],
           // Runtime caching strategies
           runtimeCaching: [
             // Cache Google Fonts
@@ -53,16 +54,10 @@ export default defineConfig(() => {
                 expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 }, // 30 days
               }
             },
-            // Network-first for Gemini AI (runtime caching)
+            // Never cache personal AI prompts or health checks in SW cache
             {
-              urlPattern: /^https:\/\/generativelanguage\.googleapis\.com\/.*/i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'gemini-api-cache',
-                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 }, // 1 day
-                networkTimeoutSeconds: 10, // fallback to cache after 10s
-                cacheableResponse: { statuses: [0, 200] }
-              }
+              urlPattern: /^\/api\/.*/i,
+              handler: 'NetworkOnly',
             }
           ],
           // Clean old caches on update
@@ -134,11 +129,15 @@ export default defineConfig(() => {
       }
     },
     build: {
+      target: 'es2022',
+      sourcemap: 'hidden' as const,
       rollupOptions: {
         output: {
           manualChunks: {
             // Vendor chunks — each loaded on demand
             'vendor-router': ['react-router-dom'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
             'vendor-firebase-app': ['firebase/app'],
             'vendor-firebase-auth': ['firebase/auth'],
             'vendor-firebase-db': ['firebase/firestore'],

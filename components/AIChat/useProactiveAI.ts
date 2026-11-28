@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { get, set } from 'idb-keyval';
 import { toIsoString } from '../../utils';
+import type { ChatSession } from './ChatSidebar';
 
 export const useProactiveAI = () => {
     const { settings, tasks, updateSettings, userName, getProgress, userId } = useStore();
@@ -87,7 +88,7 @@ export const useProactiveAI = () => {
 async function sendProactiveMessage(text: string, userId?: string) {
     try {
         const storageKey = `gemini_chat_sessions_${userId || 'parsaplan_local_user'}`;
-        let savedSessions: any = await get(storageKey);
+        let savedSessions = await get<ChatSession[]>(storageKey);
         if (!savedSessions) {
             const legacy = await get('gemini_chat_sessions');
             if (legacy) {

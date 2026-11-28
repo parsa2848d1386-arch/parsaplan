@@ -37,14 +37,14 @@ export const AnnualStudyHeatmap: React.FC = () => {
     );
 
     return (
-        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700/70 space-y-4">
+        <div className="deferred-section mt-6 pt-5 border-t border-gray-100 dark:border-gray-700/70 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h3 className="text-sm font-black text-gray-800 dark:text-white flex items-center gap-2">
                         <Calendar size={16} className="text-emerald-500" />
                         نقشه پیوستگی ۵۲ هفته اخیر (بر اساس ساعت مبنای {String(cutoffHour).padStart(2, '0')}:۰۰ بامداد)
                     </h3>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
+                    <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
                         {formatToPersianDigits(totalActiveDays)} روز فعال • مجموع {formatToPersianDigits(totalHours)} ساعت مطالعه ثبت‌شده
                     </p>
                 </div>
@@ -82,7 +82,7 @@ export const AnnualStudyHeatmap: React.FC = () => {
             </div>
 
             {/* Footer / hover detail */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-secondary)]">
                 <span>
                     {hoveredInfo
                         ? `${getFullShamsiDate(hoveredInfo.date)} — ${formatToPersianDigits(hoveredInfo.minutes)} دقیقه مطالعه`

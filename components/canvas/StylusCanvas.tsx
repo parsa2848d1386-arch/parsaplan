@@ -387,7 +387,7 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
                                 key={w.value}
                                 type="button"
                                 onClick={() => setStrokeWidth(w.value)}
-                                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${
+                                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition ${
                                     strokeWidth === w.value
                                         ? 'bg-indigo-600 text-white'
                                         : 'text-gray-500 dark:text-gray-300'
@@ -469,7 +469,7 @@ export const StylusCanvas: React.FC<StylusCanvasProps> = ({ strokes, onChange, h
                     className="relative w-full h-full touch-none cursor-crosshair block"
                 />
                 {strokes.length === 0 && (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-400/70">
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--text-tertiary)]/70">
                         با قلم نوری، لمس یا ماوس اینجا حل تمرین، فرمول یا رسم نمودار انجام دهید...
                     </div>
                 )}

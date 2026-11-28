@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { toIsoString, getShamsiDate, toJalaali, toGregorian } from '../utils';
+import { toIsoString, getShamsiDate, toJalaali, toGregorian, formatToPersianDigits } from '../utils';
 import { AnnualStudyHeatmap } from './AnnualStudyHeatmap';
 
 const ActivityHeatmap = () => {
@@ -150,21 +150,21 @@ const ActivityHeatmap = () => {
 
             {hoveredDay && (
                 <div 
-                    className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full bg-slate-900/95 dark:bg-gray-950/95 backdrop-blur-md text-white text-[10px] font-bold p-2.5 rounded-xl border border-white/10 shadow-2xl flex flex-col gap-1 transition-all duration-150"
+                    className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full bg-slate-900/95 dark:bg-gray-950/95 backdrop-blur-md text-white text-[11px] font-bold p-2.5 rounded-xl border border-white/10 shadow-2xl flex flex-col gap-1 transition-all duration-150"
                     style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y}px` }}
                     dir="rtl"
                 >
                     <div className="flex justify-between items-center border-b border-white/10 pb-1 gap-4">
                         <span className="text-amber-400 font-extrabold">{hoveredDay.shamsi}</span>
-                        <span className="text-gray-300 font-medium text-[9px]">{hoveredDay.label}</span>
+                        <span className="text-gray-300 font-medium text-[11px]">{hoveredDay.label}</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-gray-400 font-semibold">مطالعه:</span>
+                        <span className="text-[var(--text-tertiary)] font-semibold">مطالعه:</span>
                         <span className="text-indigo-300 font-extrabold">{hoveredDay.hours.toFixed(1)} ساعت</span>
                     </div>
                     {hoveredDay.mood && (
                         <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400 font-semibold">احساس:</span>
+                            <span className="text-[var(--text-tertiary)] font-semibold">احساس:</span>
                             <span className="text-teal-300 font-extrabold">{moodLabels[hoveredDay.mood] || hoveredDay.mood}</span>
                         </div>
                     )}
@@ -172,8 +172,8 @@ const ActivityHeatmap = () => {
             )}
 
             <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center mt-4 gap-3">
-                <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 flex-wrap">
-                    <span className="ml-1">حس روز:</span>
+                <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] flex-wrap">
+                    <span className="ms-1">حس روز:</span>
                     {legendMoods.map(([m, label]) => (
                         <div key={m} className="flex items-center gap-1">
                             <div className={`w-2 h-2 rounded-full ring-1 ${moodColors[m]}`}></div>
@@ -181,17 +181,17 @@ const ActivityHeatmap = () => {
                         </div>
                     ))}
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                    <span>0h</span>
+                <div className="flex items-center gap-2 text-[11px] text-[var(--text-tertiary)] tabular-nums">
+                    <span>۰ ساعت</span>
                     <div className="flex gap-1">
-                        <div className="w-3 h-3 bg-gray-100 dark:bg-gray-800 rounded-sm" title="0 ساعت"></div>
-                        <div className="w-3 h-3 bg-indigo-200 dark:bg-indigo-900/40 rounded-sm" title="1-2 ساعت"></div>
-                        <div className="w-3 h-3 bg-indigo-300 dark:bg-indigo-800/50 rounded-sm" title="3-4 ساعت"></div>
-                        <div className="w-3 h-3 bg-indigo-400 dark:bg-indigo-700/60 rounded-sm" title="5-6 ساعت"></div>
-                        <div className="w-3 h-3 bg-indigo-500 dark:bg-indigo-600/70 rounded-sm" title="7-8 ساعت"></div>
-                        <div className="w-3 h-3 bg-indigo-700 dark:bg-indigo-400 rounded-sm" title="10+ ساعت"></div>
+                        <div className="w-3 h-3 bg-surface-container-high rounded-sm" title="۰ ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-200 dark:bg-indigo-900/40 rounded-sm" title="۱ تا ۲ ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-300 dark:bg-indigo-800/50 rounded-sm" title="۳ تا ۴ ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-400 dark:bg-indigo-700/60 rounded-sm" title="۵ تا ۶ ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-500 dark:bg-indigo-600/70 rounded-sm" title="۷ تا ۸ ساعت"></div>
+                        <div className="w-3 h-3 bg-indigo-700 dark:bg-indigo-400 rounded-sm" title="۱۰+ ساعت"></div>
                     </div>
-                    <span>10h+</span>
+                    <span>{formatToPersianDigits(10)}+ ساعت</span>
                 </div>
             </div>
 

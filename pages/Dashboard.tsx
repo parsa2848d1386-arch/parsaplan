@@ -13,6 +13,7 @@ import { TaskCard } from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import { SubjectTask, isSpecializedSubject, MoodType } from '../types';
 import { WelcomeBanner } from '../components/WelcomeBanner';
+import { WeekCalendarStrip } from '../components/dashboard/WeekCalendarStrip';
 import { getTimeOfDayGreeting } from '../utils/designSystemHelpers';
 import { haptics } from '../utils/haptics';
 import {
@@ -84,7 +85,7 @@ const MOOD_LEVELS = [
         subLabel: 'انرژی ۱۰۰٪',
         Icon: IconMoodExcellent,
         themeActive: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/50 ring-2 ring-amber-500/30 shadow-sm',
-        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-amber-500/10 hover:text-amber-500 border-outline-variant/20',
+        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-[var(--text-secondary)] hover:bg-amber-500/10 hover:text-amber-500 border-outline-variant/20',
         iconColor: 'text-amber-500',
     },
     {
@@ -93,7 +94,7 @@ const MOOD_LEVELS = [
         subLabel: 'جریان غرقه‌گی',
         Icon: IconMoodHighEnergy,
         themeActive: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/50 ring-2 ring-emerald-500/30 shadow-sm',
-        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-500 border-outline-variant/20',
+        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-[var(--text-secondary)] hover:bg-emerald-500/10 hover:text-emerald-500 border-outline-variant/20',
         iconColor: 'text-emerald-500',
     },
     {
@@ -102,7 +103,7 @@ const MOOD_LEVELS = [
         subLabel: 'ریتم متعادل',
         Icon: IconMoodNormal,
         themeActive: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/50 ring-2 ring-sky-500/30 shadow-sm',
-        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-sky-500/10 hover:text-sky-500 border-outline-variant/20',
+        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-[var(--text-secondary)] hover:bg-sky-500/10 hover:text-sky-500 border-outline-variant/20',
         iconColor: 'text-sky-500',
     },
     {
@@ -111,7 +112,7 @@ const MOOD_LEVELS = [
         subLabel: 'نیاز به استراحت',
         Icon: IconMoodTired,
         themeActive: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/50 ring-2 ring-orange-500/30 shadow-sm',
-        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-orange-500/10 hover:text-orange-500 border-outline-variant/20',
+        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-[var(--text-secondary)] hover:bg-orange-500/10 hover:text-orange-500 border-outline-variant/20',
         iconColor: 'text-orange-500',
     },
     {
@@ -120,7 +121,7 @@ const MOOD_LEVELS = [
         subLabel: 'هشدار بازتوانی',
         Icon: IconMoodExhausted,
         themeActive: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/50 ring-2 ring-rose-500/30 shadow-sm',
-        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant dark:text-gray-300 hover:bg-rose-500/10 hover:text-rose-500 border-outline-variant/20',
+        themeDefault: 'bg-surface-container-low dark:bg-slate-800 text-[var(--text-secondary)] hover:bg-rose-500/10 hover:text-rose-500 border-outline-variant/20',
         iconColor: 'text-rose-500',
     },
 ] as const;
@@ -332,7 +333,7 @@ export const Dashboard: React.FC = () => {
                         </div>
 
                         <div className="flex md:hidden items-center gap-1.5 text-[11px] font-bold text-white/90 bg-white/15 px-3 py-1.5 rounded-full border border-white/15">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" aria-hidden="true" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" aria-hidden="true" />
                             <span>هدف امروز: {formatToPersianDigits(focusTargetHours)} ساعت</span>
                         </div>
 
@@ -392,7 +393,7 @@ export const Dashboard: React.FC = () => {
                                             strokeWidth="4.5"
                                         />
                                     </svg>
-                                    <span className="absolute text-[10px] sm:text-[11px] font-extrabold tabular-nums text-on-surface">
+                                    <span className="absolute text-[11px] font-extrabold tabular-nums text-on-surface">
                                         {formatToPersianDigits(focusProgressPct)}٪
                                     </span>
                                 </div>
@@ -490,102 +491,14 @@ export const Dashboard: React.FC = () => {
                 )}
 
             {/* ===== 2. 7-Day Persian Weekly Calendar with Liquid Fill Effect ===== */}
-            <section className="bento-card-interactive bg-[var(--surface-elevated)] p-3.5 sm:p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[var(--border-subtle)] gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <Calendar size={18} className="text-primary shrink-0" />
-                        <h2 className="font-headline-md text-xs sm:text-base font-bold text-on-surface truncate">
-                            تقویم هفته جاری
-                        </h2>
-                    </div>
-
-                    <div className="flex items-center gap-0.5 bg-surface-container-low p-0.5 rounded-xl border border-[var(--border-subtle)] shrink-0">
-                        <button
-                            type="button"
-                            aria-label="هفته قبل"
-                            onClick={() => setWeekOffset(prev => prev - 1)}
-                            className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
-                        >
-                            <ChevronRight size={16} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setWeekOffset(0); setSelectedDateOverride(todayIso); }}
-                            className="min-h-[34px] px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
-                        >
-                            امروز
-                        </button>
-                        <button
-                            type="button"
-                            aria-label="هفته بعد"
-                            onClick={() => setWeekOffset(prev => prev + 1)}
-                            className="touch-target p-1.5 rounded-lg hover:bg-surface-container text-[var(--text-secondary)] transition-colors cursor-pointer"
-                        >
-                            <ChevronLeft size={16} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* 7 Days Liquid Fill Strip — Date + Task Count Only (Percentage via Liquid Fill) */}
-                <div className="flex md:grid md:grid-cols-7 gap-2 sm:gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar py-1">
-                    {weekDays.map((d) => (
-                        <motion.button
-                            key={d.iso}
-                            type="button"
-                            whileTap={prefersReducedMotion ? undefined : { scale: 0.94 }}
-                            transition={{ type: 'spring', stiffness: 380, damping: 20 }}
-                            onClick={() => setSelectedDateOverride(d.iso)}
-                            className={`touch-target relative overflow-hidden flex flex-col items-center justify-between p-2 sm:p-2.5 squircle-sm border transition-colors duration-150 w-[calc((100%-2rem)/4.8)] min-w-[58px] shrink-0 md:w-auto md:min-w-0 md:shrink snap-start min-h-[76px] sm:min-h-[84px] cursor-pointer group ${
-                                d.isSelected
-                                    ? 'border-primary ring-2 ring-primary/30 bg-[var(--surface-elevated)]'
-                                    : d.isToday
-                                        ? 'border-primary/50 bg-surface-container-low/70'
-                                        : 'border-[var(--border-subtle)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]'
-                            }`}
-                        >
-                            {/* Animated Bottom-to-Top Liquid Fill Layer */}
-                            <motion.div
-                                initial={prefersReducedMotion ? false : { height: '0%' }}
-                                animate={{ height: `${d.pct}%` }}
-                                transition={
-                                    prefersReducedMotion
-                                        ? { duration: 0 }
-                                        : { type: 'spring', stiffness: 165, damping: 22, mass: 0.85 }
-                                }
-                                className={`absolute inset-x-0 bottom-0 pointer-events-none ${
-                                    d.isCompleted
-                                        ? 'bg-gradient-to-t from-emerald-500/45 via-emerald-500/25 to-emerald-400/12 dark:from-emerald-600/50 dark:via-emerald-500/30 dark:to-emerald-400/15'
-                                        : 'bg-gradient-to-t from-primary/40 via-primary/20 to-secondary/12 dark:from-indigo-500/45 dark:via-indigo-500/25 dark:to-cyan-400/12'
-                                }`}
-                            >
-                                {d.pct > 0 && d.pct < 100 && (
-                                    <div className="absolute top-0 inset-x-0 h-[2px] bg-primary/70 dark:bg-white/65 shadow-[0_0_6px_rgba(99,102,241,0.5)]" />
-                                )}
-                                {d.isCompleted && (
-                                    <div className="absolute top-0 inset-x-0 h-[2px] bg-emerald-400/90 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                                )}
-                            </motion.div>
-
-                            {/* Date Number Only */}
-                            <div className="relative z-10 flex-1 flex items-center justify-center">
-                                <span
-                                    title={d.weekday}
-                                    className="text-base sm:text-xl font-display-md font-black text-on-surface dark:text-white tabular-nums"
-                                >
-                                    {d.shamsiDayNum}
-                                </span>
-                            </div>
-
-                            {/* Bottom Task Count Metric Only */}
-                            <div className="relative z-10 w-full flex items-center justify-center text-[11px] pt-1 border-t border-[var(--border-subtle)]">
-                                <span className="text-[var(--text-secondary)] font-bold tabular-nums">
-                                    {formatToPersianDigits(d.done)}/{formatToPersianDigits(d.total)}
-                                </span>
-                            </div>
-                        </motion.button>
-                    ))}
-                </div>
-            </section>
+            <WeekCalendarStrip
+                weekDays={weekDays}
+                prefersReducedMotion={prefersReducedMotion}
+                onPrevWeek={() => setWeekOffset(prev => prev - 1)}
+                onToday={() => { setWeekOffset(0); setSelectedDateOverride(todayIso); }}
+                onNextWeek={() => setWeekOffset(prev => prev + 1)}
+                onSelectDate={setSelectedDateOverride}
+            />
 
             {/* ===== 3. Compact Warm Yellow Streak Card (Duplicate Task KPI Removed) ===== */}
             <motion.section

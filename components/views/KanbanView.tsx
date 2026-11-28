@@ -56,7 +56,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({ tasks, onEdit, onAddQuic
                             }`}
                         >
                             <span className="truncate">{col.shortTitle}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-surface-container text-[var(--text-secondary)] tabular-nums">
+                            <span className="text-[11px] px-1.5 py-0.5 rounded-md bg-surface-container text-[var(--text-secondary)] tabular-nums">
                                 {formatToPersianDigits(count)}
                             </span>
                         </button>

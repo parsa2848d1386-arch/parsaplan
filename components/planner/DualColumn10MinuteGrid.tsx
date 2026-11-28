@@ -177,32 +177,35 @@ export const DualColumn10MinuteGrid: React.FC<DualColumn10MinuteGridProps> = ({
     };
 
     return (
-        <div className="bg-[var(--surface-elevated)] rounded-3xl border border-[var(--border-subtle)] p-4 md:p-6 shadow-xs space-y-4">
-            {/* Summary strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-primary-fixed/40 rounded-2xl p-3 border border-primary/20">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                        <Clock size={14} aria-hidden="true" /> زمان‌بندی شده
+        <div className="bg-[var(--surface-elevated)] squircle-lg border border-[var(--border-subtle)] p-3.5 md:p-5 shadow-xs space-y-3.5">
+            {/* Compact 3-Metric Summary Strip */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="bg-primary-fixed/40 rounded-2xl p-2.5 sm:p-3 border border-primary/15">
+                    <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-primary">
+                        <Clock size={13} aria-hidden="true" />
+                        <span className="truncate">زمان‌بندی شده</span>
                     </div>
-                    <div className="text-lg font-extrabold text-on-surface mt-0.5 tabular-nums">
+                    <div className="text-sm sm:text-lg font-extrabold text-on-surface mt-0.5 tabular-nums">
                         {formatToPersianDigits(summary.plannedMinutes)} دقیقه
                     </div>
                 </div>
 
-                <div className="bg-secondary-container/40 rounded-2xl p-3 border border-secondary/20">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-secondary">
-                        <Flame size={14} aria-hidden="true" /> مطالعه واقعی ثبت‌شده
+                <div className="bg-secondary-container/40 rounded-2xl p-2.5 sm:p-3 border border-secondary/15">
+                    <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-secondary">
+                        <Flame size={13} aria-hidden="true" />
+                        <span className="truncate">مطالعه واقعی</span>
                     </div>
-                    <div className="text-lg font-extrabold text-on-surface mt-0.5 tabular-nums">
+                    <div className="text-sm sm:text-lg font-extrabold text-on-surface mt-0.5 tabular-nums">
                         {formatToPersianDigits(summary.actualMinutes)} دقیقه
                     </div>
                 </div>
 
-                <div className="bg-tertiary-fixed/30 rounded-2xl p-3 border border-tertiary/20">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-tertiary">
-                        <Target size={14} aria-hidden="true" /> انطباق با برنامه
+                <div className="bg-tertiary-fixed/30 rounded-2xl p-2.5 sm:p-3 border border-tertiary/15">
+                    <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-tertiary">
+                        <Target size={13} aria-hidden="true" />
+                        <span className="truncate">انطباق</span>
                     </div>
-                    <div className="text-lg font-extrabold text-on-surface mt-0.5 tabular-nums">
+                    <div className="text-sm sm:text-lg font-extrabold text-on-surface mt-0.5 tabular-nums">
                         {formatToPersianDigits(summary.adherencePercent)}٪
                     </div>
                 </div>

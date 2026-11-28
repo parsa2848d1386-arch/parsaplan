@@ -48,7 +48,7 @@ export const InSessionScratchpadDrawer: React.FC<InSessionScratchpadDrawerProps>
     };
 
     return (
-        <div className="fixed inset-y-0 left-0 z-[80] w-full max-w-md bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col transition-transform duration-200" dir="rtl">
+        <div className="fixed inset-y-0 left-0 z-[80] w-full max-w-md bg-white dark:bg-gray-900 border-e border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col transition-transform duration-200" dir="rtl">
             <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/70 dark:bg-gray-900/80">
                 <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center shrink-0">
@@ -58,13 +58,14 @@ export const InSessionScratchpadDrawer: React.FC<InSessionScratchpadDrawerProps>
                         <h3 className="text-sm font-black text-gray-800 dark:text-white truncate">
                             چرک‌نویس حین تمرکز
                         </h3>
-                        <p className="text-[10px] text-gray-400 flex items-center gap-1 truncate">
+                        <p className="text-[11px] text-[var(--text-tertiary)] flex items-center gap-1 truncate">
                             <Lock size={9} className="text-emerald-500" />
                             ذخیره مستقیم بدون شکستن قفل تمرکز
                         </p>
                     </div>
                 </div>
                 <button
+                    type="button"
                     onClick={onClose}
                     className="p-2 rounded-xl hover:bg-gray-200/70 dark:hover:bg-gray-800 text-gray-500 transition"
                 >
@@ -76,7 +77,7 @@ export const InSessionScratchpadDrawer: React.FC<InSessionScratchpadDrawerProps>
                 {pinnedTask ? (
                     <div className="space-y-3">
                         <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
-                            <div className="text-[10px] font-bold text-indigo-500">متصل به تسک:</div>
+                            <div className="text-[11px] font-bold text-indigo-500">متصل به تسک:</div>
                             <div className="text-xs font-black text-gray-800 dark:text-white mt-0.5">
                                 {pinnedTask.subject} — {pinnedTask.topic}
                             </div>

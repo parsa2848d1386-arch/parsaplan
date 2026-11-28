@@ -110,7 +110,7 @@ const History = () => {
                                 </div>
 
                                 {/* Mini Task Flow */}
-                                <div className="space-y-2 max-h-44 overflow-y-auto pr-1 custom-scrollbar border-t border-[var(--border-subtle)] pt-3">
+                                <div className="space-y-2 max-h-44 overflow-y-auto pe-1 custom-scrollbar border-t border-[var(--border-subtle)] pt-3">
                                     {plan.tasks.slice(0, 10).map((task, i) => (
                                         <div
                                             key={task.id || i}

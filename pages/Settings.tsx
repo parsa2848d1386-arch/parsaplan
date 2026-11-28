@@ -1,54 +1,97 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore, useStoreSyncStatus } from '../context/StoreContext';
 import { ModalSheet } from '../components/ui/ModalSheet';
+import { HeroSegmentedTabs } from '../components/layout/CompactPageHero';
 import {
-    Save, RefreshCw, User, Calendar, Wand2, Download, Upload, HardDrive, Moon, LayoutList, Sun,
-    Sparkles, Palette, Smartphone, Check, GraduationCap, Printer, Quote,
-    Zap, Trophy, Cloud, BookOpen, Target, HelpCircle, ChevronUp, ChevronDown, Eye, History as HistoryIcon, BarChart2, X, AlertTriangle, Copy
+    Save,
+    RefreshCw,
+    User,
+    Calendar,
+    Wand2,
+    Download,
+    Upload,
+    HardDrive,
+    Moon,
+    LayoutList,
+    Sun,
+    Sparkles,
+    Palette,
+    Smartphone,
+    Check,
+    GraduationCap,
+    Printer,
+    Quote,
+    Zap,
+    Trophy,
+    Cloud,
+    BookOpen,
+    Target,
+    HelpCircle,
+    ChevronUp,
+    ChevronDown,
+    Eye,
+    History as HistoryIcon,
+    BarChart2,
+    AlertTriangle,
+    Copy,
+    Lock,
+    EyeOff,
+    Sliders,
+    Database,
+    Wrench,
 } from 'lucide-react';
-import { getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
-import { FirebaseConfig } from '../types';
+import { formatToPersianDigits, getFullShamsiDate, toJalaali, toGregorian, toIsoString } from '../utils';
+import { FirebaseConfig, StreamType } from '../types';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { identifierRegex } from '../utils/schemas';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedSwitch } from '../components/ui/MotionPrimitives';
 import { isHapticsEnabled, setHapticsEnabled, haptics } from '../utils/haptics';
+import { BlobatarStudio } from '../components/settings/BlobatarStudio';
+import { BlobatarBot } from '../components/ui/BlobatarBot';
 
-// --- Components ---
+type SettingsTabId = 'plan' | 'appearance' | 'account' | 'data';
 
 const HelpSection = () => {
     const [openIndex, setOpenIndex] = useState<number | null>(null);
 
     const faqs = [
-        { q: "چگونه برنامه خود را شروع کنم؟", a: "ابتدا در تنظیمات، تاریخ شروع و طول دوره (مثلاً ۳۰ روز) را مشخص کنید. سپس از بخش حوزه‌ها یا تایم‌لاین ۲۴ ساعته، تسک‌ها و برنامه‌های روزانه خود را زمان‌بندی کنید.", icon: Zap },
-        { q: "سیستم امتیازدهی و سطح (Level) چگونه کار می‌کند؟", a: "با انجام هر تسک در داشبورد یا تایم‌لاین و تکمیل جلسات تایمر فوکوس، XP کسب می‌کنید. با افزایش XP به سطوح بالاتر صعود می‌کنید و در لیگ رقابت با دیگران مقایسه می‌شوید.", icon: Trophy },
-        { q: "چگونه از داده‌هایم نسخه پشتیبان بگیرم؟", a: "برنامه به صورت خودکار داده‌ها را در حافظه مرورگر ذخیره می‌کند. اما توصیه می‌شود از بخش 'پشتیبان‌گیری'، فایل JSON خود را دانلود کنید یا با تنظیم فایربیس، ذخیره ابری را فعال کنید.", icon: Cloud },
-        { q: "چرا تسک‌های من در روزهای دیگر نمایش داده نمی‌شوند؟", a: "داشبورد به صورت هوشمند فقط تسک‌های مربوط به تاریخ امروز را نشان می‌دهد. برای دیدن یا اضافه کردن تسک برای روزهای آینده، از تقویم بالای داشبورد استفاده کنید.", icon: Calendar },
-        { q: "چگونه دروس شخصی یا جدید اضافه کنم؟", a: "به صفحه 'دروس' بروید. در آنجا می‌توانید دروس پیش‌فرض را ویرایش کنید یا با زدن دکمه + در پایین صفحه، درس کاملاً جدید با آیکون و رنگ دلخواه بسازید.", icon: BookOpen },
-        { q: "تحلیل‌ها چه کمکی به من می‌کنند؟", a: "در بخش تحلیل، نمودار 'توازن مطالعه' نشان می‌دهد که آیا به همه دروس توجه کافی دارید یا خیر. همچنین 'هیت‌مپ' فعالیت، ثبات مطالعه شما را در ماه اخیر به تصویر می‌کشد.", icon: Target },
-        { q: "تسک‌های ویژه (آزمون و تحلیل) چه تفاوتی دارند؟", a: "این تسک‌ها به شما اجازه می‌دهند تعداد تست، زمان صرف شده و درصد پاسخگویی را ثبت کنید. سیستم از این داده‌ها برای تحلیل دقیق سطح علمی شما استفاده می‌کند.", icon: BarChart2 },
-        { q: "چگونه پارساپلان را در گوشی نصب کنم؟ (PWA)", a: "پارساپلان یک اپلیکیشن تحت وب پیشرو است. در آیفون کافیست دکمه Share و سپس Add to Home Screen را بزنید. در اندروید نیز از منوی سه نقطه کروم گزینه Install app را انتخاب کنید.", icon: Smartphone },
+        { q: 'چگونه برنامه خود را شروع کنم؟', a: 'ابتدا در تب «برنامه و هدف»، تاریخ شروع و طول دوره را مشخص کنید. سپس از بخش حوزه‌ها یا تایم‌لاین ۲۴ ساعته، تسک‌ها و برنامه‌های روزانه خود را زمان‌بندی کنید.', icon: Zap },
+        { q: 'سیستم امتیازدهی و سطح (Level) چگونه کار می‌کند؟', a: 'با انجام هر تسک در داشبورد یا تایم‌لاین و تکمیل جلسات تایمر فوکوس، XP کسب می‌کنید و در لیگ با دیگران مقایسه می‌شوید.', icon: Trophy },
+        { q: 'چگونه از داده‌هایم نسخه پشتیبان بگیرم؟', a: 'برنامه به‌صورت خودکار داده‌ها را در حافظه مرورگر ذخیره می‌کند؛ همچنین می‌توانید فایل JSON خود را دانلود کرده یا همگام‌سازی ابری را فعال کنید.', icon: Cloud },
+        { q: 'چرا تسک‌های من در روزهای دیگر نمایش داده نمی‌شوند؟', a: 'داشبورد به‌صورت هوشمند فقط تسک‌های تاریخ انتخابی را نشان می‌دهد. برای روزهای دیگر از نوار تقویم بالای داشبورد یا تایم‌لاین استفاده کنید.', icon: Calendar },
+        { q: 'چگونه حوزه‌ها یا دروس شخصی جدید اضافه کنم؟', a: 'به صفحه «حوزه‌ها» بروید. در آنجا می‌توانید حوزه‌های پیش‌فرض را ویرایش کنید یا موضوع جدید با آیکون و رنگ دلخواه بسازید.', icon: BookOpen },
+        { q: 'تحلیل‌ها چه کمکی به من می‌کنند؟', a: 'در بخش تحلیل، نمودار توزیع هفتگی، تعادل مطالعاتی و هیت‌مپ تداوم، ثبات و الگوی تمرکز شما را نمایش می‌دهند.', icon: Target },
+        { q: 'تسک‌های ویژه (آزمون و تحلیل) چه تفاوتی دارند؟', a: 'این تسک‌ها امکان ثبت تعداد تست، زمان صرف‌شده و درصد پاسخگویی را برای تحلیل روند آزمون‌ها فراهم می‌کنند.', icon: BarChart2 },
+        { q: 'چگونه پارساپلان را روی گوشی نصب کنم؟ (PWA)', a: 'در آیفون گزینه Share و سپس Add to Home Screen را بزنید؛ در اندروید از منوی کروم گزینه Install app را انتخاب کنید.', icon: Smartphone },
     ];
 
     return (
-        <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-            <div className="flex items-center gap-3 mb-4 text-cyan-700 dark:text-cyan-400">
-                <HelpCircle size={20} />
-                <h2 className="font-bold">راهنمای کامل و سوالات متداول</h2>
+        <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-xs border border-[var(--border-subtle)]">
+            <div className="flex items-center gap-2.5 mb-3.5 text-primary">
+                <HelpCircle size={19} aria-hidden="true" />
+                <h2 className="font-bold text-sm sm:text-base text-on-surface">راهنمای کامل و سوالات متداول</h2>
             </div>
             <div className="space-y-2">
                 {faqs.map((item, index) => (
-                    <div key={index} className="border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+                    <div key={index} className="border border-[var(--border-subtle)] rounded-2xl overflow-hidden">
                         <button
                             type="button"
                             onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                            className="w-full min-h-[44px] flex justify-between items-center p-3 text-right bg-surface-container-low hover:bg-surface-container transition cursor-pointer"
+                            className="w-full min-h-[44px] flex justify-between items-center p-3 text-start bg-surface-container-low hover:bg-surface-container transition cursor-pointer"
                         >
-                            <div className="flex items-center gap-2">
-                                <item.icon size={16} className="text-[var(--text-secondary)] shrink-0" />
+                            <div className="flex items-center gap-2 min-w-0">
+                                <item.icon size={15} className="text-[var(--text-secondary)] shrink-0" aria-hidden="true" />
                                 <span className="text-xs font-bold text-on-surface leading-5">{item.q}</span>
                             </div>
-                            {openIndex === index ? <ChevronUp size={16} className="text-[var(--text-secondary)] min-w-[16px]" /> : <ChevronDown size={16} className="text-[var(--text-secondary)] min-w-[16px]" />}
+                            {openIndex === index ? (
+                                <ChevronUp size={16} className="text-[var(--text-secondary)] shrink-0" />
+                            ) : (
+                                <ChevronDown size={16} className="text-[var(--text-secondary)] shrink-0" />
+                            )}
                         </button>
                         {openIndex === index && (
                             <div className="p-3 bg-[var(--surface-elevated)] text-xs text-[var(--text-secondary)] leading-relaxed border-t border-[var(--border-subtle)]">
@@ -62,32 +105,38 @@ const HelpSection = () => {
     );
 };
 
-const InlineAuthForm = () => {
-    const { login, register } = useStore();
-    const [isLogin, setIsLogin] = useState(true);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [formError, setFormError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+const inlineAuthSchema = z.object({
+    username: z
+        .string({ error: 'نام کاربری یا ایمیل الزامی است' })
+        .trim()
+        .min(3, { error: 'نام کاربری یا ایمیل باید حداقل ۳ کاراکتر باشد.' })
+        .regex(identifierRegex, { error: 'ایمیل معتبر یا نام کاربری انگلیسی وارد کنید.' }),
+    password: z
+        .string({ error: 'رمز عبور الزامی است' })
+        .min(6, { error: 'رمز عبور باید حداقل ۶ کاراکتر باشد.' }),
+});
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (username.trim().length < 3) {
-            setFormError('نام کاربری یا ایمیل باید حداقل ۳ کاراکتر باشد.');
-            return;
-        }
-        if (password.length < 6) {
-            setFormError('رمز عبور باید حداقل ۶ کاراکتر باشد.');
-            return;
-        }
-        setFormError(null);
-        setLoading(true);
-        try {
-            if (isLogin) await login(username.trim(), password);
-            else await register(username.trim(), password, username.trim());
-        } finally {
-            setLoading(false);
-        }
+type InlineAuthInputs = z.infer<typeof inlineAuthSchema>;
+
+const InlineAuthForm = () => {
+    const { login, register: registerAccount } = useStore();
+    const [isLogin, setIsLogin] = useState(true);
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors, isSubmitting },
+    } = useForm<InlineAuthInputs>({
+        resolver: zodResolver(inlineAuthSchema),
+        mode: 'onBlur',
+        defaultValues: { username: '', password: '' },
+    });
+
+    const firstError = errors.username?.message || errors.password?.message || null;
+
+    const onValid = async (data: InlineAuthInputs) => {
+        if (isLogin) await login(data.username, data.password);
+        else await registerAccount(data.username, data.password, data.username);
     };
 
     return (
@@ -95,7 +144,7 @@ const InlineAuthForm = () => {
             <h3 className="text-sm font-bold text-on-surface mb-3 text-center">
                 {isLogin ? 'ورود به حساب کاربری' : 'ثبت‌نام حساب جدید'}
             </h3>
-            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+            <form onSubmit={handleSubmit(onValid)} noValidate className="space-y-3">
                 <div>
                     <label htmlFor="settings-inline-username" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">
                         ایمیل یا نام کاربری
@@ -106,14 +155,17 @@ const InlineAuthForm = () => {
                         autoComplete="username"
                         inputMode="email"
                         placeholder="name@example.com یا نام کاربری"
-                        value={username}
-                        onChange={(e) => {
-                            if (formError) setFormError(null);
-                            setUsername(e.target.value);
-                        }}
+                        aria-invalid={Boolean(errors.username)}
+                        aria-describedby={errors.username ? 'settings-inline-username-err' : undefined}
+                        {...register('username')}
                         className="w-full min-h-[44px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-base sm:text-sm outline-none focus:border-primary transition text-on-surface"
                         dir="ltr"
                     />
+                    {errors.username && (
+                        <p id="settings-inline-username-err" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                            {errors.username.message}
+                        </p>
+                    )}
                 </div>
                 <div>
                     <label htmlFor="settings-inline-password" className="block text-xs font-bold text-[var(--text-secondary)] mb-1">
@@ -124,34 +176,36 @@ const InlineAuthForm = () => {
                         type="password"
                         autoComplete={isLogin ? 'current-password' : 'new-password'}
                         placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => {
-                            if (formError) setFormError(null);
-                            setPassword(e.target.value);
-                        }}
+                        aria-invalid={Boolean(errors.password)}
+                        aria-describedby={errors.password ? 'settings-inline-password-err' : undefined}
+                        {...register('password')}
                         className="w-full min-h-[44px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-base sm:text-sm outline-none focus:border-primary transition text-on-surface"
                         dir="ltr"
                     />
+                    {errors.password && (
+                        <p id="settings-inline-password-err" className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                            {errors.password.message}
+                        </p>
+                    )}
                 </div>
-                {formError && (
-                    <p role="alert" className="text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5">
-                        <AlertTriangle size={14} aria-hidden="true" />
-                        <span>{formError}</span>
+                {firstError && (
+                    <p role="alert" className="sr-only">
+                        {firstError}
                     </p>
                 )}
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={isSubmitting}
                     className="w-full min-h-[44px] bg-primary text-on-primary py-2.5 rounded-xl text-xs font-bold hover:brightness-110 transition disabled:opacity-50 cursor-pointer"
                 >
-                    {loading ? 'در حال بررسی...' : isLogin ? 'ورود' : 'ثبت‌نام'}
+                    {isSubmitting ? 'در حال بررسی...' : isLogin ? 'ورود' : 'ثبت‌نام'}
                 </button>
             </form>
-            <div className="mt-3 text-center">
+            <div className="mt-2 text-center">
                 <button
                     type="button"
                     onClick={() => {
-                        setFormError(null);
+                        reset();
                         setIsLogin(!isLogin);
                     }}
                     className="min-h-[44px] px-3 text-xs text-primary hover:underline font-semibold cursor-pointer"
@@ -163,88 +217,54 @@ const InlineAuthForm = () => {
     );
 };
 
-/* ──────────────────────────────────────────────
-   Gemini AI Model Settings Component
-   ────────────────────────────────────────────── */
 const GeminiModelSettings = () => {
     const { settings, updateSettings } = useStore();
     const activeModel =
-        settings?.geminiModel === 'gemini-3.1-flash-lite'
-            ? 'gemini-3.1-flash-lite'
-            : 'gemini-4-hydrogen';
+        settings?.geminiModel === 'gemini-3.1-flash-lite' ? 'gemini-3.1-flash-lite' : 'gemini-4-hydrogen';
 
     return (
-        <div className="bg-[var(--surface-elevated)] squircle-lg shadow-sm border border-[var(--border-subtle)] overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--border-subtle)]">
-                <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none">
-                        <Sparkles size={17} className="text-white" />
-                    </div>
-                    <div>
-                        <h2 className="font-bold text-on-surface text-sm">تنظیمات دستیار هوشمند</h2>
-                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">انتخاب مدل هوش مصنوعی جمینای</p>
-                    </div>
+        <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-primary/12 text-primary flex items-center justify-center shrink-0">
+                    <Sparkles size={16} aria-hidden="true" />
+                </div>
+                <div>
+                    <h3 className="font-bold text-on-surface text-xs sm:text-sm">مدل دستیار هوشمند</h3>
+                    <p className="text-[11px] text-[var(--text-secondary)]">انتخاب موتور پردازش هوش مصنوعی</p>
                 </div>
             </div>
 
-            <div className="p-5 space-y-3">
-                <label className="text-xs font-bold text-[var(--text-secondary)] block">مدل هوش مصنوعی</label>
-                {/* Principle 13 (Von Restorff Effect): Highlighted recommended model option */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button
-                        type="button"
-                        onClick={() => updateSettings({ geminiModel: 'gemini-4-hydrogen' })}
-                        className={`p-3.5 min-h-[44px] squircle-sm border text-right transition-all duration-200 cursor-pointer relative ${
-                            activeModel === 'gemini-4-hydrogen'
-                                ? 'bg-primary-fixed/40 dark:bg-primary-fixed/30 border-primary ring-2 ring-primary/30 shadow-xs'
-                                : 'bg-surface-container-low border-[var(--border-subtle)] hover:border-primary/50'
-                        }`}
-                    >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs font-extrabold text-on-surface">
-                                جمینای ۴ پیشرفته
-                            </span>
-                            <span className="px-2 py-0.5 rounded-md bg-primary text-on-primary text-xs font-bold">
-                                پیشنهادی
-                            </span>
-                        </div>
-                        <p className="text-xs text-[var(--text-secondary)]">دقت تحلیلی بالا و برنامه‌ریزی هوشمند</p>
-                        <span dir="ltr" className="mt-1 inline-block text-xs font-mono text-[var(--text-tertiary)]">
-                            gemini-4-hydrogen
-                        </span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => updateSettings({ geminiModel: 'gemini-3.1-flash-lite' })}
-                        className={`p-3.5 min-h-[44px] squircle-sm border text-right transition-all duration-200 cursor-pointer ${
-                            activeModel === 'gemini-3.1-flash-lite'
-                                ? 'bg-primary-fixed/40 dark:bg-primary-fixed/30 border-primary ring-2 ring-primary/30 shadow-xs'
-                                : 'bg-surface-container-low border-[var(--border-subtle)] hover:border-primary/50'
-                        }`}
-                    >
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs font-extrabold text-on-surface">
-                                جمینای ۳.۱ سریع
-                            </span>
-                        </div>
-                        <p className="text-xs text-[var(--text-secondary)]">پاسخ سریع و سبک برای کارهای روزمره</p>
-                        <span dir="ltr" className="mt-1 inline-block text-xs font-mono text-[var(--text-tertiary)]">
-                            gemini-3.1-flash-lite
-                        </span>
-                    </button>
-                </div>
-                <select
-                    aria-label="انتخاب مدل هوش مصنوعی Gemini"
-                    value={activeModel}
-                    onChange={(e) => updateSettings({ geminiModel: e.target.value })}
-                    className="sr-only"
-                    tabIndex={-1}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                    type="button"
+                    onClick={() => updateSettings({ geminiModel: 'gemini-4-hydrogen' })}
+                    className={`p-3 min-h-[44px] squircle-sm border text-start transition-all cursor-pointer ${
+                        activeModel === 'gemini-4-hydrogen'
+                            ? 'bg-primary-fixed/45 border-primary ring-1 ring-primary/30'
+                            : 'bg-surface-container-low border-[var(--border-subtle)] hover:border-primary/40'
+                    }`}
                 >
-                    <option value="gemini-4-hydrogen">gemini-4-hydrogen (پیشنهادی)</option>
-                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (سریع و سبک)</option>
-                </select>
-                <p className="text-xs text-[var(--text-secondary)]">درخواست‌های هوش مصنوعی به‌صورت خودکار از طریق سرور برنامه پردازش می‌شوند.</p>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs font-extrabold text-on-surface">جمینای ۴ پیشرفته</span>
+                        <span className="px-2 py-0.5 rounded-md bg-primary text-on-primary text-[11px] font-bold">پیشنهادی</span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)]">دقت تحلیلی بالا و برنامه‌ریزی هوشمند</p>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => updateSettings({ geminiModel: 'gemini-3.1-flash-lite' })}
+                    className={`p-3 min-h-[44px] squircle-sm border text-start transition-all cursor-pointer ${
+                        activeModel === 'gemini-3.1-flash-lite'
+                            ? 'bg-primary-fixed/45 border-primary ring-1 ring-primary/30'
+                            : 'bg-surface-container-low border-[var(--border-subtle)] hover:border-primary/40'
+                    }`}
+                >
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs font-extrabold text-on-surface">جمینای ۳.۱ سریع</span>
+                    </div>
+                    <p className="text-[11px] text-[var(--text-secondary)]">پاسخ سریع و سبک برای کارهای روزمره</p>
+                </button>
             </div>
         </div>
     );
@@ -305,13 +325,18 @@ service cloud.firestore {
 }`;
 
 const FirebaseSettings = () => {
-
-    const { firebaseConfig, updateFirebaseConfig, removeFirebaseConfig, cloudStatus, cloudError, syncData, showToast } = useStore();
+    const { firebaseConfig, updateFirebaseConfig, removeFirebaseConfig, cloudStatus, cloudError, syncData, showToast } =
+        useStore();
     const [isEditing, setIsEditing] = useState(!firebaseConfig);
     const [copiedRules, setCopiedRules] = useState(false);
     const [showRulesBox, setShowRulesBox] = useState(false);
     const [form, setForm] = useState<FirebaseConfig>({
-        apiKey: '', authDomain: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: ''
+        apiKey: '',
+        authDomain: '',
+        projectId: '',
+        storageBucket: '',
+        messagingSenderId: '',
+        appId: '',
     });
     const [pasteArea, setPasteArea] = useState('');
 
@@ -325,21 +350,19 @@ const FirebaseSettings = () => {
             const match = text.match(new RegExp(`${key}\\s*[:=]\\s*["']([^"']+)["']`));
             return match ? match[1] : '';
         };
-
-        const newConfig = {
+        setForm({
             apiKey: extract('apiKey') || form.apiKey,
             authDomain: extract('authDomain') || form.authDomain,
             projectId: extract('projectId') || form.projectId,
             storageBucket: extract('storageBucket') || form.storageBucket,
             messagingSenderId: extract('messagingSenderId') || form.messagingSenderId,
             appId: extract('appId') || form.appId,
-        };
-        setForm(newConfig);
+        });
         setPasteArea('');
     };
 
     const handleSave = () => {
-        if (Object.values(form).every(v => v)) {
+        if (Object.values(form).every((v) => v)) {
             updateFirebaseConfig(form);
             setIsEditing(false);
         }
@@ -349,52 +372,49 @@ const FirebaseSettings = () => {
         try {
             await navigator.clipboard.writeText(FIRESTORE_RULES_GUIDE);
             setCopiedRules(true);
-            showToast('قوانین Firestore کپی شد — در بخش Rules کنسول فایربیس جای‌گذاری و Publish کنید', 'success');
+            showToast('قوانین Firestore کپی شد — در کنسول فایربیس جای‌گذاری و Publish کنید', 'success');
             setTimeout(() => setCopiedRules(false), 2500);
         } catch {
-            showToast('کپی خودکار انجام نشد؛ متن قوانین را به‌صورت دستی کپی کنید.', 'warning');
+            showToast('کپی خودکار انجام نشد؛ متن قوانین را دستی کپی کنید.', 'warning');
         }
     };
 
     if (!isEditing && firebaseConfig) {
         const statusBadge =
             cloudStatus === 'connected'
-                ? { cls: 'bg-green-100 text-green-700', dot: 'bg-green-500', label: 'متصل' }
+                ? { cls: 'bg-secondary-container text-on-secondary-container', dot: 'bg-secondary', label: 'متصل' }
                 : cloudStatus === 'error'
-                  ? { cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', dot: 'bg-amber-500', label: 'خطای دسترسی Firestore' }
-                  : { cls: 'bg-red-100 text-red-700', dot: 'bg-red-500', label: 'قطع' };
+                  ? { cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300', dot: 'bg-amber-500', label: 'خطای Firestore' }
+                  : { cls: 'bg-rose-500/15 text-rose-600 dark:text-rose-300', dot: 'bg-rose-500', label: 'قطع' };
 
         return (
-            <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)] relative overflow-hidden group">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400">
-                        <Cloud size={20} />
-                        <h2 className="font-bold">اتصال ابری (Firebase)</h2>
+            <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                        <Cloud size={18} />
+                        <h3 className="font-bold text-xs sm:text-sm text-on-surface">اتصال ابری (<bdi>Firebase</bdi>)</h3>
                     </div>
-                    <div className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${statusBadge.cls}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`}></div>
+                    <div className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 ${statusBadge.cls}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
                         {statusBadge.label}
                     </div>
                 </div>
                 <div className="bg-surface-container-low p-3 rounded-xl border border-[var(--border-subtle)]">
-                    <p className="text-xs text-[var(--text-secondary)] mb-1">Project ID</p>
-                    <p className="font-mono text-sm text-on-surface">{firebaseConfig.projectId}</p>
+                    <p className="text-[11px] text-[var(--text-secondary)] mb-0.5">Project ID</p>
+                    <p className="font-mono text-xs text-on-surface" dir="ltr">{firebaseConfig.projectId}</p>
                 </div>
 
                 {(cloudStatus === 'error' || cloudError) && (
-                    <div className="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-200 space-y-2">
                         <div className="flex items-start gap-2 font-bold">
                             <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
-                            <span>{cloudError || 'قوانین امنیتی Firestore در پروژه فایربیس شما اجازه خواندن/نوشتن را مسدود کرده است.'}</span>
+                            <span>{cloudError || 'قوانین امنیتی Firestore اجازه دسترسی نمی‌دهد.'}</span>
                         </div>
-                        <p className="text-[11px] leading-relaxed opacity-90">
-                            در Firebase Console وارد <span dir="ltr" className="font-mono font-semibold">Firestore Database → Rules</span> شوید، قوانین را جای‌گذاری کرده و دکمه <strong>Publish</strong> را بزنید؛ سپس «بررسی مجدد اتصال» را کلیک کنید.
-                        </p>
                         <div className="flex flex-wrap gap-2 pt-1">
                             <button
                                 type="button"
                                 onClick={handleCopyRules}
-                                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-amber-700 transition"
+                                className="min-h-[36px] px-3 py-1 rounded-lg bg-amber-600 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer"
                             >
                                 {copiedRules ? <Check size={13} /> : <Copy size={13} />}
                                 {copiedRules ? 'کپی شد!' : 'کپی قوانین Firestore Rules'}
@@ -402,43 +422,54 @@ const FirebaseSettings = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowRulesBox((v) => !v)}
-                                className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 font-bold text-[11px]"
+                                className="min-h-[36px] px-3 py-1 rounded-lg bg-[var(--surface-elevated)] border border-[var(--border-subtle)] font-bold text-[11px] cursor-pointer"
                             >
-                                {showRulesBox ? 'بستن کد قوانین' : 'مشاهده کد قوانین'}
+                                {showRulesBox ? 'بستن کد' : 'مشاهده کد قوانین'}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => syncData?.()}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 hover:bg-emerald-700 transition"
+                                className="min-h-[36px] px-3 py-1 rounded-lg bg-secondary text-on-secondary font-bold text-[11px] flex items-center gap-1 cursor-pointer"
                             >
-                                <RefreshCw size={12} />
-                                بررسی مجدد اتصال
+                                <RefreshCw size={12} /> بررسی مجدد
                             </button>
                         </div>
                         {showRulesBox && (
-                            <pre dir="ltr" className="mt-2 p-2.5 rounded-lg bg-slate-900 text-slate-100 text-[10px] font-mono overflow-x-auto max-h-44">
+                            <pre dir="ltr" className="mt-2 p-2.5 rounded-lg bg-slate-900 text-slate-100 text-[11px] font-mono overflow-x-auto max-h-44">
                                 {FIRESTORE_RULES_GUIDE}
                             </pre>
                         )}
                     </div>
                 )}
 
-                <div className="flex flex-col md:flex-row gap-2 mt-4">
-                    <button onClick={() => setIsEditing(true)} className="flex-1 py-2 text-xs font-bold text-gray-600 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition">ویرایش</button>
-                    <button onClick={removeFirebaseConfig} className="flex-1 py-2 text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition">حذف اتصال</button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="flex-1 min-h-[40px] py-2 text-xs font-bold text-on-surface bg-surface-container-low hover:bg-surface-container rounded-xl border border-[var(--border-subtle)] transition cursor-pointer"
+                    >
+                        ویرایش اتصال
+                    </button>
+                    <button
+                        type="button"
+                        onClick={removeFirebaseConfig}
+                        className="flex-1 min-h-[40px] py-2 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition cursor-pointer"
+                    >
+                        حذف اتصال
+                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-            <div className="flex items-center gap-3 mb-4 text-orange-600 dark:text-orange-400">
-                <Cloud size={20} />
-                <h2 className="font-bold">تنظیمات فایربیس</h2>
+        <div className="space-y-3">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <Cloud size={18} />
+                <h3 className="font-bold text-xs sm:text-sm text-on-surface">پیکربندی دستی <bdi>Firebase</bdi></h3>
             </div>
 
-            <div className="mb-4">
+            <div>
                 <textarea
                     placeholder="کد کانفیگ Firebase را اینجا پیست کنید..."
                     value={pasteArea}
@@ -447,37 +478,48 @@ const FirebaseSettings = () => {
                     dir="ltr"
                 />
                 {pasteArea && (
-                    <button type="button" onClick={handleSmartPaste} className="mt-2 w-full min-h-[44px] py-2 bg-orange-100 text-orange-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-orange-200 transition cursor-pointer">
-                        <Zap size={14} />
-                        استخراج اطلاعات
+                    <button
+                        type="button"
+                        onClick={handleSmartPaste}
+                        className="mt-2 w-full min-h-[40px] py-2 bg-amber-500/15 text-amber-700 dark:text-amber-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                        <Zap size={14} /> استخراج خودکار فیلدها
                     </button>
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-                {Object.keys(form).map((key) => (
-                    <div key={key} className="col-span-2 sm:col-span-1">
-                        <label className="text-xs text-[var(--text-secondary)] mb-1 block uppercase">{key}</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {(Object.keys(form) as Array<keyof FirebaseConfig>).map((key) => (
+                    <div key={key}>
+                        <label className="text-[11px] text-[var(--text-secondary)] mb-1 block uppercase">{key}</label>
                         <input
                             type="text"
-                            value={(form as any)[key]}
+                            value={form[key] || ''}
                             onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                            className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-primary transition text-left text-on-surface"
+                            className="w-full min-h-[42px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono outline-none focus:border-primary transition text-left text-on-surface"
                             dir="ltr"
                         />
                     </div>
                 ))}
             </div>
 
-            <div className="flex flex-col md:flex-row gap-2 mt-4">
-                {firebaseConfig && <button type="button" onClick={() => setIsEditing(false)} className="md:px-4 min-h-[44px] py-2 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:bg-surface-container transition cursor-pointer">انصراف</button>}
+            <div className="flex flex-col sm:flex-row gap-2">
+                {firebaseConfig && (
+                    <button
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        className="min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:bg-surface-container transition cursor-pointer"
+                    >
+                        انصراف
+                    </button>
+                )}
                 <button
                     type="button"
                     onClick={handleSave}
-                    disabled={!Object.values(form).every(v => v)}
-                    className="flex-1 min-h-[44px] bg-orange-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    disabled={!Object.values(form).every((v) => v)}
+                    className="flex-1 min-h-[42px] bg-primary text-on-primary py-2 rounded-xl text-xs font-bold hover:brightness-110 transition disabled:opacity-50 cursor-pointer"
                 >
-                    ذخیره تنظیمات
+                    ذخیره تنظیمات فایربیس
                 </button>
             </div>
         </div>
@@ -507,7 +549,7 @@ const getJalaaliMonthLength = (jy: number, jm: number): number => {
     return isJalaaliLeapYear(jy) ? 30 : 29;
 };
 
-const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: string) => void }) => {
+const ShamsiDatePicker = ({ date, onChange }: { date: string; onChange: (iso: string) => void }) => {
     const parsed = new Date(date);
     const safeDate = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
     const now = new Date();
@@ -531,13 +573,12 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
         const nextDay = Math.min(field === 'jd' ? value : jDate.jd, maxDay);
         const newJDate = { jy: nextYear, jm: nextMonth, jd: nextDay };
         setJDate(newJDate);
-        const gDate = toGregorian(newJDate.jy, newJDate.jm, newJDate.jd);
-        onChange(toIsoString(gDate));
+        onChange(toIsoString(toGregorian(newJDate.jy, newJDate.jm, newJDate.jd)));
     };
 
     const months = [
         'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
     ];
 
     const baseYear = Math.min(currentYear, jDate.jy);
@@ -551,25 +592,37 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
                 aria-label="روز"
                 value={Math.min(jDate.jd, maxDays)}
                 onChange={(e) => handleChange('jd', Number(e.target.value))}
-                className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white text-sm rounded-xl px-2 py-2 outline-none focus:border-indigo-500 appearance-none text-center cursor-pointer min-w-[50px]"
+                className="min-h-[42px] bg-surface-container-low border border-[var(--border-subtle)] text-on-surface text-sm rounded-xl px-2 py-2 outline-none focus:border-primary appearance-none text-center cursor-pointer min-w-[50px]"
             >
-                {days.map(d => <option key={d} value={d}>{d}</option>)}
+                {days.map((d) => (
+                    <option key={d} value={d}>
+                        {d}
+                    </option>
+                ))}
             </select>
             <select
                 aria-label="ماه"
                 value={jDate.jm}
                 onChange={(e) => handleChange('jm', Number(e.target.value))}
-                className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white text-sm rounded-xl px-2 py-2 outline-none focus:border-indigo-500 appearance-none text-center cursor-pointer min-w-[100px]"
+                className="min-h-[42px] bg-surface-container-low border border-[var(--border-subtle)] text-on-surface text-sm rounded-xl px-2 py-2 outline-none focus:border-primary appearance-none text-center cursor-pointer min-w-[96px]"
             >
-                {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                {months.map((m, i) => (
+                    <option key={i} value={i + 1}>
+                        {m}
+                    </option>
+                ))}
             </select>
             <select
                 aria-label="سال"
                 value={jDate.jy}
                 onChange={(e) => handleChange('jy', Number(e.target.value))}
-                className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-white text-sm rounded-xl px-2 py-2 outline-none focus:border-indigo-500 appearance-none text-center cursor-pointer min-w-[70px]"
+                className="min-h-[42px] bg-surface-container-low border border-[var(--border-subtle)] text-on-surface text-sm rounded-xl px-2 py-2 outline-none focus:border-primary appearance-none text-center cursor-pointer min-w-[70px]"
             >
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
+                {years.map((y) => (
+                    <option key={y} value={y}>
+                        {y}
+                    </option>
+                ))}
             </select>
         </div>
     );
@@ -577,34 +630,46 @@ const ShamsiDatePicker = ({ date, onChange }: { date: string, onChange: (iso: st
 
 const Settings = () => {
     const {
-        user, logout, userName, setUserName,
-        syncData, loadFromCloud, firebaseConfig,
+        user,
+        logout,
+        userName,
+        setUserName,
+        syncData,
+        loadFromCloud,
+        firebaseConfig,
         retryDeadLetters,
-        startDate, setStartDate, autoFixDate, totalDays, setTotalDays,
-        exportData, importData, resetProgress,
-        darkMode, toggleDarkMode, viewMode, setViewMode, showToast, showQuotes, toggleShowQuotes,
-        settings, updateSettings, archiveCurrentPlan
+        startDate,
+        setStartDate,
+        autoFixDate,
+        totalDays,
+        setTotalDays,
+        exportData,
+        importData,
+        resetProgress,
+        viewMode,
+        setViewMode,
+        showToast,
+        showQuotes,
+        toggleShowQuotes,
+        settings,
+        updateSettings,
+        archiveCurrentPlan,
+        level = 1,
+        streakStats,
     } = useStore();
     const { deadLetterCount } = useStoreSyncStatus();
-
     const { themePalette, setThemePalette, themePreference, setThemePreference } = useTheme();
     const navigate = useNavigate();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
+    const [activeTab, setActiveTab] = useState<SettingsTabId>('plan');
+    const [isBlobStudioOpen, setIsBlobStudioOpen] = useState(false);
+    const [isAdvancedCloudOpen, setIsAdvancedCloudOpen] = useState(false);
     const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
     const [archiveTitleInput, setArchiveTitleInput] = useState('');
     const [hapticsActive, setHapticsActive] = useState<boolean>(() => isHapticsEnabled());
-
-    useEffect(() => {
-        if (!isArchiveModalOpen) return;
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setIsArchiveModalOpen(false);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [isArchiveModalOpen]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -624,271 +689,284 @@ const Settings = () => {
         }
     };
 
-    const displayUsername = user?.email ? user.email.split('@')[0] : (userName || user?.displayName || 'کاربر مهمان');
-
-
+    const displayUsername = user?.email ? user.email.split('@')[0] : userName || user?.displayName || 'کاربر مهمان';
+    const botSeed = userName || user?.displayName || user?.email?.split('@')[0] || 'Parsashz';
 
     return (
-        <div className="max-w-5xl mx-auto p-3 xs:p-4 sm:p-5 md:p-6 lg:p-8 max-app-container pb-32 space-y-6">
-
-
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-200/50 dark:shadow-none shrink-0">
-                        <User className="text-white" size={22} />
-                    </div>
-                    <div>
-                        <h1 className="text-xl md:text-2xl font-black text-on-surface tracking-tight">تنظیمات</h1>
-                        <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium">مدیریت حساب، ظاهر و داده‌ها</p>
-                    </div>
+        <div className="max-w-4xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 pt-2 md:pt-6 pb-28 space-y-4 sm:space-y-5">
+            {/* Capsule-Aligned Compact Header */}
+            <div className="flex items-center justify-between gap-3">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-black text-on-surface">تنظیمات</h1>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                        ذخیره خودکار · نسخه ۲.۴ پلاس
+                    </p>
                 </div>
-
-                <div className="flex gap-2">
-                </div>
+                <span className="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[11px] font-bold">
+                    {user ? 'همگام ابری' : 'حالت محلی'}
+                </span>
             </div>
 
-            {/* --- 1. General Settings (Date & Duration) --- */}
-            <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                <div className="flex items-center gap-3 mb-4 text-teal-600 dark:text-teal-400">
-                    <Calendar size={20} />
-                    <h2 className="font-bold">تنظیمات عمومی</h2>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                    {/* Date Picker */}
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">تاریخ شروع برنامه (شمسی)</label>
-                        <div className="flex items-center gap-2">
-                            <ShamsiDatePicker date={startDate} onChange={setStartDate} />
-                            <button
-                                type="button"
-                                onClick={autoFixDate}
-                                aria-label="تنظیم تاریخ شروع از امروز"
-                                className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-teal-50 dark:bg-teal-900/25 text-teal-700 dark:text-teal-300 p-2 rounded-xl hover:bg-teal-100 dark:hover:bg-teal-900/40 transition border border-teal-200/70 dark:border-teal-800 cursor-pointer"
-                                title="تنظیم تاریخ شروع از امروز"
-                            >
-                                <Wand2 size={18} />
-                            </button>
-                        </div>
-                        <p className="text-xs text-[var(--text-secondary)] mt-1.5">{getFullShamsiDate(new Date(startDate))}</p>
+            {/* 4 Categorized Segmented Pills */}
+            <HeroSegmentedTabs
+                layoutId="settings-category-tabs"
+                ariaLabel="دسته‌بندی تنظیمات"
+                variant="surface"
+                value={activeTab}
+                onChange={setActiveTab}
+                items={[
+                    { id: 'plan', label: 'برنامه و هدف', icon: Sliders },
+                    { id: 'appearance', label: 'ظاهر و بات', icon: Palette },
+                    { id: 'account', label: 'حساب و ابر', icon: User },
+                    { id: 'data', label: 'داده و راهنما', icon: Database },
+                ]}
+            />
+
+            {/* TAB 1: PLAN & FOCUS */}
+            {activeTab === 'plan' && (
+                <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-5">
+                    <div className="flex items-center gap-2 text-primary">
+                        <Calendar size={19} aria-hidden="true" />
+                        <h2 className="font-bold text-sm sm:text-base text-on-surface">تنظیمات عمومی برنامه</h2>
                     </div>
 
-                    {/* Duration */}
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">طول دوره (روز)</label>
-                        <div className="flex items-center gap-4">
+                    <div className="grid md:grid-cols-2 gap-5">
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-secondary)] mb-2 block">
+                                تاریخ شروع برنامه (شمسی)
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <ShamsiDatePicker date={startDate} onChange={setStartDate} />
+                                <button
+                                    type="button"
+                                    onClick={autoFixDate}
+                                    aria-label="تنظیم تاریخ شروع از امروز"
+                                    className="min-w-[42px] min-h-[42px] flex items-center justify-center bg-secondary-container text-on-secondary-container p-2 rounded-xl hover:brightness-95 transition cursor-pointer"
+                                    title="تنظیم تاریخ شروع از امروز"
+                                >
+                                    <Wand2 size={17} />
+                                </button>
+                            </div>
+                            <p className="text-xs text-[var(--text-secondary)] mt-1.5">
+                                {getFullShamsiDate(new Date(startDate))}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-secondary)] mb-2 block">
+                                طول دوره (روز)
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="range"
+                                    min="7"
+                                    max="60"
+                                    value={totalDays}
+                                    onChange={(e) => setTotalDays(Number(e.target.value))}
+                                    onMouseUp={() =>
+                                        showToast(`طول دوره به ${formatToPersianDigits(totalDays)} روز تغییر کرد`, 'success')
+                                    }
+                                    onTouchEnd={() =>
+                                        showToast(`طول دوره به ${formatToPersianDigits(totalDays)} روز تغییر کرد`, 'success')
+                                    }
+                                    className="flex-1 h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-primary"
+                                />
+                                <div className="bg-primary-fixed text-on-primary-fixed px-3 py-1.5 rounded-xl font-bold text-xs min-w-[48px] text-center tabular-nums">
+                                    {formatToPersianDigits(totalDays)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-secondary)] mb-2 block">
+                                عنوان هدف یا رویداد مهم (<bdi>D-Day</bdi>)
+                            </label>
+                            <input
+                                type="text"
+                                value={settings?.targetExamTitle ?? ''}
+                                onChange={(e) => updateSettings({ targetExamTitle: e.target.value })}
+                                placeholder="مثلاً: اتمام پروژه، سفر یا آزمون..."
+                                className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-3.5 py-2 text-sm outline-none focus:border-primary text-on-surface"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-secondary)] mb-2 block">تاریخ هدف</label>
+                            <ShamsiDatePicker
+                                date={settings?.targetExamDate || startDate}
+                                onChange={(val) => updateSettings({ targetExamDate: val })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-[var(--border-subtle)] grid sm:grid-cols-2 gap-4">
+                        <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+                            <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
+                                ساعت شروع روز مطالعاتی ({formatToPersianDigits(settings?.dayCutoffHour ?? 5)}:۰۰ بامداد)
+                            </label>
                             <input
                                 type="range"
-                                min="7"
-                                max="60"
-                                value={totalDays}
-                                onChange={(e) => setTotalDays(Number(e.target.value))}
-                                onMouseUp={() => showToast(`طول دوره به ${totalDays} روز تغییر کرد`, 'success')}
-                                onTouchEnd={() => showToast(`طول دوره به ${totalDays} روز تغییر کرد`, 'success')}
-                                className="flex-1 h-2 bg-surface-container rounded-lg appearance-none cursor-pointer accent-primary"
+                                min={0}
+                                max={8}
+                                value={settings?.dayCutoffHour ?? 5}
+                                onChange={(e) => updateSettings({ dayCutoffHour: Number(e.target.value) })}
+                                className="w-full accent-primary cursor-pointer"
                             />
-                            <div className="bg-primary-fixed text-on-primary-fixed px-3 py-1.5 rounded-lg font-bold text-sm min-w-[50px] text-center">
-                                {totalDays}
-                            </div>
+                            <p className="text-[11px] text-[var(--text-tertiary)] mt-1">
+                                پیش‌فرض ۵ صبح (مناسب شب‌زنده‌داری)
+                            </p>
+                        </div>
+
+                        <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+                            <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
+                                ظرفیت تمرکز روزانه ({formatToPersianDigits(Math.round(((settings?.dailyCapacityMinutes ?? 360) / 60) * 10) / 10)} ساعت)
+                            </label>
+                            <input
+                                type="range"
+                                min={120}
+                                max={720}
+                                step={30}
+                                value={settings?.dailyCapacityMinutes ?? 360}
+                                onChange={(e) => updateSettings({ dailyCapacityMinutes: Number(e.target.value) })}
+                                className="w-full accent-primary cursor-pointer"
+                            />
+                        </div>
+
+                        <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+                            <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
+                                مدت پومودورو تمرکز ({formatToPersianDigits(settings?.pomodoroWorkMinutes ?? 25)} دقیقه)
+                            </label>
+                            <input
+                                type="range"
+                                min={15}
+                                max={90}
+                                step={5}
+                                value={settings?.pomodoroWorkMinutes ?? 25}
+                                onChange={(e) => updateSettings({ pomodoroWorkMinutes: Number(e.target.value) })}
+                                className="w-full accent-primary cursor-pointer"
+                            />
+                        </div>
+
+                        <div className="bg-surface-container-low p-3.5 rounded-2xl border border-[var(--border-subtle)]">
+                            <label className="text-xs font-bold text-on-surface mb-1.5 block tabular-nums">
+                                مدت استراحت پومودورو ({formatToPersianDigits(settings?.pomodoroBreakMinutes ?? 5)} دقیقه)
+                            </label>
+                            <input
+                                type="range"
+                                min={5}
+                                max={30}
+                                step={5}
+                                value={settings?.pomodoroBreakMinutes ?? 5}
+                                onChange={(e) => updateSettings({ pomodoroBreakMinutes: Number(e.target.value) })}
+                                className="w-full accent-emerald-500 cursor-pointer"
+                            />
                         </div>
                     </div>
-
-                    {/* Target Goal D-Day */}
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">عنوان هدف یا رویداد مهم (شمارش معکوس D-Day)</label>
-                        <input
-                            type="text"
-                            value={settings?.targetExamTitle ?? ''}
-                            onChange={(e) => updateSettings({ targetExamTitle: e.target.value })}
-                            placeholder="مثلاً: اتمام پروژه، دوی ۱۰ کیلومتر، سفر یا آزمون..."
-                            className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-on-surface"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-2 block">تاریخ هدف</label>
-                        <ShamsiDatePicker
-                            date={settings?.targetExamDate || startDate}
-                            onChange={(val) => updateSettings({ targetExamDate: val })}
-                        />
-                    </div>
                 </div>
+            )}
 
-                {/* Focus & Study Day Cycle Preferences */}
-                <div className="mt-6 pt-5 border-t border-[var(--border-subtle)] grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
-                            ساعت شروع روز مطالعاتی ({settings?.dayCutoffHour ?? 5}:۰۰ بامداد)
-                        </label>
-                        <input
-                            type="range"
-                            min={0}
-                            max={8}
-                            value={settings?.dayCutoffHour ?? 5}
-                            onChange={(e) => updateSettings({ dayCutoffHour: Number(e.target.value) })}
-                            className="w-full accent-primary"
-                        />
-                        <p className="text-xs text-[var(--text-tertiary)] mt-1">پیش‌فرض ۵ صبح (مشابه YPT برای شب‌زنده‌داری)</p>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
-                            مدت پومودورو تمرکز ({settings?.pomodoroWorkMinutes ?? 25} دقیقه)
-                        </label>
-                        <input
-                            type="range"
-                            min={15}
-                            max={90}
-                            step={5}
-                            value={settings?.pomodoroWorkMinutes ?? 25}
-                            onChange={(e) => updateSettings({ pomodoroWorkMinutes: Number(e.target.value) })}
-                            className="w-full accent-primary"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
-                            مدت استراحت پومودورو ({settings?.pomodoroBreakMinutes ?? 5} دقیقه)
-                        </label>
-                        <input
-                            type="range"
-                            min={5}
-                            max={30}
-                            step={5}
-                            value={settings?.pomodoroBreakMinutes ?? 5}
-                            onChange={(e) => updateSettings({ pomodoroBreakMinutes: Number(e.target.value) })}
-                            className="w-full accent-emerald-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-medium text-[var(--text-secondary)] mb-1.5 block">
-                            ظرفیت مطالعه روزانه ({Math.round((settings?.dailyCapacityMinutes ?? 360) / 60 * 10) / 10} ساعت)
-                        </label>
-                        <input
-                            type="range"
-                            min={120}
-                            max={720}
-                            step={30}
-                            value={settings?.dailyCapacityMinutes ?? 360}
-                            onChange={(e) => updateSettings({ dailyCapacityMinutes: Number(e.target.value) })}
-                            className="w-full accent-purple-600"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* --- 2. Gemini AI Model Settings --- */}
-            <GeminiModelSettings />
-
-            {/* --- 3. Account & Data --- */}
-            <div className="grid md:grid-cols-2 gap-6">
-
-                {/* Profile */}
-                <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                    <div className="flex items-center gap-3 mb-4 text-primary">
-                        <User size={20} />
-                        <h2 className="font-bold">حساب کاربری</h2>
-                    </div>
-                    {/* User Name Input */}
-                    <div className="mb-4 flex gap-2">
-                        <input
-                            ref={nameInputRef}
-                            defaultValue={userName}
-                            type="text"
-                            placeholder="نام نمایشی..."
-                            className="flex-1 min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-on-surface transition"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleSaveName}
-                            aria-label="ذخیره نام نمایشی"
-                            className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary text-on-primary p-2 rounded-xl cursor-pointer hover:brightness-110 transition"
-                        >
-                            <Save size={18} />
-                        </button>
-                    </div>
-
-                    {/* Workspace Profile / Mode Selection */}
-                    <div className="mb-4">
-                        <label className="text-xs font-bold text-[var(--text-secondary)] block mb-1.5">سبک کاری و دسته‌بندی پیش‌فرض</label>
-                        <div className="relative">
-                            <GraduationCap size={18} className="absolute right-4 top-3.5 text-[var(--text-secondary)]" />
-                            <select
-                                value={settings?.stream || 'life'}
-                                onChange={(e) => updateSettings({ stream: e.target.value as any })}
-                                className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl pr-12 pl-4 py-2.5 text-sm outline-none focus:border-primary transition appearance-none cursor-pointer text-on-surface"
-                            >
-                                <option value="life">زندگی، عادت‌ها و بهره‌وری کل (پیشنهادی)</option>
-                                <option value="work">کار، پروژه و فریلنسینگ</option>
-                                <option value="general">مطالعه و یادگیری آزاد</option>
-                                <option value="riazi">تحصیلی: ریاضی و فیزیک</option>
-                                <option value="tajrobi">تحصیلی: علوم تجربی</option>
-                                <option value="ensani">تحصیلی: علوم انسانی</option>
-                            </select>
+            {/* TAB 2: APPEARANCE & BLOBATAR */}
+            {activeTab === 'appearance' && (
+                <div className="space-y-4">
+                    <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-4">
+                        <div className="flex items-center gap-2 text-primary">
+                            <Eye size={19} aria-hidden="true" />
+                            <h2 className="font-bold text-sm sm:text-base text-on-surface">شخصی‌سازی ظاهر</h2>
                         </div>
-                    </div>
 
-                    {/* Auth Status */}
-                    <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-                        {user ? (
-                            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-3 border border-green-100 dark:border-green-800">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-bold text-green-700 dark:text-green-400 text-sm">{displayUsername}</span>
-                                    <span className="text-[10px] bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 px-2 py-0.5 rounded-full">آنلاین</span>
-                                </div>
-                                <button onClick={logout} className="w-full text-xs text-red-500 hover:text-red-700 py-1 font-bold">خروج از حساب</button>
+                        <div className="flex flex-wrap justify-between items-center gap-2 p-3 bg-surface-container-low rounded-2xl border border-[var(--border-subtle)]">
+                            <span className="text-xs font-bold text-on-surface flex items-center gap-2">
+                                <Moon size={16} className="text-primary" aria-hidden="true" /> حالت نمایش
+                            </span>
+                            <div className="flex bg-surface-container p-1 rounded-xl gap-1" role="group" aria-label="انتخاب حالت نمایش">
+                                {(
+                                    [
+                                        { id: 'system', label: 'سیستم' },
+                                        { id: 'light', label: 'روشن' },
+                                        { id: 'dark', label: 'تیره' },
+                                    ] as const
+                                ).map((opt) => (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        aria-pressed={themePreference === opt.id}
+                                        onClick={() => setThemePreference(opt.id)}
+                                        className={`px-3 min-h-[38px] text-xs font-bold rounded-lg transition cursor-pointer ${
+                                            themePreference === opt.id
+                                                ? 'bg-[var(--surface-elevated)] shadow-xs text-primary'
+                                                : 'text-[var(--text-secondary)] hover:text-on-surface'
+                                        }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
-                        ) : (
-                            <InlineAuthForm />
-                        )}
-                    </div>
-                </div>
-
-                {/* Personalization & Backup */}
-                <div className="space-y-6">
-                    {/* Personalization */}
-                    <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                        <div className="flex items-center gap-3 mb-4 text-purple-600 dark:text-purple-400">
-                            <Eye size={20} />
-                            <h2 className="font-bold">شخصی‌سازی</h2>
                         </div>
-                        <div className="flex flex-col gap-3">
-                            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 bg-surface-container-low rounded-xl">
-                                <span className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-2">
-                                    <Moon size={16} aria-hidden="true" /> حالت نمایش
-                                </span>
-                                <div className="flex bg-surface-container p-1 rounded-xl gap-1" role="group" aria-label="انتخاب حالت نمایش">
-                                    {(
-                                        [
-                                            { id: 'system', label: 'سیستم' },
-                                            { id: 'light', label: 'روشن' },
-                                            { id: 'dark', label: 'تیره' },
-                                        ] as const
-                                    ).map((opt) => (
-                                        <button
-                                            key={opt.id}
-                                            type="button"
-                                            aria-pressed={themePreference === opt.id}
-                                            onClick={() => setThemePreference(opt.id)}
-                                            className={`px-3 min-h-[44px] sm:min-h-[36px] text-xs font-bold rounded-lg transition cursor-pointer ${
-                                                themePreference === opt.id
-                                                    ? 'bg-[var(--surface-elevated)] shadow-xs text-primary dark:text-white'
-                                                    : 'text-[var(--text-secondary)] hover:text-on-surface'
-                                            }`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
+
+                        {/* Theme Palette */}
+                        <div className="p-3 bg-surface-container-low rounded-2xl border border-[var(--border-subtle)] space-y-2.5">
+                            <span className="text-xs font-bold text-on-surface flex items-center gap-2">
+                                <Palette size={16} className="text-primary" aria-hidden="true" />
+                                پالت رنگی برنامه
+                            </span>
+                            <div className="grid grid-cols-3 gap-2">
+                                {(
+                                    [
+                                        { id: 'indigo', name: 'نیلی نئونی', color: 'from-indigo-500 to-indigo-700' },
+                                        { id: 'forest', name: 'جنگل آرام', color: 'from-emerald-500 to-green-600' },
+                                        { id: 'rosegold', name: 'رز گلد لوکس', color: 'from-rose-400 to-rose-600' },
+                                    ] as const
+                                ).map((theme) => (
+                                    <button
+                                        key={theme.id}
+                                        type="button"
+                                        onClick={() => setThemePalette(theme.id)}
+                                        className={`p-3 squircle-sm border text-center transition flex flex-col items-center gap-1.5 cursor-pointer ${
+                                            themePalette === theme.id
+                                                ? 'bg-[var(--surface-elevated)] border-primary shadow-xs ring-1 ring-primary/30'
+                                                : 'bg-transparent border-[var(--border-subtle)] hover:bg-[var(--surface-elevated)]/60'
+                                        }`}
+                                    >
+                                        <div className={`w-6 h-6 rounded-full bg-gradient-to-tr ${theme.color} flex items-center justify-center`}>
+                                            {themePalette === theme.id && <Check size={13} className="text-white" />}
+                                        </div>
+                                        <span className="text-xs font-bold text-on-surface">{theme.name}</span>
+                                    </button>
+                                ))}
                             </div>
-                            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 bg-surface-container-low rounded-xl">
-                                <span className="text-xs font-bold text-[var(--text-secondary)] flex items-center gap-2"><LayoutList size={16} /> تراکم کارت‌ها</span>
-                                <div className="flex bg-surface-container p-1 rounded-xl gap-1">
-                                    <button type="button" onClick={() => setViewMode('normal')} className={`px-3 min-h-[44px] sm:min-h-[36px] text-xs font-bold rounded-lg transition cursor-pointer ${viewMode === 'normal' ? 'bg-[var(--surface-elevated)] shadow-xs text-primary dark:text-white' : 'text-[var(--text-secondary)] hover:text-on-surface'}`}>عادی</button>
-                                    <button type="button" onClick={() => setViewMode('compact')} className={`px-3 min-h-[44px] sm:min-h-[36px] text-xs font-bold rounded-lg transition cursor-pointer ${viewMode === 'compact' ? 'bg-[var(--surface-elevated)] shadow-xs text-primary dark:text-white' : 'text-[var(--text-secondary)] hover:text-on-surface'}`}>فشرده</button>
-                                </div>
+                        </div>
+
+                        <div className="flex flex-wrap justify-between items-center gap-2 p-3 bg-surface-container-low rounded-2xl border border-[var(--border-subtle)]">
+                            <span className="text-xs font-bold text-on-surface flex items-center gap-2">
+                                <LayoutList size={16} className="text-primary" aria-hidden="true" /> تراکم کارت‌ها
+                            </span>
+                            <div className="flex bg-surface-container p-1 rounded-xl gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('normal')}
+                                    className={`px-3 min-h-[38px] text-xs font-bold rounded-lg transition cursor-pointer ${
+                                        viewMode === 'normal'
+                                            ? 'bg-[var(--surface-elevated)] shadow-xs text-primary'
+                                            : 'text-[var(--text-secondary)]'
+                                    }`}
+                                >
+                                    عادی
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('compact')}
+                                    className={`px-3 min-h-[38px] text-xs font-bold rounded-lg transition cursor-pointer ${
+                                        viewMode === 'compact'
+                                            ? 'bg-[var(--surface-elevated)] shadow-xs text-primary'
+                                            : 'text-[var(--text-secondary)]'
+                                    }`}
+                                >
+                                    فشرده
+                                </button>
                             </div>
+                        </div>
+
+                        <div className="space-y-2 pt-1">
                             <AnimatedSwitch
                                 checked={showQuotes}
                                 onChange={toggleShowQuotes}
@@ -905,19 +983,29 @@ const Settings = () => {
                                 label={
                                     <>
                                         <Sun size={16} aria-hidden="true" />
-                                        <span>حالت هوشمند زمان‌بندی (BioTheme)</span>
+                                        <span>حالت هوشمند زمان‌بندی (<bdi>BioTheme</bdi>)</span>
                                     </>
                                 }
                             />
                             <AnimatedSwitch
                                 checked={Boolean(settings?.strictLockEnabled)}
                                 onChange={() => updateSettings({ strictLockEnabled: !settings?.strictLockEnabled })}
-                                label={<span>🔒 قفل تمرکز (تمام‌صفحه و تشخیص خروج)</span>}
+                                label={
+                                    <>
+                                        <Lock size={16} aria-hidden="true" />
+                                        <span>قفل تمرکز (تمام‌صفحه و تشخیص خروج)</span>
+                                    </>
+                                }
                             />
                             <AnimatedSwitch
                                 checked={Boolean(settings?.anonymizedLeaderboard)}
                                 onChange={() => updateSettings({ anonymizedLeaderboard: !settings?.anonymizedLeaderboard })}
-                                label={<span>🕵️ نمایش ناشناس در جدول لیگ (حفظ حریم خصوصی)</span>}
+                                label={
+                                    <>
+                                        <EyeOff size={16} aria-hidden="true" />
+                                        <span>نمایش ناشناس در جدول لیگ</span>
+                                    </>
+                                }
                             />
                             <AnimatedSwitch
                                 checked={hapticsActive}
@@ -934,160 +1022,297 @@ const Settings = () => {
                                     </>
                                 }
                             />
+                        </div>
+                    </div>
 
-                            {/* انتخاب تم رنگی (Theme Palette Picker) */}
-                            <div className="p-3 bg-gray-50 dark:bg-gray-900/30 squircle-card border border-gray-200/60 dark:border-gray-800/40 mt-1">
-                                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-3">
-                                    <Palette size={16} className="text-purple-500" />
-                                    پالت رنگی برنامه
-                                </span>
-                                <div className="grid grid-cols-3 gap-2.5">
-                                    {[
-                                        { id: 'indigo', name: 'نیلی نئونی', color: 'from-indigo-500 to-indigo-700', border: 'border-indigo-500/20' },
-                                        { id: 'forest', name: 'جنگل آرام', color: 'from-emerald-500 to-green-600', border: 'border-emerald-500/20' },
-                                        { id: 'rosegold', name: 'رز گلد لوکس', color: 'from-rose-400 to-rose-600', border: 'border-rose-500/20' }
-                                    ].map(theme => (
-                                        <button
-                                            key={theme.id}
-                                            type="button"
-                                            onClick={() => setThemePalette(theme.id as any)}
-                                            className={`relative p-3.5 squircle-sm border text-center transition-all duration-300 flex flex-col items-center gap-2 cursor-pointer btn-micro-interactive ${
-                                                themePalette === theme.id
-                                                    ? 'bg-white dark:bg-gray-800 border-indigo-600 shadow-md ring-2 ring-indigo-500/20'
-                                                    : 'bg-transparent border-gray-200 dark:border-gray-700 hover:bg-white/5 hover:border-gray-300 dark:hover:border-gray-600'
-                                            }`}
-                                        >
-                                            <div className={`w-7 h-7 rounded-full bg-gradient-to-tr ${theme.color} shadow-inner flex items-center justify-center`}>
-                                                {themePalette === theme.id && <Check size={14} className="text-white drop-shadow" />}
-                                            </div>
-                                            <span className="text-xs font-black text-on-surface">{theme.name}</span>
-                                        </button>
-                                    ))}
+                    {/* Collapsible Blobatar Studio Card */}
+                    <div className="bg-[var(--surface-elevated)] squircle-lg shadow-xs border border-[var(--border-subtle)] overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                haptics.selection();
+                                setIsBlobStudioOpen((v) => !v);
+                            }}
+                            aria-expanded={isBlobStudioOpen}
+                            className="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-start hover:bg-surface-container-low/60 transition cursor-pointer"
+                        >
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="rounded-2xl bg-surface-container-low border border-[var(--border-subtle)] p-1 shrink-0">
+                                    <BlobatarBot
+                                        seed={botSeed}
+                                        config={settings?.blobatar}
+                                        level={level}
+                                        streak={streakStats?.currentStreak ?? 0}
+                                        size="md"
+                                    />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="font-bold text-sm text-on-surface truncate">
+                                        کاراکتر اختصاصی (<bdi>Blobatar</bdi>)
+                                    </h3>
+                                    <p className="text-xs text-[var(--text-secondary)] truncate">
+                                        {isBlobStudioOpen
+                                            ? 'برای بستن استودیو دوباره لمس کنید'
+                                            : 'تغییر شکل، رنگ و حالت چهره بات پروفایل'}
+                                    </p>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Backup */}
-                    <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                                <HardDrive size={20} />
-                                <h2 className="font-bold">پشتیبان‌گیری</h2>
-                            </div>
-                        </div>
-                        <div className="flex flex-col md:flex-row gap-2">
-                            <button type="button" onClick={exportData} className="flex-1 min-h-[44px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition flex items-center justify-center gap-1 cursor-pointer"><Download size={14} /> دانلود</button>
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 min-h-[44px] bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-400 py-2 rounded-xl text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900/40 transition flex items-center justify-center gap-1 cursor-pointer"><Upload size={14} /> بازگردانی</button>
-                        </div>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
-                    </div>
-                </div>
-            </div>
-
-            {/* --- Print Settings --- */}
-            <div className="bg-[var(--surface-elevated)] p-5 squircle-lg shadow-sm border border-[var(--border-subtle)]">
-                <div className="flex items-center gap-3 mb-4 text-sky-600 dark:text-sky-400">
-                    <Printer size={20} />
-                    <h2 className="font-bold">چاپ برنامه</h2>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <p className="text-xs text-[var(--text-secondary)] flex-1 leading-6">
-                        دریافت فایل PDF استاندارد و مرتب از کل برنامه مطالعاتی، تسک‌ها و تحلیل‌ها جهت چاپ یا ذخیره.
-                        برای بهترین نتیجه، در تنظیمات چاپ گزینه "Background graphics" را فعال کنید.
-                    </p>
-                    <button
-                        onClick={() => window.print()}
-                        className="w-full sm:w-auto px-6 py-3 bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition shadow-sm border border-sky-100 dark:border-sky-800"
-                    >
-                        <Printer size={18} />
-                        دانلود / چاپ برنامه
-                    </button>
-                </div>
-            </div>
-
-
-
-            {/* Cloud Settings */}
-            <FirebaseSettings />
-
-            {/* Sync Controls (Only if connected) */}
-            {firebaseConfig && (
-                <div className="bg-white dark:bg-gray-800 p-5 squircle-lg shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                            <RefreshCw size={18} className="text-blue-500" />
-                            همگام‌سازی دستی
-                        </h2>
-                    </div>
-                    {(deadLetterCount ?? 0) > 0 && (
-                        <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                                <AlertTriangle size={16} />
-                                {deadLetterCount} تغییر در صف ناموفق همگام‌سازی باقی مانده است.
+                            <span className="px-3 py-1.5 rounded-xl bg-primary-fixed text-on-primary-fixed text-xs font-bold flex items-center gap-1 shrink-0">
+                                <span>{isBlobStudioOpen ? 'بستن' : 'شخصی‌سازی'}</span>
+                                <ChevronDown size={14} className={isBlobStudioOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
                             </span>
-                            <button
-                                type="button"
-                                onClick={() => retryDeadLetters()}
-                                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer shrink-0"
-                            >
-                                تلاش مجدد
-                            </button>
-                        </div>
-                    )}
-                    <div className="flex flex-col md:flex-row gap-3">
-                        <button type="button" onClick={syncData} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition cursor-pointer">آپلود تغییرات</button>
-                        <button type="button" onClick={loadFromCloud} className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition cursor-pointer">دانلود از سرور</button>
+                        </button>
+
+                        {isBlobStudioOpen && (
+                            <div className="border-t border-[var(--border-subtle)]">
+                                <BlobatarStudio />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Danger Zone & Archive */}
-            <div className="bg-amber-50 dark:bg-amber-900/10 p-5 squircle-lg border border-amber-100 dark:border-amber-900/30 space-y-4">
-                <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
-                    <HistoryIcon size={20} />
-                    <h2 className="font-bold">مدیریت دوره‌ها (آرشیو)</h2>
+            {/* TAB 3: ACCOUNT, CLOUD & ADVANCED AI/FIREBASE */}
+            {activeTab === 'account' && (
+                <div className="space-y-4">
+                    <div className="bg-[var(--surface-elevated)] p-4 sm:p-6 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-4">
+                        <div className="flex items-center gap-2 text-primary">
+                            <User size={19} aria-hidden="true" />
+                            <h2 className="font-bold text-sm sm:text-base text-on-surface">حساب کاربری و سبک کاری</h2>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <input
+                                ref={nameInputRef}
+                                defaultValue={userName}
+                                type="text"
+                                placeholder="نام نمایشی..."
+                                className="flex-1 min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl px-4 py-2 text-sm outline-none focus:border-primary text-on-surface"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSaveName}
+                                aria-label="ذخیره نام نمایشی"
+                                className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary text-on-primary p-2 rounded-xl cursor-pointer hover:brightness-110 transition"
+                            >
+                                <Save size={18} />
+                            </button>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-[var(--text-secondary)] block mb-1.5">
+                                سبک کاری و دسته‌بندی پیش‌فرض
+                            </label>
+                            <div className="relative">
+                                <GraduationCap size={18} className="absolute start-3.5 top-3 text-[var(--text-secondary)] pointer-events-none" />
+                                <select
+                                    value={settings?.stream || 'life'}
+                                    onChange={(e) => updateSettings({ stream: e.target.value as StreamType })}
+                                    className="w-full min-h-[44px] bg-surface-container-low border border-[var(--border-subtle)] rounded-xl ps-11 pe-4 py-2 text-sm outline-none focus:border-primary appearance-none cursor-pointer text-on-surface"
+                                >
+                                    <option value="life">زندگی، عادت‌ها و بهره‌وری کل (پیشنهادی)</option>
+                                    <option value="work">کار، پروژه و فریلنسینگ</option>
+                                    <option value="general">مطالعه و یادگیری آزاد</option>
+                                    <option value="riazi">تحصیلی: ریاضی و فیزیک</option>
+                                    <option value="tajrobi">تحصیلی: علوم تجربی</option>
+                                    <option value="ensani">تحصیلی: علوم انسانی</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-[var(--border-subtle)]">
+                            {user ? (
+                                <div className="bg-secondary-container/40 rounded-2xl p-3.5 border border-secondary/20 flex items-center justify-between gap-2">
+                                    <div>
+                                        <span className="font-bold text-on-surface text-sm block">{displayUsername}</span>
+                                        <span className="text-[11px] text-secondary font-bold">متصل به ابر</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={logout}
+                                        className="min-h-[38px] px-3.5 rounded-xl bg-rose-500/12 text-rose-600 dark:text-rose-300 text-xs font-bold cursor-pointer"
+                                    >
+                                        خروج از حساب
+                                    </button>
+                                </div>
+                            ) : (
+                                <InlineAuthForm />
+                            )}
+                        </div>
+                    </div>
+
+                    {firebaseConfig && (
+                        <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-3">
+                            <h2 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                                <RefreshCw size={17} className="text-primary" /> همگام‌سازی دستی
+                            </h2>
+                            {(deadLetterCount ?? 0) > 0 && (
+                                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <span className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5 tabular-nums">
+                                        <AlertTriangle size={15} />
+                                        {formatToPersianDigits(deadLetterCount)} تغییر در صف ناموفق مانده است.
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => retryDeadLetters()}
+                                        className="min-h-[36px] px-3 py-1 rounded-xl bg-amber-600 text-white text-xs font-bold cursor-pointer shrink-0"
+                                    >
+                                        تلاش مجدد
+                                    </button>
+                                </div>
+                            )}
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                    type="button"
+                                    onClick={syncData}
+                                    className="flex-1 min-h-[42px] bg-primary text-on-primary rounded-xl text-xs font-bold cursor-pointer"
+                                >
+                                    آپلود تغییرات
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={loadFromCloud}
+                                    className="flex-1 min-h-[42px] bg-surface-container-low text-on-surface border border-[var(--border-subtle)] rounded-xl text-xs font-bold cursor-pointer"
+                                >
+                                    دانلود از سرور
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Collapsible Advanced Cloud & AI Drawer */}
+                    <div className="bg-[var(--surface-elevated)] squircle-lg shadow-xs border border-[var(--border-subtle)] overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                haptics.selection();
+                                setIsAdvancedCloudOpen((v) => !v);
+                            }}
+                            aria-expanded={isAdvancedCloudOpen}
+                            className="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-start hover:bg-surface-container-low/60 transition cursor-pointer"
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <Wrench size={18} className="text-[var(--text-secondary)] shrink-0" aria-hidden="true" />
+                                <div className="min-w-0">
+                                    <h3 className="font-bold text-sm text-on-surface">تنظیمات پیشرفته (هوش مصنوعی و فایربیس)</h3>
+                                    <p className="text-xs text-[var(--text-secondary)] truncate">
+                                        انتخاب مدل جمینای و پیکربندی سرور ابری شخصی
+                                    </p>
+                                </div>
+                            </div>
+                            <ChevronDown
+                                size={16}
+                                className={`text-[var(--text-secondary)] shrink-0 transition-transform ${
+                                    isAdvancedCloudOpen ? 'rotate-180' : ''
+                                }`}
+                            />
+                        </button>
+
+                        {isAdvancedCloudOpen && (
+                            <div className="p-4 sm:p-5 border-t border-[var(--border-subtle)] space-y-6">
+                                <GeminiModelSettings />
+                                <div className="h-px bg-[var(--border-subtle)]" />
+                                <FirebaseSettings />
+                            </div>
+                        )}
+                    </div>
                 </div>
+            )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setArchiveTitleInput(`برنامه ${getFullShamsiDate(new Date(startDate))}`);
-                            setIsArchiveModalOpen(true);
-                        }}
-                        className="flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition text-sm shadow-md cursor-pointer"
-                    >
-                        <Save size={18} />
-                        آرشیو برنامه فعلی و شروع جدید
-                    </button>
+            {/* TAB 4: DATA, ARCHIVE & HELP */}
+            {activeTab === 'data' && (
+                <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-3">
+                            <div className="flex items-center gap-2 text-secondary">
+                                <HardDrive size={19} aria-hidden="true" />
+                                <h2 className="font-bold text-sm sm:text-base text-on-surface">پشتیبان‌گیری</h2>
+                            </div>
+                            <p className="text-xs text-[var(--text-secondary)]">
+                                خروجی یا بازگردانی فایل پشتیبان <bdi>JSON</bdi> از کل تسک‌ها و تاریخچه.
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={exportData}
+                                    className="flex-1 min-h-[44px] bg-secondary-container text-on-secondary-container rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <Download size={15} /> دانلود
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex-1 min-h-[44px] bg-primary-fixed text-on-primary-fixed rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <Upload size={15} /> بازگردانی
+                                </button>
+                            </div>
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
+                        </div>
 
-                    <button
-                        type="button"
-                        onClick={() => navigate('/history')}
-                        className="flex items-center justify-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-3 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition text-sm cursor-pointer"
-                    >
-                        <Eye size={18} />
-                        مشاهده آرشیو و تاریخچه دوره‌ها
-                    </button>
+                        <div className="bg-[var(--surface-elevated)] p-4 sm:p-5 squircle-lg shadow-xs border border-[var(--border-subtle)] space-y-3">
+                            <div className="flex items-center gap-2 text-primary">
+                                <Printer size={19} aria-hidden="true" />
+                                <h2 className="font-bold text-sm sm:text-base text-on-surface">چاپ برنامه (<bdi>PDF</bdi>)</h2>
+                            </div>
+                            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                خروجی استاندارد برای چاپ یا ذخیره برنامه مطالعاتی و تحلیل‌ها.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => window.print()}
+                                className="w-full min-h-[44px] bg-surface-container-low hover:bg-surface-container text-on-surface border border-[var(--border-subtle)] rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <Printer size={16} /> دانلود / چاپ برنامه
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-amber-500/8 p-4 sm:p-5 squircle-lg border border-amber-500/25 space-y-3.5">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                            <HistoryIcon size={19} aria-hidden="true" />
+                            <h2 className="font-bold text-sm sm:text-base">مدیریت دوره‌ها (آرشیو)</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setArchiveTitleInput(`برنامه ${getFullShamsiDate(new Date(startDate))}`);
+                                    setIsArchiveModalOpen(true);
+                                }}
+                                className="min-h-[44px] flex items-center justify-center gap-2 bg-primary text-on-primary py-2.5 rounded-xl font-bold hover:brightness-110 transition text-xs cursor-pointer"
+                            >
+                                <Save size={16} />
+                                آرشیو برنامه فعلی و شروع جدید
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => navigate('/history')}
+                                className="min-h-[44px] flex items-center justify-center gap-2 bg-[var(--surface-elevated)] border border-[var(--border-subtle)] text-on-surface py-2.5 rounded-xl font-bold hover:bg-surface-container-low transition text-xs cursor-pointer"
+                            >
+                                <Eye size={16} />
+                                مشاهده آرشیو و تاریخچه دوره‌ها
+                            </button>
+                        </div>
+
+                        <div className="pt-2 border-t border-amber-500/20">
+                            <button
+                                type="button"
+                                onClick={resetProgress}
+                                className="w-full min-h-[44px] flex items-center justify-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 rounded-xl py-2 font-bold text-xs cursor-pointer transition"
+                            >
+                                <RefreshCw size={14} />
+                                پاک‌سازی کامل همه داده‌ها
+                            </button>
+                        </div>
+                    </div>
+
+                    <HelpSection />
                 </div>
+            )}
 
-                <div className="pt-4 border-t border-amber-100 dark:border-amber-900/30">
-                    <button
-                        type="button"
-                        onClick={resetProgress}
-                        className="w-full min-h-[44px] flex items-center justify-center gap-2 text-red-600 dark:text-red-400 hover:text-red-700 py-2 font-bold text-xs cursor-pointer"
-                    >
-                        <RefreshCw size={14} />
-                        پاک‌سازی کامل همه داده‌ها
-                    </button>
-                </div>
-            </div>
-
-            {/* Help Section (Moved to Bottom) */}
-            <HelpSection />
-
-            {/* Controlled Archive Title ModalSheet */}
             <ModalSheet
                 isOpen={isArchiveModalOpen}
                 onClose={() => setIsArchiveModalOpen(false)}
@@ -1140,10 +1365,6 @@ const Settings = () => {
                     </div>
                 </form>
             </ModalSheet>
-
-            <div className="text-center mt-8 pb-8">
-                <p className="text-xs text-[var(--text-tertiary)]">پارساپلان — نسخه ۲.۴ پلاس</p>
-            </div>
         </div>
     );
 };

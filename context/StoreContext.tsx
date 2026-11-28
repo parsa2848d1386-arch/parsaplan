@@ -33,7 +33,9 @@ import {
     isCloudSyncAllowed,
     isFirestorePermissionDenied,
     syncEngine,
+    type OutboxOpType,
 } from '../services/syncEngine';
+import { backupImportSchema } from '../utils/schemas';
 import { SynergyCompletionResult } from '../services/synergyBridge';
 
 import { doc, onSnapshot, Firestore } from 'firebase/firestore';
@@ -290,6 +292,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [anonymizedLeaderboard, setAnonymizedLeaderboard] = useState<boolean>(false);
     const [targetExamTitle, setTargetExamTitle] = useState<string>('');
     const [targetExamDate, setTargetExamDate] = useState<string>('');
+    const [blobatar, setBlobatar] = useState<AppSettings['blobatar']>({ shape: 'boxy', hue: 'auto', expression: 'auto' });
 
     // --- SYNC & UI STATE ---
     const [isInitialized, setIsInitialized] = useState(false);
@@ -399,6 +402,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             anonymizedLeaderboard,
             targetExamTitle,
             targetExamDate,
+            blobatar,
         }),
         [
             darkMode,
@@ -417,6 +421,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             anonymizedLeaderboard,
             targetExamTitle,
             targetExamDate,
+            blobatar,
         ]
     );
 
@@ -441,6 +446,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (s.anonymizedLeaderboard !== undefined) setAnonymizedLeaderboard(s.anonymizedLeaderboard);
             if (s.targetExamTitle !== undefined) setTargetExamTitle(s.targetExamTitle);
             if (s.targetExamDate !== undefined) setTargetExamDate(s.targetExamDate);
+            if (s.blobatar !== undefined) setBlobatar(s.blobatar);
         },
         [darkMode, viewMode, showQuotes, toggleDarkMode, setViewMode, toggleShowQuotes]
     );
@@ -467,7 +473,7 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                     ) {
                         data = guestData;
                         await StorageManager.save(guestData, backupUserId);
-                        const opsToQueue: Array<{ type: any; entityId: string; payload?: unknown }> = [];
+                        const opsToQueue: Array<{ type: OutboxOpType; entityId: string; payload?: unknown }> = [];
                         (guestData.tasks || []).forEach((t) => {
                             if (t.id) opsToQueue.push({ type: 'upsert_task', entityId: t.id, payload: t });
                         });
@@ -748,7 +754,15 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             }
         };
         window.addEventListener('online', handleOnline);
-        return () => window.removeEventListener('online', handleOnline);
+        const unsubscribePeer = syncEngine.subscribeToPeerSync((msg) => {
+            if (msg.userId === userId && (msg.type === 'outbox_updated' || msg.type === 'flush_completed')) {
+                setSyncQueueCount(msg.count);
+            }
+        });
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            unsubscribePeer();
+        };
     }, [db, userId, user, showToast, handleCloudPermissionError, reportCloudStatus]);
 
     // --- REAL-TIME FIRESTORE LISTENER (Using Ref to avoid Stale Closure) ---
@@ -1555,8 +1569,10 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     const importData = (json: string) => {
         try {
-            const data = JSON.parse(json);
-            if (!data.tasks) throw new Error();
+            const raw: unknown = JSON.parse(json);
+            const validated = backupImportSchema.safeParse(raw);
+            if (!validated.success) throw new Error('Invalid backup structure');
+            const data = raw as Partial<AppDataV1> & { tasks: SubjectTask[]; routine?: string[] };
             askConfirm(
                 'بازگردانی',
                 'اطلاعات فعلی حذف می‌شود. ادامه می‌دهید؟',
@@ -1619,43 +1635,54 @@ const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         setSubjects((prev) => prev.filter((s) => s.id !== id));
         showToast('دسته‌بندی حذف شد', 'warning');
     };
-    const reorderSubjects = (newOrder: CustomSubject[]) => setSubjects(newOrder);
+    const reorderSubjects = useCallback((newOrder: CustomSubject[]) => {
+        setSubjects(newOrder);
+    }, []);
 
     // --- SETTINGS UPDATE ---
-    const updateSettings = (newSettings: Partial<AppSettings>) => {
-        if (newSettings.darkMode !== undefined) setDarkMode(newSettings.darkMode);
+    const updateSettings = useCallback(
+        (newSettings: Partial<AppSettings>) => {
+            if (newSettings.darkMode !== undefined) setDarkMode(newSettings.darkMode);
 
-        if (newSettings.stream && newSettings.stream !== stream) {
-            setStream(newSettings.stream);
-            const newDefaultSubjects = seedDefaultSubjectsForStream(newSettings.stream);
-            const customSubs = subjects.filter((s) => !SUBJECT_LISTS[stream]?.includes(s.name));
-            setSubjects([...newDefaultSubjects, ...customSubs]);
-        } else if (newSettings.stream) {
-            setStream(newSettings.stream);
-        }
+            if (newSettings.stream && newSettings.stream !== stream) {
+                setStream(newSettings.stream);
+                const newDefaultSubjects = seedDefaultSubjectsForStream(newSettings.stream);
+                setSubjects((prev) => {
+                    const customSubs = prev.filter((s) => !SUBJECT_LISTS[stream]?.includes(s.name));
+                    return [...newDefaultSubjects, ...customSubs];
+                });
+            } else if (newSettings.stream) {
+                setStream(newSettings.stream);
+            }
 
-        if (newSettings.geminiModel) setGeminiModel(newSettings.geminiModel);
-        if (newSettings.bioTheme !== undefined) setBioTheme(newSettings.bioTheme);
-        if (newSettings.hasUnreadAiMessage !== undefined) setHasUnreadAiMessage(newSettings.hasUnreadAiMessage);
-        if (newSettings.dayCutoffHour !== undefined) setDayCutoffHour(newSettings.dayCutoffHour);
-        if (newSettings.pomodoroWorkMinutes !== undefined) setPomodoroWorkMinutes(newSettings.pomodoroWorkMinutes);
-        if (newSettings.pomodoroBreakMinutes !== undefined) setPomodoroBreakMinutes(newSettings.pomodoroBreakMinutes);
-        if (newSettings.dailyCapacityMinutes !== undefined) setDailyCapacityMinutes(newSettings.dailyCapacityMinutes);
-        if (newSettings.strictLockEnabled !== undefined) setStrictLockEnabled(newSettings.strictLockEnabled);
-        if (newSettings.anonymizedLeaderboard !== undefined) setAnonymizedLeaderboard(newSettings.anonymizedLeaderboard);
-        if (newSettings.targetExamTitle !== undefined) setTargetExamTitle(newSettings.targetExamTitle);
-        if (newSettings.targetExamDate !== undefined) setTargetExamDate(newSettings.targetExamDate);
+            if (newSettings.geminiModel) setGeminiModel(newSettings.geminiModel);
+            if (newSettings.bioTheme !== undefined) setBioTheme(newSettings.bioTheme);
+            if (newSettings.hasUnreadAiMessage !== undefined) setHasUnreadAiMessage(newSettings.hasUnreadAiMessage);
+            if (newSettings.dayCutoffHour !== undefined) setDayCutoffHour(newSettings.dayCutoffHour);
+            if (newSettings.pomodoroWorkMinutes !== undefined) setPomodoroWorkMinutes(newSettings.pomodoroWorkMinutes);
+            if (newSettings.pomodoroBreakMinutes !== undefined) setPomodoroBreakMinutes(newSettings.pomodoroBreakMinutes);
+            if (newSettings.dailyCapacityMinutes !== undefined) setDailyCapacityMinutes(newSettings.dailyCapacityMinutes);
+            if (newSettings.strictLockEnabled !== undefined) setStrictLockEnabled(newSettings.strictLockEnabled);
+            if (newSettings.anonymizedLeaderboard !== undefined) setAnonymizedLeaderboard(newSettings.anonymizedLeaderboard);
+            if (newSettings.targetExamTitle !== undefined) setTargetExamTitle(newSettings.targetExamTitle);
+            if (newSettings.targetExamDate !== undefined) setTargetExamDate(newSettings.targetExamDate);
+            if (newSettings.blobatar !== undefined) setBlobatar(newSettings.blobatar);
 
-        if (Object.keys(newSettings).some((k) => k !== 'hasUnreadAiMessage' && k !== 'darkMode')) {
-            showToast('تنظیمات ذخیره شد', 'success');
-        }
-    };
+            if (Object.keys(newSettings).some((k) => k !== 'hasUnreadAiMessage' && k !== 'darkMode')) {
+                showToast('تنظیمات ذخیره شد', 'success');
+            }
+        },
+        [setDarkMode, stream, showToast]
+    );
 
-    const setGeminiApiKey = (key: string) => {
-        StorageManager.saveLocalGeminiKey(key);
-        setGeminiApiKeyState(key);
-        showToast(key ? 'API Key به‌صورت محلی در دستگاه ذخیره شد ✓' : 'API Key حذف شد', key ? 'success' : 'info');
-    };
+    const setGeminiApiKey = useCallback(
+        (key: string) => {
+            StorageManager.saveLocalGeminiKey(key);
+            setGeminiApiKeyState(key);
+            showToast(key ? 'API Key به‌صورت محلی در دستگاه ذخیره شد ✓' : 'API Key حذف شد', key ? 'success' : 'info');
+        },
+        [showToast]
+    );
 
     const currentSettings = useMemo(() => buildSettingsObject(true), [buildSettingsObject]);
 

@@ -72,7 +72,7 @@ const Welcome: React.FC = () => {
 
     return (
         <div
-            className="min-h-screen bg-[var(--surface-canvas)] flex items-center justify-center px-4 py-8 sm:p-6 font-sans text-right pt-safe pb-safe"
+            className="min-h-screen bg-[var(--surface-canvas)] flex items-center justify-center px-4 py-8 sm:p-6 font-sans text-start pt-safe pb-safe"
             dir="rtl"
         >
             <AuthModal
@@ -234,7 +234,7 @@ const Welcome: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => navigateFeature('/planner')}
-                                className="p-4 rounded-2xl bg-primary/8 border border-primary/20 text-right hover:bg-primary/12 transition cursor-pointer"
+                                className="p-4 rounded-2xl bg-primary/8 border border-primary/20 text-start hover:bg-primary/12 transition cursor-pointer"
                             >
                                 <div className="font-extrabold text-primary">تایم‌لاین ۲۴ ساعته</div>
                                 <div className="text-[11px] text-[var(--text-secondary)] mt-1">
@@ -244,7 +244,7 @@ const Welcome: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => navigateFeature('/subjects')}
-                                className="p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20 text-right hover:bg-emerald-500/12 transition cursor-pointer"
+                                className="p-4 rounded-2xl bg-emerald-500/8 border border-emerald-500/20 text-start hover:bg-emerald-500/12 transition cursor-pointer"
                             >
                                 <div className="font-extrabold text-emerald-700 dark:text-emerald-300">کانبان و آیزنهاور</div>
                                 <div className="text-[11px] text-[var(--text-secondary)] mt-1">
@@ -254,7 +254,7 @@ const Welcome: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => navigateFeature('/leaderboard')}
-                                className="p-4 rounded-2xl bg-sky-500/8 border border-sky-500/20 text-right hover:bg-sky-500/12 transition cursor-pointer"
+                                className="p-4 rounded-2xl bg-sky-500/8 border border-sky-500/20 text-start hover:bg-sky-500/12 transition cursor-pointer"
                             >
                                 <div className="font-extrabold text-sky-700 dark:text-sky-300">لیگ و اتاق‌های مطالعه</div>
                                 <div className="text-[11px] text-[var(--text-secondary)] mt-1">
@@ -264,7 +264,7 @@ const Welcome: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => navigateFeature('/settings')}
-                                className="p-4 rounded-2xl bg-amber-500/8 border border-amber-500/20 text-right hover:bg-amber-500/12 transition cursor-pointer"
+                                className="p-4 rounded-2xl bg-amber-500/8 border border-amber-500/20 text-start hover:bg-amber-500/12 transition cursor-pointer"
                             >
                                 <div className="font-extrabold text-amber-700 dark:text-amber-300">تنظیم هدف D-Day</div>
                                 <div className="text-[11px] text-[var(--text-secondary)] mt-1">

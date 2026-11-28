@@ -458,6 +458,27 @@ export interface FirebaseConfig {
     appId: string;
 }
 
+export type BlobatarShape =
+    | 'boxy'
+    | 'round'
+    | 'organic'
+    | 'capsule'
+    | 'nub'
+    | 'cloud'
+    | 'droplet'
+    | 'hexagon'
+    | 'sun'
+    | 'triangle';
+
+export type BlobatarExpression = 'idle' | 'happy' | 'focused' | 'thinking' | 'smug' | 'energetic';
+
+export interface BlobatarConfig {
+    seed?: string;
+    shape?: BlobatarShape | 'auto';
+    hue?: number | 'auto';
+    expression?: BlobatarExpression | 'auto';
+}
+
 export interface AppSettings {
     darkMode: boolean;
     bioTheme?: boolean;
@@ -479,6 +500,7 @@ export interface AppSettings {
     targetExamTitle?: string;
     targetExamDate?: string; // YYYY-MM-DD
     chronotype?: 'early_bird' | 'balanced' | 'night_owl';
+    blobatar?: BlobatarConfig;
 }
 
 export interface AppState {
@@ -506,4 +528,86 @@ export const isSpecializedSubject = (stream: StreamType, subjectName: string): b
     const list = SPECIALIZED_SUBJECTS[stream] || [];
     return list.includes(subjectName);
 };
+
+/* ----------------------------------------------------------------
+   Strict Web Speech API & Chat Session Types (Eliminates `any`)
+   ---------------------------------------------------------------- */
+export interface SpeechRecognitionAlternativeLike {
+    transcript: string;
+    confidence: number;
+}
+
+export interface SpeechRecognitionResultLike {
+    readonly length: number;
+    readonly isFinal: boolean;
+    [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+export interface SpeechRecognitionResultListLike {
+    readonly length: number;
+    [index: number]: SpeechRecognitionResultLike;
+}
+
+export interface SpeechRecognitionEventLike {
+    readonly resultIndex: number;
+    readonly results: SpeechRecognitionResultListLike;
+}
+
+export interface SpeechRecognitionErrorEventLike {
+    readonly error: string;
+    readonly message?: string;
+}
+
+export interface SpeechRecognitionInstance {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    start(): void;
+    stop(): void;
+    abort(): void;
+    onstart: (() => void) | null;
+    onend: (() => void) | null;
+    onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+    onresult: ((event: SpeechRecognitionEventLike) => void | Promise<void>) | null;
+}
+
+export type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+export interface WindowWithSpeechRecognition extends Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+}
+
+export interface StoredChatAttachment {
+    type: 'image' | 'video' | 'file';
+    url?: string;
+    name: string;
+}
+
+export interface StoredChatMessage {
+    id: string;
+    text: string;
+    sender: 'user' | 'ai';
+    timestamp: Date | string;
+    isError?: boolean;
+    retryText?: string;
+    pendingTasks?: Array<{
+        id?: string;
+        title: string;
+        subject: string;
+        topic: string;
+        details: string;
+        testRange?: string;
+        date: string;
+        startTime?: string;
+        durationMinutes?: number;
+        priority?: TaskPriority;
+        studyType?: StudyType;
+        subTasks?: { subject: string; topic: string }[];
+        isCompleted?: boolean;
+    }>;
+    tasksApplied?: boolean;
+    attachments?: StoredChatAttachment[];
+}
+
 

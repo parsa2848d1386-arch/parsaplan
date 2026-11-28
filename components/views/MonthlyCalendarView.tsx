@@ -183,7 +183,7 @@ export const MonthlyCalendarView: React.FC<MonthlyCalendarViewProps> = ({ tasks,
                                             />
                                         ))}
                                         {dayTasks.length > 3 && (
-                                            <span className="text-[9px] font-bold text-[var(--text-secondary)] tabular-nums">
+                                            <span className="text-[11px] font-bold text-[var(--text-secondary)] tabular-nums">
                                                 +{formatToPersianDigits(dayTasks.length - 3)}
                                             </span>
                                         )}
@@ -203,7 +203,7 @@ export const MonthlyCalendarView: React.FC<MonthlyCalendarViewProps> = ({ tasks,
                                                     e.stopPropagation();
                                                     onEdit(e, t);
                                                 }}
-                                                className={`text-[9px] px-1.5 py-0.5 rounded-md truncate cursor-pointer font-bold ${
+                                                className={`text-[11px] px-1.5 py-0.5 rounded-md truncate cursor-pointer font-bold ${
                                                     t.isCompleted
                                                         ? 'bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 line-through'
                                                         : 'bg-[var(--surface-elevated)] text-on-surface border border-[var(--border-subtle)]'
@@ -268,7 +268,7 @@ export const MonthlyCalendarView: React.FC<MonthlyCalendarViewProps> = ({ tasks,
                                             <button
                                                 type="button"
                                                 onClick={(e) => onEdit(e, t)}
-                                                className="min-w-0 flex-1 text-right cursor-pointer"
+                                                className="min-w-0 flex-1 text-start cursor-pointer"
                                             >
                                                 <div className="text-xs font-bold text-on-surface truncate">
                                                     {st.icon} {t.subject} — {t.topic}

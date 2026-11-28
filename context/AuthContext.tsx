@@ -18,6 +18,7 @@ import {
 import { FirebaseConfig } from '../types';
 import { DEFAULT_FIREBASE_CONFIG, IS_DEFAULT_FIREBASE_ENABLED } from '../firebaseConfig';
 import { useUI } from './UIContext';
+import { getErrorCode, getErrorMessage } from '../utils/formHelpers';
 
 // --- TYPES ---
 interface AuthContextType {
@@ -57,8 +58,8 @@ const formatFirebaseAuthError = (
     action: 'login' | 'register' | 'google' | 'reset',
     identifier?: string
 ): string => {
-    const code = typeof (error as any)?.code === 'string' ? (error as any).code : '';
-    const message = typeof (error as any)?.message === 'string' ? (error as any).message : '';
+    const code = getErrorCode(error);
+    const message = getErrorMessage(error);
     const host = typeof window !== 'undefined' ? window.location.hostname : '';
 
     if (code === 'auth/configuration-not-found') {
@@ -261,8 +262,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } catch {}
             showToast('خوش آمدید 🎉', 'success');
             return true;
-        } catch (e: any) {
-            console.error('Login error:', e?.code, e?.message, e);
+        } catch (e: unknown) {
+            console.error('Login error:', getErrorCode(e), getErrorMessage(e), e);
             const msg = formatFirebaseAuthError(e, 'login', identifier);
             setAuthError(msg);
             showToast(msg, 'error');
@@ -290,8 +291,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } catch {}
             showToast(`خوش آمدی ${name || 'دوست من'} 🎉`, 'success');
             return true;
-        } catch (e: any) {
-            console.error('Register error:', e?.code, e?.message, e);
+        } catch (e: unknown) {
+            console.error('Register error:', getErrorCode(e), getErrorMessage(e), e);
             const msg = formatFirebaseAuthError(e, 'register', identifier);
             setAuthError(msg);
             showToast(msg, 'error');
@@ -319,9 +320,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } catch {}
             showToast('ورود با گوگل موفقیت‌آمیز بود 🎉', 'success');
             return true;
-        } catch (e: any) {
-            console.error('Google Sign-In error:', e?.code, e?.message, e);
-            if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') {
+        } catch (e: unknown) {
+            const code = getErrorCode(e);
+            console.error('Google Sign-In error:', code, getErrorMessage(e), e);
+            if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
                 showToast('پنجره ورود گوگل بسته شد', 'info');
                 return false;
             }
@@ -350,8 +352,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             await sendPasswordResetEmail(auth, identifier.trim().toLowerCase());
             showToast('لینک بازیابی رمز عبور به ایمیل شما ارسال شد 📧', 'success');
             return true;
-        } catch (e: any) {
-            console.error('Password reset error:', e?.code, e?.message, e);
+        } catch (e: unknown) {
+            console.error('Password reset error:', getErrorCode(e), getErrorMessage(e), e);
             const msg = formatFirebaseAuthError(e, 'reset', identifier);
             setAuthError(msg);
             showToast(msg, 'error');
@@ -390,8 +392,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } catch {}
             showToast('به عنوان مهمان ابری وارد شدید 👋', 'info');
             return true;
-        } catch (e: any) {
-            console.error('Anonymous auth failed, falling back to local login:', e?.code, e?.message, e);
+        } catch (e: unknown) {
+            console.error('Anonymous auth failed, falling back to local login:', getErrorCode(e), getErrorMessage(e), e);
             loginOffline();
             return true;
         }

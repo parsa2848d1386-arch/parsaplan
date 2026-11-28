@@ -13,53 +13,26 @@ import {
     Mail,
     AlertCircle,
 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormRegisterReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import {
+    loginSchema,
+    registerSchema,
+    resetSchema,
+    type LoginInputs,
+    type RegisterInputs,
+    type ResetInputs,
+} from '../utils/schemas';
 import { useStore } from '../context/StoreContext';
 import { ModalSheet } from './ui/ModalSheet';
 import { haptics } from '../utils/haptics';
 import { EXAGGERATED_SHAKE_KEYFRAMES, TRANSITION_SHAKE } from '../utils/motionPresets';
 
-/* ----------------------------------------------------------------
-   Schemas
-   ---------------------------------------------------------------- */
-const identifierRegex = /^([^\s@]+@[^\s@]+\.[^\s@]+|[a-zA-Z0-9_]{3,})$/;
-
-const loginSchema = z.object({
-    username: z
-        .string()
-        .trim()
-        .min(3, 'حداقل ۳ کاراکتر وارد کنید')
-        .regex(identifierRegex, 'ایمیل معتبر یا نام کاربری انگلیسی وارد کنید'),
-    password: z.string().min(6, 'رمز عبور باید حداقل ۶ کاراکتر باشد'),
-});
-const registerSchema = z.object({
-    username: z
-        .string()
-        .trim()
-        .min(3, 'حداقل ۳ کاراکتر وارد کنید')
-        .regex(identifierRegex, 'ایمیل معتبر یا نام کاربری انگلیسی (حروف، عدد و _)'),
-    displayName: z.string().trim().min(2, 'نام نمایشی حداقل ۲ کاراکتر باشد'),
-    password: z.string().min(6, 'رمز عبور باید حداقل ۶ کاراکتر باشد'),
-});
-const resetSchema = z.object({
-    identifier: z
-        .string()
-        .trim()
-        .min(3, 'حداقل ۳ کاراکتر وارد کنید')
-        .regex(identifierRegex, 'ایمیل یا نام کاربری معتبر وارد کنید'),
-});
-
-type LoginInputs = z.infer<typeof loginSchema>;
-type RegisterInputs = z.infer<typeof registerSchema>;
-type ResetInputs = z.infer<typeof resetSchema>;
-
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onLogin: (u: string, p: string) => Promise<any>;
-    onRegister: (u: string, p: string, name: string) => Promise<any>;
+    onLogin: (u: string, p: string) => Promise<boolean>;
+    onRegister: (u: string, p: string, name: string) => Promise<boolean>;
     isLoading: boolean;
 }
 
@@ -128,7 +101,7 @@ const FloatingInput = ({
     type?: string;
     placeholder?: string;
     error?: string;
-    register: any;
+    register: UseFormRegisterReturn;
     dir?: 'ltr' | 'rtl';
     autoComplete?: string;
     inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
@@ -162,8 +135,8 @@ const FloatingInput = ({
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? errorId : undefined}
                     {...reg}
-                    className={`w-full min-h-[46px] ${rightIcon ? 'pr-10' : 'pr-4'} ${
-                        leftSlot ? 'pl-12' : 'pl-4'
+                    className={`w-full min-h-[46px] ${rightIcon ? 'pe-10' : 'pe-4'} ${
+                        leftSlot ? 'ps-12' : 'ps-4'
                     } py-2.5 rounded-2xl border-2 text-base sm:text-sm outline-none transition bg-[var(--surface-elevated)] text-on-surface placeholder:text-[var(--text-muted)] ${
                         error
                             ? 'border-rose-500 focus:border-rose-500'
@@ -362,7 +335,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
             dismissDisabled={isBusy}
             historyKey="auth-modal"
             maxWidthClass="max-w-sm"
-            zIndexClass="z-[2147483647]"
+            zIndexClass="z-[var(--z-modal)]"
             contentClassName="border-0"
         >
             <motion.div

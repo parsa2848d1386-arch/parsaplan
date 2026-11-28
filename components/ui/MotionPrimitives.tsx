@@ -105,7 +105,7 @@ export const ArcFlightOverlay: React.FC = () => {
     return createPortal(
         <div
             aria-hidden="true"
-            className="fixed inset-0 pointer-events-none z-[100000] overflow-hidden"
+            className="fixed inset-0 pointer-events-none z-[var(--z-overlay)] overflow-hidden"
         >
             <AnimatePresence>
                 {flights.map((f) => (
@@ -322,7 +322,7 @@ export const AnimatedSwitch: React.FC<{
             }}
             className={`w-full flex justify-between items-center gap-3 p-2.5 min-h-[44px] bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer ${className}`}
         >
-            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 text-right">
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 text-start">
                 {label}
             </span>
             <div

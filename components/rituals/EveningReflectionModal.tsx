@@ -123,7 +123,7 @@ export const EveningReflectionModal: React.FC = () => {
                             <div className="text-lg font-black text-emerald-800 dark:text-white">
                                 {formatToPersianDigits(stats.completedCount)} / {formatToPersianDigits(stats.total)}
                             </div>
-                            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-300">تسک تکمیل‌شده</div>
+                            <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-300">تسک تکمیل‌شده</div>
                         </div>
 
                         <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl p-3 border border-indigo-100 dark:border-indigo-800/40 text-center">
@@ -131,7 +131,7 @@ export const EveningReflectionModal: React.FC = () => {
                             <div className="text-lg font-black text-indigo-800 dark:text-white">
                                 {formatToPersianDigits(stats.focusMinutes)} دقیقه
                             </div>
-                            <div className="text-[10px] font-bold text-indigo-600 dark:text-indigo-300">تمرکز ثبت‌شده</div>
+                            <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-300">تمرکز ثبت‌شده</div>
                         </div>
 
                         <div className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl p-3 border border-amber-100 dark:border-amber-800/40 text-center">
@@ -139,7 +139,7 @@ export const EveningReflectionModal: React.FC = () => {
                             <div className="text-lg font-black text-amber-800 dark:text-white">
                                 {formatToPersianDigits(streakStats.currentStreak)} روز
                             </div>
-                            <div className="text-[10px] font-bold text-amber-600 dark:text-amber-300">زنجیره مطالعه (Streak)</div>
+                            <div className="text-[11px] font-bold text-amber-600 dark:text-amber-300">زنجیره مطالعه (Streak)</div>
                         </div>
                     </div>
 
@@ -162,7 +162,7 @@ export const EveningReflectionModal: React.FC = () => {
                                         }`}
                                     >
                                         <MoodIcon size={18} className={active ? 'text-on-primary' : m.color} aria-hidden="true" />
-                                        <span className="text-[10px] font-bold">{m.label}</span>
+                                        <span className="text-[11px] font-bold">{m.label}</span>
                                     </button>
                                 );
                             })}
@@ -190,7 +190,7 @@ export const EveningReflectionModal: React.FC = () => {
                                 <div className="text-xs font-black text-amber-800 dark:text-amber-300">
                                     {formatToPersianDigits(stats.pendingCount)} تسک از امروز باقی مانده است
                                 </div>
-                                <div className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">
+                                <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
                                     می‌توانید کارهای معلق را به صورت خودکار به فردا یا روزهای کم‌بار منتقل کنید.
                                 </div>
                             </div>

@@ -173,7 +173,7 @@ export const TableView: React.FC<TableViewProps> = ({ tasks, onEdit, onDelete })
                                             <button
                                                 type="button"
                                                 onClick={(e) => onEdit(e, task)}
-                                                className="min-w-0 flex-1 text-right cursor-pointer"
+                                                className="min-w-0 flex-1 text-start cursor-pointer"
                                             >
                                                 <div className="flex items-center gap-1.5 text-xs font-extrabold text-on-surface">
                                                     <span>{style.icon}</span>
@@ -277,7 +277,7 @@ export const TableView: React.FC<TableViewProps> = ({ tasks, onEdit, onDelete })
             ) : (
                 /* Desktop Table (>= 768px) */
                 <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-right border-collapse min-w-[820px]">
+                    <table className="w-full text-start border-collapse min-w-[820px]">
                         <thead>
                             <tr className="bg-surface-container-low text-[11px] font-black text-[var(--text-secondary)] border-b border-[var(--border-subtle)]">
                                 <th className="p-3 w-10 text-center">✓</th>

@@ -16,7 +16,7 @@ export const ToastContainer = () => {
             role="region"
             aria-live="polite"
             aria-label="اعلان‌های سیستم"
-            className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-0 z-[80] flex flex-col items-center gap-2 pointer-events-none px-3.5"
+            className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:bottom-6 inset-x-0 z-[80] flex flex-col items-center md:items-end gap-2 pointer-events-none px-3.5 md:px-6"
         >
             <AnimatePresence initial={false}>
                 {visibleToasts.map((toast) => (

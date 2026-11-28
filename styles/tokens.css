@@ -34,6 +34,7 @@
   --z-modal: 55;
   --z-popover: 65;
   --z-toast: 80;
+  --z-overlay: 90;
 
   /* --- Default Brand Palette: Refined Indigo (Tier 1 + Accent Bridge) --- */
   --color-primary: 70 72 212;

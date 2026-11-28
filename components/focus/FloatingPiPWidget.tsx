@@ -83,7 +83,7 @@ export const FloatingPiPWidget: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 border-r border-white/15 pr-2 shrink-0">
+                    <div className="flex items-center gap-1.5 border-e border-white/15 pe-2 shrink-0">
                         {status === 'paused' ? (
                             <button
                                 type="button"

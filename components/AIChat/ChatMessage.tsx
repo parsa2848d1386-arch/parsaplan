@@ -1,9 +1,33 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components, type ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, Bot, Copy, Volume2, RotateCcw, Check, ListChecks, FileText, Image as ImageIcon, PlayCircle, ChevronDown, Eye } from 'lucide-react';
+
+const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+
+export function sanitizeMarkdownUrl(url: string): string {
+    const trimmed = (url || '').trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('/') || trimmed.startsWith('#')) return trimmed;
+    try {
+        const parsed = new URL(trimmed, 'https://parsaplan.local');
+        if (SAFE_URL_PROTOCOLS.has(parsed.protocol)) {
+            return trimmed;
+        }
+    } catch {
+        return '';
+    }
+    return '';
+}
+
+type MarkdownCodeProps = React.ComponentPropsWithoutRef<'code'> &
+    ExtraProps & {
+        inline?: boolean;
+    };
+import { User, Copy, Volume2, RotateCcw, Check, ListChecks, FileText, Image as ImageIcon, PlayCircle, ChevronDown, Eye } from 'lucide-react';
 import { ParsedTask } from '../AITaskReviewWindow';
+import { BlobatarBot } from '../ui/BlobatarBot';
+import type { BlobatarConfig } from '../../types';
 import { formatToPersianDigits } from '../../utils';
 import { ANTICIPATION_MESSAGE_VARIANTS, TRANSITION_FAST } from '../../utils/motionPresets';
 
@@ -12,7 +36,7 @@ export interface MessageProps {
         id: string;
         text: string;
         sender: 'user' | 'ai';
-        timestamp: Date;
+        timestamp: Date | string;
         isError?: boolean;
         retryText?: string;
         pendingTasks?: ParsedTask[];
@@ -23,6 +47,9 @@ export interface MessageProps {
     onReviewTasks?: (tasks: ParsedTask[]) => void;
     onAutoAddTasks?: (tasks: ParsedTask[], messageId: string) => void;
     tasksApplied?: boolean;
+    botSeed?: string;
+    botConfig?: BlobatarConfig;
+    userLevel?: number;
 }
 
 export const ChatMessage: React.FC<MessageProps> = ({
@@ -32,6 +59,9 @@ export const ChatMessage: React.FC<MessageProps> = ({
     onReviewTasks,
     onAutoAddTasks,
     tasksApplied,
+    botSeed = 'Parsashz',
+    botConfig,
+    userLevel = 1,
 }) => {
     const isUser = message.sender === 'user';
     const prefersReducedMotion = useReducedMotion();
@@ -73,10 +103,14 @@ export const ChatMessage: React.FC<MessageProps> = ({
                     className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center ${
                         isUser
                             ? 'bg-primary text-on-primary'
-                            : 'bg-[var(--surface-elevated)] text-primary border border-[var(--border-subtle)]'
+                            : 'bg-[var(--surface-elevated)] border border-[var(--border-subtle)]'
                     }`}
                 >
-                    {isUser ? <User size={15} strokeWidth={2.2} /> : <Bot size={16} strokeWidth={2.2} />}
+                    {isUser ? (
+                        <User size={15} strokeWidth={2.2} />
+                    ) : (
+                        <BlobatarBot seed={botSeed} config={botConfig} level={userLevel} size="xs" />
+                    )}
                 </div>
 
                 {/* Bubble (Opaque Semantic Surface — Zero Content-Layer Blur) */}
@@ -119,29 +153,38 @@ export const ChatMessage: React.FC<MessageProps> = ({
 
                         {/* Markdown Content */}
                         {!isUser ? (
-                            <div dir="rtl" className="max-w-none break-words text-right space-y-2">
+                            <div dir="rtl" className="max-w-none break-words text-start space-y-2">
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
+                                    urlTransform={sanitizeMarkdownUrl}
                                     components={{
-                                        h1: ({ node, ...props }) => <h1 className="text-lg font-extrabold mb-2 mt-3 text-primary" {...props} />,
-                                        h2: ({ node, ...props }) => <h2 className="text-base font-extrabold mb-1.5 mt-3 text-on-surface" {...props} />,
-                                        h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1 mt-2 text-on-surface" {...props} />,
-                                        p: ({ node, ...props }) => <p className="leading-7 text-on-surface" {...props} />,
-                                        ul: ({ node, ...props }) => <ul className="list-disc list-outside ms-4 space-y-1 mb-2" {...props} />,
-                                        ol: ({ node, ...props }) => <ol className="list-decimal list-outside ms-4 space-y-1 mb-2" {...props} />,
-                                        blockquote: ({ node, ...props }) => (
+                                        h1: ({ node: _n, ...props }) => <h1 className="text-lg font-extrabold mb-2 mt-3 text-primary" {...props} />,
+                                        h2: ({ node: _n, ...props }) => <h2 className="text-base font-extrabold mb-1.5 mt-3 text-on-surface" {...props} />,
+                                        h3: ({ node: _n, ...props }) => <h3 className="text-sm font-bold mb-1 mt-2 text-on-surface" {...props} />,
+                                        p: ({ node: _n, ...props }) => <p className="leading-7 text-on-surface" {...props} />,
+                                        a: ({ node: _n, href, ...props }) => (
+                                            <a
+                                                href={href ? sanitizeMarkdownUrl(href) || undefined : undefined}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary underline hover:opacity-80"
+                                                {...props}
+                                            />
+                                        ),
+                                        ul: ({ node: _n, ...props }) => <ul className="list-disc list-outside ms-4 space-y-1 mb-2" {...props} />,
+                                        ol: ({ node: _n, ...props }) => <ol className="list-decimal list-outside ms-4 space-y-1 mb-2" {...props} />,
+                                        blockquote: ({ node: _n, ...props }) => (
                                             <blockquote
                                                 className="border-s-2 border-primary/50 ps-3.5 py-2 my-2 bg-surface-container-low rounded-e-xl not-italic text-[var(--text-secondary)]"
                                                 {...props}
                                             />
                                         ),
-                                        code: ({ node, inline, className, children, ...props }: any) => {
+                                        code: ({ node: _n, inline, className: _cls, children, ...props }: MarkdownCodeProps) => {
                                             return !inline ? (
                                                 <div className="relative my-2.5">
                                                     <pre
                                                         dir="ltr"
                                                         className="bg-slate-900 text-slate-100 p-3 rounded-xl overflow-x-auto text-xs font-mono text-left"
-                                                        {...props}
                                                     >
                                                         <code>{children}</code>
                                                     </pre>
@@ -155,7 +198,7 @@ export const ChatMessage: React.FC<MessageProps> = ({
                                                 </code>
                                             );
                                         },
-                                    }}
+                                    } satisfies Components}
                                 >
                                     {message.text}
                                 </ReactMarkdown>
@@ -178,7 +221,7 @@ export const ChatMessage: React.FC<MessageProps> = ({
 
                         {/* Timestamp */}
                         <div
-                            className={`text-[10px] mt-1.5 flex justify-end font-mono tabular-nums ${
+                            className={`text-[11px] mt-1.5 flex justify-end font-mono tabular-nums ${
                                 isUser ? 'text-on-primary/75' : 'text-[var(--text-secondary)]'
                             }`}
                         >
@@ -278,13 +321,13 @@ export const ChatMessage: React.FC<MessageProps> = ({
                             type="button"
                             onClick={() => setShowTasks(!showTasks)}
                             aria-expanded={showTasks}
-                            className="w-full bg-surface-container-low px-4 py-3 flex items-center justify-between cursor-pointer border-b border-[var(--border-subtle)] select-none text-right"
+                            className="w-full bg-surface-container-low px-4 py-3 flex items-center justify-between cursor-pointer border-b border-[var(--border-subtle)] select-none text-start"
                         >
                             <div className="flex items-center gap-2.5">
                                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                                     <ListChecks size={18} strokeWidth={2.2} />
                                 </div>
-                                <div className="flex flex-col text-right">
+                                <div className="flex flex-col text-start">
                                     <span className="text-xs sm:text-sm font-extrabold text-on-surface">
                                         پیشنهاد {formatToPersianDigits(message.pendingTasks.length)} تسک جدید
                                     </span>
@@ -308,7 +351,7 @@ export const ChatMessage: React.FC<MessageProps> = ({
                                             className="flex items-center gap-2.5 p-2.5 bg-surface-container-low rounded-xl border border-[var(--border-subtle)] text-xs"
                                         >
                                             <div className="w-1 h-8 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                                            <div className="flex-1 min-w-0 text-right">
+                                            <div className="flex-1 min-w-0 text-start">
                                                 <div className="font-extrabold text-on-surface truncate">{task.subject}</div>
                                                 <div className="text-[var(--text-secondary)] truncate text-[11px] font-medium mt-0.5">
                                                     {task.topic}

@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GoogleGenAI, Part } from '@google/genai';
+import { geminiChatRequestSchema, geminiGenerateRequestSchema } from './utils/schemas';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -188,9 +189,41 @@ function parseAttachmentsToParts(rawAttachments: unknown): { ok: true; parts: Pa
 
 async function startServer() {
   const app = express();
+  app.disable('x-powered-by');
   app.use(express.json({ limit: '12mb' }));
 
+  const isProduction =
+    process.env.NODE_ENV === 'production' || process.env.npm_lifecycle_event === 'start';
+
+  // Security headers (defense-in-depth for client & API routes)
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(self)');
+    if (isProduction) {
+      res.setHeader(
+        'Content-Security-Policy',
+        [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com data:",
+          "img-src 'self' data: blob: https:",
+          "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com wss://*.firebaseio.com",
+          "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'none'",
+        ].join('; ')
+      );
+    }
+    next();
+  });
+
   app.get('/api/health', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.json({
       ok: true,
       aiConfigured: Boolean(process.env.GEMINI_API_KEY),
@@ -208,25 +241,23 @@ async function startServer() {
     }
 
     try {
-      const { prompt, model, systemInstruction, responseMimeType } = req.body ?? {};
-      if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-        return res.status(400).json({ error: 'متن درخواست الزامی است.' });
+      const parsedBody = geminiGenerateRequestSchema.safeParse(req.body ?? {});
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0]?.message || 'متن درخواست نامعتبر است.' });
       }
-      if (prompt.length > 40_000) {
-        return res.status(400).json({ error: 'طول متن ارسالی بیش از حد مجاز است.' });
-      }
+      const { prompt, model, systemInstruction, responseMimeType } = parsedBody.data;
 
       const ai = getAiClient();
       const config: Record<string, unknown> = {};
-      if (typeof systemInstruction === 'string' && systemInstruction.trim()) {
+      if (systemInstruction && systemInstruction.trim()) {
         config.systemInstruction = systemInstruction;
       }
-      if (typeof responseMimeType === 'string' && responseMimeType.trim()) {
+      if (responseMimeType && responseMimeType.trim()) {
         config.responseMimeType = responseMimeType;
       }
 
       const response = await ai.models.generateContent({
-        model: resolveModel(typeof model === 'string' ? model : undefined),
+        model: resolveModel(model),
         contents: prompt,
         ...(Object.keys(config).length > 0 ? { config } : {}),
       });
@@ -248,8 +279,12 @@ async function startServer() {
     }
 
     try {
-      const { message, history, systemInstruction, model, attachments } = req.body ?? {};
-      const messageText = typeof message === 'string' ? message.trim() : '';
+      const parsedBody = geminiChatRequestSchema.safeParse(req.body ?? {});
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0]?.message || 'درخواست چت نامعتبر است.' });
+      }
+      const { message, history, systemInstruction, model, attachments } = parsedBody.data;
+      const messageText = message.trim();
 
       const parsedAttachments = parseAttachmentsToParts(attachments);
       if (parsedAttachments.ok === false) {
@@ -260,19 +295,16 @@ async function startServer() {
         return res.status(400).json({ error: 'پیام یا حداقل یک فایل پیوست الزامی است.' });
       }
 
-      if (messageText.length > 30_000) {
-        return res.status(400).json({ error: 'طول پیام ارسالی بیش از حد مجاز است.' });
-      }
-
       const ai = getAiClient();
       const formattedHistory = Array.isArray(history)
         ? history
             .filter(
               (item): item is { role: 'user' | 'model'; text: string } =>
                 Boolean(item) &&
-                (item.role === 'user' || item.role === 'model') &&
-                typeof item.text === 'string' &&
-                item.text.trim().length > 0
+                typeof item === 'object' &&
+                ((item as { role?: unknown }).role === 'user' || (item as { role?: unknown }).role === 'model') &&
+                typeof (item as { text?: unknown }).text === 'string' &&
+                (item as { text: string }).text.trim().length > 0
             )
             .slice(-20)
             .map((item) => ({
@@ -282,9 +314,9 @@ async function startServer() {
         : [];
 
       const chat = ai.chats.create({
-        model: resolveModel(typeof model === 'string' ? model : undefined),
+        model: resolveModel(model),
         config:
-          typeof systemInstruction === 'string' && systemInstruction.trim()
+          systemInstruction && systemInstruction.trim()
             ? { systemInstruction }
             : undefined,
         ...(formattedHistory.length > 0 ? { history: formattedHistory } : {}),
@@ -306,9 +338,6 @@ async function startServer() {
     }
   });
 
-  const isProduction =
-    process.env.NODE_ENV === 'production' || process.env.npm_lifecycle_event === 'start';
-
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
@@ -318,8 +347,24 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distDir = path.join(__dirname, 'dist');
-    app.use(express.static(distDir));
+    app.use(
+      '/assets',
+      express.static(path.join(distDir, 'assets'), {
+        maxAge: '365d',
+        immutable: true,
+      })
+    );
+    app.use(
+      express.static(distDir, {
+        setHeaders: (res, filePath) => {
+          if (/\.(html|webmanifest)$/i.test(filePath) || /(sw|registerSW|workbox-.*)\.js$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+        },
+      })
+    );
     app.use((_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distDir, 'index.html'));
     });
   }

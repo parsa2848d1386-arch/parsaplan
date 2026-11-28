@@ -138,9 +138,9 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
     );
 
     return (
-        <div className="space-y-1.5 text-right" dir="rtl">
+        <div className="space-y-1.5 text-start" dir="rtl">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                <span className="text-[11px] font-bold text-[var(--text-secondary)]">
                     یادداشت بلوکی (برای منو <code className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-indigo-500">/</code> بزنید)
                 </span>
                 <div className="flex items-center gap-1">
@@ -148,7 +148,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                         <button
                             type="button"
                             onClick={() => onChange([...blocks, createBlock('math', '\\Delta x = \\frac{1}{2}at^2 + v_0t')])}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center gap-1 transition"
+                            className="px-2 py-1 rounded-lg text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center gap-1 transition"
                         >
                             <Sigma size={12} /> فرمول
                         </button>
@@ -156,14 +156,14 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                     <button
                         type="button"
                         onClick={() => onChange([...blocks, createBlock('checklist')])}
-                        className="px-2 py-1 rounded-lg text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-1 transition"
+                        className="px-2 py-1 rounded-lg text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-1 transition"
                     >
                         <CheckSquare size={12} /> چک‌لیست
                     </button>
                     <button
                         type="button"
                         onClick={() => onChange([...blocks, createBlock('text')])}
-                        className="px-2 py-1 rounded-lg text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center gap-1 transition"
+                        className="px-2 py-1 rounded-lg text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center gap-1 transition"
                     >
                         <Plus size={12} /> بلوک جدید
                     </button>
@@ -174,7 +174,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                 <button
                     type="button"
                     onClick={() => onChange([createBlock('text')])}
-                    className="w-full py-6 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col items-center gap-1.5"
+                    className="w-full py-6 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-[var(--text-tertiary)] hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col items-center gap-1.5"
                 >
                     <Plus size={18} />
                     <span>کلیک کنید یا / بزنید تا یادداشت‌برداری بلوکی شروع شود</span>
@@ -189,7 +189,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                     type="button"
                                     onClick={() => onCreateFlashcard(block.content, block.children?.[0]?.content || 'مرور نکته بلوکی')}
                                     title="تبدیل به فلش‌کارت لایتنر"
-                                    className="p-1 rounded hover:bg-orange-50 dark:hover:bg-orange-950/30 text-gray-400 hover:text-orange-500 transition"
+                                    className="p-1 rounded hover:bg-orange-50 dark:hover:bg-orange-950/30 text-[var(--text-tertiary)] hover:text-orange-500 transition"
                                 >
                                     <BrainCircuit size={12} />
                                 </button>
@@ -198,7 +198,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                 type="button"
                                 onClick={() => deleteBlock(block.id)}
                                 title="حذف بلوک"
-                                className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-gray-400 hover:text-rose-500 transition"
+                                className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-[var(--text-tertiary)] hover:text-rose-500 transition"
                             >
                                 <Trash2 size={12} />
                             </button>
@@ -215,7 +215,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                     onChange={(e) => handleContentChange(block, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(e, block, idx)}
                                     placeholder="تیتر اصلی..."
-                                    className="w-full bg-transparent text-lg font-black text-gray-800 dark:text-white outline-none py-1 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                                    className="w-full bg-transparent text-lg font-black text-gray-800 dark:text-white outline-none py-1 placeholder:text-[var(--text-tertiary)]"
                                 />
                             )}
 
@@ -226,7 +226,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                     onChange={(e) => handleContentChange(block, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(e, block, idx)}
                                     placeholder="تیتر دوم..."
-                                    className="w-full bg-transparent text-base font-extrabold text-gray-800 dark:text-gray-100 outline-none py-1 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                                    className="w-full bg-transparent text-base font-extrabold text-gray-800 dark:text-gray-100 outline-none py-1 placeholder:text-[var(--text-tertiary)]"
                                 />
                             )}
 
@@ -237,7 +237,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                     onChange={(e) => handleContentChange(block, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(e, block, idx)}
                                     placeholder="تیتر سوم..."
-                                    className="w-full bg-transparent text-sm font-bold text-indigo-600 dark:text-indigo-400 outline-none py-0.5 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                                    className="w-full bg-transparent text-sm font-bold text-indigo-600 dark:text-indigo-400 outline-none py-0.5 placeholder:text-[var(--text-tertiary)]"
                                 />
                             )}
 
@@ -248,7 +248,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                     onChange={(e) => handleContentChange(block, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(e, block, idx)}
                                     placeholder="بنویسید یا / بزنید..."
-                                    className="w-full bg-transparent text-xs md:text-sm text-gray-700 dark:text-gray-200 outline-none py-1 placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                                    className="w-full bg-transparent text-xs md:text-sm text-gray-700 dark:text-gray-200 outline-none py-1 placeholder:text-[var(--text-tertiary)]"
                                 />
                             )}
 
@@ -257,7 +257,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => updateBlock(block.id, { checked: !block.checked })}
-                                        className={`shrink-0 transition ${block.checked ? 'text-emerald-500' : 'text-gray-400 hover:text-indigo-500'}`}
+                                        className={`shrink-0 transition ${block.checked ? 'text-emerald-500' : 'text-[var(--text-tertiary)] hover:text-indigo-500'}`}
                                     >
                                         {block.checked ? <CheckSquare size={16} /> : <Square size={16} />}
                                     </button>
@@ -269,7 +269,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                         placeholder="مورد چک‌لیست..."
                                         className={`flex-1 bg-transparent text-xs md:text-sm outline-none ${
                                             block.checked
-                                                ? 'line-through text-gray-400'
+                                                ? 'line-through text-[var(--text-tertiary)]'
                                                 : 'text-gray-700 dark:text-gray-200'
                                         }`}
                                     />
@@ -278,7 +278,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                             type="button"
                                             onClick={() => onFocusChecklistItem(block.content)}
                                             title="تمرکز روی همین مورد"
-                                            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1 transition"
+                                            className="opacity-0 group-hover:opacity-100 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold flex items-center gap-1 transition"
                                         >
                                             <Play size={10} /> تمرکز
                                         </button>
@@ -301,14 +301,14 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                             )}
 
                             {block.type === 'quote' && (
-                                <div className="border-r-4 border-indigo-500 pr-3 py-1 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-l-xl">
+                                <div className="border-s-4 border-indigo-500 ps-3 py-1 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-e-xl">
                                     <input
                                         type="text"
                                         value={block.content}
                                         onChange={(e) => handleContentChange(block, e.target.value)}
                                         onKeyDown={(e) => handleKeyDown(e, block, idx)}
                                         placeholder="متن کتاب درسی یا نقل‌قول..."
-                                        className="w-full bg-transparent text-xs md:text-sm italic text-gray-600 dark:text-gray-300 outline-none"
+                                        className="w-full bg-transparent text-xs md:text-sm not-italic text-gray-600 dark:text-gray-300 outline-none"
                                     />
                                 </div>
                             )}
@@ -369,7 +369,7 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                                 })
                                             }
                                             placeholder="پاسخ یا توضیحات مخفی..."
-                                            className="w-full mt-2 mr-5 bg-white dark:bg-gray-900/60 rounded-lg p-2 text-xs text-gray-600 dark:text-gray-300 outline-none border border-gray-100 dark:border-gray-700/60"
+                                            className="w-full mt-2 me-5 bg-white dark:bg-gray-900/60 rounded-lg p-2 text-xs text-gray-600 dark:text-gray-300 outline-none border border-gray-100 dark:border-gray-700/60"
                                         />
                                     )}
                                 </div>
@@ -385,14 +385,14 @@ export const BlockNoteEditor: React.FC<BlockNoteEditorProps> = ({
                                                 key={opt.type}
                                                 type="button"
                                                 onClick={() => convertBlock(block.id, opt.type)}
-                                                className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-right transition"
+                                                className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-start transition"
                                             >
                                                 <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-indigo-500 shrink-0">
                                                     <Icon size={14} />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <div className="text-xs font-bold text-gray-800 dark:text-white truncate">{opt.label}</div>
-                                                    <div className="text-[10px] text-gray-400 truncate">{opt.hint}</div>
+                                                    <div className="text-[11px] text-[var(--text-tertiary)] truncate">{opt.hint}</div>
                                                 </div>
                                             </button>
                                         );

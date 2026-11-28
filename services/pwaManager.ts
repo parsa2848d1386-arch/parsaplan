@@ -18,16 +18,21 @@ export async function clearAllAppCaches(): Promise<void> {
   }
 }
 
+export interface PwaAutoUpdaterOptions {
+  onUpdateAvailable?: (applyUpdate: () => Promise<void>) => boolean | void;
+}
+
 /**
  * راه‌اندازی و مدیریت خودکار چرخه حیات Service Worker و دریافت آنی نسخه‌های جدید
  */
-export function setupPwaAutoUpdater(): () => void {
+export function setupPwaAutoUpdater(options?: PwaAutoUpdaterOptions): () => void {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !navigator.serviceWorker) {
     return () => {};
   }
 
   let refreshing = false;
   let hadController = Boolean(navigator.serviceWorker.controller);
+  const listenerAbort = new AbortController();
 
   // لیسنر ریلود تک‌باره هنگام تغییر کنترلر به نسخه تازه (controllerchange)
   const handleControllerChange = () => {
@@ -49,10 +54,18 @@ export function setupPwaAutoUpdater(): () => void {
     updateSW = registerSW({
       immediate: true,
       async onNeedRefresh() {
-        console.log('[PWA] New update available. Purging caches and activating new worker...');
-        await clearAllAppCaches();
-        if (updateSW) {
-          await updateSW(true);
+        const applyUpdate = async () => {
+          console.log('[PWA] New update available. Purging caches and activating new worker...');
+          await clearAllAppCaches();
+          if (updateSW) {
+            await updateSW(true);
+          }
+        };
+
+        // Allow callers (e.g. active Focus session) to defer reload via interactive prompt
+        const handledByCaller = options?.onUpdateAvailable?.(applyUpdate) === true;
+        if (!handledByCaller) {
+          await applyUpdate();
         }
       },
       onOfflineReady() {
@@ -81,13 +94,17 @@ export function setupPwaAutoUpdater(): () => void {
             registration.update().catch(() => {});
           }
         };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange, {
+          signal: listenerAbort.signal,
+        });
 
         // ج) بررسی هنگام اتصال مجدد به اینترنت (online)
         const handleOnline = () => {
           registration.update().catch(() => {});
         };
-        window.addEventListener('online', handleOnline);
+        window.addEventListener('online', handleOnline, {
+          signal: listenerAbort.signal,
+        });
       },
       onRegisterError(error: unknown) {
         console.warn('[PWA] Service Worker registration failed:', error);
@@ -103,6 +120,7 @@ export function setupPwaAutoUpdater(): () => void {
       swUpdateInterval = null;
     }
     navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+    listenerAbort.abort();
   };
 }
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { MoodType } from '../types';
-import { Sparkles, Zap, Smile, BatteryLow, Frown } from 'lucide-react';
+import { Sparkles, Zap, Smile, BatteryLow, Frown, type LucideIcon } from 'lucide-react';
 import { getLogicalDateKey } from '../utils/streakEngine';
 
 const MoodTracker = () => {
@@ -10,7 +10,7 @@ const MoodTracker = () => {
     const today = useMemo(() => getLogicalDateKey(new Date(), cutoffHour), [cutoffHour]);
     const currentMood = moods?.[today];
 
-    const moodOptions: { type: MoodType; icon: any; label: string; color: string }[] = [
+    const moodOptions: { type: MoodType; icon: LucideIcon; label: string; color: string }[] = [
         { type: 'excellent', icon: Sparkles, label: 'عالی', color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700' },
         { type: 'high-energy', icon: Zap, label: 'پرانرژی', color: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 border-violet-200 dark:border-violet-700' },
         { type: 'normal', icon: Smile, label: 'معمولی', color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700' },
@@ -27,7 +27,7 @@ const MoodTracker = () => {
 
     return (
         <div className="bg-white dark:bg-gray-800 p-4 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="font-bold text-xs text-gray-500 dark:text-gray-400 mb-3">مود امروزت چطوره؟</h3>
+            <h3 className="font-bold text-xs text-[var(--text-secondary)] mb-3">مود امروزت چطوره؟</h3>
             <div className="flex justify-between gap-2">
                 {moodOptions.map((opt) => (
                     <button
@@ -42,7 +42,7 @@ const MoodTracker = () => {
                                 : 'bg-transparent border-transparent opacity-60 hover:opacity-100 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-400'
                         }`}
                     >
-                        <opt.icon size={24} className={currentMood === opt.type ? '' : 'text-gray-400 dark:text-gray-500'} />
+                        <opt.icon size={24} className={currentMood === opt.type ? '' : 'text-[var(--text-tertiary)]'} />
                     </button>
                 ))}
             </div>

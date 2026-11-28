@@ -85,7 +85,7 @@ export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelet
                             e.stopPropagation();
                             onEdit(e, task);
                         }}
-                        className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-indigo-500 transition"
+                        className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-[var(--text-tertiary)] hover:text-indigo-500 transition"
                     >
                         <Edit2 size={16} />
                     </button>
@@ -95,7 +95,7 @@ export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelet
                             e.stopPropagation();
                             onDelete(e, task.id);
                         }}
-                        className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-gray-400 hover:text-rose-500 transition"
+                        className="p-2 hover:bg-white/50 dark:hover:bg-gray-800/50 rounded-xl text-[var(--text-tertiary)] hover:text-rose-500 transition"
                     >
                         <Trash2 size={16} />
                     </button>
@@ -105,15 +105,15 @@ export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelet
             {/* Stats Summary */}
             <div className="grid grid-cols-3 gap-2 mb-3">
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-2 text-center">
-                    <span className="block text-[10px] text-gray-400 font-bold">زمان</span>
+                    <span className="block text-[11px] text-[var(--text-tertiary)] font-bold">زمان</span>
                     <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{task.actualDuration || 0}&apos;</span>
                 </div>
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-2 text-center">
-                    <span className="block text-[10px] text-gray-400 font-bold">تست</span>
+                    <span className="block text-[11px] text-[var(--text-tertiary)] font-bold">تست</span>
                     <span className="text-sm font-black text-gray-700 dark:text-gray-300">{totalQuestions}</span>
                 </div>
                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-2 text-center">
-                    <span className="block text-[10px] text-gray-400 font-bold">تراز / درصد</span>
+                    <span className="block text-[11px] text-[var(--text-tertiary)] font-bold">تراز / درصد</span>
                     <span className={`text-sm font-black ${accuracy >= 60 ? 'text-emerald-500' : accuracy >= 30 ? 'text-amber-500' : 'text-rose-500'}`}>
                         {accuracy}%
                     </span>
@@ -125,7 +125,7 @@ export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelet
                 <button
                     type="button"
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="w-full flex items-center justify-center py-1 text-xs font-bold text-gray-400 hover:text-indigo-500 transition gap-1"
+                    className="w-full flex items-center justify-center py-1 text-xs font-bold text-[var(--text-tertiary)] hover:text-indigo-500 transition gap-1"
                 >
                     {isExpanded ? 'بستن جزئیات' : 'مشاهده ریز نمرات'}
                     {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -145,7 +145,7 @@ export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelet
                                     <div className="flex items-center gap-2">
                                         <span>{style.icon}</span>
                                         <span className="font-bold text-gray-700 dark:text-gray-300">{sub.subject}</span>
-                                        <span className="text-gray-400">({sub.topic})</span>
+                                        <span className="text-[var(--text-tertiary)]">({sub.topic})</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-gray-500">{subCorrect}/{subTotal}</span>
@@ -163,7 +163,7 @@ export const ExamTaskCard: React.FC<Props> = React.memo(({ task, onEdit, onDelet
             {task.tags && task.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-3">
                     {task.tags.map((tag) => (
-                        <span key={tag} className="text-[9px] bg-white/50 dark:bg-gray-800/50 px-2 py-0.5 rounded-md text-gray-500 border border-gray-100 dark:border-gray-700">
+                        <span key={tag} className="text-[11px] bg-white/50 dark:bg-gray-800/50 px-2 py-0.5 rounded-md text-gray-500 border border-gray-100 dark:border-gray-700">
                             #{tag}
                         </span>
                     ))}

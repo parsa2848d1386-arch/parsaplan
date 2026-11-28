@@ -16,6 +16,9 @@ const PrintableSchedule = React.lazy(() => import('./PrintableSchedule'));
 import { NotificationBell } from './NotificationBell';
 import { DynamicIsland } from './DynamicIsland';
 import { BrandLogo } from './BrandLogo';
+import { DesktopTopHeader } from './layout/DesktopTopHeader';
+import { BlobatarBot } from './ui/BlobatarBot';
+import { useOptionalFocus } from '../context/FocusContext';
 import { ErrorBoundary } from './ErrorBoundary';
 import { RouteSkeleton, AIChatSkeleton } from './Skeleton';
 import { ArcFlightOverlay, RubberBandScrollContainer } from './ui/MotionPrimitives';
@@ -31,49 +34,12 @@ const PAGE_TITLES: Record<string, { title: string; shortTitle?: string; breadcru
     '/': { title: 'داشبورد', breadcrumb: 'داشبورد' },
     '/planner': { title: 'برنامه‌ریز بصری ۲۴ ساعته', shortTitle: 'تایم‌لاین ۲۴ ساعته', breadcrumb: 'تایم‌لاین' },
     '/subjects': { title: 'حوزه‌ها و اهداف', shortTitle: 'حوزه‌ها و نماها', breadcrumb: 'حوزه‌ها', isSubRoute: true },
-    '/analysis': { title: 'تحلیل عملکرد', breadcrumb: 'تحلیل' },
-    '/leaderboard': { title: 'لیگ و اتاق‌های مطالعه', shortTitle: 'لیگ و اتاق مطالعه', breadcrumb: 'لیگ' },
+    '/analysis': { title: 'تحلیل و پیشرفت', breadcrumb: 'تحلیل' },
+    '/leaderboard': { title: 'لیگ و اتاق مطالعه', shortTitle: 'لیگ و اتاق مطالعه', breadcrumb: 'لیگ' },
     '/settings': { title: 'تنظیمات', breadcrumb: 'تنظیمات' },
     '/history': { title: 'تاریخچه', breadcrumb: 'تاریخچه', isSubRoute: true },
     '/ai-chat': { title: 'دستیار هوشمند', breadcrumb: 'AI', isSubRoute: true },
 };
-
-const formatMinuteTime = () =>
-    new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-
-const useMinuteClock = () => {
-    const [clock, setClock] = useState(() => ({
-        time: formatMinuteTime(),
-        date: getFullShamsiDate(new Date().toISOString()),
-    }));
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            const nextTime = formatMinuteTime();
-            setClock((prev) => {
-                if (prev.time === nextTime) return prev;
-                const nextDate = getFullShamsiDate(new Date().toISOString());
-                return { time: nextTime, date: nextDate };
-            });
-        }, 10000);
-        return () => clearInterval(timer);
-    }, []);
-
-    return clock;
-};
-
-const DesktopClockChip = React.memo(() => {
-    const { time, date } = useMinuteClock();
-    return (
-        <div className="hidden xl:flex items-center gap-2 bg-white/45 dark:bg-white/8 px-3 py-1.5 squircle-sm text-on-surface-variant dark:text-slate-200 border border-[var(--glass-nav-border)] text-xs font-medium tabular-nums whitespace-nowrap shrink-0">
-            <CalendarClock size={15} className="text-primary shrink-0" aria-hidden="true" />
-            <span className="font-bold text-on-surface dark:text-white">{time}</span>
-            <span className="opacity-40">|</span>
-            <span>{date}</span>
-        </div>
-    );
-});
-DesktopClockChip.displayName = 'DesktopClockChip';
 
 const SyncStatusChip = React.memo<{
     isOnline: boolean;
@@ -273,8 +239,8 @@ const Layout = () => {
     const mainNavItems = [
         { to: '/', icon: Home, label: 'داشبورد جامع' },
         { to: '/planner', icon: CalendarClock, label: 'تایم‌لاین ۲۴ ساعته' },
-        { to: '/leaderboard', icon: Trophy, label: 'اتاق‌های مطالعه' },
-        { to: '/analysis', icon: BarChart2, label: 'تحلیل و لیگ رقابتی' },
+        { to: '/leaderboard', icon: Trophy, label: 'لیگ و اتاق مطالعه' },
+        { to: '/analysis', icon: BarChart2, label: 'تحلیل و پیشرفت' },
         { to: '/subjects', icon: BookOpen, label: 'حوزه‌ها و دروس' },
         { to: '/history', icon: HistoryIcon, label: 'تاریخچه' },
         { to: '/settings', icon: Settings, label: 'تنظیمات و راهنما' },
@@ -282,6 +248,20 @@ const Layout = () => {
 
     const getDisplayName = () => userName || user?.displayName || user?.email?.split('@')[0] || 'کاربر مهمان';
     const userInitial = (userName || user?.displayName || user?.email || 'کاربر').charAt(0).toUpperCase();
+    const botSeed = userName || user?.displayName || user?.email?.split('@')[0] || 'Parsashz';
+    const focusCtx = useOptionalFocus();
+    const isFocusRunning = focusCtx?.status === 'running';
+
+    const profileBotAvatar = (
+        <BlobatarBot
+            seed={botSeed}
+            config={settings?.blobatar}
+            level={level ?? 1}
+            streak={streakCount}
+            isFocusRunning={isFocusRunning}
+            size="sm"
+        />
+    );
 
     const handleToggleAiPanel = () => {
         haptics.selection();
@@ -302,12 +282,18 @@ const Layout = () => {
 
     return (
         <div data-color-scheme={darkMode ? 'dark' : 'light'}>
+            <a
+                href="#main-content"
+                className="visually-hidden focus:fixed focus:top-3 focus:start-3 focus:z-[var(--z-toast)] focus:px-4 focus:py-2.5 focus:rounded-xl focus:bg-primary focus:text-on-primary focus:font-bold focus:text-sm focus:shadow-lg"
+            >
+                پرش به محتوای اصلی
+            </a>
             <ArcFlightOverlay />
             <Suspense fallback={null}>
                 <PrintableSchedule />
             </Suspense>
 
-            <div className="flex h-[100dvh] overflow-hidden no-print bg-[var(--surface-canvas)] text-[var(--text-primary)] text-right" dir="rtl">
+            <div className="flex h-[100dvh] overflow-hidden no-print bg-[var(--surface-canvas)] text-[var(--text-primary)] text-start" dir="rtl">
                 {isAuthModalOpen && (
                     <Suspense fallback={null}>
                         <AuthModal
@@ -327,7 +313,7 @@ const Layout = () => {
                     className={`
                         hidden md:flex flex-col h-full z-30 flex-shrink-0 relative
                         bg-surface-container-low dark:bg-slate-900
-                        border-l border-[var(--border-subtle)]
+                        border-s border-[var(--border-subtle)]
                         transition-all duration-300 py-space-md px-space-sm justify-between
                         ${sidebarCollapsed ? 'w-[76px]' : 'w-72'}
                     `}
@@ -424,8 +410,15 @@ const Layout = () => {
                             </div>
                         ) : (
                             <div className="flex flex-col items-center gap-2">
-                                <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs">
-                                    {userInitial}
+                                <div className="w-9 h-9 rounded-full bg-surface-container-low border border-[var(--border-subtle)] flex items-center justify-center">
+                                    <BlobatarBot
+                                        seed={botSeed}
+                                        config={settings?.blobatar}
+                                        level={level ?? 1}
+                                        streak={streakCount}
+                                        isFocusRunning={isFocusRunning}
+                                        size="xs"
+                                    />
                                 </div>
                             </div>
                         )}
@@ -436,92 +429,23 @@ const Layout = () => {
                     MAIN CONTENT
                    ==================================================== */}
                 <main className="flex-1 flex flex-col min-w-0 relative h-full">
-                    {/* Desktop Header (Soft Liquid Glass Control Layer — Content Glides Underneath) */}
-                    <header className="hidden md:flex md:absolute md:top-0 md:inset-x-0 items-center justify-between h-16 px-6 border-b border-[var(--glass-nav-border)] liquid-glass-nav glass-header-shadow z-40">
-                        <div className="flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    haptics.selection();
-                                    setIsCommandPaletteOpen(true);
-                                }}
-                                className="w-56 xl:w-64 h-10 px-3 gap-2 flex items-center justify-between bg-white/45 dark:bg-white/8 squircle-sm text-on-surface-variant dark:text-slate-200 text-xs border border-[var(--glass-nav-border)] hover:border-primary/40 transition-colors group cursor-pointer text-right shrink-0"
-                                title="جستجو و دستورات (Ctrl+K)"
-                                aria-label="جستجو و دستورات (Ctrl+K)"
-                            >
-                                <span className="flex items-center gap-2 min-w-0 flex-1">
-                                    <Search size={16} className="shrink-0 text-on-surface-variant group-hover:text-primary transition-colors" aria-hidden="true" />
-                                    <span className="truncate">جستجو در برنامه...</span>
-                                </span>
-                                <kbd className="shrink-0 px-1.5 py-0.5 rounded-md bg-white/60 dark:bg-slate-700/80 text-on-surface-variant dark:text-slate-200 text-[11px] font-mono border border-[var(--border-subtle)]">
-                                    Ctrl+K
-                                </kbd>
-                            </button>
-
-                            <DesktopClockChip />
-
-                            <SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="desktop" />
-                        </div>
-
-                        {/* Right Actions */}
-                        <div className="flex items-center gap-2 shrink-0">
-                            <div
-                                data-arc-target="xp-badge"
-                                className="flex items-center gap-1.5 bg-tertiary-fixed/70 px-3 py-1.5 squircle-sm text-on-tertiary-fixed font-bold text-xs tabular-nums border border-tertiary/15 whitespace-nowrap shrink-0"
-                            >
-                                <Flame size={15} className="fill-current text-tertiary shrink-0" aria-hidden="true" />
-                                <span>{formatToPersianDigits(streakCount)} روز زنجیره</span>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={handleToggleAiPanel}
-                                aria-label={isAiPanelOpen ? 'بستن دستیار هوشمند' : 'دستیار هوشمند'}
-                                className={`relative flex items-center gap-1.5 px-3 min-h-[40px] squircle-sm text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                                    isAiPanelOpen
-                                        ? 'bg-primary text-on-primary shadow-xs'
-                                        : 'bg-primary/14 text-primary hover:bg-primary/20'
-                                }`}
-                            >
-                                <Sparkles size={15} className="shrink-0" aria-hidden="true" />
-                                <span className="hidden lg:inline">{isAiPanelOpen ? 'بستن دستیار' : 'دستیار هوشمند'}</span>
-                            </button>
-
-                            <NotificationBell />
-
-                            <div className="h-5 w-px bg-[var(--border-subtle)] mx-0.5" />
-
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    haptics.selection();
-                                    if (!user) setIsAuthModalOpen(true);
-                                    else navigate('/settings');
-                                }}
-                                className="flex items-center gap-2 px-2 py-1 squircle-sm hover:bg-white/40 dark:hover:bg-white/10 transition text-left cursor-pointer shrink-0 whitespace-nowrap"
-                                title={user ? 'تنظیمات حساب' : 'ورود یا همگام‌سازی ابری'}
-                            >
-                                <div className="flex flex-col text-left items-end">
-                                    <span className="text-xs font-bold text-on-surface dark:text-white truncate max-w-[120px]">
-                                        {getDisplayName()}
-                                    </span>
-                                    <span className="text-[11px] text-secondary font-semibold flex items-center gap-1 whitespace-nowrap">
-                                        {user ? (
-                                            `سطح ${formatToPersianDigits(level)} • ابری`
-                                        ) : (
-                                            <>
-                                                <LogIn size={11} aria-hidden="true" />
-                                                ورود ابری / آفلاین
-                                            </>
-                                        )}
-                                    </span>
-                                </div>
-                                <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                                    {userInitial}
-                                </div>
-                            </button>
-                        </div>
-                    </header>
+                    <DesktopTopHeader
+                        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+                        syncStatusSlot={<SyncStatusChip isOnline={isOnline} cloudStatus={cloudStatus} variant="desktop" />}
+                        notificationSlot={<NotificationBell />}
+                        streakCount={streakCount}
+                        isAiPanelOpen={isAiPanelOpen}
+                        onToggleAiPanel={handleToggleAiPanel}
+                        isAuthenticated={Boolean(user)}
+                        displayName={getDisplayName()}
+                        level={level}
+                        userInitial={userInitial}
+                        avatarSlot={profileBotAvatar}
+                        onProfileClick={() => {
+                            if (!user) setIsAuthModalOpen(true);
+                            else navigate('/settings');
+                        }}
+                    />
 
                     {/* Mobile Top Floating Capsules — Right: Profile Bubble Trigger, Start-Offset: Dynamic Island (camera-safe), Left: Search + Notifications */}
                     <header className="md:hidden fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] inset-x-3 z-40 pointer-events-none flex items-center justify-between gap-2">
@@ -569,9 +493,9 @@ const Layout = () => {
                                 aria-expanded={isProfileChipExpanded}
                                 aria-label={user ? `پروفایل ${getDisplayName()}` : 'پروفایل کاربر و ورود'}
                                 title={user ? 'حساب کاربری' : 'ورود یا همگام‌سازی ابری'}
-                                className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center font-extrabold text-sm shadow-xs cursor-pointer shrink-0"
+                                className="w-11 h-11 rounded-full bg-white/60 dark:bg-white/10 border border-[var(--glass-nav-border)] flex items-center justify-center shadow-xs cursor-pointer shrink-0"
                             >
-                                {userInitial}
+                                {profileBotAvatar}
                             </motion.button>
                         </motion.div>
 
@@ -617,7 +541,7 @@ const Layout = () => {
                                                 }}
                                                 style={{ transformOrigin: 'calc(100% - 26px) 26px', willChange: 'transform, opacity' }}
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] right-3 w-[min(calc(100vw-1.5rem),296px)] rounded-[24px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden pt-1 pr-1 pl-3 pb-3 space-y-2.5"
+                                                className="fixed top-[max(0.625rem,env(safe-area-inset-top,0px))] right-3 w-[min(calc(100vw-1.5rem),296px)] rounded-[24px] liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] shadow-2xl overflow-hidden pt-1 pe-1 ps-3 pb-3 space-y-2.5"
                                             >
                                                 {/* Account Header — Close X sits first on top-right directly aligned over the closed Profile circle */}
                                                 <div className="flex items-center gap-2.5">
@@ -633,6 +557,14 @@ const Layout = () => {
                                                     >
                                                         <X size={17} />
                                                     </motion.button>
+                                                    <BlobatarBot
+                                                        seed={botSeed}
+                                                        config={settings?.blobatar}
+                                                        level={level ?? 1}
+                                                        streak={streakCount}
+                                                        isFocusRunning={isFocusRunning}
+                                                        size="sm"
+                                                    />
                                                     <div className="flex flex-col min-w-0 flex-1">
                                                         <span className="text-sm font-extrabold text-on-surface dark:text-white truncate">
                                                             {getDisplayName()}
@@ -810,11 +742,11 @@ const Layout = () => {
                             aria-label="منوی موبایل"
                             style={{ willChange: 'max-width' }}
                             className={`pointer-events-auto flex-1 min-w-0 rounded-full liquid-glass-nav glass-pill-shadow border border-[var(--glass-nav-border)] p-1 transition-[max-width] duration-350 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                                isBottomNavCompact ? 'max-w-[184px]' : 'max-w-[344px]'
+                                isBottomNavCompact ? 'max-w-[184px]' : 'max-w-[calc(100%-4.5rem)] sm:max-w-[344px]'
                             }`}
                         >
                             <LayoutGroup id="mobile-bottom-nav">
-                                <div className="flex justify-between items-center gap-0.5">
+                                <div className="flex justify-between items-center gap-0.5 min-w-0">
                                     {[
                                         { to: '/', end: true, icon: Home, label: 'داشبورد' },
                                         { to: '/planner', end: false, icon: CalendarClock, label: 'تایم‌لاین' },
@@ -835,7 +767,7 @@ const Layout = () => {
                                                 onTouchStart={() => prefetchRoute(tab.to)}
                                                 onFocus={() => prefetchRoute(tab.to)}
                                                 className={({ isActive }) =>
-                                                    `relative flex flex-col items-center justify-center h-[50px] rounded-full transition-[flex,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.95] overflow-hidden ${
+                                                    `relative min-w-0 flex flex-col items-center justify-center h-[50px] rounded-full transition-[flex,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.95] overflow-hidden ${
                                                         isActive
                                                             ? isBottomNavCompact
                                                                 ? 'flex-[0.82] px-1 text-on-primary-fixed font-extrabold'
@@ -873,7 +805,7 @@ const Layout = () => {
                                                                         ? 'max-h-0 opacity-0 pointer-events-none'
                                                                         : isActive
                                                                           ? 'max-h-4 opacity-100 text-[11px] font-extrabold'
-                                                                          : 'max-h-4 opacity-80 text-[10px]'
+                                                                          : 'max-h-4 opacity-85 text-[11px]'
                                                                 }`}
                                                             >
                                                                 {tab.label}
@@ -958,7 +890,7 @@ const Layout = () => {
                                 className={
                                     isMobile
                                         ? 'fixed inset-0 z-[55] flex flex-col bg-[var(--surface-elevated)] pt-safe pb-safe'
-                                        : 'flex-shrink-0 h-full bg-[var(--surface-elevated)] border-r border-[var(--border-subtle)] z-30 flex flex-col'
+                                        : 'flex-shrink-0 h-full bg-[var(--surface-elevated)] border-s border-[var(--border-subtle)] z-30 flex flex-col'
                                 }
                                 style={{
                                     transformOrigin: isMobile ? 'bottom left' : 'center left',
@@ -971,26 +903,9 @@ const Layout = () => {
                                             aiDragControls.start(e);
                                         }
                                     }}
-                                    className="md:hidden flex flex-col border-b border-[var(--border-subtle)] shrink-0 touch-none cursor-grab active:cursor-grabbing"
+                                    className="md:hidden flex justify-center pt-2 pb-1 bg-[var(--surface-elevated)] shrink-0 touch-none cursor-grab active:cursor-grabbing"
                                 >
-                                    <div className="flex justify-center pt-2 pb-0.5" aria-hidden="true">
-                                        <span className="w-10 h-1 rounded-full bg-[var(--border-strong)]" />
-                                    </div>
-                                    <div className="flex items-center justify-between px-4 h-12">
-                                        <div className="flex items-center gap-2">
-                                            <Sparkles size={17} className="text-primary" aria-hidden="true" />
-                                            <h3 className="font-extrabold text-sm text-[var(--text-primary)]">دستیار هوشمند</h3>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onPointerDownCapture={(e) => e.stopPropagation()}
-                                            onClick={() => setIsAiPanelOpen(false)}
-                                            aria-label="بستن دستیار هوشمند"
-                                            className="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:bg-surface-container rounded-xl transition cursor-pointer"
-                                        >
-                                            <X size={20} />
-                                        </button>
-                                    </div>
+                                    <span className="w-10 h-1 rounded-full bg-[var(--border-strong)]" aria-hidden="true" />
                                 </div>
                                 <Suspense fallback={<AIChatSkeleton />}>
                                     <AIChat isWidget={true} onClose={() => setIsAiPanelOpen(false)} />

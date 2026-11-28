@@ -508,7 +508,7 @@ const FocusTimer: React.FC = () => {
     if (lastCompletionSummary) {
         return (
             <div
-                className="fixed inset-0 z-[60] flex items-center justify-center bg-[#090d1a] p-6 select-none text-right font-sans"
+                className="fixed inset-0 z-[60] flex items-center justify-center bg-[#090d1a] p-6 select-none text-start font-sans"
                 dir="rtl"
             >
                 <motion.div
@@ -580,7 +580,7 @@ const FocusTimer: React.FC = () => {
 
     return (
         <div
-            className={`fixed inset-0 z-[60] flex items-center justify-center select-none text-right font-sans transition-colors duration-300 ${
+            className={`fixed inset-0 z-[60] flex items-center justify-center select-none text-start font-sans transition-colors duration-300 ${
                 strictLockActive && isRunning ? 'bg-black' : 'bg-[#090d1a]'
             }`}
             dir="rtl"
@@ -589,6 +589,7 @@ const FocusTimer: React.FC = () => {
             <div className="absolute top-5 right-5 left-5 flex items-center justify-between z-50 pointer-events-none">
                 <div className="flex items-center gap-2 pointer-events-auto">
                     <button
+                        type="button"
                         onClick={() => {
                             if (isRunning || isPaused) {
                                 minimizeToPiP();
@@ -610,6 +611,7 @@ const FocusTimer: React.FC = () => {
                     </button>
 
                     <button
+                        type="button"
                         onClick={() => setIsScratchpadOpen(true)}
                         className="p-2.5 rounded-2xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1.5 text-xs font-bold"
                         title="چرک‌نویس حین مطالعه"
@@ -621,6 +623,7 @@ const FocusTimer: React.FC = () => {
 
                 <div className="flex items-center gap-2 pointer-events-auto">
                     <button
+                        type="button"
                         onClick={toggleStrictLock}
                         className={`px-3 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition ${
                             strictLockActive
@@ -650,7 +653,7 @@ const FocusTimer: React.FC = () => {
                     <div aria-label="مراحل جلسه تمرکز" className="flex items-center w-full max-w-sm gap-2 px-1">
                         <div className="flex items-center gap-1.5 shrink-0">
                             <span
-                                className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${
+                                className={`w-5 h-5 rounded-full text-[11px] font-black flex items-center justify-center ${
                                     !isRunning && !isPaused
                                         ? 'bg-indigo-500 text-white shadow-sm'
                                         : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
@@ -668,7 +671,7 @@ const FocusTimer: React.FC = () => {
                         />
                         <div className="flex items-center gap-1.5 shrink-0">
                             <span
-                                className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center ${
+                                className={`w-5 h-5 rounded-full text-[11px] font-black flex items-center justify-center ${
                                     isRunning || isPaused
                                         ? 'bg-indigo-500 text-white shadow-sm'
                                         : 'bg-white/10 text-gray-400'
@@ -682,7 +685,7 @@ const FocusTimer: React.FC = () => {
                         </div>
                         <span aria-hidden="true" className="h-px flex-1 bg-white/15" />
                         <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center bg-white/10 text-gray-400">
+                            <span className="w-5 h-5 rounded-full text-[11px] font-black flex items-center justify-center bg-white/10 text-gray-400">
                                 ۳
                             </span>
                             <span className="text-[11px] font-bold text-gray-400">ثبت و پاداش</span>
@@ -700,6 +703,7 @@ const FocusTimer: React.FC = () => {
                             ] as const
                         ).map((m) => (
                             <button
+                                type="button"
                                 key={m.id}
                                 disabled={isRunning || isPaused}
                                 onClick={() => setMode(m.id)}
@@ -716,6 +720,7 @@ const FocusTimer: React.FC = () => {
                     {mode === 'pomodoro' && !isRunning && !isPaused && (
                         <div className="flex gap-2">
                             <button
+                                type="button"
                                 onClick={() => setPomoPhase('study')}
                                 className={`px-3 py-1 rounded-xl text-[11px] font-bold border ${
                                     pomoPhase === 'study'
@@ -726,6 +731,7 @@ const FocusTimer: React.FC = () => {
                                 پارت مطالعه
                             </button>
                             <button
+                                type="button"
                                 onClick={() => setPomoPhase('break')}
                                 className={`px-3 py-1 rounded-xl text-[11px] font-bold border ${
                                     pomoPhase === 'break'
@@ -743,6 +749,7 @@ const FocusTimer: React.FC = () => {
                             <span className="text-[11px] text-gray-400 font-bold">مدت (دقیقه):</span>
                             {[20, 30, 45, 60, 90].map((mins) => (
                                 <button
+                                    type="button"
                                     key={mins}
                                     onClick={() => setCustomCountdownMinutes(mins)}
                                     className={`px-2 py-0.5 rounded-lg text-xs font-mono font-bold ${
@@ -771,8 +778,8 @@ const FocusTimer: React.FC = () => {
                                 <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center shrink-0 text-indigo-400">
                                     <Clock size={14} />
                                 </div>
-                                <div className="flex flex-col text-right truncate">
-                                    <span className="text-[10px] text-gray-400 font-bold">مقصد ثبت خودکار زمان:</span>
+                                <div className="flex flex-col text-start truncate">
+                                    <span className="text-[11px] text-gray-400 font-bold">مقصد ثبت خودکار زمان:</span>
                                     <span className="text-xs font-extrabold text-white truncate">
                                         {pinnedTask ? `${pinnedTask.subject}: ${pinnedTask.topic}` : selectedSubject}
                                     </span>
@@ -783,9 +790,9 @@ const FocusTimer: React.FC = () => {
 
                         {isTaskSelectorOpen && !isRunning && (
                             <div className="absolute top-[110%] left-0 right-0 max-h-60 overflow-y-auto bg-slate-900/95 border border-white/10 rounded-2xl p-2 z-30 shadow-2xl custom-scrollbar">
-                                <div className="text-[10px] text-gray-500 px-2 py-1 font-bold">تسک‌های امروز:</div>
+                                <div className="text-[11px] text-gray-500 px-2 py-1 font-bold">تسک‌های امروز:</div>
                                 {todayTasks.length === 0 ? (
-                                    <div className="text-[10px] text-gray-500 text-center py-2">تسکی برای امروز ثبت نشده</div>
+                                    <div className="text-[11px] text-gray-500 text-center py-2">تسکی برای امروز ثبت نشده</div>
                                 ) : (
                                     todayTasks.map((t) => (
                                         <div
@@ -805,17 +812,18 @@ const FocusTimer: React.FC = () => {
                                     ))
                                 )}
                                 <div className="border-t border-white/10 my-1.5" />
-                                <div className="text-[10px] text-gray-500 px-2 py-1 font-bold">یا انتخاب حوزه / دسته آزاد:</div>
+                                <div className="text-[11px] text-gray-500 px-2 py-1 font-bold">یا انتخاب حوزه / دسته آزاد:</div>
                                 <div className="flex flex-wrap gap-1 p-1">
                                     {subjects.slice(0, 10).map((s) => (
                                         <button
+                                            type="button"
                                             key={s.id}
                                             onClick={() => {
                                                 setPinnedTaskId(null);
                                                 setSelectedSubject(s.name);
                                                 setIsTaskSelectorOpen(false);
                                             }}
-                                            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10px] text-gray-300 font-bold"
+                                            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[11px] text-gray-300 font-bold"
                                         >
                                             {s.icon} {s.name}
                                         </button>
@@ -933,6 +941,7 @@ const FocusTimer: React.FC = () => {
                     {/* Mark task complete quick action when pinned */}
                     {pinnedTask && isRunning && (
                         <button
+                            type="button"
                             onClick={() => finishSession(true, true)}
                             className="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1.5 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20 transition cursor-pointer"
                         >
@@ -956,6 +965,7 @@ const FocusTimer: React.FC = () => {
                 >
                     <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
                         <button
+                            type="button"
                             onClick={() => setRightPanelTab('audio')}
                             className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition ${
                                 rightPanelTab === 'audio' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
@@ -964,6 +974,7 @@ const FocusTimer: React.FC = () => {
                             کابین صوتی 🎵
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRightPanelTab('room')}
                             className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition ${
                                 rightPanelTab === 'room' ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200'
@@ -980,7 +991,7 @@ const FocusTimer: React.FC = () => {
                                     <Volume2 className="text-indigo-400" size={16} />
                                     سنتزگر امواج تمرکز
                                 </h3>
-                                <p className="text-[10px] text-gray-400 font-semibold">
+                                <p className="text-[11px] text-gray-400 font-semibold">
                                     تولید لحظه‌ای صدا با Web Audio API (شامل ضربان بتای ۱۴ هرتز)
                                 </p>
                             </div>
@@ -1003,7 +1014,7 @@ const FocusTimer: React.FC = () => {
                                                         key={sound.id}
                                                         type="button"
                                                         onClick={() => setActiveSound(sound.id)}
-                                                        className={`flex flex-col items-start p-2.5 squircle-md border text-right transition cursor-pointer ${
+                                                        className={`flex flex-col items-start p-2.5 squircle-md border text-start transition cursor-pointer ${
                                                             isSelected
                                                                 ? 'bg-indigo-500/15 border-indigo-500 shadow-md'
                                                                 : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -1015,7 +1026,7 @@ const FocusTimer: React.FC = () => {
                                                             </span>
                                                             <Icon size={13} className={isSelected ? 'text-indigo-400' : sound.color} />
                                                         </div>
-                                                        <span className="text-[9px] text-gray-400 truncate w-full">{sound.desc}</span>
+                                                        <span className="text-[11px] text-gray-400 truncate w-full">{sound.desc}</span>
                                                     </button>
                                                 );
                                             })}
@@ -1063,7 +1074,7 @@ const FocusTimer: React.FC = () => {
                                             <Users size={16} className="text-emerald-400" />
                                             اتاق مطالعه واقعی (Firestore)
                                         </h4>
-                                        <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+                                        <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
                                             با دوستانتان همزمان در یک کد اتاق مطالعه کنید، تشویق بفرستید و وضعیت تمرکز هم را زنده ببینید.
                                         </p>
                                     </div>
@@ -1076,6 +1087,7 @@ const FocusTimer: React.FC = () => {
                                         className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-center font-mono font-extrabold uppercase text-white outline-none focus:border-indigo-500"
                                     />
                                     <button
+                                        type="button"
                                         onClick={() => handleJoinRoom(tempCodeInput)}
                                         disabled={roomLoading}
                                         className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black transition disabled:opacity-50"
@@ -1083,6 +1095,7 @@ const FocusTimer: React.FC = () => {
                                         ورود به اتاق
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={handleCreateRoom}
                                         disabled={roomLoading}
                                         className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition disabled:opacity-50"
@@ -1094,7 +1107,7 @@ const FocusTimer: React.FC = () => {
                                 <div className="space-y-3">
                                     <div className="bg-white/5 border border-white/10 p-3.5 rounded-2xl flex items-center justify-between">
                                         <div>
-                                            <span className="text-[9px] text-indigo-400 font-extrabold block">
+                                            <span className="text-[11px] text-indigo-400 font-extrabold block">
                                                 {roomInfo?.name || 'اتاق مطالعه'}
                                             </span>
                                             <span className="text-base font-black text-white font-mono tracking-wider">
@@ -1103,17 +1116,19 @@ const FocusTimer: React.FC = () => {
                                         </div>
                                         <div className="flex gap-1.5">
                                             <button
+                                                type="button"
                                                 onClick={() => {
                                                     navigator.clipboard?.writeText(activeRoomCode);
                                                     showToast('کد کپی شد', 'success');
                                                 }}
-                                                className="px-2.5 py-1 bg-indigo-500/15 text-indigo-300 text-[10px] font-bold rounded-lg"
+                                                className="px-2.5 py-1 bg-indigo-500/15 text-indigo-300 text-[11px] font-bold rounded-lg"
                                             >
                                                 کپی
                                             </button>
                                             <button
+                                                type="button"
                                                 onClick={handleLeaveRoom}
-                                                className="px-2.5 py-1 bg-rose-500/15 text-rose-300 text-[10px] font-bold rounded-lg"
+                                                className="px-2.5 py-1 bg-rose-500/15 text-rose-300 text-[11px] font-bold rounded-lg"
                                             >
                                                 خروج
                                             </button>
@@ -1140,7 +1155,7 @@ const FocusTimer: React.FC = () => {
                                                         <div className="text-xs font-bold text-white truncate">
                                                             {peer.displayName} {peer.uid === userId ? '(شما)' : ''}
                                                         </div>
-                                                        <div className="text-[10px] text-gray-400 truncate">
+                                                        <div className="text-[11px] text-gray-400 truncate">
                                                             {peer.activeSubject || 'مطالعه'}
                                                         </div>
                                                     </div>
@@ -1148,7 +1163,7 @@ const FocusTimer: React.FC = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleCheerPeer(peer)}
-                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-[10px] font-bold shrink-0 cursor-pointer"
+                                                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 text-[11px] font-bold shrink-0 cursor-pointer"
                                                     title="تشویق"
                                                 >
                                                     <Heart size={11} />
@@ -1160,7 +1175,7 @@ const FocusTimer: React.FC = () => {
 
                                     {/* Quiet Chat */}
                                     <div className="bg-white/5 border border-white/10 rounded-2xl p-2.5 space-y-2">
-                                        <div className="max-h-24 overflow-y-auto space-y-1 text-[10px] custom-scrollbar">
+                                        <div className="max-h-24 overflow-y-auto space-y-1 text-[11px] custom-scrollbar">
                                             {roomMessages.length === 0 ? (
                                                 <p className="text-gray-500 text-center py-2">هنوز پیامی ثبت نشده</p>
                                             ) : (

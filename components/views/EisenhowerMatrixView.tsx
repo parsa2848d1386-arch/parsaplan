@@ -119,7 +119,7 @@ export const EisenhowerMatrixView: React.FC<EisenhowerMatrixViewProps> = ({ task
                                                 <button
                                                     type="button"
                                                     onClick={(e) => onEdit(e, task)}
-                                                    className="min-w-0 flex-1 text-right cursor-pointer"
+                                                    className="min-w-0 flex-1 text-start cursor-pointer"
                                                 >
                                                     <div
                                                         className={`text-xs font-bold truncate ${

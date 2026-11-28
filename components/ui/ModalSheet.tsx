@@ -59,7 +59,7 @@ export const ModalSheet: React.FC<ModalSheetProps> = ({
     dismissDisabled = false,
     historyKey,
     contentClassName = '',
-    zIndexClass = 'z-[9999]',
+    zIndexClass = 'z-[var(--z-modal)]',
     ariaLabelledBy,
     originTransform,
     children,
@@ -190,7 +190,7 @@ export const ModalSheet: React.FC<ModalSheetProps> = ({
                                     onClick={safeClose}
                                     disabled={dismissDisabled}
                                     aria-label="بستن"
-                                    className="w-11 h-11 -ml-1.5 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container active:scale-95 transition cursor-pointer shrink-0 disabled:opacity-40"
+                                    className="w-11 h-11 -ms-1.5 flex items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-on-surface hover:bg-surface-container active:scale-95 transition cursor-pointer shrink-0 disabled:opacity-40"
                                 >
                                     <X size={20} />
                                 </button>

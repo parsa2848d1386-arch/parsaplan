@@ -4,8 +4,14 @@ import { useUI } from '../context/UIContext';
 import { parseBrainDumpText } from '../utils/brainDumpParser';
 import { addDays, toIsoString, getDiffDays } from '../utils';
 import { clearSessionDraft, loadSessionDraft, saveSessionDraft } from '../utils/formHelpers';
+import { aiBrainDumpItemSchema } from '../utils/schemas';
 import { haptics } from '../utils/haptics';
-import { SubjectTask } from '../types';
+import {
+    SubjectTask,
+    type SpeechRecognitionEventLike,
+    type SpeechRecognitionInstance,
+    type WindowWithSpeechRecognition,
+} from '../types';
 import AITaskReviewWindow, { ParsedTask } from './AITaskReviewWindow';
 import { ModalSheet } from './ui/ModalSheet';
 import { Sparkles, Mic, MicOff, Wand2, Cpu, Loader2, AlertCircle } from 'lucide-react';
@@ -22,7 +28,7 @@ export const BrainDumpModal: React.FC = () => {
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [parsedPreview, setParsedPreview] = useState<ParsedTask[] | null>(null);
 
-    const recognitionRef = useRef<any>(null);
+    const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
     useEffect(() => {
         if (rawText.trim()) {
@@ -35,7 +41,8 @@ export const BrainDumpModal: React.FC = () => {
     if (!isBrainDumpOpen) return null;
 
     const toggleVoice = () => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const win = window as WindowWithSpeechRecognition;
+        const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             showToast('مرورگر شما از تشخیص گفتار پشتیبانی نمی‌کند.', 'warning');
             return;
@@ -52,7 +59,7 @@ export const BrainDumpModal: React.FC = () => {
         recognition.continuous = true;
         recognition.interimResults = false;
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: SpeechRecognitionEventLike) => {
             let chunk = '';
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 chunk += event.results[i][0].transcript + ' ';
@@ -132,18 +139,26 @@ ${rawText}`;
             const txt = data.text || '';
             const match = txt.match(/\[[\s\S]*\]/);
             if (!match) throw new Error('JSON array not found');
-            const arr = JSON.parse(match[0]) as any[];
-            const converted: ParsedTask[] = arr.map((item) => ({
-                title: item.title || item.topic || 'تسک جدید',
-                subject: item.subject || 'شخصی',
-                topic: item.topic || item.title || 'کار جدید',
-                details: item.details || 'برنامه‌ریزی شده',
-                date: item.date || todayIso,
-                studyType: item.studyType || 'task',
-                startTime: item.startTime,
-                durationMinutes: Number(item.durationMinutes) || 60,
-                priority: item.priority || 'medium',
-            }));
+            const rawParsed: unknown = JSON.parse(match[0]);
+            if (!Array.isArray(rawParsed)) throw new Error('JSON array expected');
+            const converted: ParsedTask[] = rawParsed
+                .map((rawItem) => aiBrainDumpItemSchema.safeParse(rawItem))
+                .filter((r) => r.success)
+                .map((r) => {
+                    const item = r.data;
+                    return {
+                        title: item.title || item.topic || 'تسک جدید',
+                        subject: item.subject || 'شخصی',
+                        topic: item.topic || item.title || 'کار جدید',
+                        details: item.details || 'برنامه‌ریزی شده',
+                        date: item.date || todayIso,
+                        studyType: item.studyType,
+                        startTime: item.startTime,
+                        durationMinutes: item.durationMinutes,
+                        priority: item.priority,
+                    };
+                });
+            if (converted.length === 0) throw new Error('No valid tasks parsed');
             setParsedPreview(converted);
         } catch (e) {
             console.warn('Gemini BrainDump parse failed, falling back to offline parser:', e);
@@ -244,7 +259,7 @@ ${rawText}`;
                             placeholder={
                                 'مثال:\nجلسه طراحی پروژه ساعت ۹ تا ۱۰:۳۰ فوری\nورزش و دویدن ۴۵ دقیقه عصر\nخرید منزل فردا ساعت ۱۸'
                             }
-                            className={`w-full rounded-2xl border bg-surface-container-low p-4 pl-14 text-base sm:text-sm leading-7 text-on-surface outline-none transition ${
+                            className={`w-full rounded-2xl border bg-surface-container-low p-4 ps-14 text-base sm:text-sm leading-7 text-on-surface outline-none transition ${
                                 inlineError
                                     ? 'border-rose-500 focus:border-rose-500'
                                     : 'border-[var(--border-subtle)] focus:border-primary'

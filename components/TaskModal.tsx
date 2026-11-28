@@ -490,7 +490,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     )}
                     <span
                         aria-hidden="true"
-                        className={`relative z-10 w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center shrink-0 ${
+                        className={`relative z-10 w-4 h-4 rounded-full text-[11px] font-black inline-flex items-center justify-center shrink-0 ${
                             tab === 'info' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-[var(--text-secondary)]'
                         }`}
                     >
@@ -526,7 +526,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                     )}
                     <span
                         aria-hidden="true"
-                        className={`relative z-10 w-4 h-4 rounded-full text-[10px] font-black inline-flex items-center justify-center shrink-0 ${
+                        className={`relative z-10 w-4 h-4 rounded-full text-[11px] font-black inline-flex items-center justify-center shrink-0 ${
                             tab === 'report'
                                 ? 'bg-emerald-600 text-white'
                                 : 'bg-surface-container-high text-[var(--text-secondary)]'
@@ -561,7 +561,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
             footerSlot={footerSubmit}
             historyKey="task-modal"
             maxWidthClass="max-w-xl"
-            zIndexClass="z-[99999]"
+            zIndexClass="z-[var(--z-modal)]"
         >
             <motion.form
                 id="task-modal-form"
@@ -761,7 +761,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                     setFormData((prev) => ({ ...prev, startTime: '' }));
                                                     setHasSmartPrefill(false);
                                                 }}
-                                                className="px-2 py-0.5 rounded-md bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-on-surface text-[10px] font-bold cursor-pointer shrink-0"
+                                                className="px-2 py-0.5 rounded-md bg-[var(--surface-elevated)] text-[var(--text-secondary)] hover:text-on-surface text-[11px] font-bold cursor-pointer shrink-0"
                                             >
                                                 حذف ساعت
                                             </button>
@@ -933,7 +933,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                                     }}
                                                     className={`relative min-h-[46px] flex ${
                                                         viewMode === 'list' && !isExamMode
-                                                            ? 'flex-row items-center gap-2 px-3 py-2 text-right'
+                                                            ? 'flex-row items-center gap-2 px-3 py-2 text-start'
                                                             : 'flex-col items-center justify-center p-2'
                                                     } squircle-sm border transition active:scale-95 cursor-pointer ${
                                                         isSelected
@@ -1231,7 +1231,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             {(formData.tags || []).map((tag) => (
                                                 <span
                                                     key={tag}
-                                                    className="bg-[var(--surface-elevated)] text-on-surface border border-[var(--border-subtle)] text-xs pr-2.5 pl-1 py-0.5 rounded-xl flex items-center gap-1"
+                                                    className="bg-[var(--surface-elevated)] text-on-surface border border-[var(--border-subtle)] text-xs pe-2.5 ps-1 py-0.5 rounded-xl flex items-center gap-1"
                                                 >
                                                     <span>{tag}</span>
                                                     <button
@@ -1258,7 +1258,7 @@ const TaskModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, curr
                                             value={tagInput}
                                             onChange={(e) => setTagInput(e.target.value)}
                                             onKeyDown={addTag}
-                                            className="w-full min-h-[42px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl pl-3 pr-9 py-2 text-base sm:text-xs outline-none focus:border-primary transition text-on-surface"
+                                            className="w-full min-h-[42px] bg-[var(--surface-elevated)] border border-[var(--border-subtle)] rounded-xl ps-3 pe-9 py-2 text-base sm:text-xs outline-none focus:border-primary transition text-on-surface"
                                             placeholder="تگ جدید و اینتر..."
                                         />
                                     </div>

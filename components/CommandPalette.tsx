@@ -67,6 +67,7 @@ export const CommandPalette: React.FC = () => {
     const { setMorningModalOpen, setEveningModalOpen, setBrainDumpOpen } = useUI();
 
     const [query, setQuery] = useState('');
+    const deferredQuery = React.useDeferredValue(query);
     const [scope, setScope] = useState<SearchScope>('all');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches);
@@ -186,7 +187,7 @@ export const CommandPalette: React.FC = () => {
             { id: 'nav-settings', label: 'تنظیمات و پروفایل', group: 'صفحات', icon: Settings, run: closeAnd(() => navigate('/settings')) },
         ];
 
-        const q = query.trim().toLowerCase();
+        const q = deferredQuery.trim().toLowerCase();
         const isDefaultCuratedView = !q && scope === 'all';
         const filteredBase = q
             ? baseActions.filter((a) => a.label.toLowerCase().includes(q))
@@ -218,7 +219,7 @@ export const CommandPalette: React.FC = () => {
         const combined = [...filteredBase, ...matchingTasks];
         return scope === 'all' ? combined : combined.filter((item) => item.group === scope);
     }, [
-        query,
+        deferredQuery,
         scope,
         tasks,
         navigate,
@@ -309,11 +310,13 @@ export const CommandPalette: React.FC = () => {
                         } rounded-[24px] max-w-xl w-full overflow-hidden border border-[var(--glass-nav-border)] shadow-2xl outline-none`}
                     >
                 {/* Search Input Row */}
-                <div className="flex items-center gap-2 pt-1 pb-1.5 pr-3.5 pl-1 sm:px-4 sm:py-3 border-b border-[var(--border-subtle)]">
+                <div className="flex items-center gap-2 pt-1 pb-1.5 pe-3.5 ps-1 sm:px-4 sm:py-3 border-b border-[var(--border-subtle)]">
                     <Search size={18} className="text-primary shrink-0" aria-hidden="true" />
                     <input
                         autoFocus
-                        type="search"
+                        type="text"
+                        inputMode="search"
+                        role="searchbox"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={handleInputKeyDown}
@@ -326,9 +329,9 @@ export const CommandPalette: React.FC = () => {
                             type="button"
                             onClick={() => setQuery('')}
                             aria-label="پاک کردن عبارت جستجو"
-                            className="w-9 h-9 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:bg-surface-container transition"
+                            className="px-2.5 min-h-[34px] flex items-center justify-center rounded-xl text-[11px] font-bold text-[var(--text-secondary)] bg-surface-container-low hover:bg-surface-container transition cursor-pointer shrink-0"
                         >
-                            <X size={16} />
+                            پاک کردن
                         </button>
                     )}
                     <button
@@ -449,7 +452,7 @@ export const CommandPalette: React.FC = () => {
                                     type="button"
                                     onClick={act.run}
                                     onMouseEnter={() => setSelectedIdx(idx)}
-                                    className={`w-full flex items-center justify-between px-3 min-h-[44px] py-2 rounded-2xl text-right text-xs transition ${
+                                    className={`w-full flex items-center justify-between px-3 min-h-[44px] py-2 rounded-2xl text-start text-xs transition ${
                                         isSelected
                                             ? 'bg-primary text-on-primary font-bold'
                                             : 'text-[var(--text-primary)] hover:bg-surface-container-low dark:hover:bg-slate-800 font-semibold'

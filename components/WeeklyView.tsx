@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { addDays, getShamsiDate, parseDate, toIsoString } from '../utils';
+import { addDays, formatToPersianDigits, getShamsiDate, parseDate, toIsoString } from '../utils';
 import { ChevronRight, ChevronLeft, Calendar } from 'lucide-react';
 
 const PERSIAN_WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'] as const;
@@ -117,20 +117,20 @@ const WeeklyView = () => {
                                         {day.weekdayName}
                                     </span>
                                     {day.isToday && (
-                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white font-black">
+                                        <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white font-black">
                                             امروز
                                         </span>
                                     )}
                                 </div>
-                                <span className="text-[10px] font-bold text-gray-400">{day.dateShamsi}</span>
+                                <span className="text-[11px] font-bold text-[var(--text-tertiary)]">{day.dateShamsi}</span>
                             </div>
 
-                            <div className="flex-1 space-y-1.5 min-h-[140px] max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
+                            <div className="flex-1 space-y-1.5 min-h-[140px] max-h-[200px] overflow-y-auto custom-scrollbar pe-1">
                                 {tasks.length > 0 ? (
                                     tasks.map((t) => (
                                         <div
                                             key={t.id}
-                                            className="bg-white dark:bg-gray-700/50 p-2 rounded-xl border border-gray-100 dark:border-gray-600/50 shadow-sm text-[10px] flex items-start gap-2 group hover:border-indigo-200 dark:hover:border-indigo-500/50 transition-colors"
+                                            className="bg-white dark:bg-gray-700/50 p-2 rounded-xl border border-gray-100 dark:border-gray-600/50 shadow-sm text-[11px] flex items-start gap-2 group hover:border-indigo-200 dark:hover:border-indigo-500/50 transition-colors"
                                         >
                                             <div
                                                 className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
@@ -141,30 +141,30 @@ const WeeklyView = () => {
                                                 <span className="font-bold block truncate text-gray-800 dark:text-gray-200 mb-0.5">
                                                     {t.subject}
                                                 </span>
-                                                <p className="text-gray-500 dark:text-gray-400 truncate leading-relaxed">{t.topic}</p>
+                                                <p className="text-[var(--text-secondary)] truncate leading-relaxed">{t.topic}</p>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-2 py-8">
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                                            <Calendar size={14} />
+                                    <div className="h-full flex flex-col items-center justify-center text-[var(--text-tertiary)] gap-2 py-8">
+                                        <div className="w-8 h-8 rounded-full bg-surface-container-low dark:bg-slate-800 flex items-center justify-center">
+                                            <Calendar size={14} aria-hidden="true" />
                                         </div>
-                                        <span className="text-[10px] italic">بدون برنامه</span>
+                                        <span className="text-xs font-medium">بدون برنامه</span>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="pt-2 text-center flex justify-between items-center text-[10px] text-gray-400 font-bold border-t border-gray-200 dark:border-gray-700">
+                            <div className="pt-2 text-center flex justify-between items-center text-xs text-[var(--text-secondary)] font-bold border-t border-[var(--border-subtle)] tabular-nums">
                                 <span>پیشرفت:</span>
                                 <span
                                     className={
                                         doneCount === tasks.length && tasks.length > 0
-                                            ? 'text-green-600 dark:text-green-400'
+                                            ? 'text-emerald-600 dark:text-emerald-400'
                                             : ''
                                     }
                                 >
-                                    {doneCount} / {tasks.length}
+                                    {formatToPersianDigits(doneCount)} / {formatToPersianDigits(tasks.length)}
                                 </span>
                             </div>
                         </div>

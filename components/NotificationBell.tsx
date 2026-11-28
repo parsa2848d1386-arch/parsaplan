@@ -168,7 +168,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                                             exit={{ opacity: 0 }}
                                             transition={{ duration: 0.16, delay: 0.06 }}
                                         >
-                                            <div className="pt-1 pl-1 pr-3.5 pb-2.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
+                                            <div className="pt-1 ps-1 pe-3.5 pb-2.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low/90">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 rounded-full bg-primary/12 text-primary flex items-center justify-center">
                                                         <Bell size={15} />
@@ -303,7 +303,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                         animate="visible"
                         exit="exit"
                         style={{ transformOrigin: 'top left' }}
-                        className="absolute top-[calc(100%+0.75rem)] -left-1 right-auto w-[min(calc(100vw-1.5rem),21.5rem)] z-[100] md:top-12 md:left-0 md:w-80 bg-[var(--surface-elevated)] squircle-lg shadow-xl border border-[var(--border-subtle)] overflow-hidden"
+                        className="absolute top-[calc(100%+0.75rem)] -left-1 right-auto w-[min(calc(100vw-1.5rem),21.5rem)] z-[var(--z-popover)] md:top-12 md:left-0 md:w-80 bg-[var(--surface-elevated)] squircle-lg shadow-xl border border-[var(--border-subtle)] overflow-hidden"
                     >
                         <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] flex justify-between items-center bg-surface-container-low">
                             <h3 className="font-extrabold text-sm text-on-surface">اعلان‌ها</h3>

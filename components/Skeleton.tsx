@@ -507,7 +507,7 @@ export const AppShellSkeleton: React.FC = () => {
             className="min-h-screen flex bg-[var(--surface-canvas)] text-[var(--text-primary)]"
         >
             {/* Desktop Sidebar Placeholder */}
-            <div className="hidden md:flex flex-col w-72 shrink-0 border-l border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-5 gap-4">
+            <div className="hidden md:flex flex-col w-72 shrink-0 border-s border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-5 gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 squircle-sm bg-primary/15 text-primary flex items-center justify-center shrink-0">
                         <BrandLogo size={22} />

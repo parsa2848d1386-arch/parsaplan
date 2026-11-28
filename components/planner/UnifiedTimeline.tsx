@@ -420,20 +420,20 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
 
     return (
         <div className="space-y-4">
-            {/* Unscheduled Backlog Tray (Draggable + One-click Smart Slot Fit) */}
+            {/* Unscheduled Backlog Tray (Compact Semantic Surface + One-click Smart Slot Fit) */}
             {unscheduledTasks.length > 0 && (
-                <div className="bg-amber-50/75 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-3xl p-4 space-y-2.5">
+                <div className="bg-[var(--surface-elevated)] border border-amber-500/30 squircle-md p-3.5 space-y-2.5 shadow-xs">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-xs font-black text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                            <Sparkles size={14} />
-                            کارهای بدون ساعت امروز ({formatToPersianDigits(unscheduledTasks.length)}) — بکشید روی تایم‌لاین یا خودکار بچینید
+                        <h3 className="text-xs font-extrabold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                            <Sparkles size={14} aria-hidden="true" />
+                            کارهای بدون ساعت امروز ({formatToPersianDigits(unscheduledTasks.length)})
                         </h3>
                         <button
                             type="button"
                             onClick={handleAutoScheduleAll}
-                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black shadow-sm transition flex items-center gap-1"
+                            className="min-h-[36px] px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
                         >
-                            <Sparkles size={12} /> چیدمان خودکار همه در زمان‌های خالی
+                            <Sparkles size={12} aria-hidden="true" /> چیدمان خودکار همه
                         </button>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -447,22 +447,21 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                         e.dataTransfer.setData('text/plain', t.id);
                                         e.dataTransfer.effectAllowed = 'move';
                                     }}
-                                    className="flex items-center gap-2 bg-surface-container-lowest dark:bg-slate-800 px-3 py-2 rounded-2xl border border-amber-200/70 dark:border-slate-700 text-xs cursor-grab active:cursor-grabbing shadow-sm hover:border-primary transition"
+                                    className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-2xl border border-[var(--border-subtle)] text-xs cursor-grab active:cursor-grabbing hover:border-primary transition"
                                 >
-                                    <GripVertical size={13} className="text-on-surface-variant/50 shrink-0" />
-                                    <span>{st.icon}</span>
+                                    <GripVertical size={13} className="text-[var(--text-tertiary)] shrink-0" />
                                     <button
                                         type="button"
                                         onClick={() => onEditTask(t)}
-                                        className="font-bold text-on-surface dark:text-white hover:underline truncate max-w-[120px]"
+                                        className="font-bold text-on-surface hover:underline truncate max-w-[130px] cursor-pointer"
                                     >
                                         {t.topic}
                                     </button>
-                                    <span className="text-[10px] text-on-surface-variant">({formatToPersianDigits(t.durationMinutes ?? 60)}&apos;)</span>
+                                    <span className="text-[11px] text-[var(--text-secondary)] tabular-nums">({formatToPersianDigits(t.durationMinutes ?? 60)}&apos;)</span>
                                     <button
                                         type="button"
                                         onClick={() => handleAutoScheduleSingle(t)}
-                                        className="text-[10px] px-2 py-0.5 rounded-lg bg-primary-container text-on-primary-container font-bold hover:opacity-90 transition"
+                                        className="text-[11px] px-2.5 py-1 rounded-lg bg-primary-fixed text-on-primary-fixed font-bold hover:brightness-95 transition cursor-pointer"
                                         title="یافتن اولین وقت خالی"
                                     >
                                         وقت خالی
@@ -470,7 +469,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => startFocusForTask(t)}
-                                        className="p-1 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition"
+                                        className="p-1.5 rounded-lg bg-primary text-on-primary hover:brightness-110 transition cursor-pointer"
                                         title="شروع تمرکز"
                                     >
                                         <Play size={11} fill="currentColor" />
@@ -482,12 +481,12 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 </div>
             )}
 
-            {/* Timeline Controls & Status Bar */}
-            <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border border-outline-variant/30 p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                <div className="flex flex-wrap items-center gap-2">
+            {/* Slim Single-Line Timeline Controls & Capacity Status Bar */}
+            <div className="bg-[var(--surface-elevated)] squircle-md border border-[var(--border-subtle)] px-3 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+                <div className="flex flex-wrap items-center gap-1.5">
                     {/* Zoom Switcher */}
-                    <div className="flex items-center bg-surface-container-high dark:bg-slate-800 p-1 rounded-xl gap-1">
-                        <ZoomIn size={13} className="text-on-surface-variant mx-1" />
+                    <div className="flex items-center bg-surface-container-low p-0.5 rounded-xl border border-[var(--border-subtle)] gap-0.5">
+                        <ZoomIn size={13} className="text-[var(--text-secondary)] mx-1.5" aria-hidden="true" />
                         {(
                             [
                                 { id: 'compact', label: 'فشرده' },
@@ -499,10 +498,10 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                 key={z.id}
                                 type="button"
                                 onClick={() => setZoom(z.id)}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
                                     zoom === z.id
-                                        ? 'bg-surface-container-lowest dark:bg-slate-700 text-primary shadow-sm'
-                                        : 'text-on-surface-variant'
+                                        ? 'bg-[var(--surface-elevated)] text-primary shadow-xs'
+                                        : 'text-[var(--text-secondary)] hover:text-on-surface'
                                 }`}
                             >
                                 {z.label}
@@ -513,41 +512,41 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                     <button
                         type="button"
                         onClick={() => setShowActualTrack(!showActualTrack)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
                             showActualTrack
-                                ? 'bg-secondary-container/40 dark:bg-secondary-container/20 border-secondary/30 text-secondary'
-                                : 'bg-surface-container dark:bg-slate-800 border-outline-variant/30 text-on-surface-variant'
+                                ? 'bg-secondary-container/45 border-secondary/30 text-secondary'
+                                : 'bg-surface-container-low border-[var(--border-subtle)] text-[var(--text-secondary)]'
                         }`}
                     >
-                        <Eye size={13} /> تطبیق با زمان واقعی ({formatToPersianDigits(positionedSessions.length)})
+                        <Eye size={13} aria-hidden="true" /> ستون واقعی ({formatToPersianDigits(positionedSessions.length)})
                     </button>
 
                     {isToday && (
                         <button
                             type="button"
                             onClick={scrollToNow}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-error-container/40 text-error border border-error/30 text-[11px] font-black"
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-error-container/50 text-error border border-error/25 text-[11px] font-extrabold cursor-pointer"
                         >
-                            <Crosshair size={13} /> پرش به الان ({nowTimeStr})
+                            <Crosshair size={13} aria-hidden="true" /> الان <span dir="ltr" className="tabular-nums">{formatToPersianDigits(nowTimeStr)}</span>
                         </button>
                     )}
                 </div>
 
                 {/* Capacity & Conflict Pills */}
-                <div className="flex items-center gap-2 text-[11px] font-bold">
+                <div className="flex items-center gap-2 text-[11px] font-bold tabular-nums">
                     {conflictCount > 0 && (
                         <span className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-error-container text-error border border-error/30">
-                            <AlertTriangle size={12} /> تداخل زمانی
+                            <AlertTriangle size={12} aria-hidden="true" /> تداخل زمانی
                         </span>
                     )}
                     <span
                         className={`px-2.5 py-1 rounded-xl border ${
                             isOverCapacity
-                                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                                : 'bg-primary-container/40 text-primary border-primary/20'
+                                ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                                : 'bg-surface-container-low text-on-surface border-[var(--border-subtle)]'
                         }`}
                     >
-                        مجموع برنامه: {formatToPersianDigits(Math.round((totalScheduledMins / 60) * 10) / 10)} /{' '}
+                        ظرفیت: {formatToPersianDigits(Math.round((totalScheduledMins / 60) * 10) / 10)} از{' '}
                         {formatToPersianDigits(Math.round((dailyCapacity / 60) * 10) / 10)} ساعت
                     </span>
                 </div>
@@ -555,7 +554,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
 
             {/* Empty Guidance Banner when day has no tasks */}
             {scheduledTasks.length === 0 && unscheduledTasks.length === 0 && (
-                <div className="bg-[var(--surface-elevated)] rounded-2xl border border-dashed border-[var(--border-strong)] p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right">
+                <div className="bg-[var(--surface-elevated)] rounded-2xl border border-dashed border-[var(--border-strong)] p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-start">
                     <div>
                         <p className="text-sm font-bold text-on-surface">هنوز بلوک زمانی برای این روز چیده نشده است</p>
                         <p className="text-xs text-[var(--text-secondary)] mt-0.5">
@@ -595,7 +594,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                 <div className="max-h-[680px] overflow-y-auto custom-scrollbar">
                     <div className="flex relative" style={{ height: totalCanvasHeight }}>
                         {/* Hour Axis Gutter */}
-                        <div className="w-16 shrink-0 border-l border-[var(--border-subtle)] relative bg-surface-container-low/40 select-none">
+                        <div className="w-16 shrink-0 border-s border-[var(--border-subtle)] relative bg-surface-container-low/40 select-none">
                             {hoursOrder.map((h, idx) => (
                                 <div
                                     key={h}
@@ -635,7 +634,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                         data-bg-slot="true"
                                         className="absolute right-0 left-0 top-1/2 border-t border-dashed border-gray-100/70 dark:border-gray-700/30 pointer-events-none"
                                     />
-                                    <span className="opacity-0 group-hover:opacity-100 pointer-events-none text-[10px] font-bold text-indigo-400 absolute left-3 top-1">
+                                    <span className="opacity-0 group-hover:opacity-100 pointer-events-none text-[11px] font-bold text-indigo-400 absolute left-3 top-1">
                                         + افزودن در {String(h).padStart(2, '0')}:00
                                     </span>
                                 </div>
@@ -647,7 +646,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                     style={{ top: dragHoverTopPx }}
                                     className="pointer-events-none absolute right-0 left-0 border-t-2 border-dashed border-indigo-500 z-30 flex items-center"
                                 >
-                                    <span className="bg-indigo-600 text-white text-[10px] font-mono font-black px-2 py-0.5 rounded-l-lg shadow">
+                                    <span className="bg-indigo-600 text-white text-[11px] font-mono font-black px-2 py-0.5 rounded-s-lg shadow">
                                         {dragHoverTime}
                                     </span>
                                 </div>
@@ -660,9 +659,9 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                     style={{ top: nowTopPx }}
                                     className="pointer-events-none absolute right-0 left-0 z-20 flex items-center"
                                 >
-                                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] -mr-1" />
+                                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] -me-1" />
                                     <div className="flex-1 h-[2px] bg-gradient-to-l from-rose-500 to-rose-400/40" />
-                                    <span className="bg-rose-500 text-white text-[9px] font-mono font-black px-1.5 py-0.5 rounded-r-md ml-2 shadow">
+                                    <span className="bg-rose-500 text-white text-[11px] font-mono font-black px-1.5 py-0.5 rounded-e-md ms-2 shadow">
                                         الان {nowTimeStr}
                                     </span>
                                 </div>
@@ -719,13 +718,13 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                                 <button
                                                     type="button"
                                                     onClick={() => setActionSheetTaskId(t.id)}
-                                                    className="text-right min-w-0 cursor-pointer"
+                                                    className="text-start min-w-0 cursor-pointer"
                                                 >
                                                     <div className="text-xs font-extrabold text-on-surface flex items-center gap-1 truncate">
                                                         <span>{st.icon}</span>
                                                         <span className={t.isCompleted ? 'line-through truncate' : 'truncate'}>{t.topic}</span>
                                                         {t.isMIT && (
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400 text-amber-950 font-extrabold shrink-0">
+                                                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-400 text-amber-950 font-extrabold shrink-0">
                                                                 <bdi>MIT</bdi>
                                                             </span>
                                                         )}
@@ -818,7 +817,7 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
 
                         {/* Companion Track: Real Focus Sessions Side-by-Side */}
                         {showActualTrack && (
-                            <div className="hidden md:block w-52 shrink-0 border-r border-gray-100 dark:border-gray-700 relative bg-emerald-50/15 dark:bg-emerald-950/10">
+                            <div className="hidden md:block w-52 shrink-0 border-e border-gray-100 dark:border-gray-700 relative bg-emerald-50/15 dark:bg-emerald-950/10">
                                 {hoursOrder.map((h, idx) => (
                                     <div
                                         key={`act_bg_${h}`}
@@ -845,11 +844,12 @@ export const UnifiedTimeline: React.FC<UnifiedTimelineProps> = ({
                                                 width: `calc(${widthPct}% - 8px)`,
                                             }}
                                             title={`${s.subjectName}${s.taskTitle ? `: ${s.taskTitle}` : ''} (${s.spanMinutes} دقیقه)`}
-                                            className="absolute rounded-xl bg-emerald-500/90 text-white px-2 py-1 shadow-sm overflow-hidden text-[10px] font-bold flex flex-col justify-center"
+                                            className="absolute rounded-xl bg-emerald-500/90 text-white px-2 py-1 shadow-sm overflow-hidden text-[11px] font-bold flex flex-col justify-center"
                                         >
                                             <span className="truncate">{s.subjectName}</span>
-                                            <span className="text-[9px] text-emerald-100 truncate">
-                                                ⏱️ {formatToPersianDigits(s.spanMinutes)} دقیقه
+                                            <span className="text-[11px] text-emerald-100 truncate flex items-center gap-1">
+                                                <Clock size={11} aria-hidden="true" />
+                                                {formatToPersianDigits(s.spanMinutes)} دقیقه
                                             </span>
                                         </div>
                                     );
